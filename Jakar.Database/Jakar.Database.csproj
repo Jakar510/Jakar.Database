@@ -15,11 +15,11 @@
 		<PackageId>Jakar.Database</PackageId>
 		<Company></Company>
 		<Authors>Tyler Stegmaier</Authors>
-		<PackageProjectUrl>https://github.com/Jakar510/Jakar.Extensions</PackageProjectUrl>
-		<Copyright>https://raw.githubusercontent.com/Jakar510/Jakar.Extensions/master/LICENSE.txt</Copyright>
+		<PackageProjectUrl>https://github.com/Jakar510/Jakar.Database</PackageProjectUrl>
+		<Copyright>https://raw.githubusercontent.com/Jakar510/Jakar.Database/master/LICENSE.txt</Copyright>
 		<PackageTags>Api Extension Linq Http Files Files Strings Types Languages Collections Ini</PackageTags>
 		<RepositoryType>git</RepositoryType>
-		<RepositoryUrl>https://github.com/Jakar510/Jakar.Extensions</RepositoryUrl>
+		<RepositoryUrl>https://github.com/Jakar510/Jakar.Database</RepositoryUrl>
 		<PackageReleaseNotes>Bug Fixes</PackageReleaseNotes>
 		<EnableNETAnalyzers>true</EnableNETAnalyzers>
 		<NeutralLanguage>en</NeutralLanguage>

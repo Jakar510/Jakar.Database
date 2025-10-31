@@ -18,6 +18,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 		Directory.Packages.props = Directory.Packages.props
 	EndProjectSection
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Jakar.Database.Tests", "Jakar.Database.Tests\Jakar.Database.Tests.csproj", "{003066CF-F8AC-4C01-A355-BAC711220F8E}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -44,6 +46,10 @@ Global
 		{5CF698E7-185A-4AA2-AB78-99175B690C1C}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{5CF698E7-185A-4AA2-AB78-99175B690C1C}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{5CF698E7-185A-4AA2-AB78-99175B690C1C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{003066CF-F8AC-4C01-A355-BAC711220F8E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{003066CF-F8AC-4C01-A355-BAC711220F8E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{003066CF-F8AC-4C01-A355-BAC711220F8E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{003066CF-F8AC-4C01-A355-BAC711220F8E}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
