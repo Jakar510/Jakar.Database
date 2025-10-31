@@ -1,9 +1,18 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
-VisualStudioVersion = 17.14.36623.8 d17.14
+VisualStudioVersion = 17.14.36623.8
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{F184B08F-C81C-45F6-A57F-5ABD9991F28F}") = "Jakar.Database", "Jakar.Database\Jakar.Database.vbproj", "{F91D485B-0CE0-4F10-A486-0B13D57E3922}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Jakar.Database", "Jakar.Database\Jakar.Database.csproj", "{D8403EE3-821D-6725-DFA3-D610A1662799}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Experiments", "Experiments\Experiments.csproj", "{B0F0AD82-B98C-800C-76E9-6D8FB3CF5FAD}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Jakar.Database.Generators", "Jakar.Database.Generators\Jakar.Database.Generators.csproj", "{F337C585-B2C8-3F1F-A193-4E2773EEDFF1}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{8EC462FD-D22E-90A8-E5CE-7E832BA40C5D}"
+	ProjectSection(SolutionItems) = preProject
+		Directory.Packages.props = Directory.Packages.props
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -11,10 +20,18 @@ Global
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{F91D485B-0CE0-4F10-A486-0B13D57E3922}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{F91D485B-0CE0-4F10-A486-0B13D57E3922}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{F91D485B-0CE0-4F10-A486-0B13D57E3922}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{F91D485B-0CE0-4F10-A486-0B13D57E3922}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D8403EE3-821D-6725-DFA3-D610A1662799}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D8403EE3-821D-6725-DFA3-D610A1662799}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D8403EE3-821D-6725-DFA3-D610A1662799}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D8403EE3-821D-6725-DFA3-D610A1662799}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B0F0AD82-B98C-800C-76E9-6D8FB3CF5FAD}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B0F0AD82-B98C-800C-76E9-6D8FB3CF5FAD}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B0F0AD82-B98C-800C-76E9-6D8FB3CF5FAD}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B0F0AD82-B98C-800C-76E9-6D8FB3CF5FAD}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F337C585-B2C8-3F1F-A193-4E2773EEDFF1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F337C585-B2C8-3F1F-A193-4E2773EEDFF1}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F337C585-B2C8-3F1F-A193-4E2773EEDFF1}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F337C585-B2C8-3F1F-A193-4E2773EEDFF1}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
