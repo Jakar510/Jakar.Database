@@ -45,7 +45,7 @@ public sealed record UserRecoveryCodeRecord : Mapping<UserRecoveryCodeRecord, Us
     }
 
 
-    public static UserRecoveryCodeRecord Create( DbDataReader reader )
+    public static UserRecoveryCodeRecord Create( NpgsqlDataReader reader )
     {
         RecordID<UserRecord>             key          = new(reader.GetFieldValue<Guid>(nameof(KeyID)));
         RecordID<RecoveryCodeRecord>     value        = new(reader.GetFieldValue<Guid>(nameof(KeyID)));
@@ -54,7 +54,7 @@ public sealed record UserRecoveryCodeRecord : Mapping<UserRecoveryCodeRecord, Us
         RecordID<UserRecoveryCodeRecord> id           = new(reader.GetFieldValue<Guid>(nameof(ID)));
         return new UserRecoveryCodeRecord(key, value, id, dateCreated, lastModified);
     }
-    public static async IAsyncEnumerable<UserRecoveryCodeRecord> CreateAsync( DbDataReader reader, [EnumeratorCancellation] CancellationToken token = default )
+    public static async IAsyncEnumerable<UserRecoveryCodeRecord> CreateAsync( NpgsqlDataReader reader, [EnumeratorCancellation] CancellationToken token = default )
     {
         while ( await reader.ReadAsync(token) ) { yield return Create(reader); }
     }

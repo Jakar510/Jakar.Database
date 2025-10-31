@@ -9,8 +9,8 @@ public interface IDbReaderMapping<out TRecord>
     where TRecord : IDbReaderMapping<TRecord>
 {
     public abstract static string                    TableName { get; }
-    public abstract static TRecord                   Create( DbDataReader      reader );
-    public abstract static IAsyncEnumerable<TRecord> CreateAsync( DbDataReader reader, [ EnumeratorCancellation ] CancellationToken token = default );
+    public abstract static TRecord                   Create( NpgsqlDataReader      reader );
+    public abstract static IAsyncEnumerable<TRecord> CreateAsync( NpgsqlDataReader reader, [ EnumeratorCancellation ] CancellationToken token = default );
 
 
     public DynamicParameters ToDynamicParameters();
@@ -67,7 +67,7 @@ public sealed class DbReaderMappingGenerator : IIncrementalGenerator
 
     private static ImmutableArray<DbRecordClassDescription> GetClasses( in SourceProductionContext context, in ImmutableArray<ClassDeclarationSyntax> declarations )
     {
-        List<DbRecordClassDescription> list = new List<DbRecordClassDescription>( declarations.Length );
+        List<DbRecordClassDescription> list = new( declarations.Length );
 
         foreach ( ClassDeclarationSyntax declaration in declarations )
         {
@@ -78,7 +78,7 @@ public sealed class DbReaderMappingGenerator : IIncrementalGenerator
             list.Add( result );
         }
 
-        return list.ToImmutableArray();
+        return [..list];
     }
     private static Diagnostic Found( SyntaxNode declaration, DbRecordClassDescription description )
     {

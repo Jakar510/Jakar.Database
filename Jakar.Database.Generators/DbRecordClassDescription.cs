@@ -3,6 +3,7 @@
 
 using System.Globalization;
 using System.Text;
+using Npgsql;
 
 
 
@@ -36,7 +37,7 @@ internal record DbRecordClassDescription
                           public partial record {{ClassName}}
                           {
                               [ Pure ]
-                              public static {{ClassName}} Create( {{nameof(DbDataReader)}} reader )
+                              public static {{ClassName}} Create( {{nameof(NpgsqlDataReader)}} reader )
                               {
                           """ );
 
@@ -54,7 +55,7 @@ internal record DbRecordClassDescription
                                   return new {{ClassName}}( {{string.Join( ",", Properties.Select( static x => x.Variable ) )}} );
                               }
                               [ Pure ]
-                              public static async IAsyncEnumerable<{{ClassName}}> CreateAsync( {{nameof(DbDataReader)}} reader, [ EnumeratorCancellation ] CancellationToken token = default )
+                              public static async IAsyncEnumerable<{{ClassName}}> CreateAsync( {{nameof(NpgsqlDataReader)}} reader, [ EnumeratorCancellation ] CancellationToken token = default )
                               {
                                   while ( await reader.ReadAsync( token ) ) { yield return Create( reader ); }
                               }

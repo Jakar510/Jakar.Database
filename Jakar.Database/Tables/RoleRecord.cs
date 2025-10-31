@@ -53,7 +53,7 @@ public sealed record RoleRecord( [property: StringLength(NAME)]              str
 
     [Pure] public static RoleRecord Create<TEnum>( string name, [HandlesResourceDisposal] scoped Permissions<TEnum> rights, string? normalizedName = null, RecordID<UserRecord>? caller = null, string? concurrencyStamp = null )
         where TEnum : unmanaged, Enum => new(name, normalizedName ?? name, concurrencyStamp ?? name.GetHash(), rights.ToStringAndDispose(), caller);
-    [Pure] public static RoleRecord Create( DbDataReader reader )
+    [Pure] public static RoleRecord Create( NpgsqlDataReader reader )
     {
         string                rights           = reader.GetFieldValue<string>(nameof(Rights));
         string                name             = reader.GetFieldValue<string>(nameof(NameOfRole));

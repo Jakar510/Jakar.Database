@@ -133,7 +133,7 @@ public sealed record FileRecord( string?              FileName,
     }
 
 
-    [Pure] public static FileRecord Create( DbDataReader reader )
+    [Pure] public static FileRecord Create( NpgsqlDataReader reader )
     {
         string?              name         = reader.GetFieldValue<string?>(nameof(FileName));
         string?              description  = reader.GetFieldValue<string?>(nameof(FileDescription));

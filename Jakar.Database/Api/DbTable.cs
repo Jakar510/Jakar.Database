@@ -59,8 +59,8 @@ public partial class DbTable<TSelf> : IConnectableDb
     }
 
 
-    public ValueTask<TResult> Call<TResult>( SqlCommand<TSelf> sql, Func<DbDataReader, CancellationToken, ValueTask<TResult>> func, CancellationToken token = default ) => this.TryCall(Call, sql, func, token);
-    public virtual async ValueTask<TResult> Call<TResult>( NpgsqlConnection connection, NpgsqlTransaction transaction, SqlCommand<TSelf> command, Func<DbDataReader, CancellationToken, ValueTask<TResult>> func, CancellationToken token = default )
+    public ValueTask<TResult> Call<TResult>( SqlCommand<TSelf> sql, Func<NpgsqlDataReader, CancellationToken, ValueTask<TResult>> func, CancellationToken token = default ) => this.TryCall(Call, sql, func, token);
+    public virtual async ValueTask<TResult> Call<TResult>( NpgsqlConnection connection, NpgsqlTransaction transaction, SqlCommand<TSelf> command, Func<NpgsqlDataReader, CancellationToken, ValueTask<TResult>> func, CancellationToken token = default )
     {
         try
         {

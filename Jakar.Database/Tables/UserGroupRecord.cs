@@ -43,7 +43,7 @@ public sealed record UserGroupRecord : Mapping<UserGroupRecord, UserRecord, Grou
     {
         foreach ( RecordID<GroupRecord> value in values ) { yield return Create(key, value); }
     }
-    [Pure] public static UserGroupRecord Create( DbDataReader reader )
+    [Pure] public static UserGroupRecord Create( NpgsqlDataReader reader )
     {
         RecordID<UserRecord>      key          = new(reader.GetFieldValue<Guid>(nameof(KeyID)));
         RecordID<GroupRecord>     value        = new(reader.GetFieldValue<Guid>(nameof(KeyID)));

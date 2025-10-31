@@ -44,7 +44,7 @@ public sealed record UserAddressRecord : Mapping<UserAddressRecord, UserRecord, 
     {
         foreach ( RecordID<AddressRecord> value in values ) { yield return Create(key, value); }
     }
-    [Pure] public static UserAddressRecord Create( DbDataReader reader )
+    [Pure] public static UserAddressRecord Create( NpgsqlDataReader reader )
     {
         RecordID<UserRecord>        key          = new(reader.GetFieldValue<Guid>(nameof(KeyID)));
         RecordID<AddressRecord>     value        = new(reader.GetFieldValue<Guid>(nameof(ValueID)));

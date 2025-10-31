@@ -42,13 +42,13 @@ public readonly struct RecordPair<TSelf>( RecordID<TSelf> id, DateTimeOffset dat
 
 
     public static MigrationRecord CreateTable( ulong migrationID ) => throw new NotImplementedException("Not Implemented by design");
-    [Pure] public static RecordPair<TSelf> Create( DbDataReader reader )
+    [Pure] public static RecordPair<TSelf> Create( NpgsqlDataReader reader )
     {
         DateTimeOffset  dateCreated = reader.GetFieldValue<DateTimeOffset>(nameof(DateCreated));
         RecordID<TSelf> id          = RecordID<TSelf>.ID(reader);
         return new RecordPair<TSelf>(id, dateCreated);
     }
-    [Pure] public static async IAsyncEnumerable<RecordPair<TSelf>> CreateAsync( DbDataReader reader, [EnumeratorCancellation] CancellationToken token = default )
+    [Pure] public static async IAsyncEnumerable<RecordPair<TSelf>> CreateAsync( NpgsqlDataReader reader, [EnumeratorCancellation] CancellationToken token = default )
     {
         while ( await reader.ReadAsync(token) ) { yield return Create(reader); }
     }

@@ -108,7 +108,7 @@ public sealed record AddressRecord( [property: ProtectedPersonalData] string  Li
                                                                                                                                                                               id.IsValidID()
                                                                                                                                                                                   ? id
                                                                                                                                                                                   : Guid.NewGuid());
-    [Pure] public static AddressRecord Create( DbDataReader reader )
+    [Pure] public static AddressRecord Create( NpgsqlDataReader reader )
     {
         string                  line1           = reader.GetFieldValue<string>(nameof(Line1));
         string                  line2           = reader.GetFieldValue<string>(nameof(Line2));

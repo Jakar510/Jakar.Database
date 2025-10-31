@@ -230,7 +230,7 @@ public sealed record UserRecord : OwnedTableRecord<UserRecord>, ITableRecord<Use
     }
 
 
-    public static UserRecord Create( DbDataReader reader )
+    public static UserRecord Create( NpgsqlDataReader reader )
     {
         string                userName               = reader.GetFieldValue<string>(nameof(UserName));
         string                firstName              = reader.GetFieldValue<string>(nameof(FirstName));

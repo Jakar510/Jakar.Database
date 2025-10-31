@@ -235,7 +235,7 @@ public static class Migrations
         await using NpgsqlConnection connection = await db.ConnectAsync(token);
         CommandDefinition            command    = new(MigrationRecord.SelectSql, null, null, null, null, CommandFlags.Buffered, token);
 
-        // await using DbDataReader     reader     = await connection.ExecuteReaderAsync(command);
+        // await using NpgsqlDataReader     reader     = await connection.ExecuteReaderAsync(command);
 
         await using NpgsqlCommand cmd = new(null, connection);
         cmd.Connection  = connection;

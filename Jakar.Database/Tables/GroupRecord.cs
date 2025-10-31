@@ -100,7 +100,7 @@ public sealed record GroupRecord( [property: StringLength(GroupRecord.MAX_SIZE)]
     }
 
 
-    [Pure] public static GroupRecord Create( DbDataReader reader )
+    [Pure] public static GroupRecord Create( NpgsqlDataReader reader )
     {
         string                normalizedName = reader.GetFieldValue<string>(nameof(NormalizedName));
         string                nameOfGroup    = reader.GetFieldValue<string>(nameof(NameOfGroup));

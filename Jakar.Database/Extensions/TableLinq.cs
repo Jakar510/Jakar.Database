@@ -6,14 +6,14 @@ namespace Jakar.Database;
 
 public static class TableLinq
 {
-    public static async ValueTask<ErrorOrResult<TSelf>> FirstAsync<TSelf>( this DbDataReader reader, [EnumeratorCancellation] CancellationToken token = default )
+    public static async ValueTask<ErrorOrResult<TSelf>> FirstAsync<TSelf>( this NpgsqlDataReader reader, [EnumeratorCancellation] CancellationToken token = default )
         where TSelf : ITableRecord<TSelf>
     {
         await foreach ( TSelf self in reader.CreateAsync<TSelf>(token) ) { return self; }
 
         throw new InvalidOperationException("Sequence contains no elements");
     }
-    public static async ValueTask<ErrorOrResult<TSelf>> FirstOrDefaultAsync<TSelf>( this DbDataReader reader, [EnumeratorCancellation] CancellationToken token = default )
+    public static async ValueTask<ErrorOrResult<TSelf>> FirstOrDefaultAsync<TSelf>( this NpgsqlDataReader reader, [EnumeratorCancellation] CancellationToken token = default )
         where TSelf : ITableRecord<TSelf>
     {
         await foreach ( TSelf self in reader.CreateAsync<TSelf>(token) ) { return self; }
@@ -22,7 +22,7 @@ public static class TableLinq
     }
 
 
-    public static async ValueTask<ErrorOrResult<TSelf>> SingleAsync<TSelf>( this DbDataReader reader, [EnumeratorCancellation] CancellationToken token = default )
+    public static async ValueTask<ErrorOrResult<TSelf>> SingleAsync<TSelf>( this NpgsqlDataReader reader, [EnumeratorCancellation] CancellationToken token = default )
         where TSelf : ITableRecord<TSelf>
     {
         TSelf? record = default;
@@ -38,7 +38,7 @@ public static class TableLinq
                    ? Error.NotFound()
                    : record;
     }
-    public static async ValueTask<ErrorOrResult<TSelf>> SingleOrDefaultAsync<TSelf>( this DbDataReader reader, [EnumeratorCancellation] CancellationToken token = default )
+    public static async ValueTask<ErrorOrResult<TSelf>> SingleOrDefaultAsync<TSelf>( this NpgsqlDataReader reader, [EnumeratorCancellation] CancellationToken token = default )
         where TSelf : ITableRecord<TSelf>
     {
         TSelf? record = default;
@@ -60,7 +60,7 @@ public static class TableLinq
     }
 
 
-    public static async ValueTask<ErrorOrResult<TSelf>> LastAsync<TSelf>( this DbDataReader reader, [EnumeratorCancellation] CancellationToken token = default )
+    public static async ValueTask<ErrorOrResult<TSelf>> LastAsync<TSelf>( this NpgsqlDataReader reader, [EnumeratorCancellation] CancellationToken token = default )
         where TSelf : ITableRecord<TSelf>
     {
         TSelf? record = default;
@@ -70,7 +70,7 @@ public static class TableLinq
                    ? Error.NotFound()
                    : record;
     }
-    public static async ValueTask<ErrorOrResult<TSelf>> LastOrDefaultAsync<TSelf>( this DbDataReader reader, [EnumeratorCancellation] CancellationToken token = default )
+    public static async ValueTask<ErrorOrResult<TSelf>> LastOrDefaultAsync<TSelf>( this NpgsqlDataReader reader, [EnumeratorCancellation] CancellationToken token = default )
         where TSelf : ITableRecord<TSelf>
     {
         TSelf? record = default;
@@ -82,14 +82,14 @@ public static class TableLinq
     }
 
 
-    public static async IAsyncEnumerable<TSelf> CreateAsync<TSelf>( this DbDataReader reader, [EnumeratorCancellation] CancellationToken token = default )
+    public static async IAsyncEnumerable<TSelf> CreateAsync<TSelf>( this NpgsqlDataReader reader, [EnumeratorCancellation] CancellationToken token = default )
         where TSelf : ITableRecord<TSelf>
     {
         while ( await reader.ReadAsync(token) ) { yield return TSelf.Create(reader); }
     }
 
 
-    public static async ValueTask<TSelf[]> CreateAsync<TSelf>( this DbDataReader reader, int initialCapacity, [EnumeratorCancellation] CancellationToken token = default )
+    public static async ValueTask<TSelf[]> CreateAsync<TSelf>( this NpgsqlDataReader reader, int initialCapacity, [EnumeratorCancellation] CancellationToken token = default )
         where TSelf : ITableRecord<TSelf>
     {
         List<TSelf> list = new(initialCapacity);

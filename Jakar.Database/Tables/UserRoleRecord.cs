@@ -43,7 +43,7 @@ public sealed record UserRoleRecord : Mapping<UserRoleRecord, UserRecord, RoleRe
     {
         foreach ( RecordID<RoleRecord> value in values ) { yield return Create(key, value); }
     }
-    [Pure] public static UserRoleRecord Create( DbDataReader reader )
+    [Pure] public static UserRoleRecord Create( NpgsqlDataReader reader )
     {
         RecordID<UserRecord>     key          = new(reader.GetFieldValue<Guid>(nameof(KeyID)));
         RecordID<RoleRecord>     value        = new(reader.GetFieldValue<Guid>(nameof(ValueID)));

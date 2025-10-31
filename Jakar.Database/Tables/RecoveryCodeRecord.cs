@@ -31,7 +31,7 @@ public sealed record RecoveryCodeRecord( [property: StringLength(1024)] string C
         parameters.Add(nameof(Code), Code);
         return parameters;
     }
-    [Pure] public static RecoveryCodeRecord Create( DbDataReader reader )
+    [Pure] public static RecoveryCodeRecord Create( NpgsqlDataReader reader )
     {
         string                       code         = reader.GetFieldValue<string>(nameof(Code));
         DateTimeOffset               dateCreated  = reader.GetFieldValue<DateTimeOffset>(nameof(DateCreated));

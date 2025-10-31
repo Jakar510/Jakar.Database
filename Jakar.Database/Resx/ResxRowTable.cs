@@ -141,7 +141,7 @@ public sealed record ResxRowRecord( long                    KeyID,
                                                FOR EACH ROW
                                                EXECUTE FUNCTION {nameof(MigrationRecord.SetLastModified).SqlColumnName()}();
                                                """);
-    [Pure] public static ResxRowRecord Create( DbDataReader reader )
+    [Pure] public static ResxRowRecord Create( NpgsqlDataReader reader )
     {
         long                    keyID        = reader.GetFieldValue<long>(nameof(KeyID));
         string                  key          = reader.GetFieldValue<string>(nameof(Key));
@@ -186,7 +186,7 @@ public sealed record ResxRowRecord( long                    KeyID,
                                  lastModified);
     }
 
-    [Pure] public static async IAsyncEnumerable<ResxRowRecord> CreateAsync( DbDataReader reader, [EnumeratorCancellation] CancellationToken token = default )
+    [Pure] public static async IAsyncEnumerable<ResxRowRecord> CreateAsync( NpgsqlDataReader reader, [EnumeratorCancellation] CancellationToken token = default )
     {
         while ( await reader.ReadAsync(token) ) { yield return Create(reader); }
     }

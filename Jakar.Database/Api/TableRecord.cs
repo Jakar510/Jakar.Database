@@ -54,7 +54,7 @@ public interface ITableRecord<TSelf> : IRecordPair<TSelf>, IJsonModel<TSelf>
 
 
     [Pure] public                 RecordPair<TSelf> ToPair();
-    [Pure] public abstract static TSelf             Create( DbDataReader   reader );
+    [Pure] public abstract static TSelf             Create( NpgsqlDataReader   reader );
     public                        TSelf             NewID( RecordID<TSelf> id );
 }
 
@@ -122,7 +122,7 @@ public abstract record TableRecord<TSelf> : BaseRecord<TSelf>, IRecordPair<TSelf
     }
 
 
-    [Pure] protected static TValue TryGet<TValue>( DbDataReader reader, string key )
+    [Pure] protected static TValue TryGet<TValue>( NpgsqlDataReader reader, string key )
     {
         int index = reader.GetOrdinal(key);
         return (TValue)reader.GetValue(index);

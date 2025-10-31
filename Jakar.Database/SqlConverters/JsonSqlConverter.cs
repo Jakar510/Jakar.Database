@@ -7,12 +7,11 @@ public abstract class JsonSqlHandler<TSelf, TValue> : SqlConverter<TSelf, TValue
     public abstract JsonTypeInfo<TValue> TypeInfo { get; }
     public override TValue Parse( object? value )
     {
-        string? item = value?.ToString();
+        string? s = value?.ToString();
 
-        // ReSharper disable once NullableWarningSuppressionIsUsed
-        return item is null
-                   ? default!
-                   : item.FromJson(TypeInfo);
+        return s is not null
+                   ? Validate.ThrowIfNull(JsonSerializer.Deserialize(s, TypeInfo))
+                   : default!;
     }
     public override void SetValue( IDbDataParameter parameter, TValue? value )
     {
@@ -32,12 +31,11 @@ public sealed class JsonSqlHandler<TValue> : JsonSqlHandler<JsonSqlHandler<TValu
     public override JsonTypeInfo<TValue> TypeInfo => TValue.JsonTypeInfo;
     public override TValue Parse( object? value )
     {
-        string? item = value?.ToString();
+        string? s = value?.ToString();
 
-        // ReSharper disable once NullableWarningSuppressionIsUsed
-        return item is null
-                   ? default!
-                   : item.FromJson(TypeInfo);
+        return s is not null
+                   ? Validate.ThrowIfNull(JsonSerializer.Deserialize(s, TypeInfo))
+                   : default!;
     }
     public override void SetValue( IDbDataParameter parameter, TValue? value )
     {

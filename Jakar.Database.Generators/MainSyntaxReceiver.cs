@@ -57,7 +57,7 @@ public sealed class MainSyntaxReceiver : ISyntaxReceiver
 
                 // var getFieldValue = InvocationExpression( MemberAccessExpression( SyntaxKind.SimpleMemberAccessExpression,
                 //                                                                   IdentifierName( READER ),
-                //                                                                   GenericName( Identifier( nameof(DbDataReader.GetFieldValue) ) )
+                //                                                                   GenericName( Identifier( nameof(NpgsqlDataReader.GetFieldValue) ) )
                 //                                                                      .WithTypeArgumentList( TypeArgumentList( SingletonSeparatedList<TypeSyntax>( IdentifierName( "Guid" ) ) ) ) ) )
                 //    .WithArgumentList( ArgumentList( SingletonSeparatedList( Argument( InvocationExpression( IdentifierName( Identifier( TriviaList(), SyntaxKind.NameOfKeyword, "nameof", "nameof", TriviaList() ) ) )
                 //                                                                          .WithArgumentList( ArgumentList( SingletonSeparatedList( Argument( IdentifierName( "CreatedBy" ) ) ) ) ) ) ) ) );
@@ -76,7 +76,7 @@ public sealed class MainSyntaxReceiver : ISyntaxReceiver
                   .WithModifiers( Method.Modifiers )
                   .WithParameterList( Method.ParameterList )
                   .WithParameterList( ParameterList( SingletonSeparatedList( Parameter( Identifier( READER ) )
-                                                                                .WithType( IdentifierName( nameof(DbDataReader) ) ) ) ) )
+                                                                                .WithType( IdentifierName( nameof(NpgsqlDataReader) ) ) ) ) )
                   .WithBody( Block( statements ) );
         }
 
@@ -117,7 +117,7 @@ public sealed class MainSyntaxReceiver : ISyntaxReceiver
         {
             SingletonSeparatedList( Argument( InvocationExpression( MemberAccessExpression( SyntaxKind.SimpleMemberAccessExpression,
                                                                                             IdentifierName( READER ),
-                                                                                            GenericName( Identifier( nameof(DbDataReader.GetFieldValue) ) )
+                                                                                            GenericName( Identifier( nameof(NpgsqlDataReader.GetFieldValue) ) )
                                                                                                .WithTypeArgumentList( TypeArgumentList( SingletonSeparatedList<TypeSyntax>( IdentifierName( "Guid" ) ) ) ) ) )
                                                  .WithArgumentList( ArgumentList( SingletonSeparatedList( Argument( LiteralExpression( SyntaxKind.StringLiteralExpression, Literal( "ID" ) ) ) ) ) ) ) );
 
@@ -126,12 +126,12 @@ public sealed class MainSyntaxReceiver : ISyntaxReceiver
                .WithArgumentList( ArgumentList() );
         }
         private static InvocationExpressionSyntax GetFromReader_String( in string name ) =>
-            InvocationExpression( MemberAccessExpression( SyntaxKind.SimpleMemberAccessExpression, IdentifierName( READER ), IdentifierName( nameof(DbDataReader.GetString) ) ) )
+            InvocationExpression( MemberAccessExpression( SyntaxKind.SimpleMemberAccessExpression, IdentifierName( READER ), IdentifierName( nameof(NpgsqlDataReader.GetString) ) ) )
                .WithArgumentList( ArgumentList( SingletonSeparatedList( Argument( LiteralExpression( SyntaxKind.StringLiteralExpression, Literal( name ) ) ) ) ) );
         private static InvocationExpressionSyntax GetFromReader_ValueType( in string type, in string name ) =>
             InvocationExpression( MemberAccessExpression( SyntaxKind.SimpleMemberAccessExpression,
                                                           IdentifierName( READER ),
-                                                          GenericName( Identifier( nameof(DbDataReader.GetFieldValue) ) )
+                                                          GenericName( Identifier( nameof(NpgsqlDataReader.GetFieldValue) ) )
                                                              .WithTypeArgumentList( TypeArgumentList( SingletonSeparatedList<TypeSyntax>( IdentifierName( type ) ) ) ) ) );
     }
 }

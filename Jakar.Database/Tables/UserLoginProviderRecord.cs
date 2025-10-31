@@ -67,7 +67,7 @@ public sealed record UserLoginProviderRecord( [property: StringLength(          
                                                          FOR EACH ROW
                                                          EXECUTE FUNCTION {nameof(MigrationRecord.SetLastModified).SqlColumnName()}();
                                                          """);
-    [Pure] public static UserLoginProviderRecord Create( DbDataReader reader )
+    [Pure] public static UserLoginProviderRecord Create( NpgsqlDataReader reader )
     {
         string                            loginProvider       = reader.GetFieldValue<string>(nameof(LoginProvider));
         string                            providerDisplayName = reader.GetFieldValue<string>(nameof(ProviderDisplayName));

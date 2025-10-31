@@ -154,7 +154,7 @@ public sealed record MigrationRecord : BaseRecord<MigrationRecord>, ITableRecord
 
         return record.Validate();
     }
-    public static MigrationRecord Create( DbDataReader reader )
+    public static MigrationRecord Create( NpgsqlDataReader reader )
     {
         string         description = reader.GetFieldValue<string>(nameof(Description));
         string?        tableName   = reader.GetFieldValue<string?>(nameof(TableID));
