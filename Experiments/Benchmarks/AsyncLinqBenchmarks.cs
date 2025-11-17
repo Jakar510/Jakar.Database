@@ -1,7 +1,7 @@
 ﻿// Jakar.Extensions :: Console.Experiments
 // 09/15/2022  11:39 AM
 
-namespace Jakar.Database.Experiments.Benchmarks;
+namespace Experiments.Benchmarks;
 
 
 /*
@@ -40,9 +40,9 @@ public class AsyncLinqBenchmarks
     //     results.Count.WriteToConsole();
     //     return results;
     // }
-    [Benchmark] public ValueTask<List<long>> WhereValueTask() => __data.Where(static x => x     > 0)
-                                                                       .Where(static x => x % 5 == 0)
-                                                                       .ToList();
+    [Benchmark] public ValueTask<List<long>> WhereValueTask() =>
+        AsyncLinq.Where(AsyncLinq.Where(__data, static x => x > 0), static x => x % 5 == 0)
+                 .ToList();
 
 
     [GlobalSetup] public void Setup()

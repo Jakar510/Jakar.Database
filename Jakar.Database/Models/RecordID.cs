@@ -25,10 +25,10 @@ public readonly struct RecordID<TSelf> : IEquatable<RecordID<TSelf>>, IComparabl
     [Pure] public static RecordID<TSelf>  New( DateTimeOffset              timeStamp )                 => Create(Guid.CreateVersion7(timeStamp));
     [Pure] public static RecordID<TSelf>  Parse( string                    value )                     => Create(Guid.Parse(value));
     [Pure] public static RecordID<TSelf>  Parse( params ReadOnlySpan<char> value )                     => Create(Guid.Parse(value));
-    [Pure] public static RecordID<TSelf>  ID( NpgsqlDataReader                 reader )                    => Create(reader, nameof(IDateCreated.ID));
-    [Pure] public static RecordID<TSelf>? CreatedBy( NpgsqlDataReader          reader )                    => TryCreate(reader, nameof(ICreatedBy.CreatedBy));
-    [Pure] public static RecordID<TSelf>? TryCreate( NpgsqlDataReader          reader, string columnName ) => TryCreate(reader.GetFieldValue<Guid?>(columnName));
-    [Pure] public static RecordID<TSelf>  Create( NpgsqlDataReader             reader, string columnName ) => Create(reader.GetFieldValue<Guid>(columnName));
+    [Pure] public static RecordID<TSelf>  ID( NpgsqlDataReader             reader )                    => Create(reader, nameof(IDateCreated.ID));
+    [Pure] public static RecordID<TSelf>? CreatedBy( NpgsqlDataReader      reader )                    => TryCreate(reader, nameof(ICreatedBy.CreatedBy));
+    [Pure] public static RecordID<TSelf>? TryCreate( NpgsqlDataReader      reader, string columnName ) => TryCreate(reader.GetFieldValue<Guid?>(columnName));
+    [Pure] public static RecordID<TSelf>  Create( NpgsqlDataReader         reader, string columnName ) => Create(reader.GetFieldValue<Guid>(columnName));
     [Pure] public static RecordID<TSelf>  Create( Guid                     id ) => new(id);
     [Pure] public static RecordID<TSelf> Create( [NotNullIfNotNull(nameof(id))] Guid? id ) => id.HasValue
                                                                                                   ? new RecordID<TSelf>(id.Value)
@@ -38,7 +38,7 @@ public readonly struct RecordID<TSelf> : IEquatable<RecordID<TSelf>>, IComparabl
     [Pure] public static IEnumerable<RecordID<TSelf>> Create<TValue>( IEnumerable<TValue> ids )
         where TValue : IUniqueID<Guid> => ids.Select(Create);
     [Pure] public static IAsyncEnumerable<RecordID<TSelf>> Create<TValue>( IAsyncEnumerable<TValue> ids )
-        where TValue : IUniqueID<Guid> => ids.Select(Create);
+        where TValue : IUniqueID<Guid> => AsyncLinq.Select(ids, Create);
     [Pure] public static RecordID<TSelf>? TryCreate( [NotNullIfNotNull(nameof(id))] Guid? id ) => id.HasValue
                                                                                                       ? new RecordID<TSelf>(id.Value)
                                                                                                       : default;

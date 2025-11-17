@@ -1,0 +1,11 @@
+<Solution>
+  <Folder Name="/Solution Items/">
+    <File Path="Directory.Packages.props" />
+  </Folder>
+  <Project Path="Experiments/Experiments.csproj" />
+  <Project Path="Jakar.Database.Generators/Jakar.Database.Generators.csproj" />
+  <Project Path="Jakar.Database.Tests/Jakar.Database.Tests.csproj" />
+  <Project Path="Jakar.Database/Jakar.Database.csproj" />
+  <Project Path="Jakar.SqlBuilder.Tests/Jakar.SqlBuilder.Tests.csproj" />
+  <Project Path="Jakar.SqlBuilder/Jakar.SqlBuilder.csproj" />
+</Solution>

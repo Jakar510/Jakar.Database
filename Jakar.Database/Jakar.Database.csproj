@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
 	<PropertyGroup>
-		<TargetFramework>net9.0</TargetFramework>
+		<TargetFramework>net10.0</TargetFramework>
 		<ImplicitUsings>enable</ImplicitUsings>
 		<LangVersion>latest</LangVersion>
 		<Nullable>enable</Nullable>
@@ -11,7 +11,7 @@
 		<OpenApiGenerateDocuments>false</OpenApiGenerateDocuments>
 		<EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
 		<EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
-		<Version>9.0.0.8-beta</Version>
+		<Version>10.0.0.1-beta</Version>
 		<PackageId>Jakar.Database</PackageId>
 		<Company></Company>
 		<Authors>Tyler Stegmaier</Authors>

@@ -38,9 +38,8 @@ public class UserStore( Database dbContext ) : IUserStore
     public virtual async Task                  SetLockoutEndDateAsync( UserRecord          user,          DateTimeOffset?    lockoutEnd,  CancellationToken token ) => await __dbContext.SetLockoutEndDateAsync(user, lockoutEnd, token);
     public virtual async Task                  AddLoginAsync( UserRecord                   user,          UserLoginInfo      login,       CancellationToken token ) => await __dbContext.AddLoginAsync(user, login, token);
     public virtual async Task<UserRecord?>     FindByLoginAsync( string                    loginProvider, string             providerKey, CancellationToken token ) => await __dbContext.FindByLoginAsync(loginProvider, providerKey, token);
-    public virtual async Task<IList<UserLoginInfo>> GetLoginsAsync( UserRecord user, CancellationToken token ) => await __dbContext.GetLoginsAsync(user, token)
-                                                                                                                                   .Select(static x => x.ToUserLoginInfo())
-                                                                                                                                   .ToList(DEFAULT_CAPACITY, token);
+    public virtual async Task<IList<UserLoginInfo>> GetLoginsAsync( UserRecord user, CancellationToken token ) => await AsyncLinq.Select(__dbContext.GetLoginsAsync(user, token), static x => x.ToUserLoginInfo())
+                                                                                                                                 .ToList(DEFAULT_CAPACITY, token);
     public virtual async Task                 RemoveLoginAsync( UserRecord             user,               string            loginProvider, string providerKey, CancellationToken token ) => await __dbContext.RemoveLoginAsync(user, loginProvider, providerKey, token);
     public virtual async Task<IdentityResult> CreateAsync( UserRecord                  user,               CancellationToken token )                             => await __dbContext.CreateAsync(user, token);
     public virtual async Task<IdentityResult> DeleteAsync( UserRecord                  user,               CancellationToken token )                             => await __dbContext.DeleteAsync(user, token);
