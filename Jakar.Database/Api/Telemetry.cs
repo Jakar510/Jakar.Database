@@ -282,84 +282,86 @@ public static class Telemetry
     }
 
 
-    public static void AddUserID( this              Activity activity, UserRecord  record )       => activity.AddTag(nameof(IUserID.UserID),      record.ID);
-    public static void AddSessionID( this           Activity activity, UserRecord  record )       => activity.AddTag(Tags.SessionID,              record.SessionID);
-    public static void AddRoleID( this              Activity activity, RoleRecord  record )       => activity.AddTag(Tags.RoleID,                 record.ID);
-    public static void AddGroupID( this             Activity activity, GroupRecord record )       => activity.AddTag(Tags.GroupID,                record.ID);
-    public static void AddGroup( this               Activity activity, string?     value = null ) => activity.AddTag(Tags.AddGroup,               value);
-    public static void AddGroup( this               Activity activity, object?     value = null ) => activity.AddTag(Tags.AddGroup,               value);
-    public static void AddGroupRights( this         Activity activity, string?     value = null ) => activity.AddTag(Tags.AddGroupRights,         value);
-    public static void AddGroupRights( this         Activity activity, object?     value = null ) => activity.AddTag(Tags.AddGroupRights,         value);
-    public static void AddRole( this                Activity activity, string?     value = null ) => activity.AddTag(Tags.AddRole,                value);
-    public static void AddRole( this                Activity activity, object?     value = null ) => activity.AddTag(Tags.AddRole,                value);
-    public static void AddRoleRights( this          Activity activity, string?     value = null ) => activity.AddTag(Tags.AddRoleRights,          value);
-    public static void AddRoleRights( this          Activity activity, object?     value = null ) => activity.AddTag(Tags.AddRoleRights,          value);
-    public static void AddUser( this                Activity activity, string?     value = null ) => activity.AddTag(Tags.AddUser,                value);
-    public static void AddUser( this                Activity activity, object?     value = null ) => activity.AddTag(Tags.AddUser,                value);
-    public static void AddUserAddress( this         Activity activity, string?     value = null ) => activity.AddTag(Tags.AddUserAddress,         value);
-    public static void AddUserAddress( this         Activity activity, object?     value = null ) => activity.AddTag(Tags.AddUserAddress,         value);
-    public static void AddUserLoginInfo( this       Activity activity, string?     value = null ) => activity.AddTag(Tags.AddUserLoginInfo,       value);
-    public static void AddUserLoginInfo( this       Activity activity, object?     value = null ) => activity.AddTag(Tags.AddUserLoginInfo,       value);
-    public static void AddUserRecoveryCode( this    Activity activity, string?     value = null ) => activity.AddTag(Tags.AddUserRecoveryCode,    value);
-    public static void AddUserRecoveryCode( this    Activity activity, object?     value = null ) => activity.AddTag(Tags.AddUserRecoveryCode,    value);
-    public static void AddUserRights( this          Activity activity, string?     value = null ) => activity.AddTag(Tags.AddUserRights,          value);
-    public static void AddUserRights( this          Activity activity, object?     value = null ) => activity.AddTag(Tags.AddUserRights,          value);
-    public static void AddUserSubscription( this    Activity activity, string?     value = null ) => activity.AddTag(Tags.AddUserSubscription,    value);
-    public static void AddUserSubscription( this    Activity activity, object?     value = null ) => activity.AddTag(Tags.AddUserSubscription,    value);
-    public static void AddUserToGroup( this         Activity activity, string?     value = null ) => activity.AddTag(Tags.AddUserToGroup,         value);
-    public static void AddUserToGroup( this         Activity activity, object?     value = null ) => activity.AddTag(Tags.AddUserToGroup,         value);
-    public static void AddUserToRole( this          Activity activity, string?     value = null ) => activity.AddTag(Tags.AddUserToRole,          value);
-    public static void AddUserToRole( this          Activity activity, object?     value = null ) => activity.AddTag(Tags.AddUserToRole,          value);
-    public static void ConnectDatabase( this        Activity activity, string?     value = null ) => activity.AddTag(Tags.ConnectDatabase,        value);
-    public static void ConnectDatabase( this        Activity activity, object?     value = null ) => activity.AddTag(Tags.ConnectDatabase,        value);
-    public static void LoginUser( this              Activity activity, string?     value = null ) => activity.AddTag(Tags.LoginUser,              value);
-    public static void LoginUser( this              Activity activity, object?     value = null ) => activity.AddTag(Tags.LoginUser,              value);
-    public static void RemoveGroup( this            Activity activity, string?     value = null ) => activity.AddTag(Tags.RemoveGroup,            value);
-    public static void RemoveGroup( this            Activity activity, object?     value = null ) => activity.AddTag(Tags.RemoveGroup,            value);
-    public static void RemoveGroupRights( this      Activity activity, string?     value = null ) => activity.AddTag(Tags.RemoveGroupRights,      value);
-    public static void RemoveGroupRights( this      Activity activity, object?     value = null ) => activity.AddTag(Tags.RemoveGroupRights,      value);
-    public static void RemoveRole( this             Activity activity, string?     value = null ) => activity.AddTag(Tags.RemoveRole,             value);
-    public static void RemoveRole( this             Activity activity, object?     value = null ) => activity.AddTag(Tags.RemoveRole,             value);
-    public static void RemoveRoleRights( this       Activity activity, string?     value = null ) => activity.AddTag(Tags.RemoveRoleRights,       value);
-    public static void RemoveRoleRights( this       Activity activity, object?     value = null ) => activity.AddTag(Tags.RemoveRoleRights,       value);
-    public static void RemoveUser( this             Activity activity, string?     value = null ) => activity.AddTag(Tags.RemoveUser,             value);
-    public static void RemoveUser( this             Activity activity, object?     value = null ) => activity.AddTag(Tags.RemoveUser,             value);
-    public static void RemoveUserAddress( this      Activity activity, string?     value = null ) => activity.AddTag(Tags.RemoveUserAddress,      value);
-    public static void RemoveUserAddress( this      Activity activity, object?     value = null ) => activity.AddTag(Tags.RemoveUserAddress,      value);
-    public static void RemoveUserFromGroup( this    Activity activity, string?     value = null ) => activity.AddTag(Tags.RemoveUserFromGroup,    value);
-    public static void RemoveUserFromGroup( this    Activity activity, object?     value = null ) => activity.AddTag(Tags.RemoveUserFromGroup,    value);
-    public static void RemoveUserFromRole( this     Activity activity, string?     value = null ) => activity.AddTag(Tags.RemoveUserFromRole,     value);
-    public static void RemoveUserFromRole( this     Activity activity, object?     value = null ) => activity.AddTag(Tags.RemoveUserFromRole,     value);
-    public static void RemoveUserLoginInfo( this    Activity activity, string?     value = null ) => activity.AddTag(Tags.RemoveUserLoginInfo,    value);
-    public static void RemoveUserLoginInfo( this    Activity activity, object?     value = null ) => activity.AddTag(Tags.RemoveUserLoginInfo,    value);
-    public static void RemoveUserRecoveryCode( this Activity activity, string?     value = null ) => activity.AddTag(Tags.RemoveUserRecoveryCode, value);
-    public static void RemoveUserRecoveryCode( this Activity activity, object?     value = null ) => activity.AddTag(Tags.RemoveUserRecoveryCode, value);
-    public static void RemoveUserRights( this       Activity activity, string?     value = null ) => activity.AddTag(Tags.RemoveUserRights,       value);
-    public static void RemoveUserRights( this       Activity activity, object?     value = null ) => activity.AddTag(Tags.RemoveUserRights,       value);
-    public static void RemoveUserSubscription( this Activity activity, string?     value = null ) => activity.AddTag(Tags.RemoveUserSubscription, value);
-    public static void RemoveUserSubscription( this Activity activity, object?     value = null ) => activity.AddTag(Tags.RemoveUserSubscription, value);
-    public static void UpdateGroup( this            Activity activity, string?     value = null ) => activity.AddTag(Tags.UpdateGroup,            value);
-    public static void UpdateGroup( this            Activity activity, object?     value = null ) => activity.AddTag(Tags.UpdateGroup,            value);
-    public static void UpdateRole( this             Activity activity, string?     value = null ) => activity.AddTag(Tags.UpdateRole,             value);
-    public static void UpdateRole( this             Activity activity, object?     value = null ) => activity.AddTag(Tags.UpdateRole,             value);
-    public static void UpdateUser( this             Activity activity, string?     value = null ) => activity.AddTag(Tags.UpdateUser,             value);
-    public static void UpdateUser( this             Activity activity, object?     value = null ) => activity.AddTag(Tags.UpdateUser,             value);
-    public static void UpdateUserAddress( this      Activity activity, string?     value = null ) => activity.AddTag(Tags.UpdateUserAddress,      value);
-    public static void UpdateUserAddress( this      Activity activity, object?     value = null ) => activity.AddTag(Tags.UpdateUserAddress,      value);
-    public static void UpdateUserLoginInfo( this    Activity activity, string?     value = null ) => activity.AddTag(Tags.UpdateUserLoginInfo,    value);
-    public static void UpdateUserLoginInfo( this    Activity activity, object?     value = null ) => activity.AddTag(Tags.UpdateUserLoginInfo,    value);
-    public static void UpdateUserSubscription( this Activity activity, string?     value = null ) => activity.AddTag(Tags.UpdateUserSubscription, value);
-    public static void UpdateUserSubscription( this Activity activity, object?     value = null ) => activity.AddTag(Tags.UpdateUserSubscription, value);
-    public static void VerifyLogin( this            Activity activity, string?     value = null ) => activity.AddTag(Tags.VerifyLogin,            value);
-    public static void VerifyLogin( this            Activity activity, object?     value = null ) => activity.AddTag(Tags.VerifyLogin,            value);
+
+    extension( Activity self )
+    {
+        public void AddUserID( UserRecord           record )       => self.AddTag(nameof(IUserID.UserID),      record.ID);
+        public void AddSessionID( UserRecord        record )       => self.AddTag(Tags.SessionID,              record.SessionID);
+        public void AddRoleID( RoleRecord           record )       => self.AddTag(Tags.RoleID,                 record.ID);
+        public void AddGroupID( GroupRecord         record )       => self.AddTag(Tags.GroupID,                record.ID);
+        public void AddGroup( string?               value = null ) => self.AddTag(Tags.AddGroup,               value);
+        public void AddGroup( object?               value = null ) => self.AddTag(Tags.AddGroup,               value);
+        public void AddGroupRights( string?         value = null ) => self.AddTag(Tags.AddGroupRights,         value);
+        public void AddGroupRights( object?         value = null ) => self.AddTag(Tags.AddGroupRights,         value);
+        public void AddRole( string?                value = null ) => self.AddTag(Tags.AddRole,                value);
+        public void AddRole( object?                value = null ) => self.AddTag(Tags.AddRole,                value);
+        public void AddRoleRights( string?          value = null ) => self.AddTag(Tags.AddRoleRights,          value);
+        public void AddRoleRights( object?          value = null ) => self.AddTag(Tags.AddRoleRights,          value);
+        public void AddUser( string?                value = null ) => self.AddTag(Tags.AddUser,                value);
+        public void AddUser( object?                value = null ) => self.AddTag(Tags.AddUser,                value);
+        public void AddUserAddress( string?         value = null ) => self.AddTag(Tags.AddUserAddress,         value);
+        public void AddUserAddress( object?         value = null ) => self.AddTag(Tags.AddUserAddress,         value);
+        public void AddUserLoginInfo( string?       value = null ) => self.AddTag(Tags.AddUserLoginInfo,       value);
+        public void AddUserLoginInfo( object?       value = null ) => self.AddTag(Tags.AddUserLoginInfo,       value);
+        public void AddUserRecoveryCode( string?    value = null ) => self.AddTag(Tags.AddUserRecoveryCode,    value);
+        public void AddUserRecoveryCode( object?    value = null ) => self.AddTag(Tags.AddUserRecoveryCode,    value);
+        public void AddUserRights( string?          value = null ) => self.AddTag(Tags.AddUserRights,          value);
+        public void AddUserRights( object?          value = null ) => self.AddTag(Tags.AddUserRights,          value);
+        public void AddUserSubscription( string?    value = null ) => self.AddTag(Tags.AddUserSubscription,    value);
+        public void AddUserSubscription( object?    value = null ) => self.AddTag(Tags.AddUserSubscription,    value);
+        public void AddUserToGroup( string?         value = null ) => self.AddTag(Tags.AddUserToGroup,         value);
+        public void AddUserToGroup( object?         value = null ) => self.AddTag(Tags.AddUserToGroup,         value);
+        public void AddUserToRole( string?          value = null ) => self.AddTag(Tags.AddUserToRole,          value);
+        public void AddUserToRole( object?          value = null ) => self.AddTag(Tags.AddUserToRole,          value);
+        public void ConnectDatabase( string?        value = null ) => self.AddTag(Tags.ConnectDatabase,        value);
+        public void ConnectDatabase( object?        value = null ) => self.AddTag(Tags.ConnectDatabase,        value);
+        public void LoginUser( string?              value = null ) => self.AddTag(Tags.LoginUser,              value);
+        public void LoginUser( object?              value = null ) => self.AddTag(Tags.LoginUser,              value);
+        public void RemoveGroup( string?            value = null ) => self.AddTag(Tags.RemoveGroup,            value);
+        public void RemoveGroup( object?            value = null ) => self.AddTag(Tags.RemoveGroup,            value);
+        public void RemoveGroupRights( string?      value = null ) => self.AddTag(Tags.RemoveGroupRights,      value);
+        public void RemoveGroupRights( object?      value = null ) => self.AddTag(Tags.RemoveGroupRights,      value);
+        public void RemoveRole( string?             value = null ) => self.AddTag(Tags.RemoveRole,             value);
+        public void RemoveRole( object?             value = null ) => self.AddTag(Tags.RemoveRole,             value);
+        public void RemoveRoleRights( string?       value = null ) => self.AddTag(Tags.RemoveRoleRights,       value);
+        public void RemoveRoleRights( object?       value = null ) => self.AddTag(Tags.RemoveRoleRights,       value);
+        public void RemoveUser( string?             value = null ) => self.AddTag(Tags.RemoveUser,             value);
+        public void RemoveUser( object?             value = null ) => self.AddTag(Tags.RemoveUser,             value);
+        public void RemoveUserAddress( string?      value = null ) => self.AddTag(Tags.RemoveUserAddress,      value);
+        public void RemoveUserAddress( object?      value = null ) => self.AddTag(Tags.RemoveUserAddress,      value);
+        public void RemoveUserFromGroup( string?    value = null ) => self.AddTag(Tags.RemoveUserFromGroup,    value);
+        public void RemoveUserFromGroup( object?    value = null ) => self.AddTag(Tags.RemoveUserFromGroup,    value);
+        public void RemoveUserFromRole( string?     value = null ) => self.AddTag(Tags.RemoveUserFromRole,     value);
+        public void RemoveUserFromRole( object?     value = null ) => self.AddTag(Tags.RemoveUserFromRole,     value);
+        public void RemoveUserLoginInfo( string?    value = null ) => self.AddTag(Tags.RemoveUserLoginInfo,    value);
+        public void RemoveUserLoginInfo( object?    value = null ) => self.AddTag(Tags.RemoveUserLoginInfo,    value);
+        public void RemoveUserRecoveryCode( string? value = null ) => self.AddTag(Tags.RemoveUserRecoveryCode, value);
+        public void RemoveUserRecoveryCode( object? value = null ) => self.AddTag(Tags.RemoveUserRecoveryCode, value);
+        public void RemoveUserRights( string?       value = null ) => self.AddTag(Tags.RemoveUserRights,       value);
+        public void RemoveUserRights( object?       value = null ) => self.AddTag(Tags.RemoveUserRights,       value);
+        public void RemoveUserSubscription( string? value = null ) => self.AddTag(Tags.RemoveUserSubscription, value);
+        public void RemoveUserSubscription( object? value = null ) => self.AddTag(Tags.RemoveUserSubscription, value);
+        public void UpdateGroup( string?            value = null ) => self.AddTag(Tags.UpdateGroup,            value);
+        public void UpdateGroup( object?            value = null ) => self.AddTag(Tags.UpdateGroup,            value);
+        public void UpdateRole( string?             value = null ) => self.AddTag(Tags.UpdateRole,             value);
+        public void UpdateRole( object?             value = null ) => self.AddTag(Tags.UpdateRole,             value);
+        public void UpdateUser( string?             value = null ) => self.AddTag(Tags.UpdateUser,             value);
+        public void UpdateUser( object?             value = null ) => self.AddTag(Tags.UpdateUser,             value);
+        public void UpdateUserAddress( string?      value = null ) => self.AddTag(Tags.UpdateUserAddress,      value);
+        public void UpdateUserAddress( object?      value = null ) => self.AddTag(Tags.UpdateUserAddress,      value);
+        public void UpdateUserLoginInfo( string?    value = null ) => self.AddTag(Tags.UpdateUserLoginInfo,    value);
+        public void UpdateUserLoginInfo( object?    value = null ) => self.AddTag(Tags.UpdateUserLoginInfo,    value);
+        public void UpdateUserSubscription( string? value = null ) => self.AddTag(Tags.UpdateUserSubscription, value);
+        public void UpdateUserSubscription( object? value = null ) => self.AddTag(Tags.UpdateUserSubscription, value);
+        public void VerifyLogin( string?            value = null ) => self.AddTag(Tags.VerifyLogin,            value);
+        public void VerifyLogin( object?            value = null ) => self.AddTag(Tags.VerifyLogin,            value);
+    }
 
 
 
     [SuppressMessage("ReSharper", "MemberHidesStaticFromOuterClass")]
     public static class Tags
     {
-        private static string? __prefix;
-
         public static string AddGroup            { get; set; } = nameof(AddGroup);
         public static string AddGroupRights      { get; set; } = nameof(AddGroupRights);
         public static string AddRole             { get; set; } = nameof(AddRole);
@@ -377,10 +379,10 @@ public static class Telemetry
         public static string LoginUser           { get; set; } = nameof(LoginUser);
         public static string? Prefix
         {
-            get => __prefix;
+            get;
             set
             {
-                __prefix = value;
+                field = value;
                 SetPrefix(value);
             }
         }

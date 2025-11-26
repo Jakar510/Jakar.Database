@@ -76,7 +76,7 @@ public abstract record TableRecord<TSelf> : BaseRecord<TSelf>, IRecordPair<TSelf
     public        DateTimeOffset?              LastModified    { get => _lastModified; init => _lastModified = value; }
 
 
-    protected TableRecord( ref readonly RecordID<TSelf> id, ref readonly DateTimeOffset dateCreated, ref readonly DateTimeOffset? lastModified, JsonObject? additionalData = null )
+    protected TableRecord( ref readonly RecordID<TSelf> id, ref readonly DateTimeOffset dateCreated, ref readonly DateTimeOffset? lastModified, JObject? additionalData = null )
     {
         DateCreated    = dateCreated;
         _lastModified  = lastModified;
@@ -129,7 +129,7 @@ public abstract record TableRecord<TSelf> : BaseRecord<TSelf>, IRecordPair<TSelf
     }
 
 
-    public void Deconstruct( out RecordID<TSelf> id, out DateTimeOffset dateCreated, out DateTimeOffset? lastModified, out JsonObject? additionalData )
+    public void Deconstruct( out RecordID<TSelf> id, out DateTimeOffset dateCreated, out DateTimeOffset? lastModified, out JObject? additionalData )
     {
         additionalData = AdditionalData;
         id             = ID;
@@ -156,7 +156,7 @@ public abstract record OwnedTableRecord<TSelf> : TableRecord<TSelf>, ICreatedBy
     public RecordID<UserRecord>? CreatedBy { get; set; }
 
 
-    protected OwnedTableRecord( ref readonly RecordID<UserRecord>? createdBy, ref readonly RecordID<TSelf> id, ref readonly DateTimeOffset dateCreated, ref readonly DateTimeOffset? lastModified, JsonObject? additionalData = null ) : base(in id, in dateCreated, in lastModified, additionalData) => CreatedBy = createdBy;
+    protected OwnedTableRecord( ref readonly RecordID<UserRecord>? createdBy, ref readonly RecordID<TSelf> id, ref readonly DateTimeOffset dateCreated, ref readonly DateTimeOffset? lastModified, JObject? additionalData = null ) : base(in id, in dateCreated, in lastModified, additionalData) => CreatedBy = createdBy;
 
 
     public static PostgresParameters GetDynamicParameters( UserRecord user )
@@ -198,7 +198,7 @@ public abstract record OwnedTableRecord<TSelf> : TableRecord<TSelf>, ICreatedBy
 
         return Nullable.Compare(CreatedBy, other.CreatedBy);
     }
-    public void Deconstruct( out RecordID<UserRecord>? createdBy, out RecordID<TSelf> id, out DateTimeOffset dateCreated, out DateTimeOffset? lastModified, out JsonObject? additionalData )
+    public void Deconstruct( out RecordID<UserRecord>? createdBy, out RecordID<TSelf> id, out DateTimeOffset dateCreated, out DateTimeOffset? lastModified, out JObject? additionalData )
     {
         createdBy      = CreatedBy;
         id             = ID;

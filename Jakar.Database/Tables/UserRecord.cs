@@ -9,12 +9,6 @@ public sealed record UserRecord : OwnedTableRecord<UserRecord>, ITableRecord<Use
     public const           string   TABLE_NAME         = "users";
     public static readonly TimeSpan DefaultLockoutTime = TimeSpan.FromHours(6);
 
-
-    public static JsonTypeInfo<UserRecord[]> JsonArrayInfo => JakarDatabaseContext.Default.UserRecordArray;
-    public static JsonSerializerContext      JsonContext   => JakarDatabaseContext.Default;
-    public static JsonTypeInfo<UserRecord>   JsonTypeInfo  => JakarDatabaseContext.Default.UserRecord;
-
-
     public static FrozenDictionary<string, ColumnMetaData> PropertyMetaData { get; } = SqlTable<UserRecord>.Default.WithColumn<string>(nameof(UserName), ColumnOptions.Indexed, USER_NAME)
                                                                                                            .WithColumn<string>(nameof(FirstName),   ColumnOptions.Indexed, FIRST_NAME)
                                                                                                            .WithColumn<string>(nameof(LastName),    ColumnOptions.Indexed, LAST_NAME)
@@ -56,7 +50,7 @@ public sealed record UserRecord : OwnedTableRecord<UserRecord>, ITableRecord<Use
                                                                                                            .Build();
 
     public static                                                             string             TableName              => TABLE_NAME;
-    [ProtectedPersonalData] [StringLength(MAX_SIZE)]          public override JsonObject?        AdditionalData         { get => _additionalData; set => _additionalData = value; }
+    [ProtectedPersonalData] [StringLength(MAX_SIZE)]          public override JObject?           AdditionalData         { get => _additionalData; set => _additionalData = value; }
     [StringLength(                        AUTHENTICATOR_KEY)] public          string             AuthenticatorKey       { get;                    set; }
     public                                                                    int?               BadLogins              { get;                    set; }
     [ProtectedPersonalData] [StringLength(COMPANY)]           public          string             Company                { get;                    set; }
@@ -138,7 +132,7 @@ public sealed record UserRecord : OwnedTableRecord<UserRecord>, ITableRecord<Use
                                          string                ConcurrencyStamp,
                                          UserRights            Rights,
                                          RecordID<UserRecord>? EscalateTo,
-                                         JsonObject?           AdditionalData,
+                                         JObject?              AdditionalData,
                                          string                PasswordHash,
                                          RecordID<FileRecord>? ImageID,
                                          RecordID<UserRecord>  ID,
@@ -268,7 +262,7 @@ public sealed record UserRecord : OwnedTableRecord<UserRecord>, ITableRecord<Use
         string                securityStamp          = reader.GetFieldValue<string>(nameof(SecurityStamp));
         string                concurrencyStamp       = reader.GetFieldValue<string>(nameof(ConcurrencyStamp));
         RecordID<UserRecord>? escalateTo             = RecordID<UserRecord>.TryCreate(reader, nameof(EscalateTo));
-        JsonObject?           additionalData         = reader.GetAdditionalData();
+        JObject?              additionalData         = reader.GetAdditionalData();
         RecordID<FileRecord>? imageID                = RecordID<FileRecord>.TryCreate(reader, nameof(ImageID));
         RecordID<UserRecord>  id                     = RecordID<UserRecord>.ID(reader);
         RecordID<UserRecord>? createdBy              = RecordID<UserRecord>.CreatedBy(reader);
@@ -686,7 +680,7 @@ public sealed record UserRecord : OwnedTableRecord<UserRecord>, ITableRecord<Use
                              out string                concurrencyStamp,
                              out UserRights            rights,
                              out RecordID<UserRecord>? escalateTo,
-                             out JsonObject?           additionalData,
+                             out JObject?              additionalData,
                              out string                passwordHash,
                              out RecordID<FileRecord>? imageID,
                              out RecordID<UserRecord>  id,
@@ -847,7 +841,7 @@ public sealed record UserRecord : OwnedTableRecord<UserRecord>, ITableRecord<Use
     public async ValueTask<ErrorOrResult<UserRecord>> GetBoss( NpgsqlConnection connection, NpgsqlTransaction? transaction, Database db, CancellationToken token ) =>
         EscalateTo.HasValue
             ? await db.Users.Get(connection, transaction, EscalateTo.Value, token)
-            : Error.Create(Status.Gone, StringTags.Empty);
+            : Error.Gone();
 
 
     public bool DoesNotOwn<TSelf>( TSelf record )
@@ -957,7 +951,7 @@ public sealed record UserRecord : OwnedTableRecord<UserRecord>, ITableRecord<Use
 
     #region Updaters
 
-    public override UserRecord WithAdditionalData( JsonObject? value )
+    public override UserRecord WithAdditionalData( JObject? value )
     {
         if ( value is null || value.Count <= 0 ) { return this; }
 

@@ -10,11 +10,6 @@ public sealed record RecoveryCodeRecord( [property: StringLength(1024)] string C
 {
     public const            string                             TABLE_NAME = "recovery_codes";
     private static readonly PasswordHasher<RecoveryCodeRecord> __hasher   = new();
-    public static           JsonTypeInfo<RecoveryCodeRecord[]> JsonArrayInfo => JakarDatabaseContext.Default.RecoveryCodeRecordArray;
-    public static           JsonSerializerContext              JsonContext   => JakarDatabaseContext.Default;
-    public static           JsonTypeInfo<RecoveryCodeRecord>   JsonTypeInfo  => JakarDatabaseContext.Default.RecoveryCodeRecord;
-
-
     public static FrozenDictionary<string, ColumnMetaData> PropertyMetaData { get; } = SqlTable<RecoveryCodeRecord>.Default.WithColumn<string>(nameof(Code), length: 1024)
                                                                                                                    .With_CreatedBy()
                                                                                                                    .Build();

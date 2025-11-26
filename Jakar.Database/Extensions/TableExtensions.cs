@@ -28,31 +28,27 @@ public static class TableExtensions
 
         string message = $"""
                           {typeof(TSelf).Name}: {nameof(self.ToDynamicParameters)}.Length ({length}) != {nameof(TSelf.ClassProperties)}.Length ({TSelf.ClassProperties.Length})
-                          {missing.ToJson(JakarDatabaseContext.Default.HashSetString)}
+                          {missing.ToJson()}
                           """;
 
         throw new InvalidOperationException(message);
     }
 
 
-    public static JsonObject? GetAdditionalData( this NpgsqlDataReader reader ) =>
-        reader.GetFieldValue<object?>(nameof(IJsonModel.AdditionalData)) is string value
-            ? value.GetAdditionalData()
-            : null;
 
+    extension( NpgsqlDataReader self )
+    {
+        public JObject? GetAdditionalData() => self.GetFieldValue<object?>(nameof(IJsonModel.AdditionalData)) is string value
+                                                   ? value.GetAdditionalData()
+                                                   : null;
+        public TValue? GetData<TValue>( string propertyName ) => self.GetFieldValue<object?>(propertyName) is string s
+                                                                     ? s.FromJson<TValue>()
+                                                                     : default;
+        public TValue? GetValue<TValue>( string propertyName ) => self.GetFieldValue<object?>(propertyName) is TValue value
+                                                                      ? value
+                                                                      : default;
+    }
 
-    public static TValue? GetData<TValue>( this NpgsqlDataReader reader, string propertyName )
-        where TValue : class, IJsonModel<TValue> => reader.GetData(propertyName, TValue.JsonTypeInfo);
-    public static TValue? GetData<TValue>( this NpgsqlDataReader reader, string propertyName, JsonTypeInfo<TValue> info )
-        where TValue : class => reader.GetFieldValue<object?>(propertyName) is string s
-                                    ? JsonSerializer.Deserialize(s, info)
-                                    : null;
-
-
-    public static TValue? GetValue<TValue>( this NpgsqlDataReader reader, string propertyName ) =>
-        reader.GetFieldValue<object?>(propertyName) is TValue value
-            ? value
-            : default;
 
 
     public static string GetTableName( this Type type, bool convertToSnakeCase = true )

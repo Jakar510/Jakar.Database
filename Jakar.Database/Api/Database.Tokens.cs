@@ -236,12 +236,10 @@ public abstract partial class Database
         {
             Exception e = validationResult.Exception;
 
-            return Error.Create(Status.InternalServerError,
-                                e.GetType()
-                                 .Name,
-                                e.Message,
-                                e.Source,
-                                e.MethodName());
+            string typeName = e.GetType()
+                               .Name;
+
+            return Error.Create(Status.InternalServerError, e.Message, e.Source, e.MethodName(), type: typeName);
         }
 
         Claim[]                   claims = validationResult.ClaimsIdentity.Claims.ToArray();

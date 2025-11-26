@@ -25,11 +25,7 @@ public sealed record ResxRowRecord( long                    KeyID,
                                     DateTimeOffset          DateCreated,
                                     DateTimeOffset?         LastModified = null ) : TableRecord<ResxRowRecord>(in ID, in DateCreated, in LastModified), ITableRecord<ResxRowRecord>
 {
-    public const  string                        TABLE_NAME = "resx";
-    public static JsonTypeInfo<ResxRowRecord[]> JsonArrayInfo => JakarDatabaseContext.Default.ResxRowRecordArray;
-    public static JsonSerializerContext         JsonContext   => JakarDatabaseContext.Default;
-    public static JsonTypeInfo<ResxRowRecord>   JsonTypeInfo  => JakarDatabaseContext.Default.ResxRowRecord;
-
+    public const string TABLE_NAME = "resx";
 
     public static FrozenDictionary<string, ColumnMetaData> PropertyMetaData { get; } = SqlTable<ResxRowRecord>.Default.WithColumn<string>(nameof(KeyID), length: NAME)
                                                                                                               .WithColumn<string>(nameof(Key),        length: MAX_SIZE)
@@ -114,32 +110,35 @@ public sealed record ResxRowRecord( long                    KeyID,
                                               $"""
                                                CREATE TABLE {TABLE_NAME}
                                                (
-                                               {nameof(ID).SqlColumnName()}           uuid            PRIMARY KEY,
-                                               {nameof(KeyID).SqlColumnName()}        bigint          NOT NULL,
-                                               {nameof(Key).SqlColumnName()}          varchar({NAME}) NOT NULL,
-                                               {nameof(Neutral).SqlColumnName()}      text            NOT NULL,
-                                               {nameof(English).SqlColumnName()}      text            NOT NULL,
-                                               {nameof(Spanish).SqlColumnName()}      text            NOT NULL,
-                                               {nameof(French).SqlColumnName()}       text            NOT NULL,
-                                               {nameof(Swedish).SqlColumnName()}      text            NOT NULL,
-                                               {nameof(German).SqlColumnName()}       text            NOT NULL,
-                                               {nameof(Chinese).SqlColumnName()}      text            NOT NULL,
-                                               {nameof(Polish).SqlColumnName()}       text            NOT NULL,
-                                               {nameof(Thai).SqlColumnName()}         text            NOT NULL,
-                                               {nameof(Japanese).SqlColumnName()}     text            NOT NULL,
-                                               {nameof(Czech).SqlColumnName()}        text            NOT NULL,
-                                               {nameof(Portuguese).SqlColumnName()}   text            NOT NULL,
-                                               {nameof(Dutch).SqlColumnName()}        text            NOT NULL,
-                                               {nameof(Korean).SqlColumnName()}       text            NOT NULL,
-                                               {nameof(Arabic).SqlColumnName()}       text            NOT NULL,
-                                               {nameof(DateCreated).SqlColumnName()}  timestamptz     NOT NULL DEFAULT SYSUTCDATETIME(),
-                                               {nameof(LastModified).SqlColumnName()} timestamptz                 
+                                               {nameof(ID).SqlColumnName()} uuid PRIMARY KEY,
+                                               {nameof(KeyID).SqlColumnName()} bigint NOT NULL,
+                                               {nameof(Key).SqlColumnName()} varchar( {NAME}) NOT NULL,
+                                               {nameof(Neutral).SqlColumnName()} text NOT NULL,
+                                               {nameof(English).SqlColumnName()} text NOT NULL,
+                                               {nameof(Spanish).SqlColumnName()} text NOT NULL,
+                                               {nameof(French).SqlColumnName()} text NOT NULL,
+                                               {nameof(Swedish).SqlColumnName()} text NOT NULL,
+                                               {nameof(German).SqlColumnName()} text NOT NULL,
+                                               {nameof(Chinese).SqlColumnName()} text NOT NULL,
+                                               {nameof(Polish).SqlColumnName()} text NOT NULL,
+                                               {nameof(Thai).SqlColumnName()} text NOT NULL,
+                                               {nameof(Japanese).SqlColumnName()} text NOT NULL,
+                                               {nameof(Czech).SqlColumnName()} text NOT NULL,
+                                               {nameof(Portuguese).SqlColumnName()} text NOT NULL,
+                                               {nameof(Dutch).SqlColumnName()} text NOT NULL,
+                                               {nameof(Korean).SqlColumnName()} text NOT NULL,
+                                               {nameof(Arabic).SqlColumnName()} text NOT NULL,
+                                               {nameof(DateCreated).SqlColumnName()} timestamptz NOT NULL DEFAULT SYSUTCDATETIME(),
+                                               {nameof(LastModified).SqlColumnName()} timestamptz
                                                );
 
                                                CREATE TRIGGER {nameof(MigrationRecord.SetLastModified).SqlColumnName()}
                                                BEFORE INSERT OR UPDATE ON {TABLE_NAME}
-                                               FOR EACH ROW
-                                               EXECUTE FUNCTION {nameof(MigrationRecord.SetLastModified).SqlColumnName()}();
+                                               FOR    EACH ROW  EXECUTE FUNCTION {
+                                                   nameof(MigrationRecord.SetLastModified)
+                                                      .SqlColumnName()
+                                               }
+                                               ();
                                                """);
     [Pure] public static ResxRowRecord Create( NpgsqlDataReader reader )
     {

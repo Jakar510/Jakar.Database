@@ -13,16 +13,13 @@ public sealed record AddressRecord( [property: ProtectedPersonalData] string  Li
                                     [property: ProtectedPersonalData] string  PostalCode,
                                     [property: ProtectedPersonalData] string? Address,
                                     bool                                      IsPrimary,
-                                    JsonObject?                               AdditionalData,
+                                    JObject?                                  AdditionalData,
                                     RecordID<AddressRecord>                   ID,
                                     RecordID<UserRecord>?                     CreatedBy,
                                     DateTimeOffset                            DateCreated,
                                     DateTimeOffset?                           LastModified = null ) : OwnedTableRecord<AddressRecord>(in CreatedBy, in ID, in DateCreated, in LastModified, AdditionalData), IAddress<AddressRecord, Guid>, ITableRecord<AddressRecord>
 {
-    public const  string                        TABLE_NAME = "addresses";
-    public static JsonTypeInfo<AddressRecord[]> JsonArrayInfo => JakarDatabaseContext.Default.AddressRecordArray;
-    public static JsonSerializerContext         JsonContext   => JakarDatabaseContext.Default;
-    public static JsonTypeInfo<AddressRecord>   JsonTypeInfo  => JakarDatabaseContext.Default.AddressRecord;
+    public const string TABLE_NAME = "addresses";
 
 
     public static FrozenDictionary<string, ColumnMetaData> PropertyMetaData { get; } = SqlTable<AddressRecord>.Default.WithColumn<string>(nameof(Line1), length: 256)
@@ -117,7 +114,7 @@ public sealed record AddressRecord( [property: ProtectedPersonalData] string  Li
         string                  country         = reader.GetFieldValue<string>(nameof(Country));
         string                  postalCode      = reader.GetFieldValue<string>(nameof(PostalCode));
         string                  address         = reader.GetFieldValue<string>(nameof(Address));
-        JsonObject?             additionalData  = reader.GetAdditionalData();
+        JObject?                additionalData  = reader.GetAdditionalData();
         bool                    isPrimary       = reader.GetFieldValue<bool>(nameof(IsPrimary));
         RecordID<AddressRecord> id              = RecordID<AddressRecord>.ID(reader);
         RecordID<UserRecord>?   ownerUserID     = RecordID<UserRecord>.CreatedBy(reader);
@@ -275,25 +272,27 @@ public sealed record AddressRecord( [property: ProtectedPersonalData] string  Li
                                               $"""
                                                CREATE TABLE IF NOT EXISTS {TABLE_NAME}
                                                (
-                                               {nameof(Line1).SqlColumnName()}           varchar(512)   NOT NULL,
-                                               {nameof(Line2).SqlColumnName()}           varchar(512)   NOT NULL,
-                                               {nameof(City).SqlColumnName()}            varchar(512)   NOT NULL,
-                                               {nameof(StateOrProvince).SqlColumnName()} varchar(512)   NOT NULL,
-                                               {nameof(Country).SqlColumnName()}         varchar(512)   NOT NULL,
-                                               {nameof(PostalCode).SqlColumnName()}      varchar(64)    NOT NULL,
-                                               {nameof(Address).SqlColumnName()}         varchar(3000)  NULL,
-                                               {nameof(IsPrimary).SqlColumnName()}       boolean        NOT NULL DEFAULT FALSE,
-                                               {nameof(CreatedBy).SqlColumnName()}       uuid           NULL,
-                                               {nameof(ID).SqlColumnName()}              uuid           NOT NULL PRIMARY KEY,
-                                               {nameof(DateCreated).SqlColumnName()}     timestamptz    NOT NULL DEFAULT SYSUTCDATETIME(),
-                                               {nameof(LastModified).SqlColumnName()}    timestamptz    NULL,
-                                               {nameof(AdditionalData).SqlColumnName()}  json           NULL,
-                                               FOREIGN KEY({nameof(CreatedBy).SqlColumnName()}) REFERENCES {UserRecord.TABLE_NAME.SqlColumnName()}(id) ON DELETE SET NULL
+                                               {nameof(Line1).SqlColumnName()} varchar( 512 ) NOT NULL,
+                                               {nameof(Line2).SqlColumnName()} varchar( 512 ) NOT NULL,
+                                               {nameof(City).SqlColumnName()} varchar( 512 ) NOT NULL,
+                                               {nameof(StateOrProvince).SqlColumnName()} varchar( 512 ) NOT NULL,
+                                               {nameof(Country).SqlColumnName()} varchar( 512 ) NOT NULL,
+                                               {nameof(PostalCode).SqlColumnName()} varchar( 64 ) NOT NULL,
+                                               {nameof(Address).SqlColumnName()} varchar( 3000 ) NULL,
+                                               {nameof(IsPrimary).SqlColumnName()} boolean NOT NULL DEFAULT FALSE,
+                                               {nameof(CreatedBy).SqlColumnName()} uuid NULL,
+                                               {nameof(ID).SqlColumnName()} uuid NOT NULL PRIMARY KEY,
+                                               {nameof(DateCreated).SqlColumnName()} timestamptz NOT NULL DEFAULT SYSUTCDATETIME(),
+                                               {nameof(LastModified).SqlColumnName()} timestamptz NULL,
+                                               {nameof(AdditionalData).SqlColumnName()} json NULL, FOREIGN KEY( {nameof(CreatedBy).SqlColumnName()}) REFERENCES {UserRecord.TABLE_NAME.SqlColumnName()}(id) ON DELETE SET NULL
                                                );
 
                                                CREATE TRIGGER {nameof(MigrationRecord.SetLastModified).SqlColumnName()}
                                                BEFORE INSERT OR UPDATE ON {TABLE_NAME}
-                                               FOR EACH ROW
-                                               EXECUTE FUNCTION {nameof(MigrationRecord.SetLastModified).SqlColumnName()}();
+                                               FOR    EACH ROW  EXECUTE FUNCTION {
+                                                   nameof(MigrationRecord.SetLastModified)
+                                                      .SqlColumnName()
+                                               }
+                                               ();
                                                """);
 }

@@ -12,11 +12,7 @@ public sealed record RoleRecord( [property: StringLength(NAME)]              str
                                  DateTimeOffset                                     DateCreated,
                                  DateTimeOffset?                                    LastModified = null ) : OwnedTableRecord<RoleRecord>(in CreatedBy, in ID, in DateCreated, in LastModified), ITableRecord<RoleRecord>, IRoleModel<Guid>
 {
-    public const  string                     TABLE_NAME = "roles";
-    public static JsonTypeInfo<RoleRecord[]> JsonArrayInfo => JakarDatabaseContext.Default.RoleRecordArray;
-    public static JsonSerializerContext      JsonContext   => JakarDatabaseContext.Default;
-    public static JsonTypeInfo<RoleRecord>   JsonTypeInfo  => JakarDatabaseContext.Default.RoleRecord;
-
+    public const string TABLE_NAME = "roles";
 
     public static FrozenDictionary<string, ColumnMetaData> PropertyMetaData { get; } = SqlTable<RoleRecord>.Default.WithColumn<string>(nameof(NameOfRole), length: NAME)
                                                                                                            .WithColumn<string>(nameof(NormalizedName),   length: NORMALIZED_NAME)

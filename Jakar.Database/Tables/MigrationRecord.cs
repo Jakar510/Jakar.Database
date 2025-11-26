@@ -9,6 +9,7 @@ namespace Jakar.Database;
 
 
 [Serializable]
+[method: SetsRequiredMembers]
 public sealed record MigrationRecord : BaseRecord<MigrationRecord>, ITableRecord<MigrationRecord>
 {
     public const             string         TABLE_NAME = "migrations";
@@ -34,13 +35,8 @@ public sealed record MigrationRecord : BaseRecord<MigrationRecord>, ITableRecord
                                               """;
 
 
-    public static ReadOnlyMemory<PropertyInfo>    ClassProperties => Properties;
-    public static JsonTypeInfo<MigrationRecord[]> JsonArrayInfo   => JakarDatabaseContext.Default.MigrationRecordArray;
-    public static JsonSerializerContext           JsonContext     => JakarDatabaseContext.Default;
-    public static JsonTypeInfo<MigrationRecord>   JsonTypeInfo    => JakarDatabaseContext.Default.MigrationRecord;
-
-
-    public static int PropertyCount => Properties.Length;
+    public static ReadOnlyMemory<PropertyInfo> ClassProperties => Properties;
+    public static int                          PropertyCount   => Properties.Length;
 
     public static FrozenDictionary<string, ColumnMetaData> PropertyMetaData { get; } = SqlTable<MigrationRecord>.Empty.WithColumn<ulong>(nameof(MigrationID))
                                                                                                                 .WithColumn<string>(nameof(TableID),     length: 256)
@@ -59,11 +55,11 @@ public sealed record MigrationRecord : BaseRecord<MigrationRecord>, ITableRecord
     [StringLength(256)] public string?                     TableID     { get; init; }
 
 
-    [SetsRequiredMembers] public MigrationRecord( ulong migrationID, string description, string? TABLE_NAME = null ) : base()
+    [method: SetsRequiredMembers] internal MigrationRecord( ulong migrationID, string description, string? tableID = null )
     {
-        Description = description;
         MigrationID = migrationID;
-        TableID     = TABLE_NAME;
+        Description = description;
+        TableID     = tableID;
     }
 
 
@@ -106,10 +102,11 @@ public sealed record MigrationRecord : BaseRecord<MigrationRecord>, ITableRecord
     public static MigrationRecord FromEnum<TEnum>( ulong migrationID )
         where TEnum : unmanaged, Enum
     {
-        string[]                                   values     = Enum.GetNames(typeof(TEnum));
-        string                                     tableName  = typeof(TEnum).Name.SqlColumnName();
-        ValueEnumerable<FromArray<string>, string> enumerable = values.AsValueEnumerable();
-        int                                        length     = enumerable.Max(static x => x.Length);
+        ValueEnumerable<FromArray<string>, string> enumerable = Enum.GetNames(typeof(TEnum))
+                                                                    .AsValueEnumerable();
+
+        string tableName = typeof(TEnum).Name.SqlColumnName();
+        int    length    = enumerable.Max(static x => x.Length);
 
         MigrationRecord record = new(migrationID, $"create {tableName} table")
                                  {
@@ -131,17 +128,23 @@ public sealed record MigrationRecord : BaseRecord<MigrationRecord>, ITableRecord
                                             -- Insert values if they do not exist with explicit ids (enum order)
                                             INSERT INTO {tableName} (id, name)
                                             SELECT v.id, v.name
-                                            FROM (VALUES
-                                                {string.Join(",\n", values.Select(( v, i ) => $"    ({i}, '{v}')"))}
-                                            ) AS v(id, name)
-                                            WHERE NOT EXISTS (
-                                            SELECT 1 FROM mime_types m WHERE m.id = v.id OR m.name = v.name
-                                            )
-                                            );
+                                            FROM ( VALUES {getValues(enumerable)} ) AS v(id, name)
+                                            WHERE NOT EXISTS ( SELECT 1 FROM mime_types m WHERE m.id = v.id OR m.name = v.name );
                                             """
                                  };
 
         return record.Validate();
+
+        static StringBuilder getValues( ValueEnumerable<FromArray<string>, string> enumerable )
+        {
+            StringBuilder values = new();
+
+            using PooledArray<string> array = enumerable.Select(static ( v, i ) => $"    ({i}, '{v}')")
+                                                        .ToArrayPool();
+
+            values.AppendJoin(",\n", array.Span);
+            return values;
+        }
     }
     public static MigrationRecord Create<TSelf>( ulong migrationID, string description, string sql )
         where TSelf : ITableRecord<TSelf>
@@ -177,6 +180,7 @@ public sealed record MigrationRecord : BaseRecord<MigrationRecord>, ITableRecord
     {
         PostgresParameters parameters = PostgresParameters.Create<MigrationRecord>();
         parameters.Add(nameof(MigrationID),    MigrationID);
+        parameters.Add(nameof(TableID),        TableID);
         parameters.Add(nameof(AppliedOn),      AppliedOn);
         parameters.Add(nameof(Description),    Description);
         parameters.Add(nameof(AdditionalData), AdditionalData);

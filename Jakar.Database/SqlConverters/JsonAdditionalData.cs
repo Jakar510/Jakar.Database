@@ -4,10 +4,9 @@
 namespace Jakar.Database;
 
 
-public sealed class JsonAdditionalData : JsonSqlHandler<JsonAdditionalData, JsonObject?>
+public sealed class JsonAdditionalData : JsonSqlHandler<JsonAdditionalData, JObject?>
 {
-    public override JsonTypeInfo<JsonObject?> TypeInfo                                                  => JakarExtensionsContext.Default.JsonObject;
-    public override void                      SetValue( IDbDataParameter parameter, JsonObject? value ) => parameter.Value = value?.ToJson();
-    public override JsonObject?               Parse( object?             value ) => Parse(value as string);
-    public static   JsonObject?               Parse( string?             value ) => ( value ?? EMPTY ).GetAdditionalData();
+    public override void     SetValue( IDbDataParameter parameter, JObject? value ) => parameter.Value = value?.ToJson();
+    public override JObject? Parse( object?             value ) => Parse(value as string);
+    public static   JObject? Parse( string?             value ) => ( value ?? EMPTY ).GetAdditionalData();
 }

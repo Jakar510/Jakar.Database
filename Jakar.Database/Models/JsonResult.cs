@@ -31,11 +31,10 @@ public sealed class JsonResult<TValue> : ActionResult, IResult, IEndpointMetadat
                                                                                        [503] = ( "https://tools.ietf.org/html/rfc9110#section-15.6.4", "Service Unavailable" ),
                                                                                        [504] = ( "https://tools.ietf.org/html/rfc9110#section-15.6.5", "Gateway Timeout" )
                                                                                    };
-    public int                           StatusCode { get; init; }
-    int? IStatusCodeHttpResult.          StatusCode => StatusCode;
-    public required JsonTypeInfo<TValue> TypeInfo   { get; init; }
-    public          TValue               Value      { get; }
-    object? IValueHttpResult.            Value      => Value;
+    public int                 StatusCode { get; init; }
+    int? IStatusCodeHttpResult.StatusCode => StatusCode;
+    public TValue              Value      { get; }
+    object? IValueHttpResult.  Value      => Value;
 
 
     public JsonResult( TValue value, Status status ) : this(value, status.AsInt()) { }
@@ -45,8 +44,7 @@ public sealed class JsonResult<TValue> : ActionResult, IResult, IEndpointMetadat
         StatusCode = status;
         if ( value is ProblemDetails details ) { Apply(details, StatusCode); }
     }
-    public static JsonResult<TValue> Create( TValue value, Status               status              = Status.Ok ) => Create(value, Json.GetTypeInfo<TValue>(), status);
-    public static JsonResult<TValue> Create( TValue value, JsonTypeInfo<TValue> info, Status status = Status.Ok ) => new(value, status) { TypeInfo = info };
+    public static JsonResult<TValue> Create( TValue value, Status status = Status.Ok ) => new(value, status);
 
 
     public static void Apply( ProblemDetails details, int? statusCode )
@@ -85,7 +83,7 @@ public sealed class JsonResult<TValue> : ActionResult, IResult, IEndpointMetadat
     {
         ArgumentNullException.ThrowIfNull(httpContext);
         httpContext.Response.StatusCode = StatusCode;
-        string json = Value.ToJson(TypeInfo) ?? EMPTY;
+        string json = Value.ToJson();
         await httpContext.Response.WriteAsync(json, Encoding.Default, CancellationToken.None);
     }
     static void IEndpointMetadataProvider.PopulateMetadata( MethodInfo method, EndpointBuilder builder )

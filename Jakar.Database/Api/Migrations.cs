@@ -49,58 +49,62 @@ public static class Migrations
     }
 
 
-    public static async ValueTask ApplyMigrations( this WebApplication app, CancellationToken token = default )
+
+    extension( WebApplication self )
     {
-        await using AsyncServiceScope scope       = app.Services.CreateAsyncScope();
-        Database                      db          = scope.ServiceProvider.GetRequiredService<Database>();
-        MigrationRecord[]             applied     = await All(db, token);
-        await using NpgsqlConnection  connection  = await db.ConnectAsync(token);
-        await using NpgsqlTransaction transaction = await connection.BeginTransactionAsync(token);
-        HashSet<MigrationRecord>      pending     = [..Records.Values];
-        pending.ExceptWith(applied);
-
-
-        try
+        public async ValueTask ApplyMigrations( CancellationToken token = default )
         {
-            foreach ( MigrationRecord record in pending.OrderBy(static x => x.MigrationID) ) { await record.Apply(db, token); }
+            await using AsyncServiceScope scope       = self.Services.CreateAsyncScope();
+            Database                      db          = scope.ServiceProvider.GetRequiredService<Database>();
+            MigrationRecord[]             applied     = await All(db, token);
+            await using NpgsqlConnection  connection  = await db.ConnectAsync(token);
+            await using NpgsqlTransaction transaction = await connection.BeginTransactionAsync(token);
+            HashSet<MigrationRecord>      pending     = [..Records.Values];
+            pending.ExceptWith(applied);
 
-            await transaction.CommitAsync(token);
+
+            try
+            {
+                foreach ( MigrationRecord record in pending.OrderBy(static x => x.MigrationID) ) { await record.Apply(db, token); }
+
+                await transaction.CommitAsync(token);
+            }
+            catch ( Exception e )
+            {
+                await transaction.RollbackAsync(token);
+                throw new InvalidOperationException("Failed to apply Records", e);
+            }
         }
-        catch ( Exception e )
+        public async Task RunWithMigrationsAsync( string[]? urls = null, string endpoint = MIGRATIONS, CancellationToken token = default )
         {
-            await transaction.RollbackAsync(token);
-            throw new InvalidOperationException("Failed to apply Records", e);
+            self.TryUseMigrationsEndPoint(endpoint);
+
+            try
+            {
+                await self.ApplyMigrations(token);
+                if ( urls is not null ) { self.UseUrls(urls); }
+
+                await self.StartAsync(token)
+                          .ConfigureAwait(false);
+
+                await self.WaitForShutdownAsync(token)
+                          .ConfigureAwait(false);
+            }
+            finally
+            {
+                await self.DisposeAsync()
+                          .ConfigureAwait(false);
+            }
         }
+        public void TryUseMigrationsEndPoint( string endpoint = MIGRATIONS )
+        {
+            if ( self.Environment.IsDevelopment() ) { self.UseMigrationsEndPoint(endpoint); }
+        }
+        public void UseMigrationsEndPoint( string endpoint = MIGRATIONS ) => self.MapGet(endpoint, GetMigrationsAndRenderHtml);
     }
 
 
-    public static async Task RunWithMigrationsAsync( this WebApplication app, string[]? urls = null, string endpoint = MIGRATIONS, CancellationToken token = default )
-    {
-        app.TryUseMigrationsEndPoint(endpoint);
 
-
-        try
-        {
-            await app.ApplyMigrations(token);
-            if ( urls is not null ) { app.UseUrls(urls); }
-
-            await app.StartAsync(token)
-                     .ConfigureAwait(false);
-
-            await app.WaitForShutdownAsync(token)
-                     .ConfigureAwait(false);
-        }
-        finally
-        {
-            await app.DisposeAsync()
-                     .ConfigureAwait(false);
-        }
-    }
-    public static void TryUseMigrationsEndPoint( this WebApplication app, string endpoint = MIGRATIONS )
-    {
-        if ( app.Environment.IsDevelopment() ) { app.UseMigrationsEndPoint(endpoint); }
-    }
-    public static void UseMigrationsEndPoint( this WebApplication app, string endpoint = MIGRATIONS ) => app.MapGet(endpoint, GetMigrationsAndRenderHtml);
     private static async Task<ContentHttpResult> GetMigrationsAndRenderHtml( [FromServices] Database db, CancellationToken token )
     {
         ReadOnlySpan<MigrationRecord> records = await All(db, token);
@@ -115,85 +119,92 @@ public static class Migrations
         writer.CreateHtml(records);
         return writer.ToString();
     }
-    public static void CreateHtml( this TextWriter writer, params ReadOnlySpan<MigrationRecord> records )
+
+
+
+    extension( TextWriter self )
     {
-        writer.WriteLine("<!DOCTYPE html>");
-        writer.WriteLine("<html lang=\"en\">");
-        writer.WriteLine("  <head>");
-        writer.WriteLine("    <meta charset=\"UTF-8\"/>");
-        writer.WriteLine("    <title>Migration Records</title>");
-        writer.WriteLine("    <style>");
-        writer.WriteLine("      body { font-family: system-ui, sans-serif; background: #fafafa; color: #222; margin: 2em; }");
-        writer.WriteLine("      h2 { border-bottom: 2px solid #ccc; padding-bottom: 0.25em; }");
-        writer.WriteLine("      table { border-collapse: collapse; width: 100%; margin-top: 1em; }");
-        writer.WriteLine("      th, td { border: 1px solid #ddd; padding: 6px 10px; }");
-        writer.WriteLine("      th { background-color: #f4f4f4; text-align: left; }");
-        writer.WriteLine("      tr:nth-child(even) { background-color: #f9f9f9; }");
-        writer.WriteLine("      tr:hover { background-color: #f1f1f1; }");
-        writer.WriteLine("    </style>");
-        writer.WriteLine("  </head>");
-        writer.WriteLine("  <body>");
-        writer.WriteLine("    <h2>Migration Records</h2>");
-        writer.WriteLine("    <table>");
-        writer.WriteLine("      <thead>");
-        writer.WriteLine("        <tr>");
-        writer.WriteLine("          <th>ID</th>");
-        writer.WriteLine("          <th>Table</th>");
-        writer.WriteLine("          <th>Description</th>");
-        writer.WriteLine("          <th>Applied On</th>");
-        writer.WriteLine("        </tr>");
-        writer.WriteLine("      </thead>");
-        writer.WriteLine("      <tbody>");
-
-        foreach ( ref readonly MigrationRecord migration in records )
+        public void CreateHtml( params ReadOnlySpan<MigrationRecord> records )
         {
-            writer.Write("        <tr>");
-            writer.Write("<td>");
-            writer.Write(migration.MigrationID);
-            writer.Write("</td><td>");
-            writer.HtmlEncode(migration.TableID);
-            writer.Write("</td><td>");
-            writer.HtmlEncode(migration.Description);
-            writer.Write("</td><td>");
-            writer.Write(migration.AppliedOn.ToString("u"));
-            writer.WriteLine("</td></tr>");
-        }
+            self.WriteLine("<!DOCTYPE html>");
+            self.WriteLine("<html lang=\"en\">");
+            self.WriteLine("  <head>");
+            self.WriteLine("    <meta charset=\"UTF-8\"/>");
+            self.WriteLine("    <title>Migration Records</title>");
+            self.WriteLine("    <style>");
+            self.WriteLine("      body { font-family: system-ui, sans-serif; background: #fafafa; color: #222; margin: 2em; }");
+            self.WriteLine("      h2 { border-bottom: 2px solid #ccc; padding-bottom: 0.25em; }");
+            self.WriteLine("      table { border-collapse: collapse; width: 100%; margin-top: 1em; }");
+            self.WriteLine("      th, td { border: 1px solid #ddd; padding: 6px 10px; }");
+            self.WriteLine("      th { background-color: #f4f4f4; text-align: left; }");
+            self.WriteLine("      tr:nth-child(even) { background-color: #f9f9f9; }");
+            self.WriteLine("      tr:hover { background-color: #f1f1f1; }");
+            self.WriteLine("    </style>");
+            self.WriteLine("  </head>");
+            self.WriteLine("  <body>");
+            self.WriteLine("    <h2>Migration Records</h2>");
+            self.WriteLine("    <table>");
+            self.WriteLine("      <thead>");
+            self.WriteLine("        <tr>");
+            self.WriteLine("          <th>ID</th>");
+            self.WriteLine("          <th>Table</th>");
+            self.WriteLine("          <th>Description</th>");
+            self.WriteLine("          <th>Applied On</th>");
+            self.WriteLine("        </tr>");
+            self.WriteLine("      </thead>");
+            self.WriteLine("      <tbody>");
 
-        writer.WriteLine("      </tbody>");
-        writer.WriteLine("    </table>");
-        writer.WriteLine("  </body>");
-        writer.WriteLine("</html>");
-    }
-    private static void HtmlEncode( this TextWriter writer, string? value )
-    {
-        if ( string.IsNullOrEmpty(value) ) { return; }
-
-        ReadOnlySpan<char> span  = value.AsSpan();
-        int                start = 0;
-
-        for ( int i = 0; i < span.Length; i++ )
-        {
-            string? entity = span[i] switch
-                             {
-                                 '&'  => "&amp;",
-                                 '<'  => "&lt;",
-                                 '>'  => "&gt;",
-                                 '"'  => "&quot;",
-                                 '\'' => "&#39;",
-                                 _    => null
-                             };
-
-            if ( entity is not null )
+            foreach ( ref readonly MigrationRecord migration in records )
             {
-                if ( i > start ) { writer.Write(span.Slice(start, i - start)); }
-
-                writer.Write(entity);
-                start = i + 1;
+                self.Write("        <tr>");
+                self.Write("<td>");
+                self.Write(migration.MigrationID);
+                self.Write("</td><td>");
+                self.HtmlEncode(migration.TableID);
+                self.Write("</td><td>");
+                self.HtmlEncode(migration.Description);
+                self.Write("</td><td>");
+                self.Write(migration.AppliedOn.ToString("u"));
+                self.WriteLine("</td></tr>");
             }
-        }
 
-        if ( start < span.Length ) { writer.Write(span.Slice(start)); }
+            self.WriteLine("      </tbody>");
+            self.WriteLine("    </table>");
+            self.WriteLine("  </body>");
+            self.WriteLine("</html>");
+        }
+        private void HtmlEncode( string? value )
+        {
+            if ( string.IsNullOrEmpty(value) ) { return; }
+
+            ReadOnlySpan<char> span  = value.AsSpan();
+            int                start = 0;
+
+            for ( int i = 0; i < span.Length; i++ )
+            {
+                string? entity = span[i] switch
+                                 {
+                                     '&'  => "&amp;",
+                                     '<'  => "&lt;",
+                                     '>'  => "&gt;",
+                                     '"'  => "&quot;",
+                                     '\'' => "&#39;",
+                                     _    => null
+                                 };
+
+                if ( entity is not null )
+                {
+                    if ( i > start ) { self.Write(span.Slice(start, i - start)); }
+
+                    self.Write(entity);
+                    start = i + 1;
+                }
+            }
+
+            if ( start < span.Length ) { self.Write(span.Slice(start)); }
+        }
     }
+
 
 
     public static PostgresType ToDbPropertyType( this DbType type ) => type switch
@@ -247,41 +258,46 @@ public static class Migrations
         MigrationRecord[]            records = await reader.CreateAsync<MigrationRecord>(Records.Count, token);
         return records;
     }
-    public static async ValueTask Apply( this MigrationRecord record, Database db, CancellationToken token )
-    {
-        await using NpgsqlConnection  connection  = await db.ConnectAsync(token);
-        await using NpgsqlTransaction transaction = await connection.BeginTransactionAsync(token);
 
-        try
-        {
-            await record.Apply(connection, transaction, token);
-            await transaction.CommitAsync(token);
-        }
-        catch ( Exception e )
-        {
-            await transaction.RollbackAsync(token);
-            throw new SqlException<MigrationRecord>(MigrationRecord.ApplySql, e);
-        }
-    }
-    public static async ValueTask Apply( this MigrationRecord record, NpgsqlConnection connection, NpgsqlTransaction transaction, CancellationToken token )
-    {
-        PostgresParameters parameters = PostgresParameters.Create<MigrationRecord>();
-        parameters.Add(nameof(MigrationRecord.MigrationID),    record.MigrationID);
-        parameters.Add(nameof(MigrationRecord.Description),    record.Description);
-        parameters.Add(nameof(MigrationRecord.TableID),        record.TableID);
-        parameters.Add(nameof(MigrationRecord.AppliedOn),      record.AppliedOn);
-        parameters.Add(nameof(MigrationRecord.AdditionalData), record.AdditionalData);
 
-        CommandDefinition command = new(MigrationRecord.ApplySql, parameters, transaction, null, null, CommandFlags.Buffered, token);
-        await connection.ExecuteAsync(command);
+
+    extension( MigrationRecord self )
+    {
+        public async ValueTask Apply( Database db, CancellationToken token )
+        {
+            await using NpgsqlConnection  connection  = await db.ConnectAsync(token);
+            await using NpgsqlTransaction transaction = await connection.BeginTransactionAsync(token);
+
+            try
+            {
+                await self.Apply(connection, transaction, token);
+                await transaction.CommitAsync(token);
+            }
+            catch ( Exception e )
+            {
+                await transaction.RollbackAsync(token);
+                throw new SqlException<MigrationRecord>(MigrationRecord.ApplySql, e);
+            }
+        }
+        public async ValueTask Apply( NpgsqlConnection connection, NpgsqlTransaction transaction, CancellationToken token )
+        {
+            PostgresParameters parameters = PostgresParameters.Create<MigrationRecord>();
+            parameters.Add(nameof(MigrationRecord.MigrationID),    self.MigrationID);
+            parameters.Add(nameof(MigrationRecord.Description),    self.Description);
+            parameters.Add(nameof(MigrationRecord.TableID),        self.TableID);
+            parameters.Add(nameof(MigrationRecord.AppliedOn),      self.AppliedOn);
+            parameters.Add(nameof(MigrationRecord.AdditionalData), self.AdditionalData);
+
+            CommandDefinition command = new(MigrationRecord.ApplySql, parameters, transaction, null, null, CommandFlags.Buffered, token);
+            await connection.ExecuteAsync(command);
+        }
     }
 
 
 
     public sealed class IdGenerator
     {
-        private ulong __value;
-        public  ulong Current => ++__value;
+        public ulong Current => ++field;
         internal IdGenerator() { }
     }
 

@@ -16,11 +16,7 @@ public sealed record UserLoginProviderRecord( [property: StringLength(          
                                               DateTimeOffset                                                                DateCreated,
                                               DateTimeOffset?                                                               LastModified = null ) : OwnedTableRecord<UserLoginProviderRecord>(in CreatedBy, in ID, in DateCreated, in LastModified), ITableRecord<UserLoginProviderRecord>
 {
-    public const  string                                  TABLE_NAME = "user_login_providers";
-    public static JsonTypeInfo<UserLoginProviderRecord[]> JsonArrayInfo => JakarDatabaseContext.Default.UserLoginProviderRecordArray;
-    public static JsonSerializerContext                   JsonContext   => JakarDatabaseContext.Default;
-    public static JsonTypeInfo<UserLoginProviderRecord>   JsonTypeInfo  => JakarDatabaseContext.Default.UserLoginProviderRecord;
-
+    public const string TABLE_NAME = "user_login_providers";
 
     public static FrozenDictionary<string, ColumnMetaData> PropertyMetaData { get; } = SqlTable<UserLoginProviderRecord>.Default.WithColumn<string>(nameof(LoginProvider), length: MAX_FIXED)
                                                                                                                         .WithColumn<string>(nameof(ProviderDisplayName), ColumnOptions.Nullable, MAX_FIXED)

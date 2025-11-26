@@ -8,11 +8,8 @@ namespace Jakar.Database;
 [Table(TABLE_NAME)]
 public sealed record UserGroupRecord : Mapping<UserGroupRecord, UserRecord, GroupRecord>, ICreateMapping<UserGroupRecord, UserRecord, GroupRecord>
 {
-    public const  string                          TABLE_NAME = "user_groups";
-    public static JsonTypeInfo<UserGroupRecord[]> JsonArrayInfo => JakarDatabaseContext.Default.UserGroupRecordArray;
-    public static JsonSerializerContext           JsonContext   => JakarDatabaseContext.Default;
-    public static JsonTypeInfo<UserGroupRecord>   JsonTypeInfo  => JakarDatabaseContext.Default.UserGroupRecord;
-    public static string                          TableName     => TABLE_NAME;
+    public const  string TABLE_NAME = "user_groups";
+    public static string TableName => TABLE_NAME;
 
 
     public UserGroupRecord( RecordID<UserRecord>  key, RecordID<GroupRecord> value ) : base(key, value) { }
@@ -37,10 +34,12 @@ public sealed record UserGroupRecord : Mapping<UserGroupRecord, UserRecord, Grou
     }
     [Pure] public static IEnumerable<UserGroupRecord> Create( RecordID<UserRecord> key, IEnumerable<RecordID<GroupRecord>> values )
     {
+        // ReSharper disable once LoopCanBeConvertedToQuery
         foreach ( RecordID<GroupRecord> value in values ) { yield return Create(key, value); }
     }
     [Pure] public static IEnumerable<UserGroupRecord> Create( UserRecord key, IEnumerable<GroupRecord> values )
     {
+        // ReSharper disable once LoopCanBeConvertedToQuery
         foreach ( RecordID<GroupRecord> value in values ) { yield return Create(key, value); }
     }
     [Pure] public static UserGroupRecord Create( NpgsqlDataReader reader )

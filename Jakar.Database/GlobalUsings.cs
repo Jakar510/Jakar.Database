@@ -94,6 +94,7 @@ global using Microsoft.Identity.Web.TokenCacheProviders.InMemory;
 global using Microsoft.IdentityModel.JsonWebTokens;
 global using Microsoft.IdentityModel.Tokens;
 global using MimeKit;
+global using Newtonsoft.Json.Linq;
 global using Npgsql;
 global using NpgsqlTypes;
 global using OneOf;

@@ -8,11 +8,8 @@ namespace Jakar.Database;
 [Table(TABLE_NAME)]
 public sealed record UserAddressRecord : Mapping<UserAddressRecord, UserRecord, AddressRecord>, ICreateMapping<UserAddressRecord, UserRecord, AddressRecord>
 {
-    public const  string                            TABLE_NAME = "user_adreesses";
-    public static JsonTypeInfo<UserAddressRecord[]> JsonArrayInfo => JakarDatabaseContext.Default.UserAddressRecordArray;
-    public static JsonSerializerContext             JsonContext   => JakarDatabaseContext.Default;
-    public static JsonTypeInfo<UserAddressRecord>   JsonTypeInfo  => JakarDatabaseContext.Default.UserAddressRecord;
-    public static string                            TableName     => TABLE_NAME;
+    public const  string TABLE_NAME = "user_adreesses";
+    public static string TableName => TABLE_NAME;
 
 
     public UserAddressRecord( UserRecord            key, AddressRecord           value ) : base(key, value) { }

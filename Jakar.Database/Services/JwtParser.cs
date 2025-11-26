@@ -26,16 +26,21 @@ public static class JwtParser
         string json = ParseBase64WithoutPadding(payload)
            .ConvertToString(Encoding.Default);
 
-        JsonObject keyValuePairs = json.GetAdditionalData() ?? new JsonObject();
+        JObject keyValuePairs = json.GetAdditionalData() ?? new JObject();
 
         ExtractRolesFromJwt(claims, keyValuePairs);
-        claims.AddRange(keyValuePairs.Select(static kvp => new Claim(kvp.Key, kvp.Value?.ToString() ?? EMPTY)));
+
+        if ( keyValuePairs.HasValues )
+        {
+            claims.AddRange(keyValuePairs.Values<KeyValuePair<string, object?>>()
+                                         .Select(static kvp => new Claim(kvp.Key, kvp.Value?.ToString() ?? EMPTY)));
+        }
 
         return claims;
     }
-    private static void ExtractRolesFromJwt( List<Claim> claims, JsonObject keyValuePairs )
+    private static void ExtractRolesFromJwt( List<Claim> claims, JObject keyValuePairs )
     {
-        JsonNode? roles = keyValuePairs[ClaimTypes.Role];
+        JToken? roles = keyValuePairs[ClaimTypes.Role];
         if ( roles is null ) { return; }
 
         ReadOnlySpan<string> parsedRoles = roles.ToString()

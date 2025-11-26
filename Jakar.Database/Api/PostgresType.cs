@@ -445,7 +445,7 @@ public enum PostgresType
     ///         <see cref="JsonNode"/>
     ///     </para>
     ///     <para>
-    ///         <see cref="JsonObject"/>
+    ///         <see cref="JObject"/>
     ///     </para>
     ///     <para>
     ///         <see cref="JsonArray"/>
@@ -463,7 +463,7 @@ public enum PostgresType
     ///         <see cref="JsonNode"/>
     ///     </para>
     ///     <para>
-    ///         <see cref="JsonObject"/>
+    ///         <see cref="JObject"/>
     ///     </para>
     ///     <para>
     ///         <see cref="JsonArray"/>
@@ -481,7 +481,7 @@ public enum PostgresType
     ///         <see cref="JsonNode"/>
     ///     </para>
     ///     <para>
-    ///         <see cref="JsonObject"/>
+    ///         <see cref="JObject"/>
     ///     </para>
     ///     <para>
     ///         <see cref="JsonArray"/>
