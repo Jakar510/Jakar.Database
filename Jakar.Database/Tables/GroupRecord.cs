@@ -1,4 +1,9 @@
-﻿namespace Jakar.Database;
+﻿using Jakar.Extensions;
+using Microsoft.AspNetCore.Identity;
+
+
+
+namespace Jakar.Database;
 
 
 [Serializable]
@@ -6,8 +11,8 @@
 [SuppressMessage("ReSharper", "InconsistentNaming")]
 public sealed record GroupRecord( [property: StringLength(GroupRecord.MAX_SIZE)] string NameOfGroup, string? NormalizedName, UserRights Rights, RecordID<GroupRecord> ID, RecordID<UserRecord>? CreatedBy, DateTimeOffset DateCreated, DateTimeOffset? LastModified = null ) : OwnedTableRecord<GroupRecord>(in CreatedBy, in ID, in DateCreated, in LastModified), ITableRecord<GroupRecord>, IGroupModel<Guid>
 {
-    public const  int                         MAX_SIZE   = 1024;
-    public const  string                      TABLE_NAME = "groups";
+    public const int    MAX_SIZE   = 1024;
+    public const string TABLE_NAME = "groups";
 
     public static FrozenDictionary<string, ColumnMetaData> PropertyMetaData { get; } = SqlTable<GroupRecord>.Default.WithColumn<string?>(nameof(NormalizedName), length: MAX_SIZE)
                                                                                                             .WithColumn<string>(nameof(NameOfGroup), length: MAX_SIZE, checks: $"{nameof(NameOfGroup)} > 0")
@@ -85,6 +90,17 @@ public sealed record GroupRecord( [property: StringLength(GroupRecord.MAX_SIZE)]
     public override int GetHashCode() => HashCode.Combine(base.GetHashCode(), NameOfGroup, Rights, NormalizedName);
 
 
+    public override ValueTask Export( NpgsqlBinaryExporter exporter, CancellationToken token ) => default;
+    public override async ValueTask Import( NpgsqlBinaryImporter importer, CancellationToken token )
+    {
+        await base.Import(importer, token);
+        await importer.WriteAsync(NormalizedName, NpgsqlDbType.Text, token);
+        await importer.WriteAsync(NameOfGroup,    NpgsqlDbType.Text, token);
+        await importer.WriteAsync(Rights.Value,         NpgsqlDbType.Text, token);
+
+        if ( CreatedBy.HasValue ) { await importer.WriteAsync(CreatedBy.Value, NpgsqlDbType.Uuid, token); }
+        else { await importer.WriteNullAsync(token); }
+    }
     [Pure] public override PostgresParameters ToDynamicParameters()
     {
         PostgresParameters parameters = base.ToDynamicParameters();

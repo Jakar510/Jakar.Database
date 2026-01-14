@@ -182,6 +182,62 @@ public sealed record UserRecord : OwnedTableRecord<UserRecord>, ITableRecord<Use
     }
 
 
+    public override ValueTask Export( NpgsqlBinaryExporter exporter, CancellationToken token ) => default;
+    public override async ValueTask Import( NpgsqlBinaryImporter importer, CancellationToken token )
+    {
+        await base.Import(importer, token);
+        await importer.WriteAsync(UserName,          NpgsqlDbType.Text,    token);
+        await importer.WriteAsync(FirstName,         NpgsqlDbType.Text,    token);
+        await importer.WriteAsync(LastName,          NpgsqlDbType.Text,    token);
+        await importer.WriteAsync(FullName,          NpgsqlDbType.Text,    token);
+        await importer.WriteAsync(Rights,            NpgsqlDbType.Text,    token);
+        await importer.WriteAsync(Gender,            NpgsqlDbType.Text,    token);
+        await importer.WriteAsync(Company,           NpgsqlDbType.Text,    token);
+        await importer.WriteAsync(Department,        NpgsqlDbType.Text,    token);
+        await importer.WriteAsync(Description,       NpgsqlDbType.Text,    token);
+        await importer.WriteAsync(Title,             NpgsqlDbType.Text,    token);
+        await importer.WriteAsync(Website,           NpgsqlDbType.Text,    token);
+        await importer.WriteAsync(PreferredLanguage, NpgsqlDbType.Bigint,  token);
+        await importer.WriteAsync(Email,             NpgsqlDbType.Text,    token);
+        await importer.WriteAsync(IsEmailConfirmed,  NpgsqlDbType.Boolean, token);
+
+        if ( LastBadAttempt.HasValue ) { await importer.WriteAsync(LastBadAttempt.Value, NpgsqlDbType.TimestampTz, token); }
+        else { await importer.WriteNullAsync(token); }
+
+        if ( LastLogin.HasValue ) { await importer.WriteAsync(LastLogin.Value, NpgsqlDbType.TimestampTz, token); }
+        else { await importer.WriteNullAsync(token); }
+
+        if ( BadLogins.HasValue ) { await importer.WriteAsync(BadLogins.Value, NpgsqlDbType.Integer, token); }
+        else { await importer.WriteNullAsync(token); }
+
+        await importer.WriteAsync(IsLocked, NpgsqlDbType.Boolean, token);
+
+        if ( LockDate.HasValue ) { await importer.WriteAsync(LockDate.Value, NpgsqlDbType.TimestampTz, token); }
+        else { await importer.WriteNullAsync(token); }
+
+        if ( LockoutEnd.HasValue ) { await importer.WriteAsync(LockoutEnd.Value, NpgsqlDbType.TimestampTz, token); }
+        else { await importer.WriteNullAsync(token); }
+
+        await importer.WriteAsync(PasswordHash, NpgsqlDbType.Text, token);
+        await importer.WriteAsync(RefreshToken, NpgsqlDbType.Text, token);
+
+        if ( RefreshTokenExpiryTime.HasValue ) { await importer.WriteAsync(RefreshTokenExpiryTime.Value, NpgsqlDbType.TimestampTz, token); }
+        else { await importer.WriteNullAsync(token); }
+
+        if ( SessionID.HasValue ) { await importer.WriteAsync(SessionID.Value, NpgsqlDbType.Uuid, token); }
+        else { await importer.WriteNullAsync(token); }
+
+        await importer.WriteAsync(IsActive,         NpgsqlDbType.Boolean, token);
+        await importer.WriteAsync(IsDisabled,       NpgsqlDbType.Boolean, token);
+        await importer.WriteAsync(SecurityStamp,    NpgsqlDbType.Text,    token);
+        await importer.WriteAsync(ConcurrencyStamp, NpgsqlDbType.Text,    token);
+
+        if ( EscalateTo.HasValue ) { await importer.WriteAsync(EscalateTo.Value, NpgsqlDbType.Uuid, token); }
+        else { await importer.WriteNullAsync(token); }
+
+        await importer.WriteAsync(AuthenticatorKey, NpgsqlDbType.Text, token);
+        await importer.WriteAsync(AdditionalData,   NpgsqlDbType.Json, token);
+    }
     public override PostgresParameters ToDynamicParameters()
     {
         PostgresParameters parameters = base.ToDynamicParameters();

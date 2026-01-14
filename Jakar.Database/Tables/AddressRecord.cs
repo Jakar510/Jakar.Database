@@ -1,6 +1,11 @@
 ﻿// Jakar.Extensions :: Jakar.Database
 // 09/29/2023  9:25 PM
 
+using Jakar.Extensions;
+using Microsoft.AspNetCore.Identity;
+
+
+
 namespace Jakar.Database;
 
 
@@ -64,6 +69,18 @@ public sealed record AddressRecord( [property: ProtectedPersonalData] string  Li
                                                                                                                                                        DateTimeOffset.UtcNow) { }
 
 
+    public override ValueTask Export( NpgsqlBinaryExporter exporter, CancellationToken token ) => default;
+    public override async ValueTask Import( NpgsqlBinaryImporter importer, CancellationToken token )
+    {
+        await base.Import(importer, token);
+        await importer.WriteAsync(Line1,           NpgsqlDbType.Text, token);
+        await importer.WriteAsync(Line2,           NpgsqlDbType.Text, token);
+        await importer.WriteAsync(City,            NpgsqlDbType.Text, token);
+        await importer.WriteAsync(PostalCode,      NpgsqlDbType.Text, token);
+        await importer.WriteAsync(StateOrProvince, NpgsqlDbType.Text, token);
+        await importer.WriteAsync(Country,         NpgsqlDbType.Text, token);
+        await importer.WriteAsync(Address,         NpgsqlDbType.Text, token);
+    }
     [Pure] public override PostgresParameters ToDynamicParameters()
     {
         PostgresParameters parameters = base.ToDynamicParameters();
@@ -78,10 +95,10 @@ public sealed record AddressRecord( [property: ProtectedPersonalData] string  Li
     }
 
 
-    public static AddressRecord Parse( string s, IFormatProvider? provider ) => Create(Validate.Re.Address.Match(s));
+    public static AddressRecord Parse( string s, IFormatProvider? provider ) => Create(Regexes.Address.Match(s));
     public static bool TryParse( [NotNullWhen(true)] string? s, IFormatProvider? provider, [MaybeNullWhen(false)] out AddressRecord result )
     {
-        Match match = Validate.Re.Address.Match(s ?? EMPTY);
+        Match match = Regexes.Address.Match(s ?? EMPTY);
 
         if ( !match.Success )
         {

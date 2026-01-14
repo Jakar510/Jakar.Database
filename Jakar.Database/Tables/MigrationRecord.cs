@@ -1,6 +1,9 @@
 ﻿// Jakar.Extensions :: Jakar.Database
 // 09/30/2025  20:32
 
+using Jakar.Extensions;
+using Npgsql.BackendMessages;
+using Serilog.Sinks.File;
 using ZLinq.Linq;
 
 
@@ -176,6 +179,16 @@ public sealed record MigrationRecord : BaseRecord<MigrationRecord>, ITableRecord
     }
 
 
+    public ValueTask Export( NpgsqlBinaryExporter exporter, CancellationToken token ) => default;
+    public ValueTask Import( NpgsqlBatchCommand   importer, CancellationToken token ) => default;
+    public async ValueTask Import( NpgsqlBinaryImporter importer, CancellationToken token )
+    {
+        await importer.WriteAsync(MigrationID,    NpgsqlDbType.Bigint,      token);
+        await importer.WriteAsync(AppliedOn,      NpgsqlDbType.TimestampTz, token);
+        await importer.WriteAsync(TableID,        NpgsqlDbType.Bigint,      token);
+        await importer.WriteAsync(Description,    NpgsqlDbType.Text,        token);
+        await importer.WriteAsync(AdditionalData, NpgsqlDbType.Json,        token);
+    }
     public PostgresParameters ToDynamicParameters()
     {
         PostgresParameters parameters = PostgresParameters.Create<MigrationRecord>();
@@ -186,6 +199,8 @@ public sealed record MigrationRecord : BaseRecord<MigrationRecord>, ITableRecord
         parameters.Add(nameof(AdditionalData), AdditionalData);
         return parameters;
     }
+
+
     public RecordPair<MigrationRecord> ToPair()                              => new(( (IRecordPair<MigrationRecord>)this ).ID, AppliedOn);
     public MigrationRecord             NewID( RecordID<MigrationRecord> id ) => throw new NotImplementedException();
     public UInt128 GetHash()

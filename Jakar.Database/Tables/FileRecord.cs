@@ -111,6 +111,30 @@ public sealed record FileRecord( string?              FileName,
     }
 
 
+    public override ValueTask Export( NpgsqlBinaryExporter exporter, CancellationToken token ) => default;
+    public override async ValueTask Import( NpgsqlBinaryImporter importer, CancellationToken token )
+    {
+        await importer.WriteAsync(ID.Value,    NpgsqlDbType.Uuid,        token);
+        await importer.WriteAsync(DateCreated, NpgsqlDbType.TimestampTz, token);
+
+        if ( LastModified.HasValue ) { await importer.WriteAsync(LastModified.Value, NpgsqlDbType.TimestampTz, token); }
+        else { await importer.WriteNullAsync(token); }
+
+        await importer.WriteAsync(FileName,        NpgsqlDbType.Text, token);
+        await importer.WriteAsync(FileDescription, NpgsqlDbType.Text, token);
+        await importer.WriteAsync(FileType,        NpgsqlDbType.Text, token);
+
+        if ( string.IsNullOrWhiteSpace(FileType) ) { await importer.WriteAsync(FileType, NpgsqlDbType.Uuid, token); }
+        else { await importer.WriteNullAsync(token); }
+
+        await importer.WriteAsync(FileSize, NpgsqlDbType.Bigint, token);
+        await importer.WriteAsync(Hash,     NpgsqlDbType.Text,   token);
+        await importer.WriteAsync(MimeType, NpgsqlDbType.Text,   token);
+        await importer.WriteAsync(Payload,  NpgsqlDbType.Text,   token);
+
+        if ( string.IsNullOrWhiteSpace(FullPath) ) { await importer.WriteAsync(FullPath, NpgsqlDbType.Uuid, token); }
+        else { await importer.WriteNullAsync(token); }
+    }
     [Pure] public override PostgresParameters ToDynamicParameters()
     {
         PostgresParameters parameters = base.ToDynamicParameters();

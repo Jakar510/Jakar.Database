@@ -30,10 +30,11 @@ public static class PostgresParams
 
 
 [DefaultMember(nameof(Empty))]
-public readonly struct PostgresParameters( FrozenDictionary<string, ColumnMetaData> dictionary ) : IEquatable<PostgresParameters>
+public readonly struct PostgresParameters : IEquatable<PostgresParameters>
 {
-    public static readonly PostgresParameters    Empty    = new(FrozenDictionary<string, ColumnMetaData>.Empty);
-    private readonly       List<NpgsqlParameter> __buffer = new(dictionary.Count + 2);
+    public static readonly PostgresParameters                       Empty = new(FrozenDictionary<string, ColumnMetaData>.Empty);
+    private readonly       List<NpgsqlParameter>                    __buffer;
+    private readonly       FrozenDictionary<string, ColumnMetaData> __dictionary;
 
 
     public int                           Count    => __buffer.Count;
@@ -41,11 +42,8 @@ public readonly struct PostgresParameters( FrozenDictionary<string, ColumnMetaDa
     public ReadOnlySpan<NpgsqlParameter> Values   => __buffer.AsSpan();
     public ValueEnumerable<Select<FromSpan<NpgsqlParameter>, NpgsqlParameter, string>, string> ParameterNames
     {
-        get
-        {
-            ValueEnumerable<FromSpan<NpgsqlParameter>, NpgsqlParameter> VALUES = Values.AsValueEnumerable();
-            return VALUES.Select(static x => x.ParameterName);
-        }
+        [Pure] get => Values.AsValueEnumerable()
+                            .Select(static x => x.ParameterName);
     }
     public StringBuilder Parameters
     {
@@ -73,8 +71,8 @@ public readonly struct PostgresParameters( FrozenDictionary<string, ColumnMetaDa
     {
         get
         {
-            const string  SPACER = ",\n      \n";
-            int           length = dictionary.Values.Sum(static x => x.ColumnName.Length) + ( dictionary.Count - 1 ) * SPACER.Length;
+            const string  SPACER = ",\n      ";
+            int           length = __dictionary.Values.Sum(static x => x.ColumnName.Length) + ( __dictionary.Count - 1 ) * SPACER.Length;
             StringBuilder sb     = new(length);
             int           count  = Count;
             int           index  = 0;
@@ -97,7 +95,7 @@ public readonly struct PostgresParameters( FrozenDictionary<string, ColumnMetaDa
         get
         {
             const string  SPACER = ",\n      ";
-            int           length = dictionary.Values.Sum(static x => x.VariableName.Length) + ( dictionary.Count - 1 ) * SPACER.Length;
+            int           length = __dictionary.Values.Sum(static x => x.VariableName.Length) + ( __dictionary.Count - 1 ) * SPACER.Length;
             StringBuilder sb     = new(length);
             int           count  = Count;
             int           index  = 0;
@@ -117,14 +115,19 @@ public readonly struct PostgresParameters( FrozenDictionary<string, ColumnMetaDa
     }
 
 
-    [Obsolete("For serialization only", true)] public PostgresParameters() : this(FrozenDictionary<string, ColumnMetaData>.Empty) => throw new NotSupportedException();
+    [Obsolete("For serialization only", true)] public PostgresParameters() => throw new NotSupportedException();
+    public PostgresParameters( FrozenDictionary<string, ColumnMetaData> dictionary )
+    {
+        __dictionary = dictionary;
+        __buffer     = new List<NpgsqlParameter>(dictionary.Count + 2);
+    }
     public static PostgresParameters Create<TSelf>()
         where TSelf : ITableRecord<TSelf> => new(TSelf.PropertyMetaData);
 
 
     public PostgresParameters With( PostgresParameters parameters )
     {
-        __buffer.Add(parameters.Values);
+        __buffer.AddRange(parameters.Values);
         return this;
     }
 
@@ -148,7 +151,7 @@ public readonly struct PostgresParameters( FrozenDictionary<string, ColumnMetaDa
     */
     public PostgresParameters Add<T>( string propertyName, T value, [CallerArgumentExpression(nameof(value))] string parameterName = EMPTY, ParameterDirection direction = ParameterDirection.Input, DataRowVersion sourceVersion = DataRowVersion.Default )
     {
-        ColumnMetaData meta = dictionary[propertyName];
+        ColumnMetaData meta = __dictionary[propertyName];
         return Add(meta, value, parameterName, direction, sourceVersion);
     }
     public PostgresParameters Add<T>( ColumnMetaData meta, T value, [CallerArgumentExpression(nameof(value))] string parameterName = EMPTY, ParameterDirection direction = ParameterDirection.Input, DataRowVersion sourceVersion = DataRowVersion.Default )
@@ -175,7 +178,7 @@ public readonly struct PostgresParameters( FrozenDictionary<string, ColumnMetaDa
     {
         string        match  = matchAll.GetAndOr();
         int           count  = Count;
-        int           length = dictionary.Values.Sum(static x => x.KeyValuePair.Length) + ( dictionary.Count - 1 ) * match.Length;
+        int           length = __dictionary.Values.Sum(static x => x.KeyValuePair.Length) + ( __dictionary.Count - 1 ) * match.Length;
         StringBuilder sb     = new(length);
         int           index  = 0;
 
@@ -193,9 +196,9 @@ public readonly struct PostgresParameters( FrozenDictionary<string, ColumnMetaDa
     }
 
 
-    private string GetColumnName( string   propertyName ) => dictionary[propertyName].ColumnName;
-    private string GetVariableName( string propertyName ) => dictionary[propertyName].VariableName;
-    private string GetKeyValuePair( string propertyName ) => dictionary[propertyName].KeyValuePair;
+    private string GetColumnName( string   propertyName ) => __dictionary[propertyName].ColumnName;
+    private string GetVariableName( string propertyName ) => __dictionary[propertyName].VariableName;
+    private string GetKeyValuePair( string propertyName ) => __dictionary[propertyName].KeyValuePair;
 
 
     public override int GetHashCode() => HashCode.Combine(__buffer);
@@ -235,11 +238,12 @@ public readonly struct SqlCommand<TSelf>( string sql, in PostgresParameters para
 
         NpgsqlCommand command = new()
                                 {
-                                    Connection     = connection,
-                                    CommandText    = SQL,
-                                    CommandType    = CommandType ?? System.Data.CommandType.Text,
-                                    Transaction    = transaction,
-                                    CommandTimeout = 30
+                                    Connection               = connection,
+                                    CommandText              = SQL,
+                                    CommandType              = CommandType ?? System.Data.CommandType.Text,
+                                    Transaction              = transaction,
+                                    CommandTimeout           = 30,
+                                    AllResultTypesAreUnknown = false
                                 };
 
         command.Parameters.Add(Parameters.Values);
@@ -258,17 +262,73 @@ public readonly struct SqlCommand<TSelf>( string sql, in PostgresParameters para
         hashCode.Add((int)Flags);
         return hashCode.ToHashCode();
     }
+
+
     public static bool operator ==( SqlCommand<TSelf> left, SqlCommand<TSelf> right ) => left.Equals(right);
     public static bool operator !=( SqlCommand<TSelf> left, SqlCommand<TSelf> right ) => !left.Equals(right);
 
 
-    public const string SPACER       = ",      \n";
+    public static implicit operator string( SqlCommand<TSelf> sql ) => sql.SQL;
+
+
+    public const string SPACER       = ",\n      ";
     public const string CREATED_BY   = "created_by";
     public const string DATE_CREATED = "date_created";
     public const string ID           = "id";
 
 
-    public static IEnumerable<string> KeyValuePairs => TSelf.PropertyMetaData.Values.Select(ColumnMetaData.GetKeyValuePair);
+    public static IEnumerable<string> GetColumnNames   => TSelf.PropertyMetaData.Values.Select(ColumnMetaData.GetColumnName);
+    public static IEnumerable<string> GetKeyValuePairs => TSelf.PropertyMetaData.Values.Select(ColumnMetaData.GetKeyValuePair);
+
+
+    public static StringBuilder ColumnNames
+    {
+        get
+        {
+            FrozenDictionary<string, ColumnMetaData> data   = TSelf.PropertyMetaData;
+            int                                      length = data.Values.Sum(static x => x.ColumnName.Length) + ( data.Count - 1 ) * SPACER.Length;
+            StringBuilder                            sb     = new(length);
+            int                                      count  = data.Count;
+            int                                      index  = 0;
+
+            foreach ( string pair in data.Values.AsValueEnumerable()
+                                         .Select(ColumnMetaData.GetColumnName) )
+            {
+                if ( index++ < count - 1 )
+                {
+                    sb.Append(pair)
+                      .Append(SPACER);
+                }
+                else { sb.Append(pair); }
+            }
+
+            return sb;
+        }
+    }
+    public static StringBuilder KeyValuePairs
+    {
+        get
+        {
+            FrozenDictionary<string, ColumnMetaData> data   = TSelf.PropertyMetaData;
+            int                                      length = data.Values.Sum(static x => x.ColumnName.Length) + ( data.Count - 1 ) * SPACER.Length;
+            StringBuilder                            sb     = new(length);
+            int                                      count  = data.Count;
+            int                                      index  = 0;
+
+            foreach ( string pair in data.Values.AsValueEnumerable()
+                                         .Select(ColumnMetaData.GetKeyValuePair) )
+            {
+                if ( index++ < count - 1 )
+                {
+                    sb.Append(pair)
+                      .Append(SPACER);
+                }
+                else { sb.Append(pair); }
+            }
+
+            return sb;
+        }
+    }
 
 
     public static SqlCommand<TSelf> Create( string sql, PostgresParameters parameters ) => new(sql, parameters);
@@ -454,6 +514,20 @@ public readonly struct SqlCommand<TSelf>( string sql, in PostgresParameters para
 
         return new SqlCommand<TSelf>(sql);
     }
+
+
+    public static SqlCommand<TSelf> GetCopy()
+    {
+        string sql = $"""
+                      COPY INTO {TSelf.TableName} 
+                      (
+                        {ColumnNames}
+                      ) 
+                      FROM STDIN;
+                      """;
+
+        return new SqlCommand<TSelf>(sql);
+    }
     public static SqlCommand<TSelf> GetInsert( TSelf record )
     {
         PostgresParameters parameters = record.ToDynamicParameters();
@@ -474,7 +548,7 @@ public readonly struct SqlCommand<TSelf>( string sql, in PostgresParameters para
     }
     public static SqlCommand<TSelf> GetUpdate( TSelf record ) => new($"""
                                                                       UPDATE {TSelf.TableName} 
-                                                                      SET {string.Join(',', KeyValuePairs)} 
+                                                                      SET {KeyValuePairs} 
                                                                       WHERE {ID} = @{ID};
                                                                       """,
                                                                      record.ToDynamicParameters());
@@ -516,18 +590,20 @@ public readonly struct SqlCommand<TSelf>( string sql, in PostgresParameters para
                       BEGIN
                       INSERT INTO {TSelf.TableName}
                       (
-                        {param.ColumnNames}
+                      {param.ColumnNames}
                       ) 
                       VALUES 
                       (
-                        {param.VariableNames}
+                      {param.VariableNames}
                       ) 
                       RETURNING {ID};
                       END
 
                       ELSE
                       BEGIN
-                      UPDATE {TSelf.TableName} SET {KeyValuePairs} WHERE {ID} = @{ID};
+                          UPDATE {TSelf.TableName} 
+                          SET {KeyValuePairs}
+                          WHERE {ID} = @{ID};
                       SELECT @{ID};
                       END
                       """;

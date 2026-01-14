@@ -36,6 +36,15 @@ public sealed record RoleRecord( [property: StringLength(NAME)]              str
         where TRoleModel : class, IRoleModel<TRoleModel, Guid> => TRoleModel.Create(this);
 
 
+    public override ValueTask Export( NpgsqlBinaryExporter exporter, CancellationToken token ) => default;
+    public override async ValueTask Import( NpgsqlBinaryImporter importer, CancellationToken token )
+    {
+        await base.Import(importer, token);
+        await importer.WriteAsync(NameOfRole,       NpgsqlDbType.Text, token);
+        await importer.WriteAsync(NormalizedName,   NpgsqlDbType.Text, token);
+        await importer.WriteAsync(ConcurrencyStamp, NpgsqlDbType.Text, token);
+        await importer.WriteAsync(Rights.Value,     NpgsqlDbType.Text, token);
+    }
     [Pure] public override PostgresParameters ToDynamicParameters()
     {
         PostgresParameters parameters = base.ToDynamicParameters();

@@ -16,7 +16,7 @@ public readonly struct RecordPair<TSelf>( RecordID<TSelf> id, DateTimeOffset dat
 
     public static ReadOnlyMemory<PropertyInfo>             ClassProperties  { get; } = typeof(RecordPair<TSelf>).GetProperties();
     public static int                                      PropertyCount    { get; } = 2;
-    public static FrozenDictionary<string, ColumnMetaData> PropertyMetaData { get; } = TSelf.PropertyMetaData;
+    public static FrozenDictionary<string, ColumnMetaData> PropertyMetaData => TSelf.PropertyMetaData;
     public static string                                   TableName        => TSelf.TableName;
     Guid IUniqueID<Guid>.                                  ID               => ID.Value;
     RecordID<TSelf> IRecordPair<TSelf>.                    ID               => ID;
@@ -53,6 +53,14 @@ public readonly struct RecordPair<TSelf>( RecordID<TSelf> id, DateTimeOffset dat
         while ( await reader.ReadAsync(token) ) { yield return Create(reader); }
     }
 
+
+    public ValueTask Export( NpgsqlBinaryExporter exporter, CancellationToken token ) => default;
+    public ValueTask Import( NpgsqlBatchCommand   batch,    CancellationToken token ) => default;
+    public async ValueTask Import( NpgsqlBinaryImporter importer, CancellationToken token )
+    {
+        await importer.WriteAsync(ID.Value,    NpgsqlDbType.Uuid,        token);
+        await importer.WriteAsync(DateCreated, NpgsqlDbType.TimestampTz, token);
+    }
 
     [Pure] public PostgresParameters ToDynamicParameters()
     {

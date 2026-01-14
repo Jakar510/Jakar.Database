@@ -10,7 +10,7 @@ public partial class DbTable<TSelf>
     public IAsyncEnumerable<TSelf> Insert( ReadOnlyMemory<TSelf>   records, CancellationToken token = default ) => this.TryCall(Insert, records, token);
     public IAsyncEnumerable<TSelf> Insert( ImmutableArray<TSelf>   records, CancellationToken token = default ) => this.TryCall(Insert, records, token);
     public IAsyncEnumerable<TSelf> Insert( IEnumerable<TSelf>      records, CancellationToken token = default ) => this.TryCall(Insert, records, token);
-    public IAsyncEnumerable<TSelf> Insert( IAsyncEnumerable<TSelf> records, CancellationToken token = default ) => this.TryCall(Insert, records, token);
+    public ValueTask               Insert( IAsyncEnumerable<TSelf> records, CancellationToken token = default ) => this.TryCall(Insert, records, token);
     public ValueTask<TSelf>        Insert( TSelf                   record,  CancellationToken token = default ) => this.TryCall(Insert, record,  token);
 
 
@@ -26,9 +26,16 @@ public partial class DbTable<TSelf>
     {
         foreach ( TSelf record in records ) { yield return await Insert(connection, transaction, record, token); }
     }
-    public virtual async IAsyncEnumerable<TSelf> Insert( NpgsqlConnection connection, NpgsqlTransaction transaction, IAsyncEnumerable<TSelf> records, [EnumeratorCancellation] CancellationToken token = default )
+    public virtual async ValueTask Insert( NpgsqlConnection connection, NpgsqlTransaction transaction, IAsyncEnumerable<TSelf> records, [EnumeratorCancellation] CancellationToken token = default )
     {
-        await foreach ( TSelf record in records.WithCancellation(token) ) { yield return await Insert(connection, transaction, record, token); }
+        string sql = SqlCommand<TSelf>.GetCopy()
+                                      .SQL;
+
+        await using NpgsqlBinaryImporter import = await connection.BeginBinaryImportAsync(sql, token);
+
+        await foreach ( TSelf record in records.WithCancellation(token) ) { await record.Import(import, token); }
+
+        await import.CompleteAsync(token);
     }
 
 

@@ -49,24 +49,23 @@ public sealed record ResxRowRecord( long                    KeyID,
     public static string TableName => TABLE_NAME;
 
 
-    public ResxRowRecord( string key, long keyID ) : this(key, keyID, EMPTY) { }
-    public ResxRowRecord( string key, long keyID, string neutral ) : this(key,
-                                                                          keyID,
-                                                                          neutral,
-                                                                          EMPTY,
-                                                                          EMPTY,
-                                                                          EMPTY,
-                                                                          EMPTY,
-                                                                          EMPTY,
-                                                                          EMPTY,
-                                                                          EMPTY,
-                                                                          EMPTY,
-                                                                          EMPTY,
-                                                                          EMPTY,
-                                                                          EMPTY,
-                                                                          EMPTY,
-                                                                          EMPTY,
-                                                                          EMPTY) { }
+    public ResxRowRecord( string key, long keyID, string neutral = EMPTY ) : this(key,
+                                                                                  keyID,
+                                                                                  neutral,
+                                                                                  EMPTY,
+                                                                                  EMPTY,
+                                                                                  EMPTY,
+                                                                                  EMPTY,
+                                                                                  EMPTY,
+                                                                                  EMPTY,
+                                                                                  EMPTY,
+                                                                                  EMPTY,
+                                                                                  EMPTY,
+                                                                                  EMPTY,
+                                                                                  EMPTY,
+                                                                                  EMPTY,
+                                                                                  EMPTY,
+                                                                                  EMPTY) { }
     public ResxRowRecord( string key,
                           long   keyID,
                           string neutral,
@@ -188,6 +187,57 @@ public sealed record ResxRowRecord( long                    KeyID,
     [Pure] public static async IAsyncEnumerable<ResxRowRecord> CreateAsync( NpgsqlDataReader reader, [EnumeratorCancellation] CancellationToken token = default )
     {
         while ( await reader.ReadAsync(token) ) { yield return Create(reader); }
+    }
+
+
+    public override ValueTask Export( NpgsqlBinaryExporter exporter, CancellationToken token ) => default;
+    public override async ValueTask Import( NpgsqlBinaryImporter importer, CancellationToken token )
+    {
+        await importer.WriteAsync(ID.Value,    NpgsqlDbType.Uuid,        token);
+        await importer.WriteAsync(DateCreated, NpgsqlDbType.TimestampTz, token);
+
+        if ( LastModified.HasValue ) { await importer.WriteAsync(LastModified.Value, NpgsqlDbType.TimestampTz, token); }
+        else { await importer.WriteNullAsync(token); }
+
+        await importer.WriteAsync(Key,        NpgsqlDbType.Text,   token);
+        await importer.WriteAsync(KeyID,      NpgsqlDbType.Bigint, token);
+        await importer.WriteAsync(Neutral,    NpgsqlDbType.Text,   token);
+        await importer.WriteAsync(English,    NpgsqlDbType.Text,   token);
+        await importer.WriteAsync(Spanish,    NpgsqlDbType.Text,   token);
+        await importer.WriteAsync(French,     NpgsqlDbType.Text,   token);
+        await importer.WriteAsync(Swedish,    NpgsqlDbType.Text,   token);
+        await importer.WriteAsync(German,     NpgsqlDbType.Text,   token);
+        await importer.WriteAsync(Chinese,    NpgsqlDbType.Text,   token);
+        await importer.WriteAsync(Polish,    NpgsqlDbType.Text,   token);
+        await importer.WriteAsync(Thai,    NpgsqlDbType.Text,   token);
+        await importer.WriteAsync(Japanese,    NpgsqlDbType.Text,   token);
+        await importer.WriteAsync(Czech, NpgsqlDbType.Text,   token);
+        await importer.WriteAsync(Portuguese, NpgsqlDbType.Text,   token);
+        await importer.WriteAsync(Dutch,      NpgsqlDbType.Text,   token);
+        await importer.WriteAsync(Korean,     NpgsqlDbType.Text,   token);
+        await importer.WriteAsync(Arabic,     NpgsqlDbType.Text,   token);
+    }
+    public override PostgresParameters ToDynamicParameters()
+    {
+        PostgresParameters parameters = base.ToDynamicParameters();
+        parameters.Add(nameof(KeyID),      KeyID);
+        parameters.Add(nameof(Key),        Key);
+        parameters.Add(nameof(Neutral),    Neutral);
+        parameters.Add(nameof(English),    English);
+        parameters.Add(nameof(Spanish),    Spanish);
+        parameters.Add(nameof(French),     French);
+        parameters.Add(nameof(Swedish),    Swedish);
+        parameters.Add(nameof(German),     German);
+        parameters.Add(nameof(Chinese),    Chinese);
+        parameters.Add(nameof(Polish),     Polish);
+        parameters.Add(nameof(Thai),       Thai);
+        parameters.Add(nameof(Japanese),   Japanese);
+        parameters.Add(nameof(Czech),      Czech);
+        parameters.Add(nameof(Portuguese), Portuguese);
+        parameters.Add(nameof(Dutch),      Dutch);
+        parameters.Add(nameof(Korean),     Korean);
+        parameters.Add(nameof(Arabic),     Arabic);
+        return parameters;
     }
 
 

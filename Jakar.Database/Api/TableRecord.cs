@@ -1,6 +1,10 @@
 ﻿// Jakar.Extensions :: Jakar.Database
 // 08/14/2022  8:38 PM
 
+using Microsoft.AspNetCore.Http.HttpResults;
+
+
+
 namespace Jakar.Database;
 
 
@@ -35,6 +39,10 @@ public interface IRecordPair<TSelf> : IDateCreated
     Guid IUniqueID<Guid>.      ID => ID.Value;
     public new RecordID<TSelf> ID { get; }
 
+
+    public        ValueTask          Import( NpgsqlBatchCommand   importer, CancellationToken token );
+    public        ValueTask          Import( NpgsqlBinaryImporter importer, CancellationToken token );
+    public        ValueTask          Export( NpgsqlBinaryExporter exporter, CancellationToken token );
     [Pure] public UInt128            GetHash();
     [Pure] public PostgresParameters ToDynamicParameters();
 }
@@ -54,8 +62,8 @@ public interface ITableRecord<TSelf> : IRecordPair<TSelf>, IJsonModel<TSelf>
 
 
     [Pure] public                 RecordPair<TSelf> ToPair();
-    [Pure] public abstract static TSelf             Create( NpgsqlDataReader   reader );
-    public                        TSelf             NewID( RecordID<TSelf> id );
+    [Pure] public abstract static TSelf             Create( NpgsqlDataReader reader );
+    public                        TSelf             NewID( RecordID<TSelf>   id );
 }
 
 
@@ -112,6 +120,16 @@ public abstract record TableRecord<TSelf> : BaseRecord<TSelf>, IRecordPair<TSelf
     }
 
 
+    public abstract ValueTask Export( NpgsqlBinaryExporter exporter, CancellationToken token );
+    public virtual  ValueTask Import( NpgsqlBatchCommand   batch,    CancellationToken token ) => default;
+    public virtual async ValueTask Import( NpgsqlBinaryImporter importer, CancellationToken token )
+    {
+        await importer.WriteAsync(ID.Value,    NpgsqlDbType.Uuid,        token);
+        await importer.WriteAsync(DateCreated, NpgsqlDbType.TimestampTz, token);
+
+        if ( LastModified.HasValue ) { await importer.WriteAsync(LastModified.Value, NpgsqlDbType.TimestampTz, token); }
+        else { await importer.WriteNullAsync(token); }
+    }
     [Pure] public virtual PostgresParameters ToDynamicParameters()
     {
         PostgresParameters parameters = PostgresParameters.Create<TSelf>();
@@ -173,6 +191,13 @@ public abstract record OwnedTableRecord<TSelf> : TableRecord<TSelf>, ICreatedBy
     }
 
 
+    public override async ValueTask Import( NpgsqlBinaryImporter importer, CancellationToken token )
+    {
+        await base.Import(importer, token);
+
+        if ( CreatedBy.HasValue ) { await importer.WriteAsync(CreatedBy.Value, NpgsqlDbType.TimestampTz, token); }
+        else { await importer.WriteNullAsync(token); }
+    }
     public override PostgresParameters ToDynamicParameters()
     {
         PostgresParameters parameters = base.ToDynamicParameters();

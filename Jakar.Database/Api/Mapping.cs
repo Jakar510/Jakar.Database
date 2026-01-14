@@ -37,6 +37,18 @@ public abstract record Mapping<TSelf, TKey, TValue>( RecordID<TKey> KeyID, Recor
     }
 
 
+    public override ValueTask Export( NpgsqlBinaryExporter exporter, CancellationToken token ) => default;
+    public override async ValueTask Import( NpgsqlBinaryImporter importer, CancellationToken token )
+    {
+        await importer.WriteAsync(ID.Value,    NpgsqlDbType.Uuid,        token);
+        await importer.WriteAsync(DateCreated, NpgsqlDbType.TimestampTz, token);
+
+        if ( LastModified.HasValue ) { await importer.WriteAsync(LastModified.Value, NpgsqlDbType.TimestampTz, token); }
+        else { await importer.WriteNullAsync(token); }
+
+        await importer.WriteAsync(KeyID.Value,   NpgsqlDbType.Uuid, token);
+        await importer.WriteAsync(ValueID.Value, NpgsqlDbType.Uuid, token);
+    }
     public override PostgresParameters ToDynamicParameters()
     {
         PostgresParameters parameters = base.ToDynamicParameters();

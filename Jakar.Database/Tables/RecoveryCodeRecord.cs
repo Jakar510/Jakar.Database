@@ -10,6 +10,7 @@ public sealed record RecoveryCodeRecord( [property: StringLength(1024)] string C
 {
     public const            string                             TABLE_NAME = "recovery_codes";
     private static readonly PasswordHasher<RecoveryCodeRecord> __hasher   = new();
+
     public static FrozenDictionary<string, ColumnMetaData> PropertyMetaData { get; } = SqlTable<RecoveryCodeRecord>.Default.WithColumn<string>(nameof(Code), length: 1024)
                                                                                                                    .With_CreatedBy()
                                                                                                                    .Build();
@@ -20,6 +21,12 @@ public sealed record RecoveryCodeRecord( [property: StringLength(1024)] string C
     public RecoveryCodeRecord( string code, UserRecord user ) : this(code, RecordID<RecoveryCodeRecord>.New(), user.ID, DateTimeOffset.UtcNow) { }
 
 
+    public override ValueTask Export( NpgsqlBinaryExporter exporter, CancellationToken token ) => default;
+    public override async ValueTask Import( NpgsqlBinaryImporter importer, CancellationToken token )
+    {
+        await base.Import(importer, token);
+        await importer.WriteAsync(Code, NpgsqlDbType.Text, token);
+    }
     [Pure] public override PostgresParameters ToDynamicParameters()
     {
         PostgresParameters parameters = base.ToDynamicParameters();

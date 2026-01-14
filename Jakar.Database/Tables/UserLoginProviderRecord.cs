@@ -32,6 +32,15 @@ public sealed record UserLoginProviderRecord( [property: StringLength(          
     public UserLoginProviderRecord( UserRecord user, string        loginProvider, string providerKey, string? providerDisplayName ) : this(loginProvider, providerDisplayName, providerKey, EMPTY, RecordID<UserLoginProviderRecord>.New(), user.ID, DateTimeOffset.UtcNow) { }
 
 
+    public override ValueTask Export( NpgsqlBinaryExporter exporter, CancellationToken token ) => default;
+    public override async ValueTask Import( NpgsqlBinaryImporter importer, CancellationToken token )
+    {
+        await base.Import(importer, token);
+        await importer.WriteAsync(LoginProvider,       NpgsqlDbType.Text, token);
+        await importer.WriteAsync(ProviderDisplayName, NpgsqlDbType.Text, token);
+        await importer.WriteAsync(ProviderKey,         NpgsqlDbType.Text, token);
+        await importer.WriteAsync(Value,               NpgsqlDbType.Text, token);
+    }
     public override PostgresParameters ToDynamicParameters()
     {
         PostgresParameters parameters = base.ToDynamicParameters();
