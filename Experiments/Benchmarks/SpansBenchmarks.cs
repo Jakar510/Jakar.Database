@@ -104,7 +104,7 @@ public class SpansBenchmarks
 
     [Benchmark] public ReadOnlySpan<char> AsSpan() => Value;
 
-    [Benchmark] public ReadOnlySpan<char> Join() => Spans.Join<char>(Value, NEW_VALUE);
+    [Benchmark] public ReadOnlySpan<char> Join() => Value.Join<char>(NEW_VALUE);
 
     [Benchmark] public ReadOnlySpan<char> RemoveAll_Params()
     {
@@ -120,6 +120,6 @@ public class SpansBenchmarks
     [Benchmark] public ReadOnlySpan<char> Replace()          => Spans.Replace<char>(Value, OLD, NEW_VALUE);
 
 
-    [Benchmark] public ReadOnlySpan<char> Slice_False() => Spans.Slice(Value, 'z', '4', false);
-    [Benchmark] public ReadOnlySpan<char> Slice_True()  => Spans.Slice(Value, 'z', '4', true);
+    [Benchmark] public ReadOnlySpan<char> Slice_False() => Value.Slice('z', '4', false);
+    [Benchmark] public ReadOnlySpan<char> Slice_True()  => Value.Slice('z', '4', true);
 }

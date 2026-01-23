@@ -85,7 +85,7 @@ public class Emailer( EmailTokenProvider tokenProvider, IConfiguration configura
 
         try
         {
-            if ( client.Capabilities.HasFlag(SmtpCapabilities.Authentication) ) { await client.AuthenticateAsync(settings.UserName, settings.Password, token); }
+            if ( client.Capabilities.HasFlag(SmtpCapabilities.Authentication) ) { await client.AuthenticateAsync(settings.UserLogin, settings.UserPassword, token); }
 
             await client.SendAsync(message, token);
         }

@@ -6,119 +6,118 @@ namespace Jakar.Database;
 
 public static class TableLinq
 {
-    public static async ValueTask<ErrorOrResult<TSelf>> FirstAsync<TSelf>( this NpgsqlDataReader reader, [EnumeratorCancellation] CancellationToken token = default )
-        where TSelf : ITableRecord<TSelf>
+    extension( NpgsqlDataReader reader )
     {
-        await foreach ( TSelf self in reader.CreateAsync<TSelf>(token) ) { return self; }
-
-        throw new InvalidOperationException("Sequence contains no elements");
-    }
-    public static async ValueTask<ErrorOrResult<TSelf>> FirstOrDefaultAsync<TSelf>( this NpgsqlDataReader reader, [EnumeratorCancellation] CancellationToken token = default )
-        where TSelf : ITableRecord<TSelf>
-    {
-        await foreach ( TSelf self in reader.CreateAsync<TSelf>(token) ) { return self; }
-
-        return Error.NotFound();
-    }
-
-
-    public static async ValueTask<ErrorOrResult<TSelf>> SingleAsync<TSelf>( this NpgsqlDataReader reader, [EnumeratorCancellation] CancellationToken token = default )
-        where TSelf : ITableRecord<TSelf>
-    {
-        TSelf? record = default;
-
-        await foreach ( TSelf self in reader.CreateAsync<TSelf>(token) )
+        public async ValueTask<ErrorOrResult<TSelf>> FirstAsync<TSelf>( [EnumeratorCancellation] CancellationToken token = default )
+            where TSelf : ITableRecord<TSelf>
         {
-            if ( record is not null ) { throw new InvalidOperationException("Sequence contains more than one element"); }
+            await foreach ( TSelf self in reader.CreateAsync<TSelf>(token) ) { return self; }
 
-            record = self;
+            throw new InvalidOperationException("Sequence contains no elements");
         }
-
-        return record is null
-                   ? Error.NotFound()
-                   : record;
-    }
-    public static async ValueTask<ErrorOrResult<TSelf>> SingleOrDefaultAsync<TSelf>( this NpgsqlDataReader reader, [EnumeratorCancellation] CancellationToken token = default )
-        where TSelf : ITableRecord<TSelf>
-    {
-        TSelf? record = default;
-
-        await foreach ( TSelf self in reader.CreateAsync<TSelf>(token) )
+        public async ValueTask<ErrorOrResult<TSelf>> FirstOrDefaultAsync<TSelf>( [EnumeratorCancellation] CancellationToken token = default )
+            where TSelf : ITableRecord<TSelf>
         {
-            if ( record is not null )
+            await foreach ( TSelf self in reader.CreateAsync<TSelf>(token) ) { return self; }
+
+            return Error.NotFound();
+        }
+        public async ValueTask<ErrorOrResult<TSelf>> SingleAsync<TSelf>( [EnumeratorCancellation] CancellationToken token = default )
+            where TSelf : ITableRecord<TSelf>
+        {
+            TSelf? record = default;
+
+            await foreach ( TSelf self in reader.CreateAsync<TSelf>(token) )
             {
-                record = default;
-                break;
+                if ( record is not null ) { throw new InvalidOperationException("Sequence contains more than one element"); }
+
+                record = self;
             }
 
-            record = self;
+            return record is null
+                       ? Error.NotFound()
+                       : record;
         }
-
-        return record is null
-                   ? Error.NotFound()
-                   : record;
-    }
-
-
-    public static async ValueTask<ErrorOrResult<TSelf>> LastAsync<TSelf>( this NpgsqlDataReader reader, [EnumeratorCancellation] CancellationToken token = default )
-        where TSelf : ITableRecord<TSelf>
-    {
-        TSelf? record = default;
-        await foreach ( TSelf self in reader.CreateAsync<TSelf>(token) ) { record = self; }
-
-        return record is null
-                   ? Error.NotFound()
-                   : record;
-    }
-    public static async ValueTask<ErrorOrResult<TSelf>> LastOrDefaultAsync<TSelf>( this NpgsqlDataReader reader, [EnumeratorCancellation] CancellationToken token = default )
-        where TSelf : ITableRecord<TSelf>
-    {
-        TSelf? record = default;
-        await foreach ( TSelf self in reader.CreateAsync<TSelf>(token) ) { record = self; }
-
-        return record is null
-                   ? Error.NotFound()
-                   : record;
-    }
-
-
-    public static async IAsyncEnumerable<TSelf> CreateAsync<TSelf>( this NpgsqlDataReader reader, [EnumeratorCancellation] CancellationToken token = default )
-        where TSelf : ITableRecord<TSelf>
-    {
-        while ( await reader.ReadAsync(token) ) { yield return TSelf.Create(reader); }
-    }
-
-
-    public static async ValueTask<TSelf[]> CreateAsync<TSelf>( this NpgsqlDataReader reader, int initialCapacity, [EnumeratorCancellation] CancellationToken token = default )
-        where TSelf : ITableRecord<TSelf>
-    {
-        List<TSelf> list = new(initialCapacity);
-        while ( await reader.ReadAsync(token) ) { list.Add(TSelf.Create(reader)); }
-
-        return list.ToArray();
-    }
-
-
-    public static async IAsyncEnumerable<TSelf> Where<TSelf>( this IAsyncEnumerable<TSelf> source, Func<NpgsqlConnection, NpgsqlTransaction?, TSelf, CancellationToken, bool> func, NpgsqlConnection connection, NpgsqlTransaction? transaction, [EnumeratorCancellation] CancellationToken token = default )
-    {
-        await foreach ( TSelf record in source.WithCancellation(token) )
+        public async ValueTask<ErrorOrResult<TSelf>> SingleOrDefaultAsync<TSelf>( [EnumeratorCancellation] CancellationToken token = default )
+            where TSelf : ITableRecord<TSelf>
         {
-            if ( func(connection, transaction, record, token) ) { yield return record; }
+            TSelf? record = default;
+
+            await foreach ( TSelf self in reader.CreateAsync<TSelf>(token) )
+            {
+                if ( record is not null )
+                {
+                    record = default;
+                    break;
+                }
+
+                record = self;
+            }
+
+            return record is null
+                       ? Error.NotFound()
+                       : record;
         }
-    }
-    public static async IAsyncEnumerable<TSelf> Where<TSelf>( this IAsyncEnumerable<TSelf> source, Func<NpgsqlConnection, NpgsqlTransaction?, TSelf, CancellationToken, ValueTask<bool>> func, NpgsqlConnection connection, NpgsqlTransaction? transaction, [EnumeratorCancellation] CancellationToken token = default )
-    {
-        await foreach ( TSelf record in source.WithCancellation(token) )
+        public async ValueTask<ErrorOrResult<TSelf>> LastAsync<TSelf>( [EnumeratorCancellation] CancellationToken token = default )
+            where TSelf : ITableRecord<TSelf>
         {
-            if ( await func(connection, transaction, record, token) ) { yield return record; }
+            TSelf? record = default;
+            await foreach ( TSelf self in reader.CreateAsync<TSelf>(token) ) { record = self; }
+
+            return record is null
+                       ? Error.NotFound()
+                       : record;
+        }
+        public async ValueTask<ErrorOrResult<TSelf>> LastOrDefaultAsync<TSelf>( [EnumeratorCancellation] CancellationToken token = default )
+            where TSelf : ITableRecord<TSelf>
+        {
+            TSelf? record = default;
+            await foreach ( TSelf self in reader.CreateAsync<TSelf>(token) ) { record = self; }
+
+            return record is null
+                       ? Error.NotFound()
+                       : record;
+        }
+        public async IAsyncEnumerable<TSelf> CreateAsync<TSelf>( [EnumeratorCancellation] CancellationToken token = default )
+            where TSelf : ITableRecord<TSelf>
+        {
+            while ( await reader.ReadAsync(token) ) { yield return TSelf.Create(reader); }
+        }
+        public async ValueTask<TSelf[]> CreateAsync<TSelf>( int initialCapacity, [EnumeratorCancellation] CancellationToken token = default )
+            where TSelf : ITableRecord<TSelf>
+        {
+            List<TSelf> list = new(initialCapacity);
+            while ( await reader.ReadAsync(token) ) { list.Add(TSelf.Create(reader)); }
+
+            return list.ToArray();
         }
     }
-    public static async IAsyncEnumerable<TResult> Select<TSelf, TResult>( this IAsyncEnumerable<TSelf> source, Func<NpgsqlConnection, NpgsqlTransaction?, TSelf, CancellationToken, TResult> func, NpgsqlConnection connection, NpgsqlTransaction? transaction, [EnumeratorCancellation] CancellationToken token = default )
+
+
+
+    extension<TSelf>( IAsyncEnumerable<TSelf> self )
     {
-        await foreach ( TSelf record in source.WithCancellation(token) ) { yield return func(connection, transaction, record, token); }
-    }
-    public static async IAsyncEnumerable<TResult> Select<TSelf, TResult>( this IAsyncEnumerable<TSelf> source, Func<NpgsqlConnection, NpgsqlTransaction?, TSelf, CancellationToken, ValueTask<TResult>> func, NpgsqlConnection connection, NpgsqlTransaction? transaction, [EnumeratorCancellation] CancellationToken token = default )
-    {
-        await foreach ( TSelf record in source.WithCancellation(token) ) { yield return await func(connection, transaction, record, token); }
+        public async IAsyncEnumerable<TSelf> Where( Func<NpgsqlConnection, NpgsqlTransaction?, TSelf, CancellationToken, bool> func, NpgsqlConnection connection, NpgsqlTransaction? transaction, [EnumeratorCancellation] CancellationToken token = default )
+        {
+            await foreach ( TSelf record in self.WithCancellation(token) )
+            {
+                if ( func(connection, transaction, record, token) ) { yield return record; }
+            }
+        }
+        public async IAsyncEnumerable<TSelf> Where( Func<NpgsqlConnection, NpgsqlTransaction?, TSelf, CancellationToken, ValueTask<bool>> func, NpgsqlConnection connection, NpgsqlTransaction? transaction, [EnumeratorCancellation] CancellationToken token = default )
+        {
+            await foreach ( TSelf record in self.WithCancellation(token) )
+            {
+                if ( await func(connection, transaction, record, token) ) { yield return record; }
+            }
+        }
+        public async IAsyncEnumerable<TResult> Select<TResult>( Func<NpgsqlConnection, NpgsqlTransaction?, TSelf, CancellationToken, TResult> func, NpgsqlConnection connection, NpgsqlTransaction? transaction, [EnumeratorCancellation] CancellationToken token = default )
+        {
+            await foreach ( TSelf record in self.WithCancellation(token) ) { yield return func(connection, transaction, record, token); }
+        }
+        public async IAsyncEnumerable<TResult> Select<TResult>( Func<NpgsqlConnection, NpgsqlTransaction?, TSelf, CancellationToken, ValueTask<TResult>> func, NpgsqlConnection connection, NpgsqlTransaction? transaction, [EnumeratorCancellation] CancellationToken token = default )
+        {
+            await foreach ( TSelf record in self.WithCancellation(token) ) { yield return await func(connection, transaction, record, token); }
+        }
     }
 }

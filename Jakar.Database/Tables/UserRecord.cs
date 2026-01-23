@@ -384,8 +384,8 @@ public sealed record UserRecord : OwnedTableRecord<UserRecord>, ITableRecord<Use
     {
         ArgumentNullException.ThrowIfNull(request.Data);
 
-        return Create(request.UserName, rights, request.Data, caller)
-              .WithPassword(request.Password)
+        return Create(request.UserLogin, rights, request.Data, caller)
+              .WithPassword(request.UserPassword)
               .Enable();
     }
 
@@ -490,7 +490,7 @@ public sealed record UserRecord : OwnedTableRecord<UserRecord>, ITableRecord<Use
     public static PostgresParameters GetDynamicParameters( ILoginRequest request )
     {
         PostgresParameters parameters = PostgresParameters.Create<UserRecord>();
-        parameters.Add(nameof(UserName), request.UserName);
+        parameters.Add(nameof(UserName), request.UserLogin);
         return parameters;
     }
     public static PostgresParameters GetDynamicParameters( string userName )
@@ -873,7 +873,7 @@ public sealed record UserRecord : OwnedTableRecord<UserRecord>, ITableRecord<Use
     }
 
 
-    public static bool VerifyPassword( scoped ref UserRecord record, ILoginRequest request ) => VerifyPassword(ref record, request.Password);
+    public static bool VerifyPassword( scoped ref UserRecord record, ILoginRequest request ) => VerifyPassword(ref record, request.UserPassword);
     public static bool VerifyPassword( scoped ref UserRecord record, in string password )
     {
         string value = Database.DataProtector.Decrypt(record.PasswordHash);

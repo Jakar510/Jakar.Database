@@ -214,9 +214,9 @@ public abstract partial class Database : Randoms, IConnectableDbRoot, IHealthChe
         where TRequest : ILoginRequest<UserModel>
     {
         UserRecord? record = await Users.Get(connection, transaction, true, UserRecord.GetDynamicParameters(request), token);
-        if ( record is not null ) { return Error.NotFound(request.UserName); }
+        if ( record is not null ) { return Error.NotFound(request.UserLogin); }
 
-        if ( !PasswordValidator.Validate(request.Password, out PasswordValidator.Results results) ) { return Error.Unauthorized(in results); }
+        if ( !PasswordValidator.Validate(request.UserPassword, out PasswordValidator.Results results) ) { return Error.Unauthorized(in results); }
 
         record = UserRecord.Create(request, rights);
         record = await Users.Insert(connection, transaction, record, token);

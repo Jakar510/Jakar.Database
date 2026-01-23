@@ -18,13 +18,13 @@
     <PackageVersion Include="Dapper" Version="2.1.66" />
     <PackageVersion Include="Dapper.Contrib" Version="2.0.78" />
     <PackageVersion Include="FluentMigrator" Version="7.1.0" />
-    <PackageVersion Include="FluentMigrator.Abstractions" Version="8.0.0" />
+    <PackageVersion Include="FluentMigrator.Abstractions" Version="8.0.1" />
     <PackageVersion Include="FluentMigrator.Runner" Version="7.1.0" />
-    <PackageVersion Include="Hardware.Info" Version="101.1.0.1" />
+    <PackageVersion Include="Hardware.Info" Version="101.1.1" />
     <PackageVersion Include="Hashids.net" Version="1.7.0" />
     <PackageVersion Include="InterpolatedSql.Dapper" Version="2.5.0" />
     <PackageVersion Include="Jakar.Database" Version="9.0.0.3-beta" />
-    <PackageVersion Include="Jakar.Extensions" Version="10.2.0" />
+    <PackageVersion Include="Jakar.Extensions" Version="10.3.3" />
     <PackageVersion Include="Jakar.Shapes" Version="10.0.1" />
     <PackageVersion Include="JetBrains.Annotations" Version="2025.2.2" />
     <PackageVersion Include="JetBrains.DotMemoryUnit" Version="3.2.20220510" />
@@ -94,18 +94,18 @@
     <PackageVersion Include="OneOf" Version="3.0.271" />
     <PackageVersion Include="OneOf.Extended" Version="3.0.271" />
     <PackageVersion Include="OneOf.SourceGenerator" Version="3.0.271" />
-    <PackageVersion Include="OpenTelemetry" Version="1.14.0" />
-    <PackageVersion Include="OpenTelemetry.Api" Version="1.14.0" />
-    <PackageVersion Include="OpenTelemetry.Exporter.Console" Version="1.14.0" />
-    <PackageVersion Include="OpenTelemetry.Exporter.InMemory" Version="1.14.0" />
-    <PackageVersion Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="1.14.0" />
+    <PackageVersion Include="OpenTelemetry" Version="1.15.0" />
+    <PackageVersion Include="OpenTelemetry.Api" Version="1.15.0" />
+    <PackageVersion Include="OpenTelemetry.Exporter.Console" Version="1.15.0" />
+    <PackageVersion Include="OpenTelemetry.Exporter.InMemory" Version="1.15.0" />
+    <PackageVersion Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="1.15.0" />
     <PackageVersion Include="OpenTelemetry.Exporter.Prometheus.AspNetCore" Version="1.14.0-beta.1" />
-    <PackageVersion Include="OpenTelemetry.Exporter.Zipkin" Version="1.14.0" />
-    <PackageVersion Include="OpenTelemetry.Extensions.Hosting" Version="1.14.0" />
-    <PackageVersion Include="OpenTelemetry.Instrumentation.AspNetCore" Version="1.14.0" />
+    <PackageVersion Include="OpenTelemetry.Exporter.Zipkin" Version="1.15.0" />
+    <PackageVersion Include="OpenTelemetry.Extensions.Hosting" Version="1.15.0" />
+    <PackageVersion Include="OpenTelemetry.Instrumentation.AspNetCore" Version="1.15.0" />
     <PackageVersion Include="OpenTelemetry.Instrumentation.GrpcNetClient" Version="1.14.0-beta.1" />
-    <PackageVersion Include="OpenTelemetry.Instrumentation.Http" Version="1.14.0" />
-    <PackageVersion Include="OpenTelemetry.Instrumentation.Runtime" Version="1.14.0" />
+    <PackageVersion Include="OpenTelemetry.Instrumentation.Http" Version="1.15.0" />
+    <PackageVersion Include="OpenTelemetry.Instrumentation.Runtime" Version="1.15.0" />
     <PackageVersion Include="Otp.NET" Version="1.4.1" />
     <PackageVersion Include="PanoramicData.Blazor" Version="9.0.320" />
     <PackageVersion Include="Plugin.Fingerprint" Version="3.0.0-beta.1" />

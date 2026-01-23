@@ -63,16 +63,20 @@ public static class ApiMetrics
     */
 
 
-    public static IServiceCollection AddApiMetrics<TApp>( this IServiceCollection services, string method )
-        where TApp : IAppName
-    {
-        return services.AddSingleton(provider => ApiMetric.Create<TApp>(provider, method));
-    }
-    public static IServiceCollection AddApiMetrics<TApp>( this IServiceCollection services, scoped in ReadOnlySpan<string> methods )
-        where TApp : IAppName
-    {
-        foreach ( string method in methods ) { services.AddApiMetrics<TApp>(method); }
 
-        return services;
+    extension( IServiceCollection self )
+    {
+        public IServiceCollection AddApiMetrics<TApp>( string method )
+            where TApp : IAppName
+        {
+            return self.AddSingleton(provider => ApiMetric.Create<TApp>(provider, method));
+        }
+        public IServiceCollection AddApiMetrics<TApp>( scoped in ReadOnlySpan<string> methods )
+            where TApp : IAppName
+        {
+            foreach ( string method in methods ) { self.AddApiMetrics<TApp>(method); }
+
+            return self;
+        }
     }
 }

@@ -34,117 +34,130 @@ public static class Telemetry
     public static ActivitySource Source { get; set; } = DbSource;
 
 
-    public static void ConfigureExporter( this OtlpExporterOptions exporter, Uri endpoint, ExportProcessorType type, OtlpExportProtocol protocol, string? headers = null, int timeout = 10000 )
+
+    extension( OtlpExporterOptions exporter )
     {
-        exporter.Endpoint            = endpoint;
-        exporter.ExportProcessorType = type;
-        exporter.Protocol            = protocol;
-        exporter.TimeoutMilliseconds = timeout;
-        exporter.Headers             = headers;
-    }
-    public static void ConfigureExporter( this OtlpExporterOptions exporter, BatchExportProcessorOptions<Activity> processor ) => exporter.BatchExportProcessorOptions = processor;
-    public static void ConfigureExporter( this OtlpExporterOptions exporter, Func<HttpClient>                      factory )   => exporter.HttpClientFactory = factory;
-
-
-    public static WebApplication UseDefaults( this WebApplication app ) => UseDefaults(app, "/_metrics");
-    public static WebApplication UseDefaults( this WebApplication app, OneOf<string, Func<HttpContext, bool>, (MeterProvider meterProvider, Func<HttpContext, bool> predicate, Action<IApplicationBuilder> configureBranchedPipeline, string optionsName, string path)> telemetry )
-    {
-        app.UseStaticFiles();
-        app.UseRouting();
-        app.UseHttpMetrics();
-        app.UseAuthentication();
-        app.UseAuthorization();
-        telemetry.Switch(path => app.UseTelemetry(path), predicate => app.UseTelemetry(predicate), t => app.UseTelemetry(t.meterProvider, t.predicate, t.configureBranchedPipeline, t.optionsName, t.path));
-        return app;
-    }
-
-    public static WebApplication UseTelemetry( this WebApplication application, string path = "/metrics" )
-    {
-        application.UseOpenTelemetryPrometheusScrapingEndpoint(path);
-        return application;
-    }
-    public static WebApplication UseTelemetry( this WebApplication application, Func<HttpContext, bool> predicate )
-    {
-        application.UseOpenTelemetryPrometheusScrapingEndpoint(predicate);
-        return application;
-    }
-    public static WebApplication UseTelemetry( this WebApplication application, MeterProvider meterProvider, Func<HttpContext, bool> predicate, Action<IApplicationBuilder> configureBranchedPipeline, string optionsName, string path = "/metrics" )
-    {
-        application.UseOpenTelemetryPrometheusScrapingEndpoint(meterProvider, predicate, path, configureBranchedPipeline, optionsName);
-        return application;
-    }
-
-
-    public static WebApplicationBuilder AddSerilog( this WebApplicationBuilder builder, AppLoggerOptions options, TelemetrySource source, SeqConfig? seqConfig, out Logger logger )
-    {
-        LoggerConfiguration config = new();
-        config.MinimumLevel.Verbose();
-        config.MinimumLevel.Override(nameof(Microsoft), LogEventLevel.Warning);
-        config.Enrich.FromLogContext();
-
-        OpenTelemetryActivityEnricher.Create(config.Enrich, options, source);
-        config.WriteTo.Console();
-
-        seqConfig?.Configure(config.WriteTo);
-
-        logger     = config.CreateLogger();
-        Log.Logger = logger;
-        return builder;
-    }
-
-
-    public static WebApplicationBuilder AddOpenTelemetry<TApp>( this WebApplicationBuilder builder, Action<OtlpExporterOptions> tracerOtlpExporter, Action<OtlpExporterOptions> meterOtlpExporter, Action<LoggerProviderBuilder>? configureBuilder = null, Action<OpenTelemetryLoggerOptions>? configureOptions = null )
-        where TApp : IAppID
-    {
-        KeyValuePair<string, object>[] attributes = [new(ATTRIBUTE_SERVICE_NAME, TApp.AppName), new(ATTRIBUTE_SERVICE_VERSION, TApp.AppVersion.ToString()), new(ATTRIBUTE_SERVICE_INSTANCE, TApp.AppID.ToString()), new(ATTRIBUTE_SERVICE_NAMESPACE, typeof(TApp).Namespace ?? EMPTY)];
-
-        ResourceBuilder resources = ResourceBuilder.CreateEmpty()
-                                                   .AddAttributes(attributes)
-                                                   .AddTelemetrySdk()
-                                                   .AddEnvironmentVariableDetector()
-                                                   .AddService(TApp.AppName, null, TApp.AppVersion.ToString())
-                                                   .AddService(METER_NAME);
-
-
-        builder.Services.AddOpenTelemetry()
-               .WithTracing(configureTracing)
-               .WithMetrics(configureMetrics)
-               .WithLogging(configureBuilder, configureOptions);
-
-        builder.Services.AddSingleton(static x =>
-                                      {
-                                          ILoggerFactory factory = x.GetRequiredService<ILoggerFactory>();
-                                          NpgsqlLoggingConfiguration.InitializeLogging(factory);
-                                          return factory;
-                                      });
-
-        return builder;
-
-        void configureMetrics( MeterProviderBuilder meterProviderBuilder )
+        public void ConfigureExporter( Uri endpoint, ExportProcessorType type, OtlpExportProtocol protocol, string? headers = null, int timeout = 10000 )
         {
-            meterProviderBuilder.AddAspNetCoreInstrumentation()
-                                .AddRuntimeInstrumentation()
-                                .AddHttpClientInstrumentation()
-                                .AddNpgsqlInstrumentation() // PostgreSQL metrics for Dapper
-                                .AddFusionCacheInstrumentation()
-                                .AddMeter(METER_NAME)
-                                .SetResourceBuilder(resources)
-                                .AddOtlpExporter(meterOtlpExporter)
-                                .AddConsoleExporter();
+            exporter.Endpoint            = endpoint;
+            exporter.ExportProcessorType = type;
+            exporter.Protocol            = protocol;
+            exporter.TimeoutMilliseconds = timeout;
+            exporter.Headers             = headers;
         }
+        public void ConfigureExporter( BatchExportProcessorOptions<Activity> processor ) => exporter.BatchExportProcessorOptions = processor;
+        public void ConfigureExporter( Func<HttpClient>                      factory )   => exporter.HttpClientFactory = factory;
+    }
 
-        void configureTracing( TracerProviderBuilder tracerProviderBuilder )
+
+
+    extension( WebApplication self )
+    {
+        public WebApplication UseDefaults() => self.UseDefaults("/_metrics");
+        public WebApplication UseDefaults( OneOf<string, Func<HttpContext, bool>, (MeterProvider meterProvider, Func<HttpContext, bool> predicate, Action<IApplicationBuilder> configureBranchedPipeline, string optionsName, string path)> telemetry )
         {
-            tracerProviderBuilder.AddAspNetCoreInstrumentation()
-                                 .AddHttpClientInstrumentation()
-                                 .AddNpgsql() // PostgreSQL tracing for Dapper
-                                 .AddFusionCacheInstrumentation()
-                                 .AddSource(METER_NAME)
-                                 .SetResourceBuilder(resources)
-                                 .AddOtlpExporter(tracerOtlpExporter)
-                                 .AddConsoleExporter();
+            self.UseStaticFiles();
+            self.UseRouting();
+            self.UseHttpMetrics();
+            self.UseAuthentication();
+            self.UseAuthorization();
+            telemetry.Switch(path => self.UseTelemetry(path), predicate => self.UseTelemetry(predicate), t => self.UseTelemetry(t.meterProvider, t.predicate, t.configureBranchedPipeline, t.optionsName, t.path));
+            return self;
+        }
+        public WebApplication UseTelemetry( string path = "/metrics" )
+        {
+            self.UseOpenTelemetryPrometheusScrapingEndpoint(path);
+            return self;
+        }
+        public WebApplication UseTelemetry( Func<HttpContext, bool> predicate )
+        {
+            self.UseOpenTelemetryPrometheusScrapingEndpoint(predicate);
+            return self;
+        }
+        public WebApplication UseTelemetry( MeterProvider meterProvider, Func<HttpContext, bool> predicate, Action<IApplicationBuilder> configureBranchedPipeline, string optionsName, string path = "/metrics" )
+        {
+            self.UseOpenTelemetryPrometheusScrapingEndpoint(meterProvider, predicate, path, configureBranchedPipeline, optionsName);
+            return self;
         }
     }
+
+
+
+    extension( WebApplicationBuilder self )
+    {
+        public WebApplicationBuilder AddSerilog( AppLoggerOptions options, TelemetrySource source, SeqConfig? seqConfig, out Logger logger )
+        {
+            LoggerConfiguration config = new();
+            config.MinimumLevel.Verbose();
+            config.MinimumLevel.Override(nameof(Microsoft), LogEventLevel.Warning);
+            config.Enrich.FromLogContext();
+
+            OpenTelemetryActivityEnricher enricher = new(options, source);
+            config.Enrich.With(enricher);
+
+
+            config.WriteTo.Console();
+
+            seqConfig?.Configure(config.WriteTo);
+
+            logger     = config.CreateLogger();
+            Log.Logger = logger;
+            return self;
+        }
+        public WebApplicationBuilder AddOpenTelemetry<TApp>( Action<OtlpExporterOptions> tracerOtlpExporter, Action<OtlpExporterOptions> meterOtlpExporter, Action<LoggerProviderBuilder>? configureBuilder = null, Action<OpenTelemetryLoggerOptions>? configureOptions = null )
+            where TApp : IAppID
+        {
+            KeyValuePair<string, object>[] attributes = [new(ATTRIBUTE_SERVICE_NAME, TApp.AppName), new(ATTRIBUTE_SERVICE_VERSION, TApp.AppVersion.ToString()), new(ATTRIBUTE_SERVICE_INSTANCE, TApp.AppID.ToString()), new(ATTRIBUTE_SERVICE_NAMESPACE, typeof(TApp).Namespace ?? EMPTY)];
+
+            ResourceBuilder resources = ResourceBuilder.CreateEmpty()
+                                                       .AddAttributes(attributes)
+                                                       .AddTelemetrySdk()
+                                                       .AddEnvironmentVariableDetector()
+                                                       .AddService(TApp.AppName, null, TApp.AppVersion.ToString())
+                                                       .AddService(METER_NAME);
+
+
+            self.Services.AddOpenTelemetry()
+                .WithTracing(configureTracing)
+                .WithMetrics(configureMetrics)
+                .WithLogging(configureBuilder, configureOptions);
+
+            self.Services.AddSingleton(static x =>
+                                       {
+                                           ILoggerFactory factory = x.GetRequiredService<ILoggerFactory>();
+                                           NpgsqlLoggingConfiguration.InitializeLogging(factory);
+                                           return factory;
+                                       });
+
+            return self;
+
+            void configureMetrics( MeterProviderBuilder meterProviderBuilder )
+            {
+                meterProviderBuilder.AddAspNetCoreInstrumentation()
+                                    .AddRuntimeInstrumentation()
+                                    .AddHttpClientInstrumentation()
+                                    .AddNpgsqlInstrumentation() // PostgreSQL metrics for Dselfer
+                                    .AddFusionCacheInstrumentation()
+                                    .AddMeter(METER_NAME)
+                                    .SetResourceBuilder(resources)
+                                    .AddOtlpExporter(meterOtlpExporter)
+                                    .AddConsoleExporter();
+            }
+
+            void configureTracing( TracerProviderBuilder tracerProviderBuilder )
+            {
+                tracerProviderBuilder.AddAspNetCoreInstrumentation()
+                                     .AddHttpClientInstrumentation()
+                                     .AddNpgsql() // PostgreSQL tracing for Dselfer
+                                     .AddFusionCacheInstrumentation()
+                                     .AddSource(METER_NAME)
+                                     .SetResourceBuilder(resources)
+                                     .AddOtlpExporter(tracerOtlpExporter)
+                                     .AddConsoleExporter();
+            }
+        }
+    }
+
 
 
     public static IMetricServer Server( int port, string url = "/metrics", CollectorRegistry? registry = null, X509Certificate2? certificate = null )

@@ -6,34 +6,32 @@ namespace Jakar.Database;
 
 public static class JwtExtensions
 {
-    [Pure] public static DateTimeOffset TokenExpiration( this IConfiguration configuration ) => configuration.TokenExpiration(TimeSpan.FromMinutes(30));
-
-
-    [Pure] public static DateTimeOffset TokenExpiration( this IConfiguration configuration, TimeSpan defaultValue )
+    extension( IConfiguration self )
     {
-        TimeSpan offset = configuration.TokenValidation()
-                                       .GetValue(nameof(TokenExpiration), defaultValue);
+        [Pure] public DateTimeOffset TokenExpiration() => self.TokenExpiration(TimeSpan.FromMinutes(30));
+        [Pure] public DateTimeOffset TokenExpiration( TimeSpan defaultValue )
+        {
+            TimeSpan offset = self.TokenValidation()
+                                  .GetValue(nameof(TokenExpiration), defaultValue);
 
-        return DateTimeOffset.UtcNow + offset;
+            return DateTimeOffset.UtcNow + offset;
+        }
+        public IConfigurationSection TokenValidation()                            => self.GetSection(nameof(TokenValidation));
+        public byte[]                GetJWTKey( DbOptions               options ) => Encoding.UTF8.GetBytes(self[options.JWTKey] ?? EMPTY);
+        public SymmetricSecurityKey  GetSymmetricSecurityKey( DbOptions options ) => new(self.GetJWTKey(options));
+        public SigningCredentials    GetSigningCredentials( DbOptions   options ) => new(self.GetSymmetricSecurityKey(options), options.JWTAlgorithm);
+        public TokenValidationParameters GetTokenValidationParameters( DbOptions options )
+        {
+            IConfigurationSection section = self.TokenValidation();
+            SymmetricSecurityKey  key     = self.GetSymmetricSecurityKey(options);
+            return section.GetTokenValidationParameters(key, options);
+        }
     }
 
-
-    public static IConfigurationSection TokenValidation( this IConfiguration configuration ) => configuration.GetSection(nameof(TokenValidation));
-
-
-    public static byte[]               GetJWTKey( this               IConfiguration configuration, DbOptions options ) => Encoding.UTF8.GetBytes(configuration[options.JWTKey] ?? EMPTY);
-    public static SymmetricSecurityKey GetSymmetricSecurityKey( this IConfiguration configuration, DbOptions options ) => new(configuration.GetJWTKey(options));
-    public static SigningCredentials   GetSigningCredentials( this   IConfiguration configuration, DbOptions options ) => new(configuration.GetSymmetricSecurityKey(options), options.JWTAlgorithm);
 
 
     public static TokenValidationParameters GetTokenValidationParameters( this WebApplication        app,     DbOptions options ) => app.Configuration.GetTokenValidationParameters(options);
     public static TokenValidationParameters GetTokenValidationParameters( this WebApplicationBuilder builder, DbOptions options ) => builder.Configuration.GetTokenValidationParameters(options);
-    public static TokenValidationParameters GetTokenValidationParameters( this IConfiguration configuration, DbOptions options )
-    {
-        IConfigurationSection section = configuration.TokenValidation();
-        SymmetricSecurityKey  key     = configuration.GetSymmetricSecurityKey(options);
-        return section.GetTokenValidationParameters(key, options);
-    }
     public static TokenValidationParameters GetTokenValidationParameters( this IConfigurationSection section, SymmetricSecurityKey key, DbOptions options ) =>
         new()
         {

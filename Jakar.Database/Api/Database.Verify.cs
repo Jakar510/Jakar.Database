@@ -36,7 +36,7 @@ public abstract partial class Database
             if ( !UserRecord.VerifyPassword(ref record, request) )
             {
                 record = record.MarkBadLogin();
-                return Error.Unauthorized(request.UserName);
+                return Error.Unauthorized(request.UserLogin);
             }
 
             if ( !record.IsActive )
@@ -116,7 +116,7 @@ public abstract partial class Database
         where TUser : class, IUserData<Guid>
     {
         UserRecord? record = await Users.Get(connection, transaction, true, UserRecord.GetDynamicParameters(request), token);
-        if ( record is not null ) { return Error.Conflict($"{nameof(UserRecord.UserName)} is already taken. Chose another {nameof(request.UserName)}"); }
+        if ( record is not null ) { return Error.Conflict($"{nameof(UserRecord.UserName)} is already taken. Chose another {nameof(request.UserLogin)}"); }
 
         record = CreateNewUser(request);
         record = await Users.Insert(connection, transaction, record, token);

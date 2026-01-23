@@ -36,8 +36,8 @@ public abstract partial class Database
     public ValueTask<ErrorOrResult<SessionToken>> Authenticate( ILoginRequest request, ClaimType types = DEFAULT_CLAIM_TYPES, CancellationToken token = default ) => this.TryCall(Authenticate, request, types, token);
     protected virtual async ValueTask<ErrorOrResult<SessionToken>> Authenticate( NpgsqlConnection connection, NpgsqlTransaction transaction, ILoginRequest request, ClaimType types = DEFAULT_CLAIM_TYPES, CancellationToken token = default )
     {
-        UserRecord? record = await Users.Get(connection, transaction, nameof(UserRecord.UserName), request.UserName, token);
-        if ( record is null ) { return Error.Unauthorized(request.UserName); }
+        UserRecord? record = await Users.Get(connection, transaction, nameof(UserRecord.UserName), request.UserLogin, token);
+        if ( record is null ) { return Error.Unauthorized(request.UserLogin); }
 
         ErrorOrResult<SubscriptionStatus> status = await ValidateSubscription(connection, transaction, record, token);
 
@@ -69,15 +69,15 @@ public abstract partial class Database
 
         record = record.MarkBadLogin();
         await Users.Update(connection, transaction, record, token);
-        return Error.Unauthorized(request.UserName);
+        return Error.Unauthorized(request.UserLogin);
     }
 
 
     public ValueTask<ErrorOrResult<UserModel>> TryGetUserModel( ILoginRequest request, ClaimType types = DEFAULT_CLAIM_TYPES, CancellationToken token = default ) => this.TryCall(TryGetUserModel, request, types, token);
     protected virtual async ValueTask<ErrorOrResult<UserModel>> TryGetUserModel( NpgsqlConnection connection, NpgsqlTransaction transaction, ILoginRequest request, ClaimType types = DEFAULT_CLAIM_TYPES, CancellationToken token = default )
     {
-        UserRecord? record = await Users.Get(connection, transaction, nameof(UserRecord.UserName), request.UserName, token);
-        if ( record is null ) { return Error.Unauthorized(request.UserName); }
+        UserRecord? record = await Users.Get(connection, transaction, nameof(UserRecord.UserName), request.UserLogin, token);
+        if ( record is null ) { return Error.Unauthorized(request.UserLogin); }
 
         ErrorOrResult<SubscriptionStatus> status = await ValidateSubscription(connection, transaction, record, token);
 
@@ -114,7 +114,7 @@ public abstract partial class Database
 
         record = record.MarkBadLogin();
         await Users.Update(connection, transaction, record, token);
-        return Error.Unauthorized(request.UserName);
+        return Error.Unauthorized(request.UserLogin);
     }
 
 

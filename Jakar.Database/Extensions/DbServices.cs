@@ -13,109 +13,126 @@ public static class DbServices
     public const string OTEL_EXPORTER_OTLP_ENDPOINT        = nameof(OTEL_EXPORTER_OTLP_ENDPOINT);
 
 
-    public static bool IsValid<TSelf>( this TSelf value )
-        where TSelf : class, ITableRecord<TSelf> =>
-        value.ID.IsValid();
 
+    extension<TSelf>( TSelf self )
+        where TSelf : class, ITableRecord<TSelf>
+    {
+        public bool IsValid()    => self.ID.IsValid();
+        public bool IsNotValid() => !self.IsValid();
+    }
 
-    public static bool IsNotValid<TSelf>( this TSelf value )
-        where TSelf : class, ITableRecord<TSelf> =>
-        !value.IsValid();
 
 
     public static string GetFullName( this Type type ) => type.AssemblyQualifiedName ?? type.FullName ?? type.Name;
 
 
-    public static IHostApplicationBuilder OpenTelemetry( this IHostApplicationBuilder builder )
+
+    extension( IHostApplicationBuilder self )
     {
-        builder.Logging.AddOpenTelemetry(static x =>
-                                         {
-                                             x.IncludeScopes           = true;
-                                             x.IncludeFormattedMessage = true;
-                                         });
-
-        builder.Services.AddOpenTelemetry()
-               .WithMetrics(static x =>
-                            {
-                                x.AddRuntimeInstrumentation()
-                                 .AddMeter("Microsoft.AspNetCore.Hosting", "Microsoft.AspNetCore.Server.Kestrel", "System.Net.Http", "WeatherApp.Api");
-                            })
-               .WithTracing(x =>
-                            {
-                                if ( builder.Environment.IsDevelopment() ) { x.SetSampler<AlwaysOnSampler>(); }
-
-                                x.AddAspNetCoreInstrumentation()
-                                 .AddGrpcClientInstrumentation()
-                                 .AddHttpClientInstrumentation();
-                            });
-
-        return builder.AddOpenTelemetryExporters();
-    }
-    public static IHostApplicationBuilder AddOpenTelemetryExporters( this IHostApplicationBuilder builder )
-    {
-        bool useOtlpExporter = !string.IsNullOrWhiteSpace(builder.Configuration[OTEL_EXPORTER_OTLP_ENDPOINT]);
-
-        if ( useOtlpExporter )
+        public IHostApplicationBuilder OpenTelemetry()
         {
-            builder.Services.Configure<OpenTelemetryLoggerOptions>(static logging => logging.AddOtlpExporter());
-            builder.Services.ConfigureOpenTelemetryMeterProvider(static metrics => metrics.AddOtlpExporter());
-            builder.Services.ConfigureOpenTelemetryTracerProvider(static tracing => tracing.AddOtlpExporter());
+            self.Logging.AddOpenTelemetry(static x =>
+                                          {
+                                              x.IncludeScopes           = true;
+                                              x.IncludeFormattedMessage = true;
+                                          });
+
+            self.Services.AddOpenTelemetry()
+                .WithMetrics(static x =>
+                             {
+                                 x.AddRuntimeInstrumentation()
+                                  .AddMeter("Microsoft.AspNetCore.Hosting", "Microsoft.AspNetCore.Server.Kestrel", "System.Net.Http", "WeatherApp.Api");
+                             })
+                .WithTracing(x =>
+                             {
+                                 if ( self.Environment.IsDevelopment() ) { x.SetSampler<AlwaysOnSampler>(); }
+
+                                 x.AddAspNetCoreInstrumentation()
+                                  .AddGrpcClientInstrumentation()
+                                  .AddHttpClientInstrumentation();
+                             });
+
+            return self.AddOpenTelemetryExporters();
         }
+        public IHostApplicationBuilder AddOpenTelemetryExporters()
+        {
+            bool useOtlpExporter = !string.IsNullOrWhiteSpace(self.Configuration[OTEL_EXPORTER_OTLP_ENDPOINT]);
 
-        builder.Services.AddOpenTelemetry()
-               .WithMetrics(static x => x.AddPrometheusExporter());
+            if ( useOtlpExporter )
+            {
+                self.Services.Configure<OpenTelemetryLoggerOptions>(static logging => logging.AddOtlpExporter());
+                self.Services.ConfigureOpenTelemetryMeterProvider(static metrics => metrics.AddOtlpExporter());
+                self.Services.ConfigureOpenTelemetryTracerProvider(static tracing => tracing.AddOtlpExporter());
+            }
 
-        return builder;
+            self.Services.AddOpenTelemetry()
+                .WithMetrics(static x => x.AddPrometheusExporter());
+
+            return self;
+        }
     }
+
 
 
     private static LogLevel GetLogLevel( this bool isDevEnvironment ) =>
         isDevEnvironment
             ? LogLevel.Trace
             : LogLevel.Information;
-    public static ILoggingBuilder AddDefaultLogging<TApp>( this WebApplicationBuilder builder )
-        where TApp : IAppName =>
-        AddDefaultLogging<TApp>(builder.Logging, builder.Environment.IsDevelopment());
-    public static ILoggingBuilder AddDefaultLogging<TApp>( this ILoggingBuilder builder, bool isDevEnvironment )
-        where TApp : IAppName =>
-        AddDefaultLogging<TApp>(builder, isDevEnvironment.GetLogLevel());
-    public static ILoggingBuilder AddDefaultLogging<TApp>( this ILoggingBuilder builder, in LogLevel minimumLevel )
-        where TApp : IAppName =>
-        AddDefaultLogging(builder, minimumLevel, TApp.AppName);
-    public static ILoggingBuilder AddDefaultLogging( this ILoggingBuilder builder, in LogLevel minimumLevel, in string name )
+
+
+
+    extension( ILoggingBuilder self )
     {
-        builder.ClearProviders();
-        builder.SetMinimumLevel(minimumLevel);
-        builder.AddProvider(new DebugLoggerProvider());
+        public ILoggingBuilder AddDefaultLogging<TApp>( bool isDevEnvironment )
+            where TApp : IAppName =>
+            self.AddDefaultLogging<TApp>(isDevEnvironment.GetLogLevel());
+        
+        public ILoggingBuilder AddDefaultLogging<TApp>( in LogLevel minimumLevel )
+            where TApp : IAppName =>
+            self.AddDefaultLogging(minimumLevel, TApp.AppName);
+        
+        public ILoggingBuilder AddDefaultLogging( in LogLevel minimumLevel, in string name )
+        {
+            self.ClearProviders();
+            self.SetMinimumLevel(minimumLevel);
+            self.AddProvider(new DebugLoggerProvider());
 
-        builder.AddSimpleConsole(static options =>
-                                 {
-                                     options.ColorBehavior = LoggerColorBehavior.Enabled;
-                                     options.SingleLine    = false;
-                                     options.IncludeScopes = true;
-                                 });
+            self.AddSimpleConsole(static options =>
+                                  {
+                                      options.ColorBehavior = LoggerColorBehavior.Enabled;
+                                      options.SingleLine    = false;
+                                      options.IncludeScopes = true;
+                                  });
 
 
-        if ( OperatingSystem.IsWindows() ) { builder.AddProvider(name.GetEventLogLoggerProvider()); }
-        else if ( OperatingSystem.IsLinux() ) { builder.AddSystemdConsole(static options => options.UseUtcTimestamp = true); }
+            if ( OperatingSystem.IsWindows() ) { self.AddProvider(name.GetEventLogLoggerProvider()); }
+            else if ( OperatingSystem.IsLinux() ) { self.AddSystemdConsole(static options => options.UseUtcTimestamp = true); }
 
-        return builder;
+            return self;
+        }
     }
 
 
-    [SupportedOSPlatform("Windows")] public static EventLogLoggerProvider GetEventLogLoggerProvider( this string name )
+
+    extension( string self )
     {
-        return GetEventLogLoggerProvider(name, filter);
-        static bool filter( string category, LogLevel level ) => level > LogLevel.Information;
+        [SupportedOSPlatform("Windows")] public EventLogLoggerProvider GetEventLogLoggerProvider()
+        {
+            return self.GetEventLogLoggerProvider(filter);
+            static bool filter( string category, LogLevel level ) => level > LogLevel.Information;
+        }
+        [SupportedOSPlatform("Windows")] public EventLogLoggerProvider GetEventLogLoggerProvider( Func<string, LogLevel, bool> filter ) =>
+            new(new EventLogSettings
+                {
+                    SourceName  = self,
+                    LogName     = self,
+                    MachineName = GetMachineName(),
+                    Filter      = filter
+                });
     }
-    [SupportedOSPlatform("Windows")] public static EventLogLoggerProvider GetEventLogLoggerProvider( this string name, Func<string, LogLevel, bool> filter ) =>
-        new(new EventLogSettings
-            {
-                SourceName  = name,
-                LogName     = name,
-                MachineName = GetMachineName(),
-                Filter      = filter
-            });
+
+
+
     public static string GetMachineName()
     {
     #pragma warning disable RS1035
@@ -125,10 +142,16 @@ public static class DbServices
     }
 
 
-    public static IHealthChecksBuilder AddHealthCheck<TValue>( this IServiceCollection services )
-        where TValue : IHealthCheck => services.AddHealthCheck(HealthChecks.Create<TValue>());
-    public static IHealthChecksBuilder AddHealthCheck( this IServiceCollection services, HealthCheckRegistration registration ) => services.AddHealthChecks()
-                                                                                                                                           .Add(registration);
+
+    extension( IServiceCollection self )
+    {
+        public IHealthChecksBuilder AddHealthCheck<TValue>()
+            where TValue : IHealthCheck => self.AddHealthCheck(HealthChecks.Create<TValue>());
+
+        public IHealthChecksBuilder AddHealthCheck( HealthCheckRegistration registration ) => self.AddHealthChecks()
+                                                                                                  .Add(registration);
+    }
+
 
 
     public static Assembly[] GetAssemblies<TApp>( params ReadOnlySpan<Assembly> assemblies )
@@ -142,86 +165,97 @@ public static class DbServices
     }
 
 
-    public static WebApplicationBuilder AddDatabase<TDatabase>( this WebApplicationBuilder builder, DbOptions options )
-        where TDatabase : Database => builder.AddDatabase<TDatabase, UserStore, UserManager, RoleStore, RoleManager, SignInManager, UserValidator, RoleValidator, TokenProvider, UserPasswordValidator, DataProtectorTokenProvider, EmailTokenProvider, PhoneNumberTokenProvider, OtpAuthenticatorTokenProvider>(options);
-    public static WebApplicationBuilder AddDatabase<TDatabase, TUserStore, TUserManager, TRoleStore, TRoleManager, TSignInManager, TUserValidator, TRoleValidator, TTokenProvider, TUserPasswordValidator, TDataProtectorTokenProvider, TEmailTokenProvider, TPhoneNumberTokenProvider, TAuthenticatorTokenProvider>( this WebApplicationBuilder builder, DbOptions options )
-        where TDatabase : Database
-        where TUserStore : UserStore
-        where TUserManager : UserManager
-        where TRoleStore : RoleStore
-        where TRoleManager : RoleManager
-        where TSignInManager : SignInManager
-        where TUserValidator : UserValidator
-        where TRoleValidator : RoleValidator
-        where TTokenProvider : TokenProvider
-        where TUserPasswordValidator : UserPasswordValidator
-        where TDataProtectorTokenProvider : DataProtectorTokenProvider
-        where TEmailTokenProvider : EmailTokenProvider
-        where TPhoneNumberTokenProvider : PhoneNumberTokenProvider
-        where TAuthenticatorTokenProvider : OtpAuthenticatorTokenProvider
+
+    extension( WebApplicationBuilder self )
     {
-        builder.Services.AddSingleton(options);
-        builder.Services.AddTransient<IOptions<DbOptions>>(static provider => provider.GetRequiredService<DbOptions>());
+        public WebApplicationBuilder AddDatabase<TDatabase>( DbOptions options )
+            where TDatabase : Database => self.AddDatabase<TDatabase, UserStore, UserManager, RoleStore, RoleManager, SignInManager, UserValidator, RoleValidator, TokenProvider, UserPasswordValidator, DataProtectorTokenProvider, EmailTokenProvider, PhoneNumberTokenProvider, OtpAuthenticatorTokenProvider>(options);
+        
+        public WebApplicationBuilder AddDatabase<TDatabase, TUserStore, TUserManager, TRoleStore, TRoleManager, TSignInManager, TUserValidator, TRoleValidator, TTokenProvider, TUserPasswordValidator, TDataProtectorTokenProvider, TEmailTokenProvider, TPhoneNumberTokenProvider, TAuthenticatorTokenProvider>( DbOptions options )
+            where TDatabase : Database
+            where TUserStore : UserStore
+            where TUserManager : UserManager
+            where TRoleStore : RoleStore
+            where TRoleManager : RoleManager
+            where TSignInManager : SignInManager
+            where TUserValidator : UserValidator
+            where TRoleValidator : RoleValidator
+            where TTokenProvider : TokenProvider
+            where TUserPasswordValidator : UserPasswordValidator
+            where TDataProtectorTokenProvider : DataProtectorTokenProvider
+            where TEmailTokenProvider : EmailTokenProvider
+            where TPhoneNumberTokenProvider : PhoneNumberTokenProvider
+            where TAuthenticatorTokenProvider : OtpAuthenticatorTokenProvider
+        {
+            self.Services.AddSingleton(options);
+            self.Services.AddTransient<IOptions<DbOptions>>(static provider => provider.GetRequiredService<DbOptions>());
 
-        builder.AddOpenTelemetry<TestDatabase>(tracerOtlpExporter => { }, meterOtlpExporter => { });
+            self.AddOpenTelemetry<TestDatabase>(tracerOtlpExporter => { }, meterOtlpExporter => { });
 
-        builder.AddSerilog(options.LoggerOptions, Validate.ThrowIfNull(options.TelemetrySource), options.SeqConfig, out Logger logger);
-        options.Serilogger = logger;
+            self.AddSerilog(options.LoggerOptions, Validate.ThrowIfNull(options.TelemetrySource), options.SeqConfig, out Logger logger);
+            options.Serilogger = logger;
 
-        options.ConfigureFusionCache(builder.Services.AddFusionCache());
+            options.ConfigureFusionCache(self.Services.AddFusionCache());
 
-        builder.Services.AddSingleton<TDatabase>();
-        builder.Services.AddTransient<Database>(static provider => provider.GetRequiredService<TDatabase>());
-        builder.Services.AddHealthCheck<TDatabase>();
+            self.Services.AddSingleton<TDatabase>();
+            self.Services.AddTransient<Database>(static provider => provider.GetRequiredService<TDatabase>());
+            self.Services.AddHealthCheck<TDatabase>();
 
-        builder.Services.AddIdentityServices<TUserStore, TUserManager, TRoleStore, TRoleManager, TSignInManager, TUserValidator, TRoleValidator, TTokenProvider, TUserPasswordValidator, TDataProtectorTokenProvider, TEmailTokenProvider, TPhoneNumberTokenProvider, TAuthenticatorTokenProvider>(options);
+            self.Services.AddIdentityServices<TUserStore, TUserManager, TRoleStore, TRoleManager, TSignInManager, TUserValidator, TRoleValidator, TTokenProvider, TUserPasswordValidator, TDataProtectorTokenProvider, TEmailTokenProvider, TPhoneNumberTokenProvider, TAuthenticatorTokenProvider>(options);
 
-        builder.Services.AddDataProtection();
+            self.Services.AddDataProtection();
 
-        builder.Services.AddPasswordValidator();
+            self.Services.AddPasswordValidator();
 
-        builder.Services.AddInMemoryTokenCaches();
+            self.Services.AddInMemoryTokenCaches();
 
-        options.AddAuthentication(builder);
+            options.AddAuthentication(self);
 
-        builder.Services.AddAuthorizationBuilder()
-               .RequireMultiFactorAuthentication();
+            self.Services.AddAuthorizationBuilder()
+                .RequireMultiFactorAuthentication();
 
-        return builder;
+            return self;
+        }
+        
+        public ILoggingBuilder AddDefaultLogging<TApp>()
+            where TApp : IAppName =>
+            self.Logging.AddDefaultLogging<TApp>(self.Environment.IsDevelopment());
     }
 
 
-    public static void AddIdentityServices( this IServiceCollection services, DbOptions options ) => services.AddIdentityServices<UserStore, UserManager, RoleStore, RoleManager, SignInManager, UserValidator, RoleValidator, TokenProvider, UserPasswordValidator, DataProtectorTokenProvider, EmailTokenProvider, PhoneNumberTokenProvider, OtpAuthenticatorTokenProvider>(options);
 
-
-    /// <summary>
-    ///     <see href="https://stackoverflow.com/a/46775832/9530917"> Using ASP.NET Identity in an ASP.NET Core MVC application without Entity Framework and Migrations </see>
-    ///     <para>
-    ///         <see cref="AUTHENTICATION_SCHEME"/>
-    ///     </para>
-    /// </summary>
-    public static IdentityBuilder AddIdentityServices<TUserStore, TUserManager, TRoleStore, TRoleManager, TSignInManager, TUserValidator, TRoleValidator, TTokenProvider, TUserPasswordValidator, TDataProtectorTokenProvider, TEmailTokenProvider, TPhoneNumberTokenProvider, TAuthenticatorTokenProvider>( this IServiceCollection services, DbOptions options )
-        where TUserStore : UserStore
-        where TUserManager : UserManager
-        where TRoleStore : RoleStore
-        where TRoleManager : RoleManager
-        where TSignInManager : SignInManager
-        where TUserValidator : UserValidator
-        where TRoleValidator : RoleValidator
-        where TTokenProvider : TokenProvider
-        where TUserPasswordValidator : UserPasswordValidator
-        where TDataProtectorTokenProvider : DataProtectorTokenProvider
-        where TEmailTokenProvider : EmailTokenProvider
-        where TPhoneNumberTokenProvider : PhoneNumberTokenProvider
-        where TAuthenticatorTokenProvider : OtpAuthenticatorTokenProvider
+    extension( IServiceCollection self )
     {
-        services.AddOptions(options.ConfigureIdentityOptions);
+        public void AddIdentityServices( DbOptions options ) => self.AddIdentityServices<UserStore, UserManager, RoleStore, RoleManager, SignInManager, UserValidator, RoleValidator, TokenProvider, UserPasswordValidator, DataProtectorTokenProvider, EmailTokenProvider, PhoneNumberTokenProvider, OtpAuthenticatorTokenProvider>(options);
+        
+        /// <summary>
+        ///     <see href="https://stackoverflow.com/a/46775832/9530917"> Using ASP.NET Identity in an ASP.NET Core MVC application without Entity Framework and Migrations </see>
+        ///     <para>
+        ///         <see cref="AUTHENTICATION_SCHEME"/>
+        ///     </para>
+        /// </summary>
+        public IdentityBuilder AddIdentityServices<TUserStore, TUserManager, TRoleStore, TRoleManager, TSignInManager, TUserValidator, TRoleValidator, TTokenProvider, TUserPasswordValidator, TDataProtectorTokenProvider, TEmailTokenProvider, TPhoneNumberTokenProvider, TAuthenticatorTokenProvider>( DbOptions options )
+            where TUserStore : UserStore
+            where TUserManager : UserManager
+            where TRoleStore : RoleStore
+            where TRoleManager : RoleManager
+            where TSignInManager : SignInManager
+            where TUserValidator : UserValidator
+            where TRoleValidator : RoleValidator
+            where TTokenProvider : TokenProvider
+            where TUserPasswordValidator : UserPasswordValidator
+            where TDataProtectorTokenProvider : DataProtectorTokenProvider
+            where TEmailTokenProvider : EmailTokenProvider
+            where TPhoneNumberTokenProvider : PhoneNumberTokenProvider
+            where TAuthenticatorTokenProvider : OtpAuthenticatorTokenProvider
+        {
+            self.AddOptions(options.ConfigureIdentityOptions);
 
-        services.AddUserStore<TUserStore>();
-        services.AddRoleStore<TRoleStore>();
+            self.AddUserStore<TUserStore>();
+            self.AddRoleStore<TRoleStore>();
 
 
-        return services.AddIdentity<UserRecord, RoleRecord>()
+            return self.AddIdentity<UserRecord, RoleRecord>()
                        .AddUserStore<TUserStore>()
                        .AddUserManager<TUserManager>()
                        .AddRoleStore<TRoleStore>()
@@ -235,20 +269,20 @@ public static class DbServices
                        .AddTokenProvider(TokenOptions.DefaultPhoneProvider,         typeof(TPhoneNumberTokenProvider))
                        .AddTokenProvider(TokenOptions.DefaultAuthenticatorProvider, typeof(TAuthenticatorTokenProvider))
                        .AddTokenProvider<TTokenProvider>(nameof(TTokenProvider));
-    }
-
-
-    public static IServiceCollection AddRoleStore<TRoleStore>( this IServiceCollection services )
-        where TRoleStore : RoleStore
-    {
-        services.AddScoped<TRoleStore>();
-        services.AddTransient<IRoleStore<RoleRecord>>(static provider => provider.GetRequiredService<TRoleStore>());
-        return services;
-    }
-    public static IServiceCollection AddUserStore<TUserStore>( this IServiceCollection services )
-        where TUserStore : UserStore
-    {
-        services.AddScoped<TUserStore>()
+        }
+        
+        public IServiceCollection AddRoleStore<TRoleStore>()
+            where TRoleStore : RoleStore
+        {
+            self.AddScoped<TRoleStore>();
+            self.AddTransient<IRoleStore<RoleRecord>>(static provider => provider.GetRequiredService<TRoleStore>());
+            return self;
+        }
+        
+        public IServiceCollection AddUserStore<TUserStore>()
+            where TUserStore : UserStore
+        {
+            self.AddScoped<TUserStore>()
                 .AddTransient<IUserStore>(getUserStore)
                 .AddTransient<IUserStore<UserRecord>>(getUserStore)
                 .AddTransient<IUserLoginStore<UserRecord>>(getUserStore)
@@ -262,25 +296,26 @@ public static class DbServices
                 .AddTransient<IUserTwoFactorRecoveryCodeStore<UserRecord>>(getUserStore)
                 .AddTransient<IUserPhoneNumberStore<UserRecord>>(getUserStore);
 
-        static TUserStore getUserStore( IServiceProvider provider ) => provider.GetRequiredService<TUserStore>();
-        return services;
-    }
-
-
-    public static IServiceCollection AddOptions<TValue>( this IServiceCollection services, Action<TValue> options, string? name = null )
-        where TValue : class
-    {
-        services.AddSingleton<TValue>();
-        services.Configure(name ?? Options.DefaultName, options);
-        services.AddTransient(getValue);
-        return services;
-
-        static IOptions<TValue> getValue( IServiceProvider provider )
+            static TUserStore getUserStore( IServiceProvider provider ) => provider.GetRequiredService<TUserStore>();
+            return self;
+        }
+       
+        public IServiceCollection AddOptions<TValue>( Action<TValue> options, string? name = null )
+            where TValue : class
         {
-            TValue value = provider.GetRequiredService<TValue>();
-            return value as IOptions<TValue> ?? Options.Create(value);
+            self.AddSingleton<TValue>();
+            self.Configure(name ?? Options.DefaultName, options);
+            self.AddTransient(getValue);
+            return self;
+
+            static IOptions<TValue> getValue( IServiceProvider provider )
+            {
+                TValue value = provider.GetRequiredService<TValue>();
+                return value as IOptions<TValue> ?? Options.Create(value);
+            }
         }
     }
+
 
 
     public static JwtBearerOptions GetJwtBearerOptions( this IServiceProvider provider )
@@ -298,36 +333,39 @@ public static class DbServices
                                    TokenValidationParameters = configuration.GetTokenValidationParameters(options)
                                };
 
-        jwt.TokenHandlers.TryAdd(DbTokenHandler.Instance);
+        jwt.TokenHandlers.Add(DbTokenHandler.Instance);
         return jwt;
     }
 
 
-    public static IServiceCollection AddDataProtection( this IServiceCollection services )
+
+    extension( IServiceCollection self )
     {
-        DataProtectionServiceCollectionExtensions.AddDataProtection(services);
-        ProtectedDataProvider.Register(services);
-        return services;
+        public IServiceCollection AddDataProtection()
+        {
+            DataProtectionServiceCollectionExtensions.AddDataProtection(self);
+            ProtectedDataProvider.Register(self);
+            return self;
+        }
+        
+        public IServiceCollection AddEmailer<TEmailer>( Action<EmailerOptions> options )
+            where TEmailer : Emailer
+        {
+            self.AddOptions(options);
+            self.AddScoped<TEmailer>();
+            return self;
+        }
+        
+        public IServiceCollection AddPasswordValidator()
+        {
+            self.AddTransient<IOptions<PasswordRequirements>>(static provider => PasswordRequirements.Current);
+            self.AddScoped<UserPasswordValidator>();
+            self.AddTransient<IPasswordValidator<UserRecord>>(static provider => provider.GetRequiredService<UserPasswordValidator>());
+            return self;
+        }
     }
 
 
-    public static IServiceCollection AddEmailer<TEmailer>( this IServiceCollection services, Action<EmailerOptions> options )
-        where TEmailer : Emailer
-    {
-        services.AddOptions(options);
-        services.AddScoped<TEmailer>();
-        return services;
-    }
 
-
-    public static IServiceCollection AddPasswordValidator( this IServiceCollection services )
-    {
-        services.AddTransient<IOptions<PasswordRequirements>>(static provider => PasswordRequirements.Current);
-        services.AddScoped<UserPasswordValidator>();
-        services.AddTransient<IPasswordValidator<UserRecord>>(static provider => provider.GetRequiredService<UserPasswordValidator>());
-        return services;
-    }
-
-
-    public static AuthorizationBuilder RequireMultiFactorAuthentication( this AuthorizationBuilder builder ) { return builder.AddPolicy(nameof(RequireMfa), static policy => policy.Requirements.Add(RequireMfa.Instance)); }
+    public static AuthorizationBuilder RequireMultiFactorAuthentication( this AuthorizationBuilder builder ) => builder.AddPolicy(nameof(RequireMfa), static policy => policy.Requirements.Add(RequireMfa.Instance));
 }

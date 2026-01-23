@@ -46,14 +46,17 @@ public static class HealthChecks
     }
 
 
-    public static IHealthChecksBuilder AddHealthChecks( this WebApplicationBuilder builder ) => builder.Services.AddHealthChecks();
-    public static IHealthChecksBuilder AddHealthChecks( this WebApplicationBuilder builder, HealthCheckRegistration registration ) => builder.AddHealthChecks()
-                                                                                                                                             .Add(registration);
-    public static IHealthChecksBuilder AddHealthChecks( this WebApplicationBuilder builder, params HealthCheckRegistration[] registrations )
+    extension( WebApplicationBuilder self )
     {
-        IHealthChecksBuilder checks = builder.AddHealthChecks();
-        foreach ( HealthCheckRegistration registration in registrations ) { checks.Add(registration); }
+        public IHealthChecksBuilder AddHealthChecks() => self.Services.AddHealthChecks();
+        public IHealthChecksBuilder AddHealthChecks( HealthCheckRegistration registration ) => self.AddHealthChecks()
+                                                                                                      .Add(registration);
+        public IHealthChecksBuilder AddHealthChecks( params HealthCheckRegistration[] registrations )
+        {
+            IHealthChecksBuilder checks = self.AddHealthChecks();
+            foreach ( HealthCheckRegistration registration in registrations ) { checks.Add(registration); }
 
-        return checks;
+            return checks;
+        }
     }
 }

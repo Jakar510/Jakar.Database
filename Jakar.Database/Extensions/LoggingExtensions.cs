@@ -18,77 +18,74 @@ public static class LoggingExtensions
     public static string ConnectionString( this WebApplication configuration, string name = DEFAULT ) => configuration.Services.ConnectionString(name);
 
 
-    public static IConfigurationBuilder AddCommandLine( this          WebApplicationBuilder builder, string[]                               args )                                             => builder.Configuration.AddCommandLine(args);
-    public static IConfigurationBuilder AddCommandLine( this          WebApplicationBuilder builder, string[]                               args, IDictionary<string, string> switchMappings ) => builder.Configuration.AddCommandLine(args, switchMappings);
-    public static IConfigurationBuilder AddCommandLine( this          WebApplicationBuilder builder, Action<CommandLineConfigurationSource> configureSource ) => builder.Configuration.AddCommandLine(configureSource);
-    public static IConfigurationBuilder AddEnvironmentVariables( this WebApplicationBuilder builder )                => builder.Configuration.AddEnvironmentVariables();
-    public static IConfigurationBuilder AddEnvironmentVariables( this WebApplicationBuilder builder, string prefix ) => builder.Configuration.AddEnvironmentVariables(prefix);
-    public static IConfigurationBuilder AddEnvironmentVariables( this WebApplicationBuilder builder, params ReadOnlySpan<string> prefix )
+
+    extension( WebApplicationBuilder self )
     {
-        foreach ( string s in prefix ) { builder.Configuration.AddEnvironmentVariables(s); }
-
-        return builder.Configuration;
-    }
-
-
-    public static IConfigurationBuilder AddIniFile( this   WebApplicationBuilder builder, string                         path )                                                          => builder.Configuration.AddIniFile(path);
-    public static IConfigurationBuilder AddIniFile( this   WebApplicationBuilder builder, string                         path,     bool   optional )                                     => builder.Configuration.AddIniFile(path,     optional);
-    public static IConfigurationBuilder AddIniFile( this   WebApplicationBuilder builder, string                         path,     bool   optional, bool reloadOnChange )                => builder.Configuration.AddIniFile(path,     optional, reloadOnChange);
-    public static IConfigurationBuilder AddIniFile( this   WebApplicationBuilder builder, IFileProvider                  provider, string path,     bool optional, bool reloadOnChange ) => builder.Configuration.AddIniFile(provider, path,     optional, reloadOnChange);
-    public static IConfigurationBuilder AddIniFile( this   WebApplicationBuilder builder, Action<IniConfigurationSource> configureSource ) => builder.Configuration.AddIniFile(configureSource);
-    public static IConfigurationBuilder AddIniStream( this WebApplicationBuilder builder, Stream                         stream )          => builder.Configuration.AddIniStream(stream);
-
-
-    public static IConfigurationBuilder AddJsonFile( this   WebApplicationBuilder builder, string                          path )                                                          => builder.Configuration.AddJsonFile(path);
-    public static IConfigurationBuilder AddJsonFile( this   WebApplicationBuilder builder, string                          path,     bool   optional )                                     => builder.Configuration.AddJsonFile(path,     optional);
-    public static IConfigurationBuilder AddJsonFile( this   WebApplicationBuilder builder, string                          path,     bool   optional, bool reloadOnChange )                => builder.Configuration.AddJsonFile(path,     optional, reloadOnChange);
-    public static IConfigurationBuilder AddJsonFile( this   WebApplicationBuilder builder, IFileProvider                   provider, string path,     bool optional, bool reloadOnChange ) => builder.Configuration.AddJsonFile(provider, path,     optional, reloadOnChange);
-    public static IConfigurationBuilder AddJsonFile( this   WebApplicationBuilder builder, Action<JsonConfigurationSource> configureSource ) => builder.Configuration.AddJsonFile(configureSource);
-    public static IConfigurationBuilder AddJsonStream( this WebApplicationBuilder builder, Stream                          stream )          => builder.Configuration.AddJsonStream(stream);
-
-
-    public static ILoggingBuilder AddDefaultLogging<TValue>( this WebApplicationBuilder builder )
-        where TValue : class =>
-        builder.AddDefaultLogging<TValue>(builder.Environment.EnvironmentName == Environments.Development);
-    public static ILoggingBuilder AddDefaultLogging<TValue>( this WebApplicationBuilder builder, bool isDevEnvironment )
-        where TValue : class =>
-        builder.AddDefaultLogging<TValue>(isDevEnvironment
-                                              ? LogLevel.Trace
-                                              : LogLevel.Information);
-    public static ILoggingBuilder AddDefaultLogging<TValue>( this WebApplicationBuilder builder, in LogLevel minimumLevel )
-        where TValue : class =>
-        builder.AddDefaultLogging(minimumLevel, typeof(TValue).Name);
-
-
-    public static ILoggingBuilder AddDefaultLogging( this WebApplicationBuilder builder, in LogLevel minimumLevel, in string name )
-    {
-        builder.Logging.ClearProviders();
-        builder.Logging.SetMinimumLevel(minimumLevel);
-        builder.Logging.AddProvider(new DebugLoggerProvider());
-
-        builder.Logging.AddSimpleConsole(options =>
-                                         {
-                                             options.ColorBehavior = LoggerColorBehavior.Enabled;
-                                             options.SingleLine    = false;
-                                             options.IncludeScopes = true;
-                                         });
-
-
-        if ( OperatingSystem.IsWindows() )
+        public IConfigurationBuilder AddCommandLine( string[]                               args )                                             => self.Configuration.AddCommandLine(args);
+        public IConfigurationBuilder AddCommandLine( string[]                               args, IDictionary<string, string> switchMappings ) => self.Configuration.AddCommandLine(args, switchMappings);
+        public IConfigurationBuilder AddCommandLine( Action<CommandLineConfigurationSource> configureSource ) => self.Configuration.AddCommandLine(configureSource);
+        public IConfigurationBuilder AddEnvironmentVariables()                                                => self.Configuration.AddEnvironmentVariables();
+        public IConfigurationBuilder AddEnvironmentVariables( string prefix )                                 => self.Configuration.AddEnvironmentVariables(prefix);
+        public IConfigurationBuilder AddEnvironmentVariables( params ReadOnlySpan<string> prefix )
         {
-            builder.Logging.AddProvider(new EventLogLoggerProvider(new EventLogSettings
-                                                                   {
-                                                                       SourceName  = name,
-                                                                       LogName     = name,
-                                                                       MachineName = GetMachineName(),
-                                                                       Filter      = ( category, level ) => level > LogLevel.Information
-                                                                   }));
+            foreach ( string s in prefix ) { self.Configuration.AddEnvironmentVariables(s); }
+
+            return self.Configuration;
         }
-        else { builder.Logging.AddSystemdConsole(options => options.UseUtcTimestamp = true); }
+        public IConfigurationBuilder AddIniFile( string                           path )                                                          => self.Configuration.AddIniFile(path);
+        public IConfigurationBuilder AddIniFile( string                           path,     bool   optional )                                     => self.Configuration.AddIniFile(path,     optional);
+        public IConfigurationBuilder AddIniFile( string                           path,     bool   optional, bool reloadOnChange )                => self.Configuration.AddIniFile(path,     optional, reloadOnChange);
+        public IConfigurationBuilder AddIniFile( IFileProvider                    provider, string path,     bool optional, bool reloadOnChange ) => self.Configuration.AddIniFile(provider, path,     optional, reloadOnChange);
+        public IConfigurationBuilder AddIniFile( Action<IniConfigurationSource>   configureSource )                                               => self.Configuration.AddIniFile(configureSource);
+        public IConfigurationBuilder AddIniStream( Stream                         stream )                                                        => self.Configuration.AddIniStream(stream);
+        public IConfigurationBuilder AddJsonFile( string                          path )                                                          => self.Configuration.AddJsonFile(path);
+        public IConfigurationBuilder AddJsonFile( string                          path,     bool   optional )                                     => self.Configuration.AddJsonFile(path,     optional);
+        public IConfigurationBuilder AddJsonFile( string                          path,     bool   optional, bool reloadOnChange )                => self.Configuration.AddJsonFile(path,     optional, reloadOnChange);
+        public IConfigurationBuilder AddJsonFile( IFileProvider                   provider, string path,     bool optional, bool reloadOnChange ) => self.Configuration.AddJsonFile(provider, path,     optional, reloadOnChange);
+        public IConfigurationBuilder AddJsonFile( Action<JsonConfigurationSource> configureSource ) => self.Configuration.AddJsonFile(configureSource);
+        public IConfigurationBuilder AddJsonStream( Stream                        stream )          => self.Configuration.AddJsonStream(stream);
+        public ILoggingBuilder AddDefaultLogging<TValue>()
+            where TValue : class =>
+            self.AddDefaultLogging<TValue>(self.Environment.EnvironmentName == Environments.Development);
+        public ILoggingBuilder AddDefaultLogging<TValue>( bool isDevEnvironment )
+            where TValue : class =>
+            self.AddDefaultLogging<TValue>(isDevEnvironment
+                                               ? LogLevel.Trace
+                                               : LogLevel.Information);
+        public ILoggingBuilder AddDefaultLogging<TValue>( in LogLevel minimumLevel )
+            where TValue : class =>
+            self.AddDefaultLogging(minimumLevel, typeof(TValue).Name);
+        public ILoggingBuilder AddDefaultLogging( in LogLevel minimumLevel, in string name )
+        {
+            self.Logging.ClearProviders();
+            self.Logging.SetMinimumLevel(minimumLevel);
+            self.Logging.AddProvider(new DebugLoggerProvider());
+
+            self.Logging.AddSimpleConsole(options =>
+                                          {
+                                              options.ColorBehavior = LoggerColorBehavior.Enabled;
+                                              options.SingleLine    = false;
+                                              options.IncludeScopes = true;
+                                          });
 
 
-        return builder.Logging;
+            if ( OperatingSystem.IsWindows() )
+            {
+                self.Logging.AddProvider(new EventLogLoggerProvider(new EventLogSettings
+                                                                    {
+                                                                        SourceName  = name,
+                                                                        LogName     = name,
+                                                                        MachineName = GetMachineName(),
+                                                                        Filter      = ( category, level ) => level > LogLevel.Information
+                                                                    }));
+            }
+            else { self.Logging.AddSystemdConsole(options => options.UseUtcTimestamp = true); }
+
+
+            return self.Logging;
+        }
     }
+
 
 
     public static string GetMachineName()
