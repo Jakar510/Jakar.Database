@@ -1,9 +1,6 @@
 ﻿// Jakar.Extensions :: Jakar.Database
 // 09/30/2025  20:32
 
-using Jakar.Extensions;
-using Npgsql.BackendMessages;
-using Serilog.Sinks.File;
 using ZLinq.Linq;
 
 
@@ -12,7 +9,6 @@ namespace Jakar.Database;
 
 
 [Serializable]
-[method: SetsRequiredMembers]
 public sealed record MigrationRecord : BaseRecord<MigrationRecord>, ITableRecord<MigrationRecord>
 {
     public const             string         TABLE_NAME = "migrations";

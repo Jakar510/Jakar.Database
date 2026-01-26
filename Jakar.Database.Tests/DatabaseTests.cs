@@ -78,11 +78,9 @@ public sealed class DatabaseTests : Assert
 
         Multiple(() =>
                  {
-                     That(admin.ID,       Is.Not.Null);
                      That(admin.ID.Value, Is.Not.EqualTo(Guid.Empty));
                      That(admin.ID.Value, Is.Not.EqualTo(Guid.AllBitsSet));
 
-                     That(user.ID,       Is.Not.Null);
                      That(user.ID.Value, Is.Not.EqualTo(Guid.Empty));
                      That(user.ID.Value, Is.Not.EqualTo(Guid.AllBitsSet));
 

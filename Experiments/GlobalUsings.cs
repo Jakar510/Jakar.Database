@@ -30,8 +30,6 @@ global using BenchmarkDotNet.Reports;
 global using BenchmarkDotNet.Running;
 global using Bogus;
 global using HashidsNet;
-global using Jakar.Database.Experiments;
-global using Jakar.Database.Experiments.Benchmarks;
 global using Jakar.Extensions;
 global using Newtonsoft.Json;
 global using Newtonsoft.Json.Linq;

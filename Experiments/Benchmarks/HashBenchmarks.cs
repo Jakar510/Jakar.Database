@@ -5,7 +5,7 @@ using Hashids = HashidsNet.Hashids;
 
 
 
-namespace Jakar.Database.Experiments.Benchmarks;
+namespace Experiments.Benchmarks;
 
 
 /*

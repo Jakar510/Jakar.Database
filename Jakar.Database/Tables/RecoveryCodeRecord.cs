@@ -67,7 +67,9 @@ public sealed record RecoveryCodeRecord( [property: StringLength(1024)] string C
                                             """);
 
 
-    [Pure] public static Codes Create( UserRecord user, IEnumerable<string>              recoveryCodes ) => Create(user, recoveryCodes.GetInternalArray());
+    [Pure] public static Codes Create( UserRecord user, IEnumerable<string> recoveryCodes ) => Create(user,
+                                                                                                      recoveryCodes.ToArray()
+                                                                                                                   .AsSpan());
     [Pure] public static Codes Create( UserRecord user, List<string>                     recoveryCodes ) => Create(user, CollectionsMarshal.AsSpan(recoveryCodes));
     [Pure] public static Codes Create( UserRecord user, scoped in ReadOnlyMemory<string> recoveryCodes ) => Create(user, recoveryCodes.Span);
     [Pure] public static Codes Create( UserRecord user, params ReadOnlySpan<string> recoveryCodes )

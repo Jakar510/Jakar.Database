@@ -86,11 +86,11 @@ public static class DbServices
         public ILoggingBuilder AddDefaultLogging<TApp>( bool isDevEnvironment )
             where TApp : IAppName =>
             self.AddDefaultLogging<TApp>(isDevEnvironment.GetLogLevel());
-        
+
         public ILoggingBuilder AddDefaultLogging<TApp>( in LogLevel minimumLevel )
             where TApp : IAppName =>
             self.AddDefaultLogging(minimumLevel, TApp.AppName);
-        
+
         public ILoggingBuilder AddDefaultLogging( in LogLevel minimumLevel, in string name )
         {
             self.ClearProviders();
@@ -145,7 +145,7 @@ public static class DbServices
 
     extension( IServiceCollection self )
     {
-        public IHealthChecksBuilder AddHealthCheck<TValue>()
+        public IHealthChecksBuilder AddHealthCheck<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)] TValue>()
             where TValue : IHealthCheck => self.AddHealthCheck(HealthChecks.Create<TValue>());
 
         public IHealthChecksBuilder AddHealthCheck( HealthCheckRegistration registration ) => self.AddHealthChecks()
@@ -168,10 +168,14 @@ public static class DbServices
 
     extension( WebApplicationBuilder self )
     {
-        public WebApplicationBuilder AddDatabase<TDatabase>( DbOptions options )
+        public WebApplicationBuilder AddDatabase<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)] TDatabase>( DbOptions options )
             where TDatabase : Database => self.AddDatabase<TDatabase, UserStore, UserManager, RoleStore, RoleManager, SignInManager, UserValidator, RoleValidator, TokenProvider, UserPasswordValidator, DataProtectorTokenProvider, EmailTokenProvider, PhoneNumberTokenProvider, OtpAuthenticatorTokenProvider>(options);
-        
-        public WebApplicationBuilder AddDatabase<TDatabase, TUserStore, TUserManager, TRoleStore, TRoleManager, TSignInManager, TUserValidator, TRoleValidator, TTokenProvider, TUserPasswordValidator, TDataProtectorTokenProvider, TEmailTokenProvider, TPhoneNumberTokenProvider, TAuthenticatorTokenProvider>( DbOptions options )
+
+        public WebApplicationBuilder AddDatabase<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)] TDatabase, [DynamicallyAccessedMembers(                DynamicallyAccessedMemberTypes.PublicConstructors)] TUserStore, [DynamicallyAccessedMembers(                 DynamicallyAccessedMemberTypes.PublicConstructors)] TUserManager,
+                                                 [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)] TRoleStore, [DynamicallyAccessedMembers(               DynamicallyAccessedMemberTypes.PublicConstructors)] TRoleManager, [DynamicallyAccessedMembers(               DynamicallyAccessedMemberTypes.PublicConstructors)] TSignInManager,
+                                                 [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)] TUserValidator, [DynamicallyAccessedMembers(           DynamicallyAccessedMemberTypes.PublicConstructors)] TRoleValidator, [DynamicallyAccessedMembers(             DynamicallyAccessedMemberTypes.PublicConstructors)] TTokenProvider,
+                                                 [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)] TUserPasswordValidator, [DynamicallyAccessedMembers(   DynamicallyAccessedMemberTypes.PublicConstructors)] TDataProtectorTokenProvider, [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)] TEmailTokenProvider,
+                                                 [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)] TPhoneNumberTokenProvider, [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)] TAuthenticatorTokenProvider>( DbOptions options )
             where TDatabase : Database
             where TUserStore : UserStore
             where TUserManager : UserManager
@@ -216,7 +220,7 @@ public static class DbServices
 
             return self;
         }
-        
+
         public ILoggingBuilder AddDefaultLogging<TApp>()
             where TApp : IAppName =>
             self.Logging.AddDefaultLogging<TApp>(self.Environment.IsDevelopment());
@@ -227,14 +231,18 @@ public static class DbServices
     extension( IServiceCollection self )
     {
         public void AddIdentityServices( DbOptions options ) => self.AddIdentityServices<UserStore, UserManager, RoleStore, RoleManager, SignInManager, UserValidator, RoleValidator, TokenProvider, UserPasswordValidator, DataProtectorTokenProvider, EmailTokenProvider, PhoneNumberTokenProvider, OtpAuthenticatorTokenProvider>(options);
-        
+
         /// <summary>
         ///     <see href="https://stackoverflow.com/a/46775832/9530917"> Using ASP.NET Identity in an ASP.NET Core MVC application without Entity Framework and Migrations </see>
         ///     <para>
         ///         <see cref="AUTHENTICATION_SCHEME"/>
         ///     </para>
         /// </summary>
-        public IdentityBuilder AddIdentityServices<TUserStore, TUserManager, TRoleStore, TRoleManager, TSignInManager, TUserValidator, TRoleValidator, TTokenProvider, TUserPasswordValidator, TDataProtectorTokenProvider, TEmailTokenProvider, TPhoneNumberTokenProvider, TAuthenticatorTokenProvider>( DbOptions options )
+        public IdentityBuilder AddIdentityServices<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)] TUserStore, [DynamicallyAccessedMembers(                 DynamicallyAccessedMemberTypes.PublicConstructors)] TUserManager, [DynamicallyAccessedMembers(       DynamicallyAccessedMemberTypes.PublicConstructors)] TRoleStore,
+                                                   [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)] TRoleManager, [DynamicallyAccessedMembers(               DynamicallyAccessedMemberTypes.PublicConstructors)] TSignInManager, [DynamicallyAccessedMembers(     DynamicallyAccessedMemberTypes.PublicConstructors)] TUserValidator,
+                                                   [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)] TRoleValidator, [DynamicallyAccessedMembers(             DynamicallyAccessedMemberTypes.PublicConstructors)] TTokenProvider, [DynamicallyAccessedMembers(     DynamicallyAccessedMemberTypes.PublicConstructors)] TUserPasswordValidator,
+                                                   [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)] TDataProtectorTokenProvider, [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)] TEmailTokenProvider, [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)] TPhoneNumberTokenProvider,
+                                                   [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)] TAuthenticatorTokenProvider>( DbOptions options )
             where TUserStore : UserStore
             where TUserManager : UserManager
             where TRoleStore : RoleStore
@@ -270,16 +278,16 @@ public static class DbServices
                        .AddTokenProvider(TokenOptions.DefaultAuthenticatorProvider, typeof(TAuthenticatorTokenProvider))
                        .AddTokenProvider<TTokenProvider>(nameof(TTokenProvider));
         }
-        
-        public IServiceCollection AddRoleStore<TRoleStore>()
+
+        public IServiceCollection AddRoleStore<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)] TRoleStore>()
             where TRoleStore : RoleStore
         {
             self.AddScoped<TRoleStore>();
             self.AddTransient<IRoleStore<RoleRecord>>(static provider => provider.GetRequiredService<TRoleStore>());
             return self;
         }
-        
-        public IServiceCollection AddUserStore<TUserStore>()
+
+        public IServiceCollection AddUserStore<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)] TUserStore>()
             where TUserStore : UserStore
         {
             self.AddScoped<TUserStore>()
@@ -296,11 +304,12 @@ public static class DbServices
                 .AddTransient<IUserTwoFactorRecoveryCodeStore<UserRecord>>(getUserStore)
                 .AddTransient<IUserPhoneNumberStore<UserRecord>>(getUserStore);
 
-            static TUserStore getUserStore( IServiceProvider provider ) => provider.GetRequiredService<TUserStore>();
             return self;
+
+            static TUserStore getUserStore( IServiceProvider provider ) => provider.GetRequiredService<TUserStore>();
         }
-       
-        public IServiceCollection AddOptions<TValue>( Action<TValue> options, string? name = null )
+
+        public IServiceCollection AddOptions<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)] TValue>( Action<TValue> options, string? name = null )
             where TValue : class
         {
             self.AddSingleton<TValue>();
@@ -347,15 +356,15 @@ public static class DbServices
             ProtectedDataProvider.Register(self);
             return self;
         }
-        
-        public IServiceCollection AddEmailer<TEmailer>( Action<EmailerOptions> options )
+
+        public IServiceCollection AddEmailer<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)] TEmailer>( Action<EmailerOptions> options )
             where TEmailer : Emailer
         {
             self.AddOptions(options);
             self.AddScoped<TEmailer>();
             return self;
         }
-        
+
         public IServiceCollection AddPasswordValidator()
         {
             self.AddTransient<IOptions<PasswordRequirements>>(static provider => PasswordRequirements.Current);

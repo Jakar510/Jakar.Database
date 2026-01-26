@@ -1,7 +1,7 @@
 ﻿// Jakar.Extensions :: Jakar.SqlBuilder
 // 3/1/2024  23:20
 
-namespace Jakar.Database.DbMigrations;
+namespace Jakar.Database;
 
 
 /*

@@ -34,14 +34,19 @@
 		<Title>Jakar.Database</Title>
 		<Product>Jakar.Database</Product>
 		<UserSecretsId>f0c1e38f-9f87-44b2-907a-a77b41066866</UserSecretsId>
+		<VerifyReferenceTrimCompatibility>True</VerifyReferenceTrimCompatibility>
+		<TreatWarningsAsErrors>False</TreatWarningsAsErrors>
+		<IsAotCompatible>False</IsAotCompatible>
+		<IsTrimmable>False</IsTrimmable>
 	</PropertyGroup>
+
 
 	<ItemGroup>
 		<Service Include="{3259aa49-8aa1-44d3-9025-a0b520596a8c}" />
 	</ItemGroup>
 
 	<ItemGroup>
-		<None Include="..\images\icon.png">
+		<None Include="..\icon.png">
 			<Pack>True</Pack>
 			<PackagePath>\</PackagePath>
 		</None>
@@ -55,9 +60,19 @@
 		</None>
 	</ItemGroup>
 
+	<!--
 	<ItemGroup>
 		<Analyzer Include="..\Jakar.Database.Generators\bin\Debug\net10.0\Jakar.Database.Generators.dll" />
 	</ItemGroup>
+	-->
+
+	<!--
+	<ItemGroup>
+		<ProjectReference Include="..\Jakar.Database.Generators\Jakar.Database.Generators.csproj"
+						  OutputItemType="Analyzer"
+						  ReferenceOutputAssembly="true" />
+	</ItemGroup>
+	-->
 
 	<ItemGroup>
 		<InternalsVisibleTo Include="Experiments" />
@@ -148,13 +163,4 @@
 			<HintPath>C:\Users\jakar\.nuget\packages\oneof\3.0.271\lib\netstandard2.0\OneOf.dll</HintPath>
 		</Reference>
 	</ItemGroup>
-
-	<!--
-	<ItemGroup>
-		<ProjectReference Include="..\Jakar.Database.Generators\Jakar.Database.Generators.csproj"
-						  OutputItemType="Analyzer"
-						  ReferenceOutputAssembly="true" />
-	</ItemGroup>
-	-->
-
 </Project>
