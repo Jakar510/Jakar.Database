@@ -1,44 +1,42 @@
-﻿using Jakar.Extensions;
-using Microsoft.AspNetCore.Builder;
+﻿// Jakar.Database :: Jakar.Database.Tests
+// 01/26/2026  09:59
+
+using System.Collections.Immutable;
+using System.Diagnostics.CodeAnalysis;
+using Jakar.Extensions;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Options;
-using NUnit.Framework;
 using Testcontainers.PostgreSql;
-using static Jakar.Database.TestDatabase;
 
 
 
 namespace Jakar.Database.Tests;
 
 
-[]
-public sealed class Tests : Assert
-{
-    [SetUp] public async Task Setup()
-    {
-        PostgreSqlContainer? postgreSqlContainer = new PostgreSqlBuilder("postgres:18.1").Build();
-        await postgreSqlContainer.StartAsync();
-    }
-    [Test] public async Task ApplyAndValidateMigrations() { await TestDatabase.TestAsync(); }
-}
-
-
-
 [TestFixture]
-[NonParallelizable] // DB + migrations → avoid parallel runs
-public sealed class TestDatabaseTests : Assert
+[NonParallelizable]
+[SuppressMessage("ReSharper", "UnusedVariable")] // DB + migrations → avoid parallel runs
+public sealed class DatabaseTests : Assert
 {
-    private WebApplication __app   = null!;
-    private IServiceScope  __scope = null!;
-    private TestDatabase   __db    = null!;
-
+    private WebApplication       __app   = null!;
+    private IServiceScope        __scope = null!;
+    private TestDatabase         __db    = null!;
+    private PostgreSqlContainer? __postgreSqlContainer;
     [OneTimeSetUp] public async Task OneTimeSetup()
     {
+        const string      USER             = "dev";
+        const string      PASSWORD         = "dev";
+        PostgreSqlBuilder containerBuilder = new("postgres:18.1");
+        containerBuilder.WithUsername(USER);
+        containerBuilder.WithPassword(PASSWORD);
+        containerBuilder.WithDatabase(TestDatabase.AppName);
+
+        __postgreSqlContainer = containerBuilder.Build();
+        await __postgreSqlContainer.StartAsync();
+        
         WebApplicationBuilder builder = WebApplication.CreateBuilder();
 
-        SecuredStringResolverOptions connectionString = $"User ID=dev;Password=dev;Host=localhost;Port=5432;Database={TestDatabase.AppName}";
+        SecuredStringResolverOptions connectionString = $"User ID={USER};Password={PASSWORD};Host={__postgreSqlContainer.IpAddress};Port={__postgreSqlContainer.GetMappedPublicPort()};Database={TestDatabase.AppName}";
 
         DbOptions options = new()
                             {
@@ -51,11 +49,6 @@ public sealed class TestDatabaseTests : Assert
         builder.AddDatabase<TestDatabase>(options);
 
         __app = builder.Build();
-        __app.UseDefaults();
-
-        __app.MapGet("/",     () => DateTimeOffset.UtcNow);
-        __app.MapGet("/Ping", () => DateTimeOffset.UtcNow);
-
         await __app.ApplyMigrations();
 
         __scope = __app.Services.CreateScope();
@@ -66,6 +59,12 @@ public sealed class TestDatabaseTests : Assert
     {
         __scope.Dispose();
         await __app.DisposeAsync();
+
+        if ( __postgreSqlContainer is not null )
+        {
+            await __postgreSqlContainer.StopAsync();
+            await __postgreSqlContainer.DisposeAsync();
+        }
     }
 
 
@@ -77,15 +76,20 @@ public sealed class TestDatabaseTests : Assert
     {
         ( UserRecord admin, UserRecord user ) = await Add_Users(__db);
 
-        Assert.Multiple(() =>
-                        {
-                            Assert.That(admin.ID, Is.Not.Null);
-                            Assert.That(user.ID,  Is.Not.Null);
+        Multiple(() =>
+                 {
+                     That(admin.ID,       Is.Not.Null);
+                     That(admin.ID.Value, Is.Not.EqualTo(Guid.Empty));
+                     That(admin.ID.Value, Is.Not.EqualTo(Guid.AllBitsSet));
 
-                            Assert.That(admin.Rights,
-                                        Is.EqualTo(Permissions<TestRight>.SA()
-                                                                         .ToString()));
-                        });
+                     That(user.ID,       Is.Not.Null);
+                     That(user.ID.Value, Is.Not.EqualTo(Guid.Empty));
+                     That(user.ID.Value, Is.Not.EqualTo(Guid.AllBitsSet));
+
+                     That(admin.Rights,
+                          Is.EqualTo(Permissions<TestDatabase.TestRight>.SA()
+                                                                        .ToString()));
+                 });
     }
 
     // ------------------------------------------------------------
@@ -96,10 +100,9 @@ public sealed class TestDatabaseTests : Assert
     {
         ( UserRecord admin, UserRecord user )         = await Add_Users(__db);
         ( RoleRecord adminRole, RoleRecord userRole ) = await Add_Roles(__db, admin);
+        ImmutableArray<UserRoleRecord> roles = await Add_Roles(__db, user, [adminRole, userRole]);
 
-        UserRoleRecord[] roles = await Add_Roles(__db, user, [adminRole, userRole]);
-
-        Assert.That(roles, Has.Length.EqualTo(2));
+        That(roles, Has.Length.EqualTo(2));
     }
 
     // ------------------------------------------------------------
@@ -110,10 +113,9 @@ public sealed class TestDatabaseTests : Assert
     {
         ( UserRecord admin, UserRecord user )             = await Add_Users(__db);
         ( GroupRecord adminGroup, GroupRecord userGroup ) = await Add_Group(__db, admin);
-
         UserGroupRecord[] groups = await Add_Groups(__db, user, [adminGroup, userGroup]);
 
-        Assert.That(groups, Has.Length.EqualTo(2));
+        That(groups, Has.Length.EqualTo(2));
     }
 
     // ------------------------------------------------------------
@@ -122,12 +124,11 @@ public sealed class TestDatabaseTests : Assert
 
     [Test] public async Task Can_Add_Address_To_User()
     {
-        ( _, UserRecord user ) = await Add_Users(__db);
-
+        ( UserRecord admin, UserRecord user )             = await Add_Users(__db);
         ( AddressRecord address, UserAddressRecord link ) = await Add_Address(__db, user);
 
-        Assert.That(address.ID, Is.Not.Null);
-        Assert.That(link.ID,    Is.EqualTo(user.ID));
+        That(address.ID, Is.Not.Null);
+        That(link.ID,    Is.EqualTo(user.ID));
     }
 
     // ------------------------------------------------------------
@@ -136,12 +137,11 @@ public sealed class TestDatabaseTests : Assert
 
     [Test] public async Task Can_Assign_File_As_User_Image()
     {
-        ( _, UserRecord user ) = await Add_Users(__db);
-
+        ( UserRecord admin, UserRecord user ) = await Add_Users(__db);
         FileRecord file = await Add_File(__db, user);
 
-        Assert.That(file.ID,      Is.Not.Null);
-        Assert.That(user.ImageID, Is.EqualTo(file));
+        That(file.ID,      Is.Not.Null);
+        That(user.ImageID, Is.EqualTo(file));
     }
 
     // ------------------------------------------------------------
@@ -150,11 +150,10 @@ public sealed class TestDatabaseTests : Assert
 
     [Test] public async Task Can_Add_Login_Provider()
     {
-        ( _, UserRecord user ) = await Add_Users(__db);
-
+        ( UserRecord admin, UserRecord user ) = await Add_Users(__db);
         UserLoginProviderRecord record = await Add_UserLoginProvider(__db, user);
 
-        Assert.That(record.ID, Is.EqualTo(user.ID));
+        That(record.ID, Is.EqualTo(user.ID));
     }
 
     // ------------------------------------------------------------
@@ -163,12 +162,11 @@ public sealed class TestDatabaseTests : Assert
 
     [Test] public async Task Can_Create_Recovery_Codes()
     {
-        ( _, UserRecord user ) = await Add_Users(__db);
+        ( UserRecord admin, UserRecord user )                                                          = await Add_Users(__db);
+        ( ImmutableArray<RecoveryCodeRecord> codes, ImmutableArray<UserRecoveryCodeRecord> userCodes ) = await Add_RecoveryCodes(__db, user);
 
-        var (codes, userCodes) = await Add_RecoveryCodes(__db, user);
-
-        Assert.That(codes,     Has.Length.EqualTo(10));
-        Assert.That(userCodes, Has.Length.EqualTo(10));
+        That(codes,     Has.Length.EqualTo(10));
+        That(userCodes, Has.Length.EqualTo(10));
     }
 
     // =====================================================================
@@ -189,33 +187,33 @@ public sealed class TestDatabaseTests : Assert
 
     private static async ValueTask<(RoleRecord Admin, RoleRecord User)> Add_Roles( Database db, UserRecord adminUser, CancellationToken token = default )
     {
-        RoleRecord admin = RoleRecord.Create("Admin", Permissions<TestDatabase.TestRight>.SA(), "Admins", adminUser);
-
-        RoleRecord user = RoleRecord.Create("User", Permissions<TestDatabase.TestRight>.Create(TestDatabase.TestRight.Read), "Users", adminUser);
+        RoleRecord admin = RoleRecord.Create("Admin", Permissions<TestDatabase.TestRight>.SA(),                                "Admins", adminUser);
+        RoleRecord user  = RoleRecord.Create("User",  Permissions<TestDatabase.TestRight>.Create(TestDatabase.TestRight.Read), "Users",  adminUser);
 
         return ( await db.Roles.Insert(admin, token), await db.Roles.Insert(user, token) );
     }
 
-    private static async ValueTask<UserRoleRecord[]> Add_Roles( Database db, UserRecord user, RoleRecord[] roles, CancellationToken token = default )
+    private static async ValueTask<ImmutableArray<UserRoleRecord>> Add_Roles( Database db, UserRecord user, RoleRecord[] roles, CancellationToken token = default )
     {
-        ReadOnlyMemory<UserRoleRecord> records = UserRoleRecord.Create(user, roles);
+        ImmutableArray<UserRoleRecord> records = UserRoleRecord.Create(user, roles.AsSpan());
 
-        return await db.UserRoles.Insert(records, token)
-                       .ToArray(records.Length, token);
+        UserRoleRecord[] array = await db.UserRoles.Insert(records, token)
+                                         .ToArray(records.Length, token);
+
+        return array.AsImmutableArray();
     }
 
     private static async ValueTask<(GroupRecord Admin, GroupRecord User)> Add_Group( Database db, UserRecord adminUser, CancellationToken token = default )
     {
-        GroupRecord admin = GroupRecord.Create("Admin", Permissions<TestDatabase.TestRight>.SA(), "Admin", adminUser);
-
-        GroupRecord user = GroupRecord.Create("User", Permissions<TestDatabase.TestRight>.Create(TestDatabase.TestRight.Read), "User", adminUser);
+        GroupRecord admin = GroupRecord.Create("Admin", Permissions<TestDatabase.TestRight>.SA(),                                "Admin", adminUser);
+        GroupRecord user  = GroupRecord.Create("User",  Permissions<TestDatabase.TestRight>.Create(TestDatabase.TestRight.Read), "User",  adminUser);
 
         return ( await db.Groups.Insert(admin, token), await db.Groups.Insert(user, token) );
     }
 
     private static async ValueTask<UserGroupRecord[]> Add_Groups( Database db, UserRecord user, GroupRecord[] groups, CancellationToken token = default )
     {
-        ReadOnlyMemory<UserGroupRecord> records = UserGroupRecord.Create(user, groups);
+        ImmutableArray<UserGroupRecord> records = UserGroupRecord.Create(user, groups.AsSpan());
 
         return await db.UserGroups.Insert(records, token)
                        .ToArray(records.Length, token);
@@ -251,16 +249,16 @@ public sealed class TestDatabaseTests : Assert
         return await db.UserLoginProviders.Insert(record, token);
     }
 
-    private static async ValueTask<(RecoveryCodeRecord[], UserRecoveryCodeRecord[])> Add_RecoveryCodes( Database db, UserRecord user, CancellationToken token = default )
+    private static async ValueTask<(ImmutableArray<RecoveryCodeRecord>, ImmutableArray<UserRecoveryCodeRecord>)> Add_RecoveryCodes( Database db, UserRecord user, CancellationToken token = default )
     {
         RecoveryCodeRecord.Codes codes = RecoveryCodeRecord.Create(user, 10);
 
         RecoveryCodeRecord[] records = await db.RecoveryCodes.Insert(codes.Values, token)
                                                .ToArray(codes.Count, token);
 
-        UserRecoveryCodeRecord[] links = await db.UserRecoveryCodes.Insert(UserRecoveryCodeRecord.Create(user, records), token)
+        UserRecoveryCodeRecord[] links = await db.UserRecoveryCodes.Insert(UserRecoveryCodeRecord.Create(user, records.AsSpan()), token)
                                                  .ToArray(records.Length, token);
 
-        return ( records, links );
+        return ( records.AsImmutableArray(), links.AsImmutableArray() );
     }
 }

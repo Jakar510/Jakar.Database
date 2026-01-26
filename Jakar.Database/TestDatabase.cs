@@ -87,7 +87,7 @@ internal sealed class TestDatabase( IConfiguration configuration, IOptions<DbOpt
         RecoveryCodeRecord[] records = await db.RecoveryCodes.Insert(codes.Values, token)
                                                .ToArray(codes.Count, token);
 
-        UserRecoveryCodeRecord[] memory = UserRecoveryCodeRecord.Create(user, records.AsSpan());
+        ImmutableArray<UserRecoveryCodeRecord> memory = UserRecoveryCodeRecord.Create(user, records.AsSpan());
 
         UserRecoveryCodeRecord[] results = await db.UserRecoveryCodes.Insert(memory.AsMemory(), token)
                                                    .ToArray(records.Length, token);
@@ -117,7 +117,7 @@ internal sealed class TestDatabase( IConfiguration configuration, IOptions<DbOpt
     }
     private static async ValueTask<UserGroupRecord[]> Add_Roles( Database db, UserRecord user, GroupRecord[] roles, CancellationToken token = default )
     {
-        ReadOnlyMemory<UserGroupRecord> records = UserGroupRecord.Create(user, roles.AsSpan());
+        ImmutableArray<UserGroupRecord> records = UserGroupRecord.Create(user, roles.AsSpan());
 
         UserGroupRecord[] results = await db.UserGroups.Insert(records, token)
                                             .ToArray(records.Length, token);
@@ -126,7 +126,7 @@ internal sealed class TestDatabase( IConfiguration configuration, IOptions<DbOpt
     }
     private static async ValueTask<UserRoleRecord[]> Add_Roles( Database db, UserRecord user, RoleRecord[] roles, CancellationToken token = default )
     {
-        ReadOnlyMemory<UserRoleRecord> records = UserRoleRecord.Create(user, roles.AsSpan());
+        ImmutableArray<UserRoleRecord> records = UserRoleRecord.Create(user, roles.AsSpan());
 
         UserRoleRecord[] results = await db.UserRoles.Insert(records, token)
                                            .ToArray(records.Length, token);

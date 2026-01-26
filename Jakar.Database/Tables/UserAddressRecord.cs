@@ -19,19 +19,19 @@ public sealed record UserAddressRecord : Mapping<UserAddressRecord, UserRecord, 
 
     [Pure] public static UserAddressRecord Create( UserRecord           key, AddressRecord           value ) => new(key, value);
     [Pure] public static UserAddressRecord Create( RecordID<UserRecord> key, RecordID<AddressRecord> value ) => new(key, value);
-    [Pure] public static UserAddressRecord[] Create( UserRecord key, params ReadOnlySpan<AddressRecord> values )
+    [Pure] public static ImmutableArray<UserAddressRecord> Create( UserRecord key, params ReadOnlySpan<AddressRecord> values )
     {
         UserAddressRecord[] records = new UserAddressRecord[values.Length];
         for ( int i = 0; i < values.Length; i++ ) { records[i] = Create(key, values[i]); }
 
-        return records;
+        return records.AsImmutableArray();
     }
-    [Pure] public static UserAddressRecord[] Create( RecordID<UserRecord> key, params ReadOnlySpan<RecordID<AddressRecord>> values )
+    [Pure] public static ImmutableArray<UserAddressRecord> Create( RecordID<UserRecord> key, params ReadOnlySpan<RecordID<AddressRecord>> values )
     {
         UserAddressRecord[] records = new UserAddressRecord[values.Length];
         for ( int i = 0; i < values.Length; i++ ) { records[i] = Create(key, values[i]); }
 
-        return records;
+        return records.AsImmutableArray();
     }
     [Pure] public static IEnumerable<UserAddressRecord> Create( UserRecord key, IEnumerable<AddressRecord> values )
     {
