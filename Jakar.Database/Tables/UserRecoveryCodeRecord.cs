@@ -16,28 +16,30 @@ public sealed record UserRecoveryCodeRecord : Mapping<UserRecoveryCodeRecord, Us
     public UserRecoveryCodeRecord( RecordID<UserRecord> key, RecordID<RecoveryCodeRecord> value, RecordID<UserRecoveryCodeRecord> id, DateTimeOffset dateCreated, DateTimeOffset? lastModified = null ) : base(key, value, id, dateCreated, lastModified) { }
 
 
-    public static UserRecoveryCodeRecord Create( UserRecord           key, RecoveryCodeRecord           value ) => new(key, value);
-    public static UserRecoveryCodeRecord Create( RecordID<UserRecord> key, RecordID<RecoveryCodeRecord> value ) => new(key, value);
-    [Pure] public static UserRecoveryCodeRecord[] Create( UserRecord key, params ReadOnlySpan<RecoveryCodeRecord> values )
+    [OverloadResolutionPriority(       1)] public static UserRecoveryCodeRecord Create( UserRecord           key, RecoveryCodeRecord           value ) => new(key, value);
+    [OverloadResolutionPriority(       1)] public static UserRecoveryCodeRecord Create( RecordID<UserRecord> key, RecordID<RecoveryCodeRecord> value ) => new(key, value);
+    [Pure] [OverloadResolutionPriority(0)] public static ImmutableArray<UserRecoveryCodeRecord> Create( UserRecord key, params ReadOnlySpan<RecoveryCodeRecord> values )
     {
-        UserRecoveryCodeRecord[] records = new UserRecoveryCodeRecord[values.Length];
+        UserRecoveryCodeRecord[] records = GC.AllocateUninitializedArray<UserRecoveryCodeRecord>(values.Length);
         for ( int i = 0; i < values.Length; i++ ) { records[i] = Create(key, values[i]); }
 
-        return records;
+        return records.AsImmutableArray();
     }
-    [Pure] public static UserRecoveryCodeRecord[] Create( RecordID<UserRecord> key, params ReadOnlySpan<RecordID<RecoveryCodeRecord>> values )
+    [Pure] [OverloadResolutionPriority(0)] public static ImmutableArray<UserRecoveryCodeRecord> Create( RecordID<UserRecord> key, params ReadOnlySpan<RecordID<RecoveryCodeRecord>> values )
     {
-        UserRecoveryCodeRecord[] records = new UserRecoveryCodeRecord[values.Length];
+        UserRecoveryCodeRecord[] records = GC.AllocateUninitializedArray<UserRecoveryCodeRecord>(values.Length);
         for ( int i = 0; i < values.Length; i++ ) { records[i] = Create(key, values[i]); }
 
-        return records;
+        return records.AsImmutableArray();
     }
-    [Pure] public static IEnumerable<UserRecoveryCodeRecord> Create( UserRecord key, IEnumerable<RecoveryCodeRecord> values )
+    [Pure] [OverloadResolutionPriority(-1)] public static IEnumerable<UserRecoveryCodeRecord> Create( UserRecord key, IEnumerable<RecoveryCodeRecord> values )
     {
+        // ReSharper disable once LoopCanBeConvertedToQuery
         foreach ( RecordID<RecoveryCodeRecord> value in values ) { yield return Create(key, value); }
     }
     [Pure] public static IEnumerable<UserRecoveryCodeRecord> Create( RecordID<UserRecord> key, IEnumerable<RecordID<RecoveryCodeRecord>> values )
     {
+        // ReSharper disable once LoopCanBeConvertedToQuery
         foreach ( RecordID<RecoveryCodeRecord> value in values ) { yield return Create(key, value); }
     }
 

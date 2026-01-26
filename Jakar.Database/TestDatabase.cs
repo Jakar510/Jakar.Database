@@ -14,6 +14,24 @@ internal sealed class TestDatabase( IConfiguration configuration, IOptions<DbOpt
     protected override NpgsqlConnection CreateConnection( in SecuredString secure ) => new(secure);
 
 
+    public static TestDatabase Create( [MustDisposeResource] out WebApplication app )
+    {
+        WebApplicationBuilder        builder          = WebApplication.CreateBuilder();
+        SecuredStringResolverOptions connectionString = $"User ID=dev;Password=dev;Host=localhost;Port=5432;Database={AppName}";
+
+        DbOptions options = new()
+                            {
+                                ConnectionStringResolver = connectionString,
+                                CommandTimeout           = 30,
+                                TokenIssuer              = AppName,
+                                TokenAudience            = AppName
+                            };
+
+        builder.AddDatabase<TestDatabase>(options);
+
+        app = builder.Build();
+        return app.Services.GetRequiredService<TestDatabase>();
+    }
     public static async Task TestAsync( CancellationToken token = default )
     {
         WebApplicationBuilder        builder          = WebApplication.CreateBuilder();

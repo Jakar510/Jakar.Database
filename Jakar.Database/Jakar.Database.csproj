@@ -56,7 +56,12 @@
 	</ItemGroup>
 
 	<ItemGroup>
+		<Analyzer Include="..\Jakar.Database.Generators\bin\Debug\net10.0\Jakar.Database.Generators.dll" />
+	</ItemGroup>
+
+	<ItemGroup>
 		<InternalsVisibleTo Include="Experiments" />
+		<InternalsVisibleTo Include="Jakar.Database.Tests" />
 		<InternalsVisibleTo Include="Jakar.Database.Generators" />
 	</ItemGroup>
 

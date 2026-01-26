@@ -18,12 +18,12 @@ public sealed record UserGroupRecord : Mapping<UserGroupRecord, UserRecord, Grou
 
     [Pure] public static UserGroupRecord Create( UserRecord           key, GroupRecord           value ) => new(key, value);
     public static        UserGroupRecord Create( RecordID<UserRecord> key, RecordID<GroupRecord> value ) => new(key, value);
-    [Pure] public static UserGroupRecord[] Create( RecordID<UserRecord> key, params ReadOnlySpan<RecordID<GroupRecord>> values )
+    [Pure] [OverloadResolutionPriority(0)] public static ImmutableArray<UserGroupRecord> Create( RecordID<UserRecord> key, params ReadOnlySpan<RecordID<GroupRecord>> values )
     {
         UserGroupRecord[] records = new UserGroupRecord[values.Length];
         for ( int i = 0; i < values.Length; i++ ) { records[i] = Create(key, values[i]); }
 
-        return records;
+        return records.AsImmutableArray();
     }
     [Pure] public static UserGroupRecord[] Create( UserRecord key, params ReadOnlySpan<GroupRecord> values )
     {
@@ -32,7 +32,7 @@ public sealed record UserGroupRecord : Mapping<UserGroupRecord, UserRecord, Grou
 
         return records;
     }
-    [Pure] public static IEnumerable<UserGroupRecord> Create( RecordID<UserRecord> key, IEnumerable<RecordID<GroupRecord>> values )
+    [Pure] [OverloadResolutionPriority(-1)] public static IEnumerable<UserGroupRecord> Create( RecordID<UserRecord> key, IEnumerable<RecordID<GroupRecord>> values )
     {
         // ReSharper disable once LoopCanBeConvertedToQuery
         foreach ( RecordID<GroupRecord> value in values ) { yield return Create(key, value); }

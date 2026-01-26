@@ -6,10 +6,10 @@ public interface ICreateMapping<TSelf, TKey, TValue> : ITableRecord<TSelf>
     where TKey : class, ITableRecord<TKey>
     where TSelf : class, ITableRecord<TSelf>, ICreateMapping<TSelf, TKey, TValue>
 {
-    [Pure] public abstract static TSelf              Create( TKey           key, TValue                                value );
-    [Pure] public abstract static TSelf              Create( RecordID<TKey> key, RecordID<TValue>                      value );
-    [Pure] public abstract static TSelf[]            Create( RecordID<TKey> key, params ReadOnlySpan<RecordID<TValue>> values );
-    [Pure] public abstract static IEnumerable<TSelf> Create( RecordID<TKey> key, IEnumerable<RecordID<TValue>>         values );
+    [Pure]                                  public abstract static TSelf                 Create( TKey           key, TValue                                value );
+    [Pure]                                  public abstract static TSelf                 Create( RecordID<TKey> key, RecordID<TValue>                      value );
+    [Pure]                                  public abstract static ImmutableArray<TSelf> Create( RecordID<TKey> key, params ReadOnlySpan<RecordID<TValue>> values );
+    [Pure] [OverloadResolutionPriority(-1)] public abstract static IEnumerable<TSelf>    Create( RecordID<TKey> key, IEnumerable<RecordID<TValue>>         values );
 }
 
 

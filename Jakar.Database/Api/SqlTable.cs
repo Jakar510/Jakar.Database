@@ -1,7 +1,7 @@
 ﻿// Jakar.Extensions :: Jakar.Database
 // 10/18/2025  23:29
 
-namespace Jakar.Database.DbMigrations;
+namespace Jakar.Database;
 
 
 [Flags]
@@ -153,7 +153,7 @@ public sealed class ColumnMetaData( string               propertyName,
     public readonly string               VariableName    = variableName ?? $" @{columnName} ";
     public readonly string?              ForeignKeyName  = foreignKeyName?.SqlColumnName();
     public readonly string?              IndexColumnName = indexColumnName?.SqlColumnName();
-    public          string               DataType        = dbType.GetPostgresDataType(in length, in options);
+    public readonly string               DataType        = dbType.GetPostgresDataType(in length, in options);
 
 
     public bool IsForeignKey { [MemberNotNullWhen(true, nameof(IndexColumnName))] get => !string.IsNullOrWhiteSpace(IndexColumnName); }

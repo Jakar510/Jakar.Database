@@ -280,11 +280,15 @@ public readonly struct SqlCommand<TSelf>( string sql, in PostgresParameters para
     {
         get
         {
-            FrozenDictionary<string, ColumnMetaData> data   = TSelf.PropertyMetaData;
-            int                                      length = data.Values.Sum(static x => x.ColumnName.Length) + ( data.Count - 1 ) * SPACER.Length;
-            StringBuilder                            sb     = new(length);
-            int                                      count  = data.Count;
-            int                                      index  = 0;
+            FrozenDictionary<string, ColumnMetaData> data = TSelf.PropertyMetaData;
+
+            int length = data.Values.AsValueEnumerable()
+                             .Sum(static x => x.ColumnName.Length) +
+                         ( data.Count - 1 ) * SPACER.Length;
+
+            StringBuilder sb    = new(length);
+            int           count = data.Count;
+            int           index = 0;
 
             foreach ( string pair in data.Values.AsValueEnumerable()
                                          .Select(ColumnMetaData.GetColumnName) )
@@ -304,11 +308,15 @@ public readonly struct SqlCommand<TSelf>( string sql, in PostgresParameters para
     {
         get
         {
-            FrozenDictionary<string, ColumnMetaData> data   = TSelf.PropertyMetaData;
-            int                                      length = data.Values.Sum(static x => x.ColumnName.Length) + ( data.Count - 1 ) * SPACER.Length;
-            StringBuilder                            sb     = new(length);
-            int                                      count  = data.Count;
-            int                                      index  = 0;
+            FrozenDictionary<string, ColumnMetaData> data = TSelf.PropertyMetaData;
+
+            int length = data.Values.AsValueEnumerable()
+                             .Sum(static x => x.ColumnName.Length) +
+                         ( data.Count - 1 ) * SPACER.Length;
+
+            StringBuilder sb    = new(length);
+            int           count = data.Count;
+            int           index = 0;
 
             foreach ( string pair in data.Values.AsValueEnumerable()
                                          .Select(ColumnMetaData.GetKeyValuePair) )

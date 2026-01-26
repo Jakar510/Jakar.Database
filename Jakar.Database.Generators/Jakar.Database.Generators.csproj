@@ -1,10 +1,10 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
-
 	<PropertyGroup>
 		<TargetFramework>net10.0</TargetFramework>
 		<ImplicitUsings>enable</ImplicitUsings>
 		<Nullable>enable</Nullable>
 		<EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
+		<GenerateAnalyzerSupport>true</GenerateAnalyzerSupport>
 		<LangVersion>latest</LangVersion>
 	</PropertyGroup>
 
@@ -13,8 +13,7 @@
 		<PackageReference Include="Npgsql.Json.NET" />
 		<PackageReference Include="Npgsql.OpenTelemetry" />
 		<PackageReference Include="Dapper" />
-		<PackageReference Include="Microsoft.CodeAnalysis.Common" />
-		<PackageReference Include="Microsoft.CodeAnalysis.CSharp" />
+		<PackageReference Include="Microsoft.CodeAnalysis.Common" PrivateAssets="all" />
+		<PackageReference Include="Microsoft.CodeAnalysis.CSharp" PrivateAssets="all" />
 	</ItemGroup>
-
 </Project>

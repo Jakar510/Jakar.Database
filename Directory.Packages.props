@@ -153,6 +153,7 @@
     <PackageVersion Include="System.Threading.Tasks.Extensions" Version="4.6.3" />
     <PackageVersion Include="System.Threading.Tasks.Parallel" Version="4.3.0" />
     <PackageVersion Include="System.Threading.ThreadPool" Version="4.3.0" />
+    <PackageVersion Include="Testcontainers.PostgreSql" Version="4.10.0" />
     <PackageVersion Include="ValueOf" Version="2.0.31" />
     <PackageVersion Include="WifiManager.Maui" Version="9.0.5" />
     <PackageVersion Include="Xam.Plugin.Media" Version="6.0.2" />
