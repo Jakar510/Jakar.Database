@@ -6,19 +6,25 @@ namespace Jakar.Database;
 
 public static class PostgresParams
 {
-    public static readonly ConcurrentDictionary<string, string> NameSnakeCaseCache = new(StringComparer.InvariantCultureIgnoreCase)
-                                                                                     {
-                                                                                         [nameof(MimeType)]            = "mime_types",
-                                                                                         [nameof(SupportedLanguage)]   = "languages",
-                                                                                         [nameof(ProgrammingLanguage)] = "programming_languages",
-                                                                                         [nameof(SubscriptionStatus)]  = "subscription_status",
-                                                                                         [nameof(DeviceCategory)]      = "device_categories",
-                                                                                         [nameof(DevicePlatform)]      = "device_platforms",
-                                                                                         [nameof(DeviceTypes)]         = "device_types",
-                                                                                         [nameof(DistanceUnit)]        = "distance_units",
-                                                                                         [nameof(Status)]              = "statuses",
-                                                                                         [nameof(NpgsqlDbType)]        = "db_types"
-                                                                                     };
-    public static  string SqlColumnName( this string name ) => NameSnakeCaseCache.GetOrAdd(name, ToSnakeCase);
-    private static string ToSnakeCase( string        x )    => x.ToSnakeCase();
+    private static readonly ConcurrentDictionary<string, string> __nameSnakeCaseCache = new(StringComparer.InvariantCultureIgnoreCase)
+                                                                                        {
+                                                                                            [nameof(MimeType)]                   = "mime_types",
+                                                                                            [nameof(SupportedLanguage)]          = "languages",
+                                                                                            [nameof(ProgrammingLanguage)]        = "programming_languages",
+                                                                                            [nameof(SubscriptionStatus)]         = "subscription_status",
+                                                                                            [nameof(DeviceCategory)]             = "device_categories",
+                                                                                            [nameof(DevicePlatform)]             = "device_platforms",
+                                                                                            [nameof(DeviceTypes)]                = "device_types",
+                                                                                            [nameof(DistanceUnit)]               = "distance_units",
+                                                                                            [nameof(Status)]                     = "statuses",
+                                                                                            [nameof(NpgsqlDbType)]               = "db_types",
+                                                                                            [nameof(IUniqueID.ID)]               = "id",
+                                                                                            [nameof(IDateCreated.DateCreated)]   = "date_created",
+                                                                                            [nameof(ILastModified.LastModified)] = "last_modified",
+                                                                                            [nameof(ICreatedBy.CreatedBy)]       = "created_by",
+                                                                                            [nameof(IJsonModel.AdditionalData)]  = "additional_data",
+                                                                                        };
+
+
+    public static string SqlColumnName( this string name ) => __nameSnakeCaseCache.GetOrAdd(name, Strings.ToSnakeCase);
 }

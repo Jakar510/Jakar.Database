@@ -59,8 +59,8 @@ public readonly struct SqlCommand<TSelf>( string sql, in PostgresParameters para
     public const string ID           = "id";
 
 
-    public static IEnumerable<string> GetColumnNames   => TSelf.PropertyMetaData.Values.Select(ColumnMetaData.GetColumnName);
-    public static IEnumerable<string> GetKeyValuePairs => TSelf.PropertyMetaData.Values.Select(ColumnMetaData.GetKeyValuePair);
+    public static IEnumerable<string> GetColumnNames   => TSelf.PropertyMetaData.Properties.Values.Select(ColumnMetaData.GetColumnName);
+    public static IEnumerable<string> GetKeyValuePairs => TSelf.PropertyMetaData.Properties.Values.Select(ColumnMetaData.GetKeyValuePair);
 
 
     public static StringBuilder ColumnNames
@@ -69,7 +69,7 @@ public readonly struct SqlCommand<TSelf>( string sql, in PostgresParameters para
         {
             TableMetaData data = TSelf.PropertyMetaData;
 
-            int length = data.Values.AsValueEnumerable()
+            int length = data.Properties.Values.AsValueEnumerable()
                              .Sum(static x => x.ColumnName.Length) +
                          ( data.Count - 1 ) * SPACER.Length;
 
@@ -77,7 +77,7 @@ public readonly struct SqlCommand<TSelf>( string sql, in PostgresParameters para
             int           count = data.Count;
             int           index = 0;
 
-            foreach ( string pair in data.Values.AsValueEnumerable()
+            foreach ( string pair in data.Properties.Values.AsValueEnumerable()
                                          .Select(ColumnMetaData.GetColumnName) )
             {
                 if ( index++ < count - 1 )
@@ -97,7 +97,7 @@ public readonly struct SqlCommand<TSelf>( string sql, in PostgresParameters para
         {
             TableMetaData data = TSelf.PropertyMetaData;
 
-            int length = data.Values.AsValueEnumerable()
+            int length = data.Properties.Values.AsValueEnumerable()
                              .Sum(static x => x.ColumnName.Length) +
                          ( data.Count - 1 ) * SPACER.Length;
 
@@ -105,7 +105,7 @@ public readonly struct SqlCommand<TSelf>( string sql, in PostgresParameters para
             int           count = data.Count;
             int           index = 0;
 
-            foreach ( string pair in data.Values.AsValueEnumerable()
+            foreach ( string pair in data.Properties.Values.AsValueEnumerable()
                                          .Select(ColumnMetaData.GetKeyValuePair) )
             {
                 if ( index++ < count - 1 )

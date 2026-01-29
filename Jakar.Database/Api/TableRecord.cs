@@ -1,16 +1,9 @@
 ﻿// Jakar.Extensions :: Jakar.Database
 // 08/14/2022  8:38 PM
 
-using Microsoft.AspNetCore.Http.HttpResults;
-
-
-
 namespace Jakar.Database;
 
-
-public interface IUniqueID : IUniqueID<Guid>;
-
-
+ 
 
 public interface IDateCreated : IUniqueID
 {

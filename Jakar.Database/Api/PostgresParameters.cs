@@ -9,10 +9,10 @@ namespace Jakar.Database;
 
 
 [DefaultMember(nameof(Empty))]
-public readonly struct PostgresParameters( TableMetaData dictionary ) : IEquatable<PostgresParameters>
+public readonly struct PostgresParameters( TableMetaData table ) : IEquatable<PostgresParameters>
 {
     public static readonly PostgresParameters    Empty    = new(TableMetaData.Empty);
-    private readonly       List<NpgsqlParameter> __buffer = new(Math.Max(dictionary.Count, DEFAULT_CAPACITY));
+    private readonly       List<NpgsqlParameter> __buffer = new(Math.Max(table.Count, DEFAULT_CAPACITY));
 
 
     public int                           Count    => __buffer.Count;
@@ -50,7 +50,7 @@ public readonly struct PostgresParameters( TableMetaData dictionary ) : IEquatab
         get
         {
             const string  SPACER = ",\n      ";
-            int           length = dictionary.Values.Sum(static x => x.ColumnName.Length) + ( dictionary.Count - 1 ) * SPACER.Length;
+            int           length = table.Properties.Values.Sum(static x => x.ColumnName.Length) + ( table.Count - 1 ) * SPACER.Length;
             StringBuilder sb     = new(length);
             int           count  = Count;
             int           index  = 0;
@@ -73,7 +73,7 @@ public readonly struct PostgresParameters( TableMetaData dictionary ) : IEquatab
         get
         {
             const string  SPACER = ",\n      ";
-            int           length = dictionary.Values.Sum(static x => x.VariableName.Length) + ( dictionary.Count - 1 ) * SPACER.Length;
+            int           length = table.Properties.Values.Sum(static x => x.VariableName.Length) + ( table.Count - 1 ) * SPACER.Length;
             StringBuilder sb     = new(length);
             int           count  = Count;
             int           index  = 0;
@@ -125,7 +125,7 @@ public readonly struct PostgresParameters( TableMetaData dictionary ) : IEquatab
     */
     public PostgresParameters Add<T>( string propertyName, T value, [CallerArgumentExpression(nameof(value))] string parameterName = EMPTY, ParameterDirection direction = ParameterDirection.Input, DataRowVersion sourceVersion = DataRowVersion.Default )
     {
-        ColumnMetaData meta = dictionary[propertyName];
+        ColumnMetaData meta = table[propertyName];
         return Add(meta, value, parameterName, direction, sourceVersion);
     }
     public PostgresParameters Add<T>( ColumnMetaData meta, T value, [CallerArgumentExpression(nameof(value))] string parameterName = EMPTY, ParameterDirection direction = ParameterDirection.Input, DataRowVersion sourceVersion = DataRowVersion.Default )
@@ -152,7 +152,7 @@ public readonly struct PostgresParameters( TableMetaData dictionary ) : IEquatab
     {
         string        match  = matchAll.GetAndOr();
         int           count  = Count;
-        int           length = dictionary.Values.Sum(static x => x.KeyValuePair.Length) + ( dictionary.Count - 1 ) * match.Length;
+        int           length = table.Properties.Values.Sum(static x => x.KeyValuePair.Length) + ( table.Count - 1 ) * match.Length;
         StringBuilder sb     = new(length);
         int           index  = 0;
 
@@ -170,9 +170,9 @@ public readonly struct PostgresParameters( TableMetaData dictionary ) : IEquatab
     }
 
 
-    private string GetColumnName( string   propertyName ) => dictionary[propertyName].ColumnName;
-    private string GetVariableName( string propertyName ) => dictionary[propertyName].VariableName;
-    private string GetKeyValuePair( string propertyName ) => dictionary[propertyName].KeyValuePair;
+    private string GetColumnName( string   propertyName ) => table[propertyName].ColumnName;
+    private string GetVariableName( string propertyName ) => table[propertyName].VariableName;
+    private string GetKeyValuePair( string propertyName ) => table[propertyName].KeyValuePair;
 
 
     public override int GetHashCode() => HashCode.Combine(__buffer);

@@ -9,6 +9,7 @@ using Jakar.Shapes;
 namespace Jakar.Database;
 
 
+[SuppressMessage("ReSharper", "CommentTypo")]
 public enum PostgresType
 {
     /// <summary> The default value, indicating that the PostgreSQL type has not been set. </summary>
@@ -996,10 +997,21 @@ public static class PostgresTypes
 
     extension( PostgresType self )
     {
-        public string GetPostgresDataType( ref readonly SizeInfo info, in ColumnOptions options = 0 )
+        public string GetPostgresDataType( in SizeInfo? info, in ColumnOptions options = 0 )
         {
-            LengthInfo    length    = info.Length;
-            PrecisionInfo precision = info.Precision;
+            LengthInfo length = info?.Length ?? LengthInfo.Default;
+
+            PrecisionInfo precision = info?.Precision ??
+                                      self switch
+                                      {
+                                          PostgresType.Double  => PrecisionInfo.Double,
+                                          PostgresType.Single  => PrecisionInfo.Float,
+                                          PostgresType.Int128  => PrecisionInfo.Int128,
+                                          PostgresType.UInt128 => PrecisionInfo.Int128,
+                                          PostgresType.Decimal => PrecisionInfo.Decimal,
+                                          _                    => PrecisionInfo.Default
+                                      };
+
 
             return self switch
                    {
@@ -1101,6 +1113,7 @@ public static class PostgresTypes
                        _                                     => throw new OutOfRangeException(self)
                    };
         }
+
 
         [SuppressMessage("ReSharper", "BitwiseOperatorOnEnumWithoutFlags")] public NpgsqlDbType ToNpgsqlDbType()
         {

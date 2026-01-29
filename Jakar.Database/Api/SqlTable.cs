@@ -1,10 +1,6 @@
 ﻿// Jakar.Extensions :: Jakar.Database
 // 10/18/2025  23:29
 
-using Microsoft.AspNetCore.Components.WebAssembly.Http;
-
-
-
 namespace Jakar.Database;
 
 
@@ -34,26 +30,26 @@ public readonly ref struct SqlTable<TSelf> : IDisposable
 
     public SqlTable<TSelf> WithColumn_Json( string propertyName, ColumnOptions options = ColumnOptions.Nullable, ColumnCheckMetaData? checks = null )
     {
-        ColumnMetaData column = new(propertyName, PostgresType.Json, options, null, null, SizeInfo.Default, checks);
+        ColumnMetaData column = new(propertyName, PostgresType.Json, options, null, SizeInfo.Default, checks);
         return WithColumn(column);
     }
-    public SqlTable<TSelf> WithColumn<TValue>( string propertyName, ColumnOptions options, SizeInfo length = default, ColumnCheckMetaData? checks = null, string? indexColumnName = null )
+    public SqlTable<TSelf> WithColumn<TValue>( string propertyName, ColumnOptions options, SizeInfo length = default, ColumnCheckMetaData? checks = null )
     {
         if ( typeof(TValue) == typeof(RecordID<TSelf>) || typeof(TValue) == typeof(RecordID<TSelf>?) ) { throw new InvalidOperationException($"Use the other overload of {nameof(WithColumn)} instead for primary key columns {RecordID<TSelf>.Description()}."); }
 
         if ( typeof(TValue).Name.StartsWith("RecordID", StringComparison.InvariantCultureIgnoreCase) ) { throw new InvalidOperationException($"Use the other overload of {nameof(WithColumn)} instead for primary key columns ({nameof(RecordID<>)})."); }
 
         PostgresType   dbType = typeof(TValue).GetPostgresType(ref options, ref length);
-        ColumnMetaData column = new(propertyName, dbType, options, null, indexColumnName, length, checks);
+        ColumnMetaData column = new(propertyName, dbType, options, null, length, checks);
         return WithColumn(column);
     }
-    public SqlTable<TSelf> WithColumn<TValue>( string propertyName, bool isNullable, SizeInfo length = default, ColumnCheckMetaData? checks = null, string? indexColumnName = null )
+    public SqlTable<TSelf> WithColumn<TValue>( string propertyName, bool isNullable, SizeInfo length = default, ColumnCheckMetaData? checks = null )
         where TValue : struct, Enum
     {
-        ColumnOptions options = ColumnOptions.PrimaryKey;
+        ColumnOptions options = ColumnOptions.ForeignKey;
         if ( isNullable ) { options |= ColumnOptions.Nullable; }
 
-        ColumnMetaData column = new(propertyName, PostgresType.Guid, options, typeof(TValue).Name, indexColumnName, length, checks);
+        ColumnMetaData column = new(propertyName, PostgresType.Guid, options, typeof(TValue).Name, length, checks);
         return WithColumn(column);
     }
     public SqlTable<TSelf> WithColumn<TRecord>( string propertyName, ColumnCheckMetaData? checks = null )
@@ -66,6 +62,11 @@ public readonly ref struct SqlTable<TSelf> : IDisposable
     {
         try
         {
+        #if DEBUG
+            int check = Columns.Values.Count(static x => x.IsPrimaryKey);
+            if ( column.IsPrimaryKey && check > 0 ) { throw new InvalidOperationException($"Must be exactly one primary key defined for {typeof(TSelf).Name}. Instead there are {check} primary keys."); }
+        #endif
+
             Columns.Add(column.ColumnName, column);
             return this;
         }
@@ -78,6 +79,6 @@ public readonly ref struct SqlTable<TSelf> : IDisposable
         int check = Columns.Values.Count(static x => x.IsPrimaryKey);
         if ( check != 1 ) { throw new InvalidOperationException($"Must be exactly one primary key defined for {typeof(TSelf).Name}. Instead there are {check} primary keys."); }
 
-        return Columns.ToFrozenDictionary(StringComparer.InvariantCultureIgnoreCase);
+        return Columns;
     }
 }
