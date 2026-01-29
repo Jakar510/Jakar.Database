@@ -35,14 +35,13 @@ public sealed record MigrationRecord : BaseRecord<MigrationRecord>, ITableRecord
 
 
     public static ReadOnlyMemory<PropertyInfo> ClassProperties => Properties;
-    public static int                          PropertyCount   => Properties.Length;
 
-    public static FrozenDictionary<string, ColumnMetaData> PropertyMetaData { get; } = SqlTable<MigrationRecord>.Empty.WithColumn<ulong>(nameof(MigrationID))
-                                                                                                                .WithColumn<string>(nameof(TableID),     length: 256)
-                                                                                                                .WithColumn<string>(nameof(Description), length: MAX_FIXED)
-                                                                                                                .WithColumn(ColumnMetaData.DateCreated)
-                                                                                                                .With_AdditionalData()
-                                                                                                                .Build();
+    public static TableMetaData PropertyMetaData { get; } = SqlTable<MigrationRecord>.Empty.WithColumn<ulong>(nameof(MigrationID), ColumnOptions.None)
+                                                                                     .WithColumn<string>(nameof(TableID),     ColumnOptions.None, 256)
+                                                                                     .WithColumn<string>(nameof(Description), ColumnOptions.None, MAX_FIXED)
+                                                                                     .With_DateCreated()
+                                                                                     .With_AdditionalData()
+                                                                                     .Build();
 
     public static string                                   TableName   => TABLE_NAME;
     public        DateTimeOffset                           AppliedOn   { get; init; } = DateTimeOffset.UtcNow;
@@ -206,7 +205,7 @@ public sealed record MigrationRecord : BaseRecord<MigrationRecord>, ITableRecord
     }
 
 
-    public override bool Equals( MigrationRecord?    other ) => ReferenceEquals(this, other) || string.Equals(Description, other?.Description);
+    public override bool Equals( MigrationRecord?    other ) => ReferenceEquals(this, other) || Nullable.Equals(MigrationID, other?.MigrationID) || string.Equals(Description, other?.Description);
     public override int  CompareTo( MigrationRecord? other ) => Nullable.Compare(AppliedOn, other?.AppliedOn);
     public override int  GetHashCode()                       => HashCode.Combine(MigrationID, Description);
 

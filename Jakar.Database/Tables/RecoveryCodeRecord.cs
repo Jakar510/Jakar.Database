@@ -11,9 +11,9 @@ public sealed record RecoveryCodeRecord( [property: StringLength(1024)] string C
     public const            string                             TABLE_NAME = "recovery_codes";
     private static readonly PasswordHasher<RecoveryCodeRecord> __hasher   = new();
 
-    public static FrozenDictionary<string, ColumnMetaData> PropertyMetaData { get; } = SqlTable<RecoveryCodeRecord>.Default.WithColumn<string>(nameof(Code), length: 1024)
-                                                                                                                   .With_CreatedBy()
-                                                                                                                   .Build();
+    public static TableMetaData PropertyMetaData { get; } = SqlTable<RecoveryCodeRecord>.Default.WithColumn<string>(nameof(Code), ColumnOptions.None, 1024)
+                                                                                        .With_CreatedBy()
+                                                                                        .Build();
 
     public static string TableName => TABLE_NAME;
 

@@ -18,12 +18,13 @@ public sealed record UserLoginProviderRecord( [property: StringLength(          
 {
     public const string TABLE_NAME = "user_login_providers";
 
-    public static FrozenDictionary<string, ColumnMetaData> PropertyMetaData { get; } = SqlTable<UserLoginProviderRecord>.Default.WithColumn<string>(nameof(LoginProvider), length: MAX_FIXED)
-                                                                                                                        .WithColumn<string>(nameof(ProviderDisplayName), ColumnOptions.Nullable, MAX_FIXED)
-                                                                                                                        .WithColumn<string>(nameof(ProviderKey),         length: MAX_FIXED)
-                                                                                                                        .WithColumn<string>(nameof(Value),               length: MAX_FIXED)
-                                                                                                                        .With_CreatedBy()
-                                                                                                                        .Build();
+    public static TableMetaData PropertyMetaData { get; } = SqlTable<UserLoginProviderRecord>.Default.WithColumn<string>(nameof(LoginProvider), ColumnOptions.None, MAX_FIXED)
+                                                                                             .WithColumn<string>(nameof(ProviderDisplayName), ColumnOptions.Nullable, MAX_FIXED)
+                                                                                             .WithColumn<string>(nameof(ProviderKey),         ColumnOptions.None,     MAX_FIXED)
+                                                                                             .WithColumn<string>(nameof(Value),               ColumnOptions.Nullable, MAX_FIXED)
+                                                                                             .With_CreatedBy()
+                                                                                             .Build();
+
 
     public static string TableName => TABLE_NAME;
 

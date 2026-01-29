@@ -52,13 +52,10 @@ namespace Jakar.Database;
 
 
 
-public readonly ref struct SqlTableBuilder<TSelf>( FrozenDictionary<string, ColumnMetaData> columns )
+public readonly ref struct SqlTableBuilder<TSelf>( TableMetaData columns )
     where TSelf : class, ITableRecord<TSelf>
 {
-    private readonly FrozenDictionary<string, ColumnMetaData> __columns = columns;
-
-
-    public static SqlTableBuilder<TSelf> Default => new(TSelf.PropertyMetaData);
+    public static string Default => new SqlTableBuilder<TSelf>(TSelf.PropertyMetaData).Build();
 
 
     public string Build()
@@ -70,7 +67,7 @@ public readonly ref struct SqlTableBuilder<TSelf>( FrozenDictionary<string, Colu
         query.Append(tableName);
         query.Append(" (");
 
-        foreach ( ( string columnName, ColumnMetaData column ) in __columns )
+        foreach ( ( string columnName, ColumnMetaData column ) in columns )
         {
             ColumnOptions options = column.Options;
 
@@ -95,11 +92,11 @@ public readonly ref struct SqlTableBuilder<TSelf>( FrozenDictionary<string, Colu
             query.Append(' ');
             query.Append(dataType);
 
-            if ( column.Checks is not null )
+            if ( column.Checks.IsValid )
             {
                 query.Append(" CHECK ( ");
 
-                query.AppendJoin(column.Checks.And
+                query.AppendJoin(column.Checks.And.Value
                                      ? AND
                                      : OR,
                                  column.Checks.Checks);
@@ -119,6 +116,9 @@ public readonly ref struct SqlTableBuilder<TSelf>( FrozenDictionary<string, Colu
 
             if ( options.HasFlagValue(ColumnOptions.PrimaryKey) ) { query.Append(" PRIMARY KEY"); }
         }
+
+        query.Append('\n');
+        query.Append(')');
 
         return query.ToString();
     }

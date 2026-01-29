@@ -14,12 +14,12 @@ public readonly struct RecordPair<TSelf>( RecordID<TSelf> id, DateTimeOffset dat
     private readonly int             __hash      = HashCode.Combine(id, dateCreated);
 
 
-    public static ReadOnlyMemory<PropertyInfo>             ClassProperties  { get; } = typeof(RecordPair<TSelf>).GetProperties();
-    public static FrozenDictionary<string, ColumnMetaData> PropertyMetaData => TSelf.PropertyMetaData;
-    public static string                                   TableName        => TSelf.TableName;
-    Guid IUniqueID<Guid>.                                  ID               => ID.Value;
-    RecordID<TSelf> IRecordPair<TSelf>.                    ID               => ID;
-    DateTimeOffset IDateCreated.                           DateCreated      => DateCreated;
+    public static ReadOnlyMemory<PropertyInfo> ClassProperties  { get; } = typeof(RecordPair<TSelf>).GetProperties();
+    public static TableMetaData                PropertyMetaData => TSelf.PropertyMetaData;
+    public static string                       TableName        => TSelf.TableName;
+    Guid IUniqueID<Guid>.                      ID               => ID.Value;
+    RecordID<TSelf> IRecordPair<TSelf>.        ID               => ID;
+    DateTimeOffset IDateCreated.               DateCreated      => DateCreated;
 
 
     public UInt128 GetHash() => ID.GetHash() | new UInt128(0, (ulong)DateCreated.GetHashCode());

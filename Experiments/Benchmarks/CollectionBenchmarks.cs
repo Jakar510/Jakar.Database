@@ -51,6 +51,7 @@ namespace Experiments.Benchmarks;
 [SimpleJob(RuntimeMoniker.HostProcess)]
 [Orderer(SummaryOrderPolicy.FastestToSlowest)]
 [MemoryDiagnoser]
+[SuppressMessage("ReSharper", "InvokeAsExtensionMember")]
 
 // [RankColumn]
 public class CollectionBenchmarks
@@ -246,35 +247,35 @@ public class CollectionBenchmarks
     {
         double[] array = __array[Size];
 
-        array.Select(static i => i)
-             .Consume(__consumer);
+        Enumerable.Select(array, static i => i)
+                  .Consume(__consumer);
     }
     [BenchmarkCategory("Select")] [Benchmark] public void SelectImmutableArray()
     {
         ImmutableArray<double> array = __immutableArray[Size];
 
-        array.Select(static i => i)
-             .Consume(__consumer);
+        Enumerable.Select(array, static i => i)
+                  .Consume(__consumer);
     }
     [BenchmarkCategory("Select")] [Benchmark] public void SelectList()
     {
         List<double> array = __list[Size];
 
-        array.Select(static i => i)
-             .Consume(__consumer);
+        Enumerable.Select(array, static i => i)
+                  .Consume(__consumer);
     }
     [BenchmarkCategory("Select")] [Benchmark] public void SelectImmutableList()
     {
         ImmutableList<double> array = __immutableList[Size];
 
-        array.Select(static i => i)
-             .Consume(__consumer);
+        Enumerable.Select(array, static i => i)
+                  .Consume(__consumer);
     }
     [BenchmarkCategory("Select")] [Benchmark] public void SelectFrozenSet()
     {
         FrozenSet<double> array = __set[Size];
 
-        array.Select(static i => i)
-             .Consume(__consumer);
+        Enumerable.Select(array, static i => i)
+                  .Consume(__consumer);
     }
 }

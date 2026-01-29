@@ -26,18 +26,18 @@ public sealed record AddressRecord( [property: ProtectedPersonalData] string  Li
 {
     public const string TABLE_NAME = "addresses";
 
+    public static TableMetaData PropertyMetaData { get; } = SqlTable<AddressRecord>.Default.WithColumn<string>(nameof(Line1), ColumnOptions.Indexed, 256)
+                                                                                   .WithColumn<string>(nameof(Line2),           ColumnOptions.Indexed,  1024)
+                                                                                   .WithColumn<string>(nameof(City),            ColumnOptions.Indexed,  256)
+                                                                                   .WithColumn<string>(nameof(StateOrProvince), ColumnOptions.Indexed,  256)
+                                                                                   .WithColumn<string>(nameof(Country),         ColumnOptions.Indexed,  256)
+                                                                                   .WithColumn<string>(nameof(PostalCode),      ColumnOptions.Indexed,  256)
+                                                                                   .WithColumn<string>(nameof(Address),         ColumnOptions.Nullable, 256)
+                                                                                   .WithColumn<bool>(nameof(IsPrimary),         ColumnOptions.None)
+                                                                                   .With_AdditionalData()
+                                                                                   .With_CreatedBy()
+                                                                                   .Build();
 
-    public static FrozenDictionary<string, ColumnMetaData> PropertyMetaData { get; } = SqlTable<AddressRecord>.Default.WithColumn<string>(nameof(Line1), length: 256)
-                                                                                                              .WithColumn<string>(nameof(Line2),           length: 1024)
-                                                                                                              .WithColumn<string>(nameof(City),            length: 256)
-                                                                                                              .WithColumn<string>(nameof(StateOrProvince), length: 256)
-                                                                                                              .WithColumn<string>(nameof(Country),         length: 256)
-                                                                                                              .WithColumn<string>(nameof(PostalCode),      length: 256)
-                                                                                                              .WithColumn<string>(nameof(Address),         ColumnOptions.Nullable, 256)
-                                                                                                              .WithColumn<bool>(nameof(IsPrimary),         length: 256)
-                                                                                                              .With_AdditionalData()
-                                                                                                              .With_CreatedBy()
-                                                                                                              .Build();
 
     public static string TableName => TABLE_NAME;
 
@@ -297,11 +297,11 @@ public sealed record AddressRecord( [property: ProtectedPersonalData] string  Li
                                                {nameof(PostalCode).SqlColumnName()} varchar( 64 ) NOT NULL,
                                                {nameof(Address).SqlColumnName()} varchar( 3000 ) NULL,
                                                {nameof(IsPrimary).SqlColumnName()} boolean NOT NULL DEFAULT FALSE,
-                                               {nameof(CreatedBy).SqlColumnName()} uuid NULL,
+                                               {nameof(CreatedBy).SqlColumnName()} uuid NULL, FOREIGN KEY( {nameof(CreatedBy).SqlColumnName()}) REFERENCES {UserRecord.TABLE_NAME.SqlColumnName()}(id) ON DELETE SET NULL,
                                                {nameof(ID).SqlColumnName()} uuid NOT NULL PRIMARY KEY,
                                                {nameof(DateCreated).SqlColumnName()} timestamptz NOT NULL DEFAULT SYSUTCDATETIME(),
                                                {nameof(LastModified).SqlColumnName()} timestamptz NULL,
-                                               {nameof(AdditionalData).SqlColumnName()} json NULL, FOREIGN KEY( {nameof(CreatedBy).SqlColumnName()}) REFERENCES {UserRecord.TABLE_NAME.SqlColumnName()}(id) ON DELETE SET NULL
+                                               {nameof(AdditionalData).SqlColumnName()} json NULL
                                                );
 
                                                CREATE TRIGGER {nameof(MigrationRecord.SetLastModified).SqlColumnName()}

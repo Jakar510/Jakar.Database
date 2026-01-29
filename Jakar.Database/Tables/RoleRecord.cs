@@ -14,12 +14,12 @@ public sealed record RoleRecord( [property: StringLength(NAME)]              str
 {
     public const string TABLE_NAME = "roles";
 
-    public static FrozenDictionary<string, ColumnMetaData> PropertyMetaData { get; } = SqlTable<RoleRecord>.Default.WithColumn<string>(nameof(NameOfRole), length: NAME)
-                                                                                                           .WithColumn<string>(nameof(NormalizedName),   length: NORMALIZED_NAME)
-                                                                                                           .WithColumn<string>(nameof(ConcurrencyStamp), length: CONCURRENCY_STAMP)
-                                                                                                           .WithColumn<string>(nameof(Rights),           length: RIGHTS)
-                                                                                                           .With_CreatedBy()
-                                                                                                           .Build();
+    public static TableMetaData PropertyMetaData { get; } = SqlTable<RoleRecord>.Default.WithColumn<string>(nameof(NameOfRole), ColumnOptions.None, NAME)
+                                                                                .WithColumn<string>(nameof(NormalizedName),   ColumnOptions.None, NORMALIZED_NAME)
+                                                                                .WithColumn<string>(nameof(ConcurrencyStamp), ColumnOptions.None, CONCURRENCY_STAMP)
+                                                                                .WithColumn<string>(nameof(Rights),           ColumnOptions.None, RIGHTS)
+                                                                                .With_CreatedBy()
+                                                                                .Build();
 
     public static                 string     TableName => TABLE_NAME;
     [StringLength(RIGHTS)] public UserRights Rights    { get; set; } = Rights;

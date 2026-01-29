@@ -14,11 +14,11 @@ public sealed record GroupRecord( [property: StringLength(GroupRecord.MAX_SIZE)]
     public const int    MAX_SIZE   = 1024;
     public const string TABLE_NAME = "groups";
 
-    public static FrozenDictionary<string, ColumnMetaData> PropertyMetaData { get; } = SqlTable<GroupRecord>.Default.WithColumn<string?>(nameof(NormalizedName), length: MAX_SIZE)
-                                                                                                            .WithColumn<string>(nameof(NameOfGroup), length: MAX_SIZE, checks: $"{nameof(NameOfGroup)} > 0")
-                                                                                                            .WithColumn<string>(nameof(Rights),      checks: $"{nameof(Rights)} > 0")
-                                                                                                            .With_CreatedBy()
-                                                                                                            .Build();
+    public static TableMetaData PropertyMetaData { get; } = SqlTable<GroupRecord>.Default.WithColumn<string>(nameof(NormalizedName), ColumnOptions.Nullable, MAX_SIZE)
+                                                                                 .WithColumn<string>(nameof(NameOfGroup), ColumnOptions.None, MAX_SIZE, checks: $"{nameof(NameOfGroup)} > 0")
+                                                                                 .WithColumn<string>(nameof(Rights),      ColumnOptions.None, RIGHTS,   checks: $"{nameof(Rights)} > 0")
+                                                                                 .With_CreatedBy()
+                                                                                 .Build();
 
 
     public static string                     TableName      => TABLE_NAME;
@@ -96,7 +96,7 @@ public sealed record GroupRecord( [property: StringLength(GroupRecord.MAX_SIZE)]
         await base.Import(importer, token);
         await importer.WriteAsync(NormalizedName, NpgsqlDbType.Text, token);
         await importer.WriteAsync(NameOfGroup,    NpgsqlDbType.Text, token);
-        await importer.WriteAsync(Rights.Value,         NpgsqlDbType.Text, token);
+        await importer.WriteAsync(Rights.Value,   NpgsqlDbType.Text, token);
 
         if ( CreatedBy.HasValue ) { await importer.WriteAsync(CreatedBy.Value, NpgsqlDbType.Uuid, token); }
         else { await importer.WriteNullAsync(token); }
