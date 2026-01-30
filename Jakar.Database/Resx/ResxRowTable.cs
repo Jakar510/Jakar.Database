@@ -27,24 +27,24 @@ public sealed record ResxRowRecord( long                    KeyID,
 {
     public const string TABLE_NAME = "resx";
 
-    public static TableMetaData PropertyMetaData { get; } = SqlTable<ResxRowRecord>.Default.WithColumn<string>(nameof(KeyID), ColumnOptions.None, NAME)
-                                                                                   .WithColumn<string>(nameof(Key),        ColumnOptions.None, MAX_SIZE)
-                                                                                   .WithColumn<string>(nameof(Neutral),    ColumnOptions.None, MAX_SIZE)
-                                                                                   .WithColumn<string>(nameof(Arabic),     ColumnOptions.None, MAX_SIZE)
-                                                                                   .WithColumn<string>(nameof(Chinese),    ColumnOptions.None, MAX_SIZE)
-                                                                                   .WithColumn<string>(nameof(Czech),      ColumnOptions.None, MAX_SIZE)
-                                                                                   .WithColumn<string>(nameof(Dutch),      ColumnOptions.None, MAX_SIZE)
-                                                                                   .WithColumn<string>(nameof(English),    ColumnOptions.None, MAX_SIZE)
-                                                                                   .WithColumn<string>(nameof(French),     ColumnOptions.None, MAX_SIZE)
-                                                                                   .WithColumn<string>(nameof(German),     ColumnOptions.None, MAX_SIZE)
-                                                                                   .WithColumn<string>(nameof(Japanese),   ColumnOptions.None, MAX_SIZE)
-                                                                                   .WithColumn<string>(nameof(Korean),     ColumnOptions.None, MAX_SIZE)
-                                                                                   .WithColumn<string>(nameof(Polish),     ColumnOptions.None, MAX_SIZE)
-                                                                                   .WithColumn<string>(nameof(Portuguese), ColumnOptions.None, MAX_SIZE)
-                                                                                   .WithColumn<string>(nameof(Spanish),    ColumnOptions.None, MAX_SIZE)
-                                                                                   .WithColumn<string>(nameof(Swedish),    ColumnOptions.None, MAX_SIZE)
-                                                                                   .WithColumn<string>(nameof(Thai),       ColumnOptions.None, MAX_SIZE)
-                                                                                   .Build();
+    public static TableMetaData<ResxRowRecord> PropertyMetaData { get; } = SqlTable<ResxRowRecord>.Default.WithColumn<string>(nameof(KeyID), ColumnOptions.None, NAME)
+                                                                                                  .WithColumn<string>(nameof(Key),        ColumnOptions.None, MAX_SIZE)
+                                                                                                  .WithColumn<string>(nameof(Neutral),    ColumnOptions.None, MAX_SIZE)
+                                                                                                  .WithColumn<string>(nameof(Arabic),     ColumnOptions.None, MAX_SIZE)
+                                                                                                  .WithColumn<string>(nameof(Chinese),    ColumnOptions.None, MAX_SIZE)
+                                                                                                  .WithColumn<string>(nameof(Czech),      ColumnOptions.None, MAX_SIZE)
+                                                                                                  .WithColumn<string>(nameof(Dutch),      ColumnOptions.None, MAX_SIZE)
+                                                                                                  .WithColumn<string>(nameof(English),    ColumnOptions.None, MAX_SIZE)
+                                                                                                  .WithColumn<string>(nameof(French),     ColumnOptions.None, MAX_SIZE)
+                                                                                                  .WithColumn<string>(nameof(German),     ColumnOptions.None, MAX_SIZE)
+                                                                                                  .WithColumn<string>(nameof(Japanese),   ColumnOptions.None, MAX_SIZE)
+                                                                                                  .WithColumn<string>(nameof(Korean),     ColumnOptions.None, MAX_SIZE)
+                                                                                                  .WithColumn<string>(nameof(Polish),     ColumnOptions.None, MAX_SIZE)
+                                                                                                  .WithColumn<string>(nameof(Portuguese), ColumnOptions.None, MAX_SIZE)
+                                                                                                  .WithColumn<string>(nameof(Spanish),    ColumnOptions.None, MAX_SIZE)
+                                                                                                  .WithColumn<string>(nameof(Swedish),    ColumnOptions.None, MAX_SIZE)
+                                                                                                  .WithColumn<string>(nameof(Thai),       ColumnOptions.None, MAX_SIZE)
+                                                                                                  .Build();
 
     public static string TableName => TABLE_NAME;
 

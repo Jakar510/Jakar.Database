@@ -25,9 +25,9 @@ public abstract record Mapping<TSelf, TKey, TValue>( RecordID<TKey> KeyID, Recor
     private WeakReference<TValue>? __value;
 
 
-    public static TableMetaData PropertyMetaData { get; } = SqlTable<TSelf>.Default.WithColumn<TKey>(nameof(KeyID))
-                                                                           .WithColumn<TValue>(nameof(ValueID))
-                                                                           .Build();
+    public static TableMetaData<TSelf> PropertyMetaData { get; } = SqlTable<TSelf>.Default.WithColumn<TKey>(nameof(KeyID))
+                                                                                  .WithColumn<TValue>(nameof(ValueID))
+                                                                                  .Build();
 
 
     protected Mapping( RecordID<TKey> key, RecordID<TValue> value ) : this(key, value, RecordID<TSelf>.New(), DateTimeOffset.UtcNow) { }

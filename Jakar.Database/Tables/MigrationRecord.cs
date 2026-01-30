@@ -36,12 +36,12 @@ public sealed record MigrationRecord : BaseRecord<MigrationRecord>, ITableRecord
 
     public static ReadOnlyMemory<PropertyInfo> ClassProperties => Properties;
 
-    public static TableMetaData PropertyMetaData { get; } = SqlTable<MigrationRecord>.Empty.WithColumn<ulong>(nameof(MigrationID), ColumnOptions.None)
-                                                                                     .WithColumn<string>(nameof(TableID),     ColumnOptions.None, 256)
-                                                                                     .WithColumn<string>(nameof(Description), ColumnOptions.None, MAX_FIXED)
-                                                                                     .With_DateCreated()
-                                                                                     .With_AdditionalData()
-                                                                                     .Build();
+    public static TableMetaData<MigrationRecord> PropertyMetaData { get; } = SqlTable<MigrationRecord>.Empty.WithColumn<ulong>(nameof(MigrationID), ColumnOptions.None)
+                                                                                                      .WithColumn<string>(nameof(TableID),     ColumnOptions.None, 256)
+                                                                                                      .WithColumn<string>(nameof(Description), ColumnOptions.None, MAX_FIXED)
+                                                                                                      .With_DateCreated()
+                                                                                                      .With_AdditionalData()
+                                                                                                      .Build();
 
     public static string                                   TableName   => TABLE_NAME;
     public        DateTimeOffset                           AppliedOn   { get; init; } = DateTimeOffset.UtcNow;
@@ -145,7 +145,7 @@ public sealed record MigrationRecord : BaseRecord<MigrationRecord>, ITableRecord
         }
     }
     public static MigrationRecord Create<TSelf>( ulong migrationID, string description, string sql )
-        where TSelf : ITableRecord<TSelf>
+        where TSelf : class, ITableRecord<TSelf>
     {
         MigrationRecord record = new(migrationID, description)
                                  {

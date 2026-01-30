@@ -4,7 +4,7 @@
 public static class TableExtensions
 {
     [Pure] public static TSelf Validate<TSelf>( this TSelf self )
-        where TSelf : ITableRecord<TSelf>
+        where TSelf : class, ITableRecord<TSelf>
     {
         if ( !Debugger.IsAttached ) { return self; }
 

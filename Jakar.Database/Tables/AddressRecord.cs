@@ -26,17 +26,17 @@ public sealed record AddressRecord( [property: ProtectedPersonalData] string  Li
 {
     public const string TABLE_NAME = "addresses";
 
-    public static TableMetaData PropertyMetaData { get; } = SqlTable<AddressRecord>.Default.WithColumn<string>(nameof(Line1), ColumnOptions.Indexed, 256)
-                                                                                   .WithColumn<string>(nameof(Line2),           ColumnOptions.Indexed,  1024)
-                                                                                   .WithColumn<string>(nameof(City),            ColumnOptions.Indexed,  256)
-                                                                                   .WithColumn<string>(nameof(StateOrProvince), ColumnOptions.Indexed,  256)
-                                                                                   .WithColumn<string>(nameof(Country),         ColumnOptions.Indexed,  256)
-                                                                                   .WithColumn<string>(nameof(PostalCode),      ColumnOptions.Indexed,  256)
-                                                                                   .WithColumn<string>(nameof(Address),         ColumnOptions.Nullable, 256)
-                                                                                   .WithColumn<bool>(nameof(IsPrimary),         ColumnOptions.None)
-                                                                                   .With_AdditionalData()
-                                                                                   .With_CreatedBy()
-                                                                                   .Build();
+    public static TableMetaData<AddressRecord> PropertyMetaData { get; } = SqlTable<AddressRecord>.Default.WithColumn<string>(nameof(Line1), ColumnOptions.Indexed, 256)
+                                                                                                  .WithColumn<string>(nameof(Line2),           ColumnOptions.Indexed,  1024)
+                                                                                                  .WithColumn<string>(nameof(City),            ColumnOptions.Indexed,  256)
+                                                                                                  .WithColumn<string>(nameof(StateOrProvince), ColumnOptions.Indexed,  256)
+                                                                                                  .WithColumn<string>(nameof(Country),         ColumnOptions.Indexed,  256)
+                                                                                                  .WithColumn<string>(nameof(PostalCode),      ColumnOptions.Indexed,  256)
+                                                                                                  .WithColumn<string>(nameof(Address),         ColumnOptions.Nullable, 256)
+                                                                                                  .WithColumn<bool>(nameof(IsPrimary),         ColumnOptions.None)
+                                                                                                  .With_AdditionalData()
+                                                                                                  .With_CreatedBy()
+                                                                                                  .Build();
 
 
     public static string TableName => TABLE_NAME;

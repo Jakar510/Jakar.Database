@@ -59,21 +59,25 @@
         }
 
 
-        public ValueTask<UserRecord?> FindByLoginAsync( string loginProvider, string providerKey, CancellationToken token ) => this.TryCall(FindByLoginAsync, loginProvider, providerKey, token);
-        public virtual async ValueTask<UserRecord?> FindByLoginAsync( NpgsqlConnection connection, NpgsqlTransaction transaction, string loginProvider, string providerKey, CancellationToken token )
+        public ValueTask<ErrorOrResult<UserRecord>> FindByLoginAsync( string loginProvider, string providerKey, CancellationToken token ) => this.TryCall(FindByLoginAsync, loginProvider, providerKey, token);
+        public virtual async ValueTask<ErrorOrResult<UserRecord>> FindByLoginAsync( NpgsqlConnection connection, NpgsqlTransaction transaction, string loginProvider, string providerKey, CancellationToken token )
         {
-            PostgresParameters parameters = PostgresParameters.Create<UserLoginProviderRecord>();
+            PostgresParameters parameters = PostgresParameters.Create<UserRecord>();
             parameters.Add(nameof(UserLoginProviderRecord.LoginProvider), loginProvider);
             parameters.Add(nameof(UserLoginProviderRecord.ProviderKey),   providerKey);
-            return await Users.Get(connection, transaction, true, parameters, token);
+            ErrorOrResult<UserLoginProviderRecord> userLoginProvider = await UserLoginProviders.Get(connection, transaction, true, parameters, token);
+
+            if ( !userLoginProvider.TryGetValue(out UserLoginProviderRecord? mappingRecord, out Errors? errors) ) { return errors; }
+
+            return await Users.Get(connection, transaction, mappingRecord.CreatedBy, token);
         }
 
 
         public ValueTask RemoveLoginAsync( UserRecord user, string loginProvider, string providerKey, CancellationToken token ) => this.TryCall(RemoveLoginAsync, user, loginProvider, providerKey, token);
         public virtual async ValueTask RemoveLoginAsync( NpgsqlConnection connection, NpgsqlTransaction transaction, UserRecord user, string loginProvider, string providerKey, CancellationToken token )
         {
-            PostgresParameters                        parameters = UserLoginProviderRecord.GetDynamicParameters(user, loginProvider, providerKey);
-            IAsyncEnumerable<UserLoginProviderRecord> records    = UserLoginProviders.Where(connection, transaction, true, parameters, token);
+            PostgresParameters parameters = UserLoginProviderRecord.GetDynamicParameters(user, loginProvider, providerKey);
+            IAsyncEnumerable<UserLoginProviderRecord>   records    = UserLoginProviders.Where(connection, transaction, true, parameters, token);
             await foreach ( UserLoginProviderRecord record in records ) { await UserLoginProviders.Delete(connection, transaction, record, token); }
         }
 

@@ -8,11 +8,10 @@ using ZLinq.Linq;
 namespace Jakar.Database;
 
 
-[DefaultMember(nameof(Empty))]
-public readonly struct PostgresParameters( TableMetaData table ) : IEquatable<PostgresParameters>
+public readonly struct PostgresParameters : IEquatable<PostgresParameters>
 {
-    public static readonly PostgresParameters    Empty    = new(TableMetaData.Empty);
-    private readonly       List<NpgsqlParameter> __buffer = new(Math.Max(table.Count, DEFAULT_CAPACITY));
+    private readonly List<NpgsqlParameter> __buffer;
+    private readonly ITableMetaData        __table;
 
 
     public int                           Count    => __buffer.Count;
@@ -50,7 +49,7 @@ public readonly struct PostgresParameters( TableMetaData table ) : IEquatable<Po
         get
         {
             const string  SPACER = ",\n      ";
-            int           length = table.Properties.Values.Sum(static x => x.ColumnName.Length) + ( table.Count - 1 ) * SPACER.Length;
+            int           length = __table.Properties.Values.Sum(static x => x.ColumnName.Length) + ( __table.Count - 1 ) * SPACER.Length;
             StringBuilder sb     = new(length);
             int           count  = Count;
             int           index  = 0;
@@ -73,7 +72,7 @@ public readonly struct PostgresParameters( TableMetaData table ) : IEquatable<Po
         get
         {
             const string  SPACER = ",\n      ";
-            int           length = table.Properties.Values.Sum(static x => x.VariableName.Length) + ( table.Count - 1 ) * SPACER.Length;
+            int           length = __table.Properties.Values.Sum(static x => x.VariableName.Length) + ( __table.Count - 1 ) * SPACER.Length;
             StringBuilder sb     = new(length);
             int           count  = Count;
             int           index  = 0;
@@ -93,10 +92,14 @@ public readonly struct PostgresParameters( TableMetaData table ) : IEquatable<Po
     }
 
 
-    [Obsolete("For serialization only", true)] public PostgresParameters() : this(TableMetaData.Empty) => throw new NotSupportedException();
-
+    public PostgresParameters() => throw new InvalidOperationException($"Use {nameof(PostgresParameters)}.{nameof(Create)} instead.");
+    internal PostgresParameters( ITableMetaData table )
+    {
+        __table  = table;
+        __buffer = new List<NpgsqlParameter>(Math.Max(table.Count, DEFAULT_CAPACITY));
+    }
     public static PostgresParameters Create<TSelf>()
-        where TSelf : ITableRecord<TSelf> => new(TSelf.PropertyMetaData);
+        where TSelf : class, ITableRecord<TSelf> => new(TSelf.PropertyMetaData);
 
 
     public PostgresParameters With( in PostgresParameters parameters )
@@ -125,7 +128,7 @@ public readonly struct PostgresParameters( TableMetaData table ) : IEquatable<Po
     */
     public PostgresParameters Add<T>( string propertyName, T value, [CallerArgumentExpression(nameof(value))] string parameterName = EMPTY, ParameterDirection direction = ParameterDirection.Input, DataRowVersion sourceVersion = DataRowVersion.Default )
     {
-        ColumnMetaData meta = table[propertyName];
+        ColumnMetaData meta = __table[propertyName];
         return Add(meta, value, parameterName, direction, sourceVersion);
     }
     public PostgresParameters Add<T>( ColumnMetaData meta, T value, [CallerArgumentExpression(nameof(value))] string parameterName = EMPTY, ParameterDirection direction = ParameterDirection.Input, DataRowVersion sourceVersion = DataRowVersion.Default )
@@ -152,7 +155,7 @@ public readonly struct PostgresParameters( TableMetaData table ) : IEquatable<Po
     {
         string        match  = matchAll.GetAndOr();
         int           count  = Count;
-        int           length = table.Properties.Values.Sum(static x => x.KeyValuePair.Length) + ( table.Count - 1 ) * match.Length;
+        int           length = __table.Properties.Values.Sum(static x => x.KeyValuePair.Length) + ( __table.Count - 1 ) * match.Length;
         StringBuilder sb     = new(length);
         int           index  = 0;
 
@@ -170,9 +173,9 @@ public readonly struct PostgresParameters( TableMetaData table ) : IEquatable<Po
     }
 
 
-    private string GetColumnName( string   propertyName ) => table[propertyName].ColumnName;
-    private string GetVariableName( string propertyName ) => table[propertyName].VariableName;
-    private string GetKeyValuePair( string propertyName ) => table[propertyName].KeyValuePair;
+    private string GetColumnName( string   propertyName ) => __table[propertyName].ColumnName;
+    private string GetVariableName( string propertyName ) => __table[propertyName].VariableName;
+    private string GetKeyValuePair( string propertyName ) => __table[propertyName].KeyValuePair;
 
 
     public override int GetHashCode() => HashCode.Combine(__buffer);

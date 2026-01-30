@@ -20,7 +20,8 @@ public readonly struct SqlKey( bool matchAll, ImmutableArray<string> parameters 
                                                                                                                                                         .Append(':')
                                                                                                                                                         .AppendJoin(',', parameters!)
                                                                                                                                                         .ToString();
-    public static SqlKey Create( bool matchAll, PostgresParameters parameters ) => new(matchAll, [..parameters.ParameterNames]);
+    public static SqlKey Create<TSelf>( bool matchAll, PostgresParameters parameters )
+        where TSelf : class, ITableRecord<TSelf> => new(matchAll, [..parameters.ParameterNames]);
 
 
     public ValueEnumerable<FromImmutableArray<string>, string> AsValueEnumerable() => new(new FromImmutableArray<string>(parameters));

@@ -39,6 +39,8 @@ public readonly ref struct SqlTable<TSelf> : IDisposable
 
         if ( typeof(TValue).Name.StartsWith("RecordID", StringComparison.InvariantCultureIgnoreCase) ) { throw new InvalidOperationException($"Use the other overload of {nameof(WithColumn)} instead for primary key columns ({nameof(RecordID<>)})."); }
 
+        if ( typeof(TValue).IsEnum ) { throw new InvalidOperationException($"Use the other overload of {nameof(WithColumn)} instead for Enum columns ({typeof(TValue).Name})."); }
+
         PostgresType   dbType = typeof(TValue).GetPostgresType(ref options, ref length);
         ColumnMetaData column = new(propertyName, dbType, options, null, length, checks);
         return WithColumn(column);
@@ -53,7 +55,7 @@ public readonly ref struct SqlTable<TSelf> : IDisposable
         return WithColumn(column);
     }
     public SqlTable<TSelf> WithColumn<TRecord>( string propertyName, ColumnCheckMetaData? checks = null )
-        where TRecord : ITableRecord<TRecord>
+        where TRecord : class, ITableRecord<TRecord>
     {
         ColumnMetaData column = new(propertyName, PostgresType.Guid, ColumnOptions.ForeignKey, TRecord.TableName, checks: checks);
         return WithColumn(column);
@@ -74,7 +76,7 @@ public readonly ref struct SqlTable<TSelf> : IDisposable
     }
 
 
-    public TableMetaData Build()
+    public TableMetaData<TSelf> Build()
     {
         int check = Columns.Values.Count(static x => x.IsPrimaryKey);
         if ( check != 1 ) { throw new InvalidOperationException($"Must be exactly one primary key defined for {typeof(TSelf).Name}. Instead there are {check} primary keys."); }

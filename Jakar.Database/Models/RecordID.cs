@@ -7,7 +7,7 @@ namespace Jakar.Database;
 
 [DefaultMember(nameof(Empty))]
 public readonly struct RecordID<TSelf> : IEquatable<RecordID<TSelf>>, IComparable<RecordID<TSelf>>, ISpanFormattable, ISpanParsable<RecordID<TSelf>>, IRegisterDapperTypeHandlers
-    where TSelf : ITableRecord<TSelf>
+    where TSelf : class, ITableRecord<TSelf>
 {
     public static readonly RecordID<TSelf> Empty = new(Guid.Empty);
     public readonly        string          key;

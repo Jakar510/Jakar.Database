@@ -14,11 +14,11 @@ public sealed record GroupRecord( [property: StringLength(GroupRecord.MAX_SIZE)]
     public const int    MAX_SIZE   = 1024;
     public const string TABLE_NAME = "groups";
 
-    public static TableMetaData PropertyMetaData { get; } = SqlTable<GroupRecord>.Default.WithColumn<string>(nameof(NormalizedName), ColumnOptions.Nullable, MAX_SIZE)
-                                                                                 .WithColumn<string>(nameof(NameOfGroup), ColumnOptions.None, MAX_SIZE, checks: $"{nameof(NameOfGroup)} > 0")
-                                                                                 .WithColumn<string>(nameof(Rights),      ColumnOptions.None, RIGHTS,   checks: $"{nameof(Rights)} > 0")
-                                                                                 .With_CreatedBy()
-                                                                                 .Build();
+    public static TableMetaData<GroupRecord> PropertyMetaData { get; } = SqlTable<GroupRecord>.Default.WithColumn<string>(nameof(NormalizedName), ColumnOptions.Nullable, MAX_SIZE)
+                                                                                              .WithColumn<string>(nameof(NameOfGroup), ColumnOptions.None, MAX_SIZE, checks: $"{nameof(NameOfGroup)} > 0")
+                                                                                              .WithColumn<string>(nameof(Rights),      ColumnOptions.None, RIGHTS,   checks: $"{nameof(Rights)} > 0")
+                                                                                              .With_CreatedBy()
+                                                                                              .Build();
 
 
     public static string                     TableName      => TABLE_NAME;

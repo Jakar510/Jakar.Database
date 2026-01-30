@@ -1,28 +1,47 @@
 ﻿namespace Jakar.Database;
 
 
-public sealed class TableMetaData( SortedDictionary<string, ColumnMetaData> dictionary )
+public interface ITableMetaData
 {
-    public static readonly TableMetaData Empty = new(new SortedDictionary<string, ColumnMetaData>());
+    public abstract static ITableMetaData    Default                  { get; }
+    public                 string            TableName                { [Pure] get; }
+    FrozenDictionary<string, int>            Indexes                  { get; }
+    FrozenDictionary<string, ColumnMetaData> Properties               { get; }
+    int                                      MaxIndexColumnNameLength { get; }
+    int                                      MaxColumnNameLength      { get; }
+    int                                      MaxDataTypeLength        { get; }
+    int                                      Count                    { get; }
+    ColumnMetaData this[ string propertyName ] { get; }
+    SortedDictionary<string, ColumnMetaData>.Enumerator GetEnumerator();
+    bool                                                ContainsKey( string propertyName );
+    bool                                                TryGetValue( string propertyName, [MaybeNullWhen(false)] out ColumnMetaData value );
+}
 
 
-    public readonly FrozenDictionary<string, int>            Indexes    = CreateIndexes(dictionary);
-    public readonly FrozenDictionary<string, ColumnMetaData> Properties = dictionary.ToFrozenDictionary(StringComparer.InvariantCultureIgnoreCase);
+
+public sealed class TableMetaData<TSelf>( SortedDictionary<string, ColumnMetaData> dictionary ) : ITableMetaData
+    where TSelf : class, ITableRecord<TSelf>
+{
+    public static readonly TableMetaData<TSelf> Current = Create();
 
 
-    public int MaxIndexColumnNameLength => dictionary.Values.Max(static x => x.IndexColumnName?.Length ?? 0);
-    public int MaxColumnNameLength      => dictionary.Keys.Max(static x => x.Length);
-    public int MaxDataTypeLength        => dictionary.Values.Max(static x => x.DataType.Length);
-    public int Count                    => Properties.Count;
-    public ColumnMetaData this[ string key ] => Properties[key.SqlColumnName()];
+    public static ITableMetaData                           Default                  => Current;
+    public        FrozenDictionary<string, int>            Indexes                  { get; } = CreateIndexes(dictionary);
+    public        FrozenDictionary<string, ColumnMetaData> Properties               { get; } = dictionary.ToFrozenDictionary(StringComparer.InvariantCultureIgnoreCase);
+    public        int                                      MaxIndexColumnNameLength { get; } = dictionary.Values.Max(static x => x.IndexColumnName?.Length ?? 0);
+    public        int                                      MaxColumnNameLength      { get; } = dictionary.Keys.Max(static x => x.Length);
+    public        int                                      MaxDataTypeLength        { get; } = dictionary.Values.Max(static x => x.DataType.Length);
+    public        int                                      Count                    { get; } = dictionary.Count;
+    public        string                                   TableName                { [Pure] get => TSelf.TableName; }
+    public ColumnMetaData this[ string propertyName ] => Properties[propertyName.SqlColumnName()];
 
 
-    public static implicit operator TableMetaData( SortedDictionary<string, ColumnMetaData> dictionary ) => new(dictionary);
+    public static implicit operator TableMetaData<TSelf>( SortedDictionary<string, ColumnMetaData> dictionary ) => new(dictionary);
 
 
-    public SortedDictionary<string, ColumnMetaData>.Enumerator GetEnumerator()                                                            => dictionary.GetEnumerator();
-    public bool                                                ContainsKey( string key )                                                  => Properties.ContainsKey(key.SqlColumnName());
-    public bool                                                TryGetValue( string key, [MaybeNullWhen(false)] out ColumnMetaData value ) => Properties.TryGetValue(key.SqlColumnName(), out value);
+    public SortedDictionary<string, ColumnMetaData>.Enumerator GetEnumerator()                                                                     => dictionary.GetEnumerator();
+    public bool                                                ContainsKey( string propertyName )                                                  => Properties.ContainsKey(propertyName.SqlColumnName());
+    public bool                                                TryGetValue( string propertyName, [MaybeNullWhen(false)] out ColumnMetaData value ) => Properties.TryGetValue(propertyName.SqlColumnName(), out value);
 
 
     private static FrozenDictionary<string, int> CreateIndexes( SortedDictionary<string, ColumnMetaData> dictionary )
@@ -31,12 +50,11 @@ public sealed class TableMetaData( SortedDictionary<string, ColumnMetaData> dict
 
         Dictionary<string, int> indexes = new(StringComparer.InvariantCultureIgnoreCase);
         int                     i       = 0;
-        foreach ( string key in dictionary.Keys ) { indexes[key] = i++; }
+        foreach ( string propertyName in dictionary.Keys ) { indexes[propertyName] = i++; }
 
         return indexes.ToFrozenDictionary();
     }
-    public static TableMetaData Create<TSelf>()
-        where TSelf : ITableRecord<TSelf>
+    public static TableMetaData<TSelf> Create()
     {
         const BindingFlags ATTRIBUTES = BindingFlags.Instance | BindingFlags.Public | BindingFlags.SetProperty | BindingFlags.GetProperty;
 
@@ -52,6 +70,6 @@ public sealed class TableMetaData( SortedDictionary<string, ColumnMetaData> dict
         SortedDictionary<string, ColumnMetaData> dictionary = new(StringComparer.InvariantCultureIgnoreCase);
         foreach ( PropertyInfo property in properties ) { dictionary[property.Name.SqlColumnName()] = ColumnMetaData.Create(property); }
 
-        return dictionary;
+        return new TableMetaData<TSelf>(dictionary);
     }
 }

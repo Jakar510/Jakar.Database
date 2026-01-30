@@ -25,14 +25,14 @@ public sealed record FileRecord( string?              FileName,
 {
     public const string TABLE_NAME = "files";
 
-    public static TableMetaData PropertyMetaData { get; } = SqlTable<FileRecord>.Default.WithColumn<string>(nameof(FileName), ColumnOptions.Nullable, 256)
-                                                                                .WithColumn<string>(nameof(FileDescription), ColumnOptions.Nullable, 1024)
-                                                                                .WithColumn<string>(nameof(FileType),        ColumnOptions.Nullable, 256)
-                                                                                .WithColumn<string>(nameof(Hash),            ColumnOptions.None,     MAX_FIXED)
-                                                                                .WithColumn<string>(nameof(FullPath),        ColumnOptions.None,     MAX_FIXED)
-                                                                                .WithColumn<long>(nameof(FileSize),          ColumnOptions.None)
-                                                                                .WithColumn<MimeType>(nameof(MimeType),      true)
-                                                                                .Build();
+    public static TableMetaData<FileRecord> PropertyMetaData { get; } = SqlTable<FileRecord>.Default.WithColumn<string>(nameof(FileName), ColumnOptions.Nullable, 256)
+                                                                                            .WithColumn<string>(nameof(FileDescription), ColumnOptions.Nullable, 1024)
+                                                                                            .WithColumn<string>(nameof(FileType),        ColumnOptions.Nullable, 256)
+                                                                                            .WithColumn<string>(nameof(Hash),            ColumnOptions.None,     MAX_FIXED)
+                                                                                            .WithColumn<string>(nameof(FullPath),        ColumnOptions.None,     MAX_FIXED)
+                                                                                            .WithColumn<long>(nameof(FileSize),          ColumnOptions.None)
+                                                                                            .WithColumn<MimeType>(nameof(MimeType),      true)
+                                                                                            .Build();
 
     public static string TableName => TABLE_NAME;
 

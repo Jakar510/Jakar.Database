@@ -244,13 +244,9 @@ public static class Migrations
     public static async ValueTask<MigrationRecord[]> All( Database db, CancellationToken token )
     {
         await using NpgsqlConnection connection = await db.ConnectAsync(token);
-        CommandDefinition            command    = new(MigrationRecord.SelectSql, null, null, null, null, CommandFlags.Buffered, token);
-
-        // await using NpgsqlDataReader     reader     = await connection.ExecuteReaderAsync(command);
-
-        await using NpgsqlCommand cmd = new(null, connection);
+        await using NpgsqlCommand    cmd        = new(null, connection);
         cmd.Connection  = connection;
-        cmd.CommandText = command.CommandText;
+        cmd.CommandText = MigrationRecord.SelectSql;
         NpgsqlParameter parameter = cmd.CreateParameter();
         parameter.NpgsqlDbType = NpgsqlDbType.Text;
 

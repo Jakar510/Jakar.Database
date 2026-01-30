@@ -225,7 +225,7 @@ public abstract partial class Database : Randoms, IConnectableDbRoot, IHealthChe
 
 
     public virtual async IAsyncEnumerable<TSelf> Where<TSelf>( NpgsqlConnection connection, NpgsqlTransaction? transaction, string sql, PostgresParameters parameters, [EnumeratorCancellation] CancellationToken token = default )
-        where TSelf : ITableRecord<TSelf>, IDateCreated
+        where TSelf : class, ITableRecord<TSelf>, IDateCreated
     {
         SqlCommand<TSelf>            command = new(sql, parameters);
         await using NpgsqlCommand    cmd     = command.ToCommand(connection, transaction);
@@ -234,7 +234,7 @@ public abstract partial class Database : Randoms, IConnectableDbRoot, IHealthChe
     }
     public virtual async IAsyncEnumerable<TValue> Where<TSelf, TValue>( NpgsqlConnection connection, NpgsqlTransaction? transaction, string sql, PostgresParameters parameters, [EnumeratorCancellation] CancellationToken token = default )
         where TValue : struct
-        where TSelf : ITableRecord<TSelf>
+        where TSelf : class, ITableRecord<TSelf>
     {
         SqlCommand<TSelf>            command = SqlCommand<TSelf>.Create(sql, parameters);
         await using NpgsqlCommand    cmd     = command.ToCommand(connection, transaction);

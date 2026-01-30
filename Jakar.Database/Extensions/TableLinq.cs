@@ -9,23 +9,23 @@ public static class TableLinq
     extension( NpgsqlDataReader reader )
     {
         public async ValueTask<ErrorOrResult<TSelf>> FirstAsync<TSelf>( [EnumeratorCancellation] CancellationToken token = default )
-            where TSelf : ITableRecord<TSelf>
+            where TSelf : class, ITableRecord<TSelf>
         {
             await foreach ( TSelf self in reader.CreateAsync<TSelf>(token) ) { return self; }
 
             throw new InvalidOperationException("Sequence contains no elements");
         }
         public async ValueTask<ErrorOrResult<TSelf>> FirstOrDefaultAsync<TSelf>( [EnumeratorCancellation] CancellationToken token = default )
-            where TSelf : ITableRecord<TSelf>
+            where TSelf : class, ITableRecord<TSelf>
         {
             await foreach ( TSelf self in reader.CreateAsync<TSelf>(token) ) { return self; }
 
             return Error.NotFound();
         }
         public async ValueTask<ErrorOrResult<TSelf>> SingleAsync<TSelf>( [EnumeratorCancellation] CancellationToken token = default )
-            where TSelf : ITableRecord<TSelf>
+            where TSelf : class, ITableRecord<TSelf>
         {
-            TSelf? record = default;
+            TSelf? record = null;
 
             await foreach ( TSelf self in reader.CreateAsync<TSelf>(token) )
             {
@@ -39,15 +39,15 @@ public static class TableLinq
                        : record;
         }
         public async ValueTask<ErrorOrResult<TSelf>> SingleOrDefaultAsync<TSelf>( [EnumeratorCancellation] CancellationToken token = default )
-            where TSelf : ITableRecord<TSelf>
+            where TSelf : class, ITableRecord<TSelf>
         {
-            TSelf? record = default;
+            TSelf? record = null;
 
             await foreach ( TSelf self in reader.CreateAsync<TSelf>(token) )
             {
                 if ( record is not null )
                 {
-                    record = default;
+                    record = null;
                     break;
                 }
 
@@ -59,9 +59,9 @@ public static class TableLinq
                        : record;
         }
         public async ValueTask<ErrorOrResult<TSelf>> LastAsync<TSelf>( [EnumeratorCancellation] CancellationToken token = default )
-            where TSelf : ITableRecord<TSelf>
+            where TSelf : class, ITableRecord<TSelf>
         {
-            TSelf? record = default;
+            TSelf? record = null;
             await foreach ( TSelf self in reader.CreateAsync<TSelf>(token) ) { record = self; }
 
             return record is null
@@ -69,9 +69,9 @@ public static class TableLinq
                        : record;
         }
         public async ValueTask<ErrorOrResult<TSelf>> LastOrDefaultAsync<TSelf>( [EnumeratorCancellation] CancellationToken token = default )
-            where TSelf : ITableRecord<TSelf>
+            where TSelf : class, ITableRecord<TSelf>
         {
-            TSelf? record = default;
+            TSelf? record = null;
             await foreach ( TSelf self in reader.CreateAsync<TSelf>(token) ) { record = self; }
 
             return record is null
@@ -79,12 +79,12 @@ public static class TableLinq
                        : record;
         }
         public async IAsyncEnumerable<TSelf> CreateAsync<TSelf>( [EnumeratorCancellation] CancellationToken token = default )
-            where TSelf : ITableRecord<TSelf>
+            where TSelf : class, ITableRecord<TSelf>
         {
             while ( await reader.ReadAsync(token) ) { yield return TSelf.Create(reader); }
         }
         public async ValueTask<TSelf[]> CreateAsync<TSelf>( int initialCapacity, [EnumeratorCancellation] CancellationToken token = default )
-            where TSelf : ITableRecord<TSelf>
+            where TSelf : class, ITableRecord<TSelf>
         {
             List<TSelf> list = new(initialCapacity);
             while ( await reader.ReadAsync(token) ) { list.Add(TSelf.Create(reader)); }

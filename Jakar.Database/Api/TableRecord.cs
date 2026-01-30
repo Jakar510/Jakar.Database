@@ -3,7 +3,6 @@
 
 namespace Jakar.Database;
 
- 
 
 public interface IDateCreated : IUniqueID
 {
@@ -27,7 +26,7 @@ public interface ICreatedBy : IDateCreated
 
 
 public interface IRecordPair<TSelf> : IDateCreated
-    where TSelf : IRecordPair<TSelf>, ITableRecord<TSelf>
+    where TSelf : class, IRecordPair<TSelf>, ITableRecord<TSelf>
 {
     Guid IUniqueID<Guid>.      ID => ID.Value;
     public new RecordID<TSelf> ID { get; }
@@ -43,10 +42,10 @@ public interface IRecordPair<TSelf> : IDateCreated
 
 
 public interface ITableRecord<TSelf> : IRecordPair<TSelf>, IJsonModel<TSelf>
-    where TSelf : ITableRecord<TSelf>
+    where TSelf : class, ITableRecord<TSelf>
 {
     public abstract static ReadOnlyMemory<PropertyInfo> ClassProperties  { [Pure] get; }
-    public abstract static TableMetaData                PropertyMetaData { [Pure] get; }
+    public abstract static TableMetaData<TSelf>         PropertyMetaData { [Pure] get; }
     public abstract static string                       TableName        { [Pure] get; }
 
 

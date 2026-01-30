@@ -4,14 +4,14 @@
 namespace Jakar.Database;
 
 
-public readonly struct SqlCommand<TSelf>( string sql, in PostgresParameters parameters = default, CommandType? commandType = null, CommandFlags flags = CommandFlags.None ) : IEquatable<SqlCommand<TSelf>>
-    where TSelf : ITableRecord<TSelf>
+public readonly struct SqlCommand<TSelf>( string sql, in PostgresParameters parameters, CommandType? commandType = null, CommandFlags flags = CommandFlags.None ) : IEquatable<SqlCommand<TSelf>>
+    where TSelf : class, ITableRecord<TSelf>
 {
     public readonly                 string             SQL         = sql;
     public readonly                 PostgresParameters Parameters  = parameters;
     public readonly                 CommandType?       CommandType = commandType;
     public readonly                 CommandFlags       Flags       = flags;
-    public static implicit operator SqlCommand<TSelf>( string sql ) => new(sql, in PostgresParameters.Empty);
+    public static implicit operator SqlCommand<TSelf>( string sql ) => new(sql, PostgresParameters.Create<TSelf>());
 
 
     [Pure] [MustDisposeResource] public NpgsqlCommand ToCommand( NpgsqlConnection connection, NpgsqlTransaction? transaction = null )
@@ -67,7 +67,7 @@ public readonly struct SqlCommand<TSelf>( string sql, in PostgresParameters para
     {
         get
         {
-            TableMetaData data = TSelf.PropertyMetaData;
+            TableMetaData<TSelf> data = TSelf.PropertyMetaData;
 
             int length = data.Properties.Values.AsValueEnumerable()
                              .Sum(static x => x.ColumnName.Length) +
@@ -95,7 +95,7 @@ public readonly struct SqlCommand<TSelf>( string sql, in PostgresParameters para
     {
         get
         {
-            TableMetaData data = TSelf.PropertyMetaData;
+            TableMetaData<TSelf> data = TSelf.PropertyMetaData;
 
             int length = data.Properties.Values.AsValueEnumerable()
                              .Sum(static x => x.ColumnName.Length) +
@@ -137,7 +137,7 @@ public readonly struct SqlCommand<TSelf>( string sql, in PostgresParameters para
                       LIMIT {count};
                       """;
 
-        return new SqlCommand<TSelf>(sql);
+        return sql;
     }
     public static SqlCommand<TSelf> GetRandom( UserRecord user, int count ) => GetRandom(user.ID, count);
     public static SqlCommand<TSelf> GetRandom( in RecordID<UserRecord> createdBy, int count )
@@ -149,7 +149,7 @@ public readonly struct SqlCommand<TSelf>( string sql, in PostgresParameters para
                       LIMIT {count};
                       """;
 
-        return new SqlCommand<TSelf>(sql);
+        return sql;
     }
 
 
@@ -173,7 +173,7 @@ public readonly struct SqlCommand<TSelf>( string sql, in PostgresParameters para
                       LIMIT {count};
                       """;
 
-        return new SqlCommand<TSelf>(sql);
+        return sql;
     }
     public static SqlCommand<TSelf> WherePaged( int start, int count )
     {
@@ -183,14 +183,14 @@ public readonly struct SqlCommand<TSelf>( string sql, in PostgresParameters para
                       LIMIT {count};
                       """;
 
-        return new SqlCommand<TSelf>(sql);
+        return sql;
     }
     public static SqlCommand<TSelf> Where<TValue>( string columnName, TValue? value )
     {
         string sql = $"SELECT * FROM {TSelf.TableName} WHERE {columnName} = @{nameof(value)};";
-
+        
         PostgresParameters parameters = PostgresParameters.Create<TSelf>();
-        parameters.Add(nameof(value), value);
+        parameters.Add(nameof(value), value); 
 
         return new SqlCommand<TSelf>(sql, in parameters);
     }
@@ -203,7 +203,7 @@ public readonly struct SqlCommand<TSelf>( string sql, in PostgresParameters para
                        WHERE {{ID}} = '{0}';
                        """;
 
-        return new SqlCommand<TSelf>(string.Format(sql, id.Value.ToString()));
+        return string.Format(sql, id.Value.ToString());
     }
     public static SqlCommand<TSelf> Get( IEnumerable<RecordID<TSelf>> ids )
     {
@@ -212,7 +212,7 @@ public readonly struct SqlCommand<TSelf>( string sql, in PostgresParameters para
                       WHERE {ID} in ({string.Join(',', ids.Select(GetValue))});
                       """;
 
-        return new SqlCommand<TSelf>(sql);
+        return sql;
     }
     public static SqlCommand<TSelf> Get( bool matchAll, in PostgresParameters parameters )
     {
@@ -269,7 +269,7 @@ public readonly struct SqlCommand<TSelf>( string sql, in PostgresParameters para
                       WHERE {ID} = '{id.Value}';
                       """;
 
-        return new SqlCommand<TSelf>(sql);
+        return sql;
     }
     public static SqlCommand<TSelf> GetDelete( IEnumerable<RecordID<TSelf>> ids )
     {
@@ -284,7 +284,7 @@ public readonly struct SqlCommand<TSelf>( string sql, in PostgresParameters para
                       WHERE {ID} in ({sb});
                       """;
 
-        return new SqlCommand<TSelf>(sql);
+        return sql;
     }
     public static SqlCommand<TSelf> GetDeleteAll() => $"DELETE FROM {TSelf.TableName};";
 
@@ -296,7 +296,7 @@ public readonly struct SqlCommand<TSelf>( string sql, in PostgresParameters para
                       WHERE ( id = IFNULL((SELECT MIN({DATE_CREATED}) FROM {TSelf.TableName} WHERE {DATE_CREATED} > '{pair.DateCreated}' LIMIT 2, 0) );
                       """;
 
-        return new SqlCommand<TSelf>(string.Format(sql));
+        return sql;
     }
     public static SqlCommand<TSelf> GetNextID( in RecordPair<TSelf> pair )
     {
@@ -305,7 +305,7 @@ public readonly struct SqlCommand<TSelf>( string sql, in PostgresParameters para
                       WHERE ( id = IFNULL((SELECT MIN({DATE_CREATED}) FROM {TSelf.TableName} WHERE {DATE_CREATED} > '{pair.DateCreated}' LIMIT 2), 0) );
                       """;
 
-        return new SqlCommand<TSelf>(sql);
+        return sql;
     }
 
 
@@ -319,7 +319,7 @@ public readonly struct SqlCommand<TSelf>( string sql, in PostgresParameters para
                       FROM STDIN;
                       """;
 
-        return new SqlCommand<TSelf>(sql);
+        return sql;
     }
     public static SqlCommand<TSelf> GetInsert( TSelf record )
     {
