@@ -7,7 +7,7 @@ namespace Jakar.Database;
 public readonly ref struct SqlTable<TSelf> : IDisposable
     where TSelf : class, ITableRecord<TSelf>
 {
-    internal readonly SortedDictionary<string, ColumnMetaData> Columns = new(StringComparer.InvariantCultureIgnoreCase);
+    internal readonly Dictionary<string, ColumnMetaData> Columns = new(StringComparer.InvariantCultureIgnoreCase);
 
 
     public SqlTable() { }
@@ -81,6 +81,6 @@ public readonly ref struct SqlTable<TSelf> : IDisposable
         int check = Columns.Values.Count(static x => x.IsPrimaryKey);
         if ( check != 1 ) { throw new InvalidOperationException($"Must be exactly one primary key defined for {typeof(TSelf).Name}. Instead there are {check} primary keys."); }
 
-        return Columns;
+        return Columns.ToFrozenDictionary();
     }
 }
