@@ -111,6 +111,7 @@ public sealed class TableMetaData<TSelf> : ITableMetaData
         int                     i       = 0;
 
         foreach ( ( string propertyName, ColumnMetaData _ ) in dictionary.OrderBy(static pair => pair.Value.DbType, PostgresTypeComparer.Instance)
+                                                                         .ThenBy(static pair => pair.Value.Length,     Comparer<SizeInfo?>.Default)
                                                                          .ThenBy(static pair => pair.Value.ColumnName, StringComparer.InvariantCultureIgnoreCase) ) { indexes[i++] = propertyName; }
 
         return indexes.ToFrozenDictionary();

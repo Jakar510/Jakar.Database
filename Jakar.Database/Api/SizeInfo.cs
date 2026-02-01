@@ -2,12 +2,13 @@
 
 
 [DefaultValue(nameof(Default))]
-public readonly record struct LengthInfo( int Value )
+public readonly record struct LengthInfo( int Value ) : IComparable<LengthInfo>
 {
     public static readonly          LengthInfo Default = new(-1);
     public readonly                 bool       IsValid = Value >= 0;
     public readonly                 int        Value   = Value;
-    public static implicit operator LengthInfo( int value ) => new(value);
+    public static implicit operator LengthInfo( int           value ) => new(value);
+    public                          int CompareTo( LengthInfo other ) => Value.CompareTo(other.Value);
 }
 
 
@@ -19,7 +20,7 @@ public readonly record struct LengthInfo( int Value )
 /// <param name="Scope"> Order of magnitude of representable range (the exponent range). </param>
 /// <param name="Precision"> Reliable decimal digits of accuracy. </param>
 [DefaultValue(nameof(Default))]
-public readonly record struct PrecisionInfo( int Scope, int Precision )
+public readonly record struct PrecisionInfo( int Scope, int Precision ) : IComparable<PrecisionInfo>
 {
     public static readonly          PrecisionInfo Decimal   = new(28, 28);
     public static readonly          PrecisionInfo Default   = new(-1, -1);
@@ -40,12 +41,19 @@ public readonly record struct PrecisionInfo( int Scope, int Precision )
 
         return new PrecisionInfo(scope, precision);
     }
+    public int CompareTo( PrecisionInfo other )
+    {
+        int scopeComparison = Scope.CompareTo(other.Scope);
+        if ( scopeComparison != 0 ) { return scopeComparison; }
+
+        return Precision.CompareTo(other.Precision);
+    }
 }
 
 
 
 [DefaultValue(nameof(Default))]
-public readonly record struct SizeInfo( LengthInfo Length, PrecisionInfo Precision )
+public readonly record struct SizeInfo( LengthInfo Length, PrecisionInfo Precision ) : IComparable<SizeInfo>
 {
     public static readonly SizeInfo      Default   = new(LengthInfo.Default, PrecisionInfo.Default);
     public readonly        bool          IsValid   = Length.IsValid || Precision.IsValid;
@@ -63,4 +71,13 @@ public readonly record struct SizeInfo( LengthInfo Length, PrecisionInfo Precisi
     public static implicit operator SizeInfo( LengthInfo                 value ) => new(value);
     public static implicit operator SizeInfo( (int Precision, int Scope) value ) => new(value);
     public static implicit operator SizeInfo( PrecisionInfo              value ) => new(value);
+
+
+    public int CompareTo( SizeInfo other )
+    {
+        int lengthComparison = Length.CompareTo(other.Length);
+        if ( lengthComparison != 0 ) { return lengthComparison; }
+
+        return Precision.CompareTo(other.Precision);
+    }
 }
