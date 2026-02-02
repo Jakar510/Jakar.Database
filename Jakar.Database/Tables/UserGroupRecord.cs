@@ -44,11 +44,11 @@ public sealed record UserGroupRecord : Mapping<UserGroupRecord, UserRecord, Grou
     }
     [Pure] public static UserGroupRecord Create( NpgsqlDataReader reader )
     {
-        RecordID<UserRecord>      key          = new(reader.GetFieldValue<Guid>(nameof(KeyID)));
-        RecordID<GroupRecord>     value        = new(reader.GetFieldValue<Guid>(nameof(KeyID)));
-        DateTimeOffset            dateCreated  = reader.GetFieldValue<DateTimeOffset>(nameof(DateCreated));
-        DateTimeOffset?           lastModified = reader.GetFieldValue<DateTimeOffset?>(nameof(LastModified));
-        RecordID<UserGroupRecord> id           = new(reader.GetFieldValue<Guid>(nameof(ID)));
+        RecordID<UserRecord>      key          = RecordID<UserRecord>.Create(reader, nameof(KeyID));
+        RecordID<GroupRecord>     value        = RecordID<GroupRecord>.Create(reader, nameof(KeyID));
+        DateTimeOffset            dateCreated  = reader.GetFieldValue<UserGroupRecord, DateTimeOffset>(nameof(DateCreated));
+        DateTimeOffset?           lastModified = reader.GetFieldValue<UserGroupRecord, DateTimeOffset?>(nameof(LastModified));
+        RecordID<UserGroupRecord> id           = RecordID<UserGroupRecord>.ID(reader);
         UserGroupRecord           record       = new(key, value, id, dateCreated, lastModified);
         return record.Validate();
     }

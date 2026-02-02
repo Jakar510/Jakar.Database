@@ -38,15 +38,61 @@ public static class TableExtensions
 
     extension( NpgsqlDataReader self )
     {
-        public JObject? GetAdditionalData() => self.GetFieldValue<object?>(nameof(IJsonModel.AdditionalData)) is string value
-                                                   ? value.GetAdditionalData()
-                                                   : null;
+        public JObject? GetAdditionalData<TRecord>()
+            where TRecord : class, ITableRecord<TRecord>
+        {
+            int ordinal = TRecord.PropertyMetaData[nameof(IJsonModel.AdditionalData)].Index;
+
+            return self.IsDBNull(ordinal)
+                       ? null
+                       : self.GetValue<string>(ordinal)
+                            ?.GetAdditionalData();
+        }
+        public TValue GetFieldValue<TRecord, TValue>( string propertyName )
+            where TRecord : class, ITableRecord<TRecord>
+        {
+            int ordinal = TRecord.PropertyMetaData[propertyName].Index;
+
+            return self.IsDBNull(ordinal)
+                       ? default!
+                       : self.GetFieldValue<TValue>(ordinal);
+        }
+        public TValue GetFieldValue<TRecord, TValue>( string propertyName, TValue defaultValue )
+            where TRecord : class, ITableRecord<TRecord>
+            where TValue : IParsable<TValue>
+        {
+            int ordinal = TRecord.PropertyMetaData[propertyName].Index;
+
+            return self.IsDBNull(ordinal)
+                       ? defaultValue
+                       : TValue.TryParse(self.GetFieldValue<string>(ordinal), CultureInfo.InvariantCulture, out TValue? result)
+                           ? result
+                           : defaultValue;
+        }
+        public TValue GetEnumValue<TRecord, TValue>( string propertyName, TValue defaultValue )
+            where TRecord : class, ITableRecord<TRecord>
+            where TValue : unmanaged, Enum
+        {
+            int ordinal = TRecord.PropertyMetaData[propertyName].Index;
+
+            return self.IsDBNull(ordinal)
+                       ? defaultValue
+                       : EnumSqlHandler<TValue>.TryParse(self.GetFieldValue<string>(ordinal), defaultValue);
+        }
+
+
         public TValue? GetData<TValue>( string propertyName ) => self.GetFieldValue<object?>(propertyName) is string s
                                                                      ? s.FromJson<TValue>()
                                                                      : default;
+        public TValue? GetData<TValue>( int ordinal ) => self.GetFieldValue<object?>(ordinal) is string s
+                                                             ? s.FromJson<TValue>()
+                                                             : default;
         public TValue? GetValue<TValue>( string propertyName ) => self.GetFieldValue<object?>(propertyName) is TValue value
                                                                       ? value
                                                                       : default;
+        public TValue? GetValue<TValue>( int ordinal ) => self.GetFieldValue<object?>(ordinal) is TValue value
+                                                              ? value
+                                                              : default;
     }
 
 

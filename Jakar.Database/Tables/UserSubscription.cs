@@ -4,7 +4,7 @@
 namespace Jakar.Database;
 
 
-public interface IUserSubscription : IUniqueID<Guid>
+public interface IUserSubscription : IUniqueID
 {
     public DateTimeOffset? SubscriptionExpires { get; }
 }

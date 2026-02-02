@@ -46,11 +46,11 @@ public sealed record UserRecoveryCodeRecord : Mapping<UserRecoveryCodeRecord, Us
 
     public static UserRecoveryCodeRecord Create( NpgsqlDataReader reader )
     {
-        RecordID<UserRecord>             key          = new(reader.GetFieldValue<Guid>(nameof(KeyID)));
-        RecordID<RecoveryCodeRecord>     value        = new(reader.GetFieldValue<Guid>(nameof(KeyID)));
-        DateTimeOffset                   dateCreated  = reader.GetFieldValue<DateTimeOffset>(nameof(DateCreated));
-        DateTimeOffset?                  lastModified = reader.GetFieldValue<DateTimeOffset?>(nameof(LastModified));
-        RecordID<UserRecoveryCodeRecord> id           = new(reader.GetFieldValue<Guid>(nameof(ID)));
+        RecordID<UserRecord>             key          = new(reader.GetFieldValue<UserRecoveryCodeRecord, Guid>(nameof(KeyID)));
+        RecordID<RecoveryCodeRecord>     value        = new(reader.GetFieldValue<UserRecoveryCodeRecord, Guid>(nameof(KeyID)));
+        DateTimeOffset                   dateCreated  = reader.GetFieldValue<UserRecoveryCodeRecord, DateTimeOffset>(nameof(DateCreated));
+        DateTimeOffset?                  lastModified = reader.GetFieldValue<UserRecoveryCodeRecord, DateTimeOffset?>(nameof(LastModified));
+        RecordID<UserRecoveryCodeRecord> id           = RecordID<UserRecoveryCodeRecord>.ID(reader);
         return new UserRecoveryCodeRecord(key, value, id, dateCreated, lastModified);
     }
     public static async IAsyncEnumerable<UserRecoveryCodeRecord> CreateAsync( NpgsqlDataReader reader, [EnumeratorCancellation] CancellationToken token = default )

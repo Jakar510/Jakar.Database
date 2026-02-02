@@ -33,7 +33,7 @@ public abstract partial class Database
 
         try
         {
-            if ( !UserRecord.VerifyPassword(ref record, request) )
+            if ( !VerifyPassword(ref record, request) )
             {
                 record = record.MarkBadLogin();
                 return Error.Unauthorized(request.UserLogin);
@@ -131,4 +131,33 @@ public abstract partial class Database
     public ValueTask<ErrorOrResult<TValue>> Verify<TValue>( ILoginRequest request, Func<NpgsqlConnection, NpgsqlTransaction, UserRecord, ErrorOrResult<TValue>>                               func, CancellationToken token = default ) => this.TryCall(Verify, request, func, token);
     public ValueTask<ErrorOrResult<TValue>> Verify<TValue>( ILoginRequest request, Func<NpgsqlConnection, NpgsqlTransaction, UserRecord, CancellationToken, ValueTask<ErrorOrResult<TValue>>> func, CancellationToken token = default ) => this.TryCall(Verify, request, func, token);
     public ValueTask<ErrorOrResult<TValue>> Verify<TValue>( ILoginRequest request, Func<NpgsqlConnection, NpgsqlTransaction, UserRecord, CancellationToken, Task<ErrorOrResult<TValue>>>      func, CancellationToken token = default ) => this.TryCall(Verify, request, func, token);
+
+
+    public async ValueTask<Permissions<TEnum>> GetRights<TEnum>( NpgsqlConnection connection, NpgsqlTransaction transaction, UserRecord user, CancellationToken token )
+        where TEnum : unmanaged, Enum
+    {
+        RecordID<UserRecord> userID = user.ID;
+        Permissions<TEnum>   result = user.Rights;
+
+        string rights = nameof(UserRecord.Rights)
+           .SqlColumnName();
+
+        string id = nameof(UserRecord.ID)
+           .SqlColumnName();
+
+        string sql = $"""
+                      SELECT {rights} FROM {UserRecord.TABLE_NAME}
+                      INNER JOIN {UserGroupRecord.TABLE_NAME} ON {UserRecord.TABLE_NAME}.{id} = {UserGroupRecord.TABLE_NAME}.;
+                      INNER JOIN {GroupRecord.TABLE_NAME} ON {UserRecord.TABLE_NAME}.{id} = {GroupRecord.TABLE_NAME}.;
+                      WHERE {id} = {userID}
+                      """;
+
+        // await foreach ( GroupRecord group in UserGroupRecord.Where(connection, transaction, Groups, userID, token) ) { }
+        // await foreach ( RoleRecord role in UserRoleRecord.Where(connection, transaction, Roles, userID, token) ) { }
+
+        // await foreach ( GroupRecord record in user.GetGroups(connection, transaction, this, token) ) { }
+        // await foreach ( RoleRecord record in user.GetRoles(connection, transaction, this, token) ) { }
+
+        return result;
+    }
 }

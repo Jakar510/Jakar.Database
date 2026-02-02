@@ -1,8 +1,4 @@
-﻿using System;
-
-
-
-namespace Jakar.Database;
+﻿namespace Jakar.Database;
 
 
 public interface ITableMetaData
@@ -17,8 +13,8 @@ public interface ITableMetaData
     int                                      Count                    { get; }
     ImmutableArray<string>                   Keys                     { get; }
     ImmutableArray<ColumnMetaData>           Values                   { get; }
-    ref readonly ColumnMetaData this[ string              propertyName ] { get; }
-    public KeyValuePair<string, ColumnMetaData> this[ int index ] { get; }
+    ref readonly ColumnMetaData this[ string                      propertyName ] { get; }
+    public (string PropertyName, ColumnMetaData Column) this[ int index ] { get; }
 
 
     TableMetaDataEnumerator GetEnumerator();
@@ -28,7 +24,7 @@ public interface ITableMetaData
 
 
 
-public ref struct TableMetaDataEnumerator : IEnumerator<KeyValuePair<string, ColumnMetaData>>
+public ref struct TableMetaDataEnumerator : IEnumerator<(string PropertyName, ColumnMetaData Column)>
 {
     private readonly ITableMetaData __table;
     private          int            __index;
@@ -41,8 +37,8 @@ public ref struct TableMetaDataEnumerator : IEnumerator<KeyValuePair<string, Col
         Debug.Assert(__table.Keys.Length == __table.Values.Length);
     }
 
-    public readonly KeyValuePair<string, ColumnMetaData> Current => __table[__index];
-    object IEnumerator.                                  Current => Current;
+    public readonly (string PropertyName, ColumnMetaData Column) Current => __table[__index];
+    object IEnumerator.                                          Current => Current;
 
 
     public bool MoveNext()
@@ -79,14 +75,14 @@ public sealed class TableMetaData<TSelf> : ITableMetaData
     public ImmutableArray<ColumnMetaData>                   Values                   => Properties.Values;
     public string                                           TableName                { [Pure] get => TSelf.TableName; }
     public ref readonly ColumnMetaData this[ string propertyName ] => ref Properties[propertyName];
-    public KeyValuePair<string, ColumnMetaData> this[ int index ]
+    public (string PropertyName, ColumnMetaData Column) this[ int index ]
     {
         get
         {
             Guard.IsLessThan((uint)index, (uint)Properties.Keys.Length);
             string         propertyName = Indexes[index];
             ColumnMetaData column       = Properties[propertyName];
-            return new KeyValuePair<string, ColumnMetaData>(propertyName, column);
+            return ( propertyName, column );
         }
     }
 
@@ -110,9 +106,13 @@ public sealed class TableMetaData<TSelf> : ITableMetaData
         Dictionary<int, string> indexes = new(EqualityComparer<int>.Default);
         int                     i       = 0;
 
-        foreach ( ( string propertyName, ColumnMetaData _ ) in dictionary.OrderBy(static pair => pair.Value.DbType, PostgresTypeComparer.Instance)
-                                                                         .ThenBy(static pair => pair.Value.Length,     Comparer<SizeInfo?>.Default)
-                                                                         .ThenBy(static pair => pair.Value.ColumnName, StringComparer.InvariantCultureIgnoreCase) ) { indexes[i++] = propertyName; }
+        foreach ( ( string propertyName, ColumnMetaData column ) in dictionary.OrderBy(static pair => pair.Value.DbType, PostgresTypeComparer.Instance)
+                                                                              .ThenBy(static pair => pair.Value.Length,     Comparer<SizeInfo?>.Default)
+                                                                              .ThenBy(static pair => pair.Value.ColumnName, StringComparer.InvariantCultureIgnoreCase) )
+        {
+            column.Index = i;
+            indexes[i++] = propertyName;
+        }
 
         return indexes.ToFrozenDictionary();
     }

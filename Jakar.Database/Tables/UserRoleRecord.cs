@@ -44,11 +44,11 @@ public sealed record UserRoleRecord : Mapping<UserRoleRecord, UserRecord, RoleRe
     }
     [Pure] public static UserRoleRecord Create( NpgsqlDataReader reader )
     {
-        RecordID<UserRecord>     key          = new(reader.GetFieldValue<Guid>(nameof(KeyID)));
-        RecordID<RoleRecord>     value        = new(reader.GetFieldValue<Guid>(nameof(ValueID)));
-        DateTimeOffset           dateCreated  = reader.GetFieldValue<DateTimeOffset>(nameof(DateCreated));
-        DateTimeOffset?          lastModified = reader.GetFieldValue<DateTimeOffset?>(nameof(LastModified));
-        RecordID<UserRoleRecord> id           = new(reader.GetFieldValue<Guid>(nameof(ID)));
+        RecordID<UserRecord>     key          = RecordID<UserRecord>.Create(reader, nameof(KeyID));
+        RecordID<RoleRecord>     value        = RecordID<RoleRecord>.Create(reader, nameof(ValueID));
+        DateTimeOffset           dateCreated  = reader.GetFieldValue<UserRoleRecord, DateTimeOffset>(nameof(DateCreated));
+        DateTimeOffset?          lastModified = reader.GetFieldValue<UserRoleRecord, DateTimeOffset?>(nameof(LastModified));
+        RecordID<UserRoleRecord> id           = RecordID<UserRoleRecord>.ID(reader);
         UserRoleRecord           record       = new(key, value, id, dateCreated, lastModified);
         return record.Validate();
     }

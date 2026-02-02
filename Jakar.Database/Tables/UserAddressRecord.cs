@@ -43,11 +43,11 @@ public sealed record UserAddressRecord : Mapping<UserAddressRecord, UserRecord, 
     }
     [Pure] public static UserAddressRecord Create( NpgsqlDataReader reader )
     {
-        RecordID<UserRecord>        key          = new(reader.GetFieldValue<Guid>(nameof(KeyID)));
-        RecordID<AddressRecord>     value        = new(reader.GetFieldValue<Guid>(nameof(ValueID)));
-        DateTimeOffset              dateCreated  = reader.GetFieldValue<DateTimeOffset>(nameof(DateCreated));
-        DateTimeOffset?             lastModified = reader.GetFieldValue<DateTimeOffset?>(nameof(LastModified));
-        RecordID<UserAddressRecord> id           = new(reader.GetFieldValue<Guid>(nameof(ID)));
+        RecordID<UserRecord>        key          = RecordID<UserRecord>.Create(reader, nameof(KeyID));
+        RecordID<AddressRecord>     value        = RecordID<AddressRecord>.Create(reader, nameof(ValueID));
+        DateTimeOffset              dateCreated  = reader.GetFieldValue<UserAddressRecord, DateTimeOffset>(nameof(DateCreated));
+        DateTimeOffset?             lastModified = reader.GetFieldValue<UserAddressRecord, DateTimeOffset?>(nameof(LastModified));
+        RecordID<UserAddressRecord> id           = RecordID<UserAddressRecord>.ID(reader);
         UserAddressRecord           record       = new(key, value, id, dateCreated, lastModified);
         return record.Validate();
     }

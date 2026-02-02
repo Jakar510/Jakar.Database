@@ -75,12 +75,12 @@ public sealed record UserLoginProviderRecord( [property: StringLength(          
                                                          """);
     [Pure] public static UserLoginProviderRecord Create( NpgsqlDataReader reader )
     {
-        string                            loginProvider       = reader.GetFieldValue<string>(nameof(LoginProvider));
-        string                            providerDisplayName = reader.GetFieldValue<string>(nameof(ProviderDisplayName));
-        string                            providerKey         = reader.GetFieldValue<string>(nameof(ProviderKey));
-        string                            value               = reader.GetFieldValue<string>(nameof(Value));
-        DateTimeOffset                    dateCreated         = reader.GetFieldValue<DateTimeOffset>(nameof(DateCreated));
-        DateTimeOffset?                   lastModified        = reader.GetFieldValue<DateTimeOffset?>(nameof(LastModified));
+        string                            loginProvider       = reader.GetFieldValue<UserLoginProviderRecord, string>(nameof(LoginProvider));
+        string                            providerDisplayName = reader.GetFieldValue<UserLoginProviderRecord, string>(nameof(ProviderDisplayName));
+        string                            providerKey         = reader.GetFieldValue<UserLoginProviderRecord, string>(nameof(ProviderKey));
+        string                            value               = reader.GetFieldValue<UserLoginProviderRecord, string>(nameof(Value));
+        DateTimeOffset                    dateCreated         = reader.GetFieldValue<UserLoginProviderRecord, DateTimeOffset>(nameof(DateCreated));
+        DateTimeOffset?                   lastModified        = reader.GetFieldValue<UserLoginProviderRecord, DateTimeOffset?>(nameof(LastModified));
         RecordID<UserRecord>?             ownerUserID         = RecordID<UserRecord>.CreatedBy(reader);
         RecordID<UserLoginProviderRecord> id                  = RecordID<UserLoginProviderRecord>.ID(reader);
         UserLoginProviderRecord           record              = new(loginProvider, providerDisplayName, providerKey, value, id, ownerUserID, dateCreated, lastModified);

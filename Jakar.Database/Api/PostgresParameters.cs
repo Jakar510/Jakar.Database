@@ -10,8 +10,8 @@ namespace Jakar.Database;
 
 public readonly struct PostgresParameters : IEquatable<PostgresParameters>
 {
-    private readonly List<NpgsqlParameter> __buffer;
-    private readonly ITableMetaData        __table;
+    private readonly  List<NpgsqlParameter> __buffer;
+    internal readonly ITableMetaData        Table;
 
 
     public int                           Count    => __buffer.Count;
@@ -49,7 +49,7 @@ public readonly struct PostgresParameters : IEquatable<PostgresParameters>
         get
         {
             const string  SPACER = ",\n      ";
-            int           length = __table.Properties.Values.Sum(static x => x.ColumnName.Length) + ( __table.Count - 1 ) * SPACER.Length;
+            int           length = Table.Properties.Values.Sum(static x => x.ColumnName.Length) + ( Table.Count - 1 ) * SPACER.Length;
             StringBuilder sb     = new(length);
             int           count  = Count;
             int           index  = 0;
@@ -72,7 +72,7 @@ public readonly struct PostgresParameters : IEquatable<PostgresParameters>
         get
         {
             const string  SPACER = ",\n      ";
-            int           length = __table.Properties.Values.Sum(static x => x.VariableName.Length) + ( __table.Count - 1 ) * SPACER.Length;
+            int           length = Table.Properties.Values.Sum(static x => x.VariableName.Length) + ( Table.Count - 1 ) * SPACER.Length;
             StringBuilder sb     = new(length);
             int           count  = Count;
             int           index  = 0;
@@ -95,7 +95,7 @@ public readonly struct PostgresParameters : IEquatable<PostgresParameters>
     public PostgresParameters() => throw new InvalidOperationException($"Use {nameof(PostgresParameters)}.{nameof(Create)} instead.");
     internal PostgresParameters( ITableMetaData table )
     {
-        __table  = table;
+        Table    = table;
         __buffer = new List<NpgsqlParameter>(Math.Max(table.Count, DEFAULT_CAPACITY));
     }
     public static PostgresParameters Create<TSelf>()
@@ -109,31 +109,34 @@ public readonly struct PostgresParameters : IEquatable<PostgresParameters>
     }
 
 
-    /*
-    public PostgresParameters Add<T>( T value, [CallerArgumentExpression(nameof(value))] string parameterName = EMPTY, ParameterDirection direction = ParameterDirection.Input, DataRowVersion sourceVersion = DataRowVersion.Default )
+    public PostgresParameters Add<T>( string propertyName, T? value, [CallerArgumentExpression(nameof(value))] string parameterName = EMPTY, ParameterDirection direction = ParameterDirection.Input, DataRowVersion sourceVersion = DataRowVersion.Default )
+        where T : struct, Enum
     {
-        PrecisionInfo precision = PrecisionInfo.Default;
-        PostgresType  pgType    = PostgresTypes.GetType<T>(out bool isNullable, out bool isEnum, ref precision);
-
-        NpgsqlParameter parameter = new NpgsqlParameter(parameterName, value)
+        ColumnMetaData meta = Table[propertyName];
+        return Add(meta, value, parameterName, direction, sourceVersion);
+    }
+    public PostgresParameters Add<T>( ColumnMetaData meta, T? value, [CallerArgumentExpression(nameof(value))] string parameterName = EMPTY, ParameterDirection direction = ParameterDirection.Input, DataRowVersion sourceVersion = DataRowVersion.Default )
+        where T : struct, Enum
+    {
+        NpgsqlParameter parameter = new(parameterName.SqlColumnName(), meta.DbType.ToNpgsqlDbType())
                                     {
-                                        Direction     = direction,
+                                        SourceColumn  = meta.ColumnName,
+                                        IsNullable    = meta.IsNullable,
                                         SourceVersion = sourceVersion,
-                                        NpgsqlDbType  = pgType.ToNpgsqlDbType(),
-                                        IsNullable    = isNullable
+                                        Direction     = direction,
+                                        Value         = value?.ToString()
                                     };
 
         return Add(parameter);
     }
-    */
     public PostgresParameters Add<T>( string propertyName, T value, [CallerArgumentExpression(nameof(value))] string parameterName = EMPTY, ParameterDirection direction = ParameterDirection.Input, DataRowVersion sourceVersion = DataRowVersion.Default )
     {
-        ColumnMetaData meta = __table[propertyName];
+        ColumnMetaData meta = Table[propertyName];
         return Add(meta, value, parameterName, direction, sourceVersion);
     }
     public PostgresParameters Add<T>( ColumnMetaData meta, T value, [CallerArgumentExpression(nameof(value))] string parameterName = EMPTY, ParameterDirection direction = ParameterDirection.Input, DataRowVersion sourceVersion = DataRowVersion.Default )
     {
-        NpgsqlParameter parameter = new(parameterName, meta.DbType.ToNpgsqlDbType())
+        NpgsqlParameter parameter = new(parameterName.SqlColumnName(), meta.DbType.ToNpgsqlDbType())
                                     {
                                         SourceColumn  = meta.ColumnName,
                                         IsNullable    = meta.IsNullable,
@@ -155,7 +158,7 @@ public readonly struct PostgresParameters : IEquatable<PostgresParameters>
     {
         string        match  = matchAll.GetAndOr();
         int           count  = Count;
-        int           length = __table.Properties.Values.Sum(static x => x.KeyValuePair.Length) + ( __table.Count - 1 ) * match.Length;
+        int           length = Table.Properties.Values.Sum(static x => x.KeyValuePair.Length) + ( Table.Count - 1 ) * match.Length;
         StringBuilder sb     = new(length);
         int           index  = 0;
 
@@ -173,9 +176,9 @@ public readonly struct PostgresParameters : IEquatable<PostgresParameters>
     }
 
 
-    private string GetColumnName( string   propertyName ) => __table[propertyName].ColumnName;
-    private string GetVariableName( string propertyName ) => __table[propertyName].VariableName;
-    private string GetKeyValuePair( string propertyName ) => __table[propertyName].KeyValuePair;
+    private string GetColumnName( string   propertyName ) => Table[propertyName].ColumnName;
+    private string GetVariableName( string propertyName ) => Table[propertyName].VariableName;
+    private string GetKeyValuePair( string propertyName ) => Table[propertyName].KeyValuePair;
 
 
     public override int GetHashCode() => HashCode.Combine(__buffer);

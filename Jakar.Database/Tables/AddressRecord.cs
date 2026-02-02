@@ -124,19 +124,19 @@ public sealed record AddressRecord( [property: ProtectedPersonalData] string  Li
                                                                                                                                                                                   : Guid.NewGuid());
     [Pure] public static AddressRecord Create( NpgsqlDataReader reader )
     {
-        string                  line1           = reader.GetFieldValue<string>(nameof(Line1));
-        string                  line2           = reader.GetFieldValue<string>(nameof(Line2));
-        string                  city            = reader.GetFieldValue<string>(nameof(City));
-        string                  stateOrProvince = reader.GetFieldValue<string>(nameof(StateOrProvince));
-        string                  country         = reader.GetFieldValue<string>(nameof(Country));
-        string                  postalCode      = reader.GetFieldValue<string>(nameof(PostalCode));
-        string                  address         = reader.GetFieldValue<string>(nameof(Address));
-        JObject?                additionalData  = reader.GetAdditionalData();
-        bool                    isPrimary       = reader.GetFieldValue<bool>(nameof(IsPrimary));
+        string                  line1           = reader.GetFieldValue<AddressRecord, string>(nameof(Line1));
+        string                  line2           = reader.GetFieldValue<AddressRecord, string>(nameof(Line2));
+        string                  city            = reader.GetFieldValue<AddressRecord, string>(nameof(City));
+        string                  stateOrProvince = reader.GetFieldValue<AddressRecord, string>(nameof(StateOrProvince));
+        string                  country         = reader.GetFieldValue<AddressRecord, string>(nameof(Country));
+        string                  postalCode      = reader.GetFieldValue<AddressRecord, string>(nameof(PostalCode));
+        string                  address         = reader.GetFieldValue<AddressRecord, string>(nameof(Address));
+        JObject?                additionalData  = reader.GetAdditionalData<AddressRecord>();
+        bool                    isPrimary       = reader.GetFieldValue<AddressRecord, bool>(nameof(IsPrimary));
         RecordID<AddressRecord> id              = RecordID<AddressRecord>.ID(reader);
         RecordID<UserRecord>?   ownerUserID     = RecordID<UserRecord>.CreatedBy(reader);
-        DateTimeOffset          dateCreated     = reader.GetFieldValue<DateTimeOffset>(nameof(DateCreated));
-        DateTimeOffset?         lastModified    = reader.GetFieldValue<DateTimeOffset?>(nameof(LastModified));
+        DateTimeOffset          dateCreated     = reader.GetFieldValue<AddressRecord, DateTimeOffset>(nameof(DateCreated));
+        DateTimeOffset?         lastModified    = reader.GetFieldValue<AddressRecord, DateTimeOffset?>(nameof(LastModified));
 
         AddressRecord record = new(line1,
                                    line2,

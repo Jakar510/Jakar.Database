@@ -18,17 +18,17 @@ try
     // TODO: TestDatabase.TestAsync();
 
 
-    string userSql             = Migrations.CreateTableSql<UserRecord>();
-    string addressSql          = Migrations.CreateTableSql<AddressRecord>();
-    string userAddressSql      = Migrations.CreateTableSql<UserAddressRecord>();
-    string groupSql            = Migrations.CreateTableSql<GroupRecord>();
-    string userGroupSql        = Migrations.CreateTableSql<UserGroupRecord>();
-    string roleSql             = Migrations.CreateTableSql<RoleRecord>();
-    string userRoleSql         = Migrations.CreateTableSql<UserRoleRecord>();
-    string recoveryCodeSql     = Migrations.CreateTableSql<RecoveryCodeRecord>();
-    string userRecoveryCodeSql = Migrations.CreateTableSql<UserRecoveryCodeRecord>();
-    string fileSql             = Migrations.CreateTableSql<FileRecord>();
-    string loginProviderSql    = Migrations.CreateTableSql<UserLoginProviderRecord>();
+    string userSql             = SqlTable<UserRecord>.CreateTable();
+    string addressSql          = SqlTable<AddressRecord>.CreateTable();
+    string userAddressSql      = SqlTable<UserAddressRecord>.CreateTable();
+    string groupSql            = SqlTable<GroupRecord>.CreateTable();
+    string userGroupSql        = SqlTable<UserGroupRecord>.CreateTable();
+    string roleSql             = SqlTable<RoleRecord>.CreateTable();
+    string userRoleSql         = SqlTable<UserRoleRecord>.CreateTable();
+    string recoveryCodeSql     = SqlTable<RecoveryCodeRecord>.CreateTable();
+    string userRecoveryCodeSql = SqlTable<UserRecoveryCodeRecord>.CreateTable();
+    string fileSql             = SqlTable<FileRecord>.CreateTable();
+    string loginProviderSql    = SqlTable<UserLoginProviderRecord>.CreateTable();
 
     printSql(userSql);
     printSql(groupSql);

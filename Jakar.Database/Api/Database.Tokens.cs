@@ -6,12 +6,55 @@ namespace Jakar.Database;
 
 public abstract partial class Database
 {
-    private static readonly SynchronizedValue<TimeSpan> __accessTokenExpirationTime  = new(TimeSpan.FromMinutes(15));
-    private static readonly SynchronizedValue<TimeSpan> __refreshTokenExpirationTime = new(TimeSpan.FromDays(90));
+    private static readonly SynchronizedValue<TimeSpan> __accessTokenExpirationTime  = new(UserSecurities.AccessTokenExpireTime);
+    private static readonly SynchronizedValue<TimeSpan> __refreshTokenExpirationTime = new(UserSecurities.RefreshTokenExpireTime);
 
 
     public static TimeSpan AccessTokenExpirationTime  { get => __accessTokenExpirationTime;  set => __accessTokenExpirationTime.Value = value; }
     public static TimeSpan RefreshTokenExpirationTime { get => __refreshTokenExpirationTime; set => __refreshTokenExpirationTime.Value = value; }
+
+
+    public virtual bool TryEnable<TSelf>( scoped ref TSelf record )
+        where TSelf : class, IUserSecurity<TSelf>, ITableRecord<TSelf>
+    {
+        if ( record.LockoutEnd.HasValue && DateTimeOffset.UtcNow <= record.LockoutEnd.Value ) { record = record.Enable(); }
+
+        return record is { IsDisabled: false, IsActive: true };
+    }
+
+
+    public virtual bool VerifyPassword<TSelf>( scoped ref TSelf record, ILoginRequest request )
+        where TSelf : class, IUserSecurity<TSelf>, ITableRecord<TSelf> => VerifyPassword(ref record, request.UserPassword);
+    public virtual bool VerifyPassword<TSelf>( scoped ref TSelf record, in string password )
+        where TSelf : class, IUserSecurity<TSelf>, ITableRecord<TSelf>
+    {
+        string value = Database.DataProtector.Decrypt(record.PasswordHash);
+
+        if ( string.Equals(value, password, StringComparison.InvariantCulture) )
+        {
+            record = record.SetActive();
+            return true;
+        }
+
+        record = record.MarkBadLogin();
+        return false;
+    }
+
+
+    public virtual bool CheckRefreshToken<TSelf>( ref TSelf record, SessionToken token )
+        where TSelf : class, IUserSecurity<TSelf>, ITableRecord<TSelf> => CheckRefreshToken(ref record, token.RefreshToken);
+    public virtual bool CheckRefreshToken<TSelf>( ref TSelf record, string? refreshToken )
+        where TSelf : class, IUserSecurity<TSelf>, ITableRecord<TSelf>
+    {
+        // ReSharper disable once InvertIf
+        if ( string.IsNullOrWhiteSpace(refreshToken) || ( record.RefreshTokenExpiryTime.HasValue && DateTimeOffset.UtcNow > record.RefreshTokenExpiryTime.Value ) )
+        {
+            record = record.ClearRefreshToken(EMPTY);
+            return false;
+        }
+
+        return record.RefreshTokenHash > 0 && record.RefreshTokenHash.Equals(refreshToken.Hash128());
+    }
 
 
     public virtual ValueTask<SigningCredentials>        GetSigningCredentials( CancellationToken        token ) => new(Configuration.GetSigningCredentials(Options));
@@ -65,7 +108,7 @@ public abstract partial class Database
             return Error.Locked();
         }
 
-        if ( UserRecord.VerifyPassword(ref record, request) ) { return await GetToken(connection, transaction, record, types, token); }
+        if ( VerifyPassword(ref record, request) ) { return await GetToken(connection, transaction, record, types, token); }
 
         record = record.MarkBadLogin();
         await Users.Update(connection, transaction, record, token);
@@ -106,7 +149,7 @@ public abstract partial class Database
         }
 
 
-        if ( UserRecord.VerifyPassword(ref record, request) )
+        if ( VerifyPassword(ref record, request) )
         {
             UserModel model = await record.ToUserModel(connection, transaction, this, token);
             return model;
@@ -180,7 +223,7 @@ public abstract partial class Database
 
         DateTimeOffset? expires = await GetSubscriptionExpiration(connection, transaction, record, token);
 
-        if ( !UserRecord.CheckRefreshToken(ref record, refreshToken) )
+        if ( !CheckRefreshToken(ref record, refreshToken) )
         {
             record = record.MarkBadLogin();
             await Users.Update(connection, transaction, record, token);
@@ -243,7 +286,7 @@ public abstract partial class Database
         }
 
         Claim[]                   claims = validationResult.ClaimsIdentity.Claims.ToArray();
-        ErrorOrResult<UserRecord> result = await UserRecord.TryFromClaims(connection, transaction, this, claims, types | DEFAULT_CLAIM_TYPES, token);
+        ErrorOrResult<UserRecord> result = await UserRecord.TryFromClaims(connection, transaction, this, claims.AsValueEnumerable(), types | DEFAULT_CLAIM_TYPES, token);
         if ( !result.TryGetValue(out UserRecord? record, out Errors? errors) ) { return errors; }
 
         record.LastLogin = DateTimeOffset.UtcNow;

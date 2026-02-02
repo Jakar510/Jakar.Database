@@ -2,6 +2,7 @@
 // 4/2/2024  17:43
 
 
+using System.Data;
 using TelemetrySpan = Jakar.Extensions.TelemetrySpan;
 
 
@@ -155,16 +156,16 @@ public sealed record FileRecord( string?              FileName,
 
     [Pure] public static FileRecord Create( NpgsqlDataReader reader )
     {
-        string?              name         = reader.GetFieldValue<string?>(nameof(FileName));
-        string?              description  = reader.GetFieldValue<string?>(nameof(FileDescription));
-        string?              fileType     = reader.GetFieldValue<string?>(nameof(FileType));
-        long                 size         = reader.GetFieldValue<long>(nameof(FileSize));
-        string               hash         = reader.GetFieldValue<string>(nameof(Hash));
-        MimeType             mime         = reader.GetFieldValue<MimeType>(nameof(MimeType));
-        string               payload      = reader.GetString(nameof(Payload));
-        string?              fullPath     = reader.GetValue<string?>(nameof(FullPath));
-        DateTimeOffset       dateCreated  = reader.GetFieldValue<DateTimeOffset>(nameof(DateCreated));
-        DateTimeOffset?      lastModified = reader.GetFieldValue<DateTimeOffset?>(nameof(LastModified));
+        string?              name         = reader.GetFieldValue<FileRecord, string?>(nameof(FileName));
+        string?              description  = reader.GetFieldValue<FileRecord, string?>(nameof(FileDescription));
+        string?              fileType     = reader.GetFieldValue<FileRecord, string?>(nameof(FileType));
+        long                 size         = reader.GetFieldValue<FileRecord, long>(nameof(FileSize));
+        string               hash         = reader.GetFieldValue<FileRecord, string>(nameof(Hash));
+        MimeType             mime         = reader.GetEnumValue<FileRecord, MimeType>(nameof(MimeType), Extensions.MimeType.NotSet);
+        string               payload      = reader.GetFieldValue<FileRecord, string>(nameof(Payload));
+        string?              fullPath     = reader.GetFieldValue<FileRecord, string?>(nameof(FullPath));
+        DateTimeOffset       dateCreated  = reader.GetFieldValue<FileRecord, DateTimeOffset>(nameof(DateCreated));
+        DateTimeOffset?      lastModified = reader.GetFieldValue<FileRecord, DateTimeOffset?>(nameof(LastModified));
         RecordID<FileRecord> id           = RecordID<FileRecord>.ID(reader);
 
         FileRecord record = new(name,

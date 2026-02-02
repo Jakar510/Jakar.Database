@@ -31,7 +31,7 @@ public sealed record GroupRecord( [property: StringLength(GroupRecord.MAX_SIZE)]
     public GroupRecord( string nameOfGroup, UserRights rights, RecordID<UserRecord>? owner = null, string? normalizedName = null ) : this(nameOfGroup, normalizedName, EMPTY, RecordID<GroupRecord>.New(), owner, DateTimeOffset.UtcNow) { }
 
 
-    [Pure] public static GroupRecord Create<TEnum>( string name, [HandlesResourceDisposal] scoped Permissions<TEnum> rights, string? normalizedName = null, RecordID<UserRecord>? caller = null )
+    [Pure] public static GroupRecord Create<TEnum>( string name, [HandlesResourceDisposal] Permissions<TEnum> rights, string? normalizedName = null, RecordID<UserRecord>? caller = null )
         where TEnum : unmanaged, Enum => new(name, normalizedName, rights.ToStringAndDispose(), RecordID<GroupRecord>.New(), caller, DateTimeOffset.UtcNow);
 
 
@@ -40,26 +40,7 @@ public sealed record GroupRecord( [property: StringLength(GroupRecord.MAX_SIZE)]
         where TGroupModel : class, IGroupModel<TGroupModel, Guid> => TGroupModel.Create(this);
 
 
-    public static MigrationRecord CreateTable( ulong migrationID ) =>
-        MigrationRecord.Create<RoleRecord>(migrationID,
-                                           $"create {TABLE_NAME} table",
-                                           $"""
-                                            CREATE TABLE IF NOT EXISTS {TABLE_NAME}
-                                            (  
-                                            {nameof(NameOfGroup).SqlColumnName()}    varchar(1024) NOT NULL, 
-                                            {nameof(NormalizedName).SqlColumnName()}     varchar(1024) NOT NULL,  
-                                            {nameof(Rights).SqlColumnName()}         varchar(1024) NOT NULL, 
-                                            {nameof(ID).SqlColumnName()}             uuid          PRIMARY KEY,
-                                            {nameof(DateCreated).SqlColumnName()}    timestamptz   NOT NULL,
-                                            {nameof(LastModified).SqlColumnName()}   timestamptz   NULL,
-                                            {nameof(AdditionalData).SqlColumnName()} json          NULL
-                                            );
-
-                                            CREATE TRIGGER {nameof(MigrationRecord.SetLastModified).SqlColumnName()}
-                                            BEFORE INSERT OR UPDATE ON {TABLE_NAME}
-                                            FOR EACH ROW
-                                            EXECUTE FUNCTION {nameof(MigrationRecord.SetLastModified).SqlColumnName()}();
-                                            """);
+    public static MigrationRecord CreateTable( ulong migrationID ) => MigrationRecord.CreateTable<RoleRecord>(migrationID);
 
 
     public override int CompareTo( GroupRecord? other )
@@ -114,11 +95,11 @@ public sealed record GroupRecord( [property: StringLength(GroupRecord.MAX_SIZE)]
 
     [Pure] public static GroupRecord Create( NpgsqlDataReader reader )
     {
-        string                normalizedName = reader.GetFieldValue<string>(nameof(NormalizedName));
-        string                nameOfGroup    = reader.GetFieldValue<string>(nameof(NameOfGroup));
-        string                rights         = reader.GetFieldValue<string>(nameof(Rights));
-        DateTimeOffset        dateCreated    = reader.GetFieldValue<DateTimeOffset>(nameof(DateCreated));
-        DateTimeOffset?       lastModified   = reader.GetFieldValue<DateTimeOffset?>(nameof(LastModified));
+        string                normalizedName = reader.GetFieldValue<GroupRecord, string>(nameof(NormalizedName));
+        string                nameOfGroup    = reader.GetFieldValue<GroupRecord, string>(nameof(NameOfGroup));
+        UserRights            rights         = reader.GetFieldValue<GroupRecord, string>(nameof(Rights));
+        DateTimeOffset        dateCreated    = reader.GetFieldValue<GroupRecord, DateTimeOffset>(nameof(DateCreated));
+        DateTimeOffset?       lastModified   = reader.GetFieldValue<GroupRecord, DateTimeOffset?>(nameof(LastModified));
         RecordID<UserRecord>? ownerUserID    = RecordID<UserRecord>.CreatedBy(reader);
         RecordID<GroupRecord> id             = RecordID<GroupRecord>.ID(reader);
         GroupRecord           record         = new(nameOfGroup, normalizedName, rights, id, ownerUserID, dateCreated, lastModified);

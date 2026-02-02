@@ -56,16 +56,16 @@ public sealed record RoleRecord( [property: StringLength(NAME)]              str
     }
 
 
-    [Pure] public static RoleRecord Create<TEnum>( string name, [HandlesResourceDisposal] scoped Permissions<TEnum> rights, string? normalizedName = null, RecordID<UserRecord>? caller = null, string? concurrencyStamp = null )
+    [Pure] public static RoleRecord Create<TEnum>( string name, [HandlesResourceDisposal] Permissions<TEnum> rights, string? normalizedName = null, RecordID<UserRecord>? caller = null, string? concurrencyStamp = null )
         where TEnum : unmanaged, Enum => new(name, normalizedName ?? name, concurrencyStamp ?? name.GetHash(), rights.ToStringAndDispose(), caller);
     [Pure] public static RoleRecord Create( NpgsqlDataReader reader )
     {
-        string                rights           = reader.GetFieldValue<string>(nameof(Rights));
-        string                name             = reader.GetFieldValue<string>(nameof(NameOfRole));
-        string                normalizedName   = reader.GetFieldValue<string>(nameof(NormalizedName));
-        string                concurrencyStamp = reader.GetFieldValue<string>(nameof(ConcurrencyStamp));
-        DateTimeOffset        dateCreated      = reader.GetFieldValue<DateTimeOffset>(nameof(DateCreated));
-        DateTimeOffset?       lastModified     = reader.GetFieldValue<DateTimeOffset?>(nameof(LastModified));
+        string                rights           = reader.GetFieldValue<RoleRecord, string>(nameof(Rights));
+        string                name             = reader.GetFieldValue<RoleRecord, string>(nameof(NameOfRole));
+        string                normalizedName   = reader.GetFieldValue<RoleRecord, string>(nameof(NormalizedName));
+        string                concurrencyStamp = reader.GetFieldValue<RoleRecord, string>(nameof(ConcurrencyStamp));
+        DateTimeOffset        dateCreated      = reader.GetFieldValue<RoleRecord, DateTimeOffset>(nameof(DateCreated));
+        DateTimeOffset?       lastModified     = reader.GetFieldValue<RoleRecord, DateTimeOffset?>(nameof(LastModified));
         RecordID<UserRecord>? ownerUserID      = RecordID<UserRecord>.CreatedBy(reader);
         RecordID<RoleRecord>  id               = RecordID<RoleRecord>.ID(reader);
         RoleRecord            record           = new(name, normalizedName, concurrencyStamp, rights, id, ownerUserID, dateCreated, lastModified);

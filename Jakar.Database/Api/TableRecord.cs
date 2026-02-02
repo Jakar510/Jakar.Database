@@ -53,6 +53,7 @@ public interface ITableRecord<TSelf> : IRecordPair<TSelf>, IJsonModel<TSelf>
 
 
     [Pure] public                 RecordPair<TSelf> ToPair();
+    public                        TSelf             Modified();
     [Pure] public abstract static TSelf             Create( NpgsqlDataReader reader );
     public                        TSelf             NewID( RecordID<TSelf>   id );
 }
@@ -85,7 +86,7 @@ public abstract record TableRecord<TSelf> : BaseRecord<TSelf>, IRecordPair<TSelf
 
     [Pure] public UInt128 GetHash()
     {
-        ReadOnlySpan<char> json = ( (TSelf)this ).ToJson();
+        ReadOnlySpan<char> json = this.ToJson();
         return json.Hash128();
     }
     public TSelf Modified()
@@ -99,6 +100,15 @@ public abstract record TableRecord<TSelf> : BaseRecord<TSelf>, IRecordPair<TSelf
         return (TSelf)this;
     }
     [Pure] public RecordPair<TSelf> ToPair() => new(ID, DateCreated);
+
+
+    public override TSelf WithAdditionalData( JObject? value )
+    {
+        if ( value is null || value.Count <= 0 ) { return (TSelf)this; }
+
+        base.WithAdditionalData(value);
+        return Modified();
+    }
 
 
     public static PostgresParameters GetDynamicParameters( TSelf record ) => GetDynamicParameters(in record.__id);

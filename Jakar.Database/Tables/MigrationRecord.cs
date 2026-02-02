@@ -60,6 +60,25 @@ public sealed record MigrationRecord : BaseRecord<MigrationRecord>, ITableRecord
         TableID     = tableID;
     }
 
+    public static MigrationRecord SetLastModified( ulong migrationID )
+    {
+        string name = nameof(SetLastModified)
+           .SqlColumnName();
+
+        return new MigrationRecord(migrationID, $"create {name} function")
+               {
+                   SQL = $"""
+                          CREATE OR REPLACE FUNCTION {name}()
+                          RETURNS TRIGGER AS $$
+                          BEGIN
+                              NEW.{nameof(ILastModified.LastModified).SqlColumnName()} = now();
+                              RETURN NEW;
+                          END;
+                          $$ LANGUAGE plpgsql;
+                          """
+               };
+    }
+
 
     public static MigrationRecord CreateTable( ulong migrationID ) =>
         Create<MigrationRecord>(migrationID,
@@ -79,24 +98,10 @@ public sealed record MigrationRecord : BaseRecord<MigrationRecord>, ITableRecord
                                  FOR EACH ROW
                                  EXECUTE FUNCTION {nameof(SetLastModified).SqlColumnName()}();
                                  """);
-    public static MigrationRecord SetLastModified( ulong migrationID )
-    {
-        string name = nameof(SetLastModified)
-           .SqlColumnName();
+    public static MigrationRecord CreateTable<TSelf>( ulong migrationID )
+        where TSelf : class, ITableRecord<TSelf> => Create<UserRecord>(migrationID, $"Create '{TSelf.TableName}' Table", SqlTable<TSelf>.CreateTable());
 
-        return new MigrationRecord(migrationID, $"create {name} function")
-               {
-                   SQL = $"""
-                          CREATE OR REPLACE FUNCTION {name}()
-                          RETURNS TRIGGER AS $$
-                          BEGIN
-                              NEW.{nameof(ILastModified.LastModified).SqlColumnName()} = now();
-                              RETURN NEW;
-                          END;
-                          $$ LANGUAGE plpgsql;
-                          """
-               };
-    }
+
     public static MigrationRecord FromEnum<TEnum>( ulong migrationID )
         where TEnum : unmanaged, Enum
     {
@@ -144,6 +149,8 @@ public sealed record MigrationRecord : BaseRecord<MigrationRecord>, ITableRecord
             return values;
         }
     }
+
+
     public static MigrationRecord Create<TSelf>( ulong migrationID, string description, string sql )
         where TSelf : class, ITableRecord<TSelf>
     {
@@ -155,19 +162,20 @@ public sealed record MigrationRecord : BaseRecord<MigrationRecord>, ITableRecord
 
         return record.Validate();
     }
+
+
+    MigrationRecord ITableRecord<MigrationRecord>.Modified() => this;
     public static MigrationRecord Create( NpgsqlDataReader reader )
     {
-        string         description = reader.GetFieldValue<string>(nameof(Description));
-        string?        tableName   = reader.GetFieldValue<string?>(nameof(TableID));
-        DateTimeOffset appliedOn   = reader.GetFieldValue<DateTimeOffset>(nameof(AppliedOn));
-        ulong          id          = reader.GetFieldValue<ulong>(nameof(MigrationID));
+        string         description = reader.GetFieldValue<MigrationRecord, string>(nameof(Description));
+        string?        tableName   = reader.GetFieldValue<MigrationRecord, string?>(nameof(TableID));
+        DateTimeOffset appliedOn   = reader.GetFieldValue<MigrationRecord, DateTimeOffset>(nameof(AppliedOn));
+        ulong          id          = reader.GetFieldValue<MigrationRecord, ulong>(nameof(MigrationID));
 
         MigrationRecord record = new(id, description)
                                  {
                                      TableID   = tableName,
                                      AppliedOn = appliedOn
-
-                                     // SQL = sql
                                  };
 
         return record.Validate();

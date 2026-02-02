@@ -14,37 +14,37 @@ public class EnumSqlHandler<TValue> : SqlConverter<EnumSqlHandler<TValue>, TValu
 
     public EnumSqlHandler() { }
 
+
     private static string GetString( TValue  k ) => k.ToString();
     private static long   GetLong( TValue    k ) => k.AsLong();
     private static TValue SelectSelf( TValue v ) => v;
 
 
-    public static TValue Parse( string? value ) => Names.TryGetValue(value ?? EMPTY, out TValue result)
-                                                       ? result
-                                                       : Enum.TryParse(value, true, out result)
-                                                           ? result
-                                                           : default;
+    public static TValue TryParse( string? value ) => Names.TryGetValue(value ?? EMPTY, out TValue result)
+                                                          ? result
+                                                          : Enum.TryParse(value, true, out result)
+                                                              ? result
+                                                              : default;
+    public static TValue TryParse( ReadOnlySpan<char> value, TValue defaultValue ) => Names.GetAlternateLookup<ReadOnlySpan<char>>()
+                                                                                           .TryGetValue(value, out TValue result)
+                                                                                          ? result
+                                                                                          : Enum.TryParse(value, true, out result)
+                                                                                              ? result
+                                                                                              : defaultValue;
+
+
     public override TValue Parse( object? value ) => value switch
                                                      {
                                                          null       => default,
-                                                         string s   => Parse(s),
+                                                         string s   => TryParse(s),
                                                          byte item  => Longs[item],
                                                          sbyte item => Longs[item],
                                                          short item => Longs[item],
                                                          int item   => Longs[item],
                                                          long item  => Longs[item],
-                                                         _ => throw new ExpectedValueTypeException(nameof(value),
-                                                                                                   value,
-                                                                                                   typeof(byte),
-                                                                                                   typeof(sbyte),
-                                                                                                   typeof(short),
-                                                                                                   typeof(ushort),
-                                                                                                   typeof(int),
-                                                                                                   typeof(uint),
-                                                                                                   typeof(long),
-                                                                                                   typeof(ulong),
-                                                                                                   typeof(string))
+                                                         _          => throw new ExpectedValueTypeException(nameof(value), value, typeof(byte), typeof(short), typeof(int), typeof(long), typeof(string))
                                                      };
+
 
     public override void SetValue( IDbDataParameter parameter, TValue value )
     {

@@ -35,9 +35,9 @@ public sealed record RecoveryCodeRecord( [property: StringLength(1024)] string C
     }
     [Pure] public static RecoveryCodeRecord Create( NpgsqlDataReader reader )
     {
-        string                       code         = reader.GetFieldValue<string>(nameof(Code));
-        DateTimeOffset               dateCreated  = reader.GetFieldValue<DateTimeOffset>(nameof(DateCreated));
-        DateTimeOffset?              lastModified = reader.GetFieldValue<DateTimeOffset?>(nameof(LastModified));
+        string                       code         = reader.GetFieldValue<RecoveryCodeRecord, string>(nameof(Code));
+        DateTimeOffset               dateCreated  = reader.GetFieldValue<RecoveryCodeRecord, DateTimeOffset>(nameof(DateCreated));
+        DateTimeOffset?              lastModified = reader.GetFieldValue<RecoveryCodeRecord, DateTimeOffset?>(nameof(LastModified));
         RecordID<UserRecord>?        ownerUserID  = RecordID<UserRecord>.CreatedBy(reader);
         RecordID<RecoveryCodeRecord> id           = RecordID<RecoveryCodeRecord>.ID(reader);
         RecoveryCodeRecord           record       = new(code, id, ownerUserID, dateCreated, lastModified);

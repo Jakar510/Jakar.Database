@@ -11,10 +11,6 @@ public static class Migrations
     public static bool HasFlagValue( this ColumnOptions type, ColumnOptions flag ) => ( type & flag ) != 0;
 
 
-    public static string CreateTableSql<TSelf>()
-        where TSelf : class, ITableRecord<TSelf> => SqlTableBuilder<TSelf>.Default;
-
-
     public static IEnumerable<MigrationRecord> BuiltIns( IdGenerator ids )
     {
         yield return MigrationRecord.CreateTable(ids.Current);
