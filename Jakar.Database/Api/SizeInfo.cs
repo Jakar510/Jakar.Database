@@ -1,8 +1,21 @@
 ﻿namespace Jakar.Database;
 
 
+public readonly record struct IntRange( int Min, int Max ) : IComparable<IntRange>
+{
+    public int CompareTo( IntRange other )
+    {
+        int minComparison = Min.CompareTo(other.Min);
+        if ( minComparison != 0 ) { return minComparison; }
+
+        return Max.CompareTo(other.Max);
+    }
+}
+
+
+
 [DefaultValue(nameof(Empty))]
-public readonly struct SizeInfo
+public readonly struct SizeInfo : IComparable<SizeInfo>, IEquatable<SizeInfo>
 {
     public static readonly SizeInfo      Empty = new(-1);
     private readonly       int           __length0;
@@ -89,16 +102,6 @@ public readonly struct SizeInfo
                                                                                                                                                                                                                                            };
 
 
-    private bool Equals( SizeInfo other ) => __index == other.__index &&
-                                             __index switch
-                                             {
-                                                 0 => EqualityComparer<int>.Default.Equals(__length0, other.__length0),
-                                                 1 => EqualityComparer<IntRange>.Default.Equals(__range1, other.__range1),
-                                                 2 => EqualityComparer<PrecisionInfo>.Default.Equals(__precision2, other.__precision2),
-                                                 _ => false
-                                             };
-
-
     public override string ToString() => __index switch
                                          {
                                              0 => __length0.ToString(),
@@ -107,5 +110,27 @@ public readonly struct SizeInfo
                                              _ => throw new InvalidOperationException("Unexpected index, which indicates a problem in the SizeInfo codegen.")
                                          };
 
+
+    public bool Equals( SizeInfo other ) => __index == other.__index &&
+                                            __index switch
+                                            {
+                                                0 => EqualityComparer<int>.Default.Equals(__length0, other.__length0),
+                                                1 => EqualityComparer<IntRange>.Default.Equals(__range1, other.__range1),
+                                                2 => EqualityComparer<PrecisionInfo>.Default.Equals(__precision2, other.__precision2),
+                                                _ => false
+                                            };
+    public int CompareTo( SizeInfo other )
+    {
+        int indexComparison = __index.CompareTo(other.__index);
+        if ( indexComparison != 0 ) { return indexComparison; }
+        
+        int length0Comparison = __length0.CompareTo(other.__length0);
+        if ( length0Comparison != 0 ) { return length0Comparison; }
+
+        int rangeComparison = __range1.CompareTo(other.__range1);
+        if ( rangeComparison != 0 ) { return rangeComparison; }
+
+        return __precision2.CompareTo(other.__precision2);
+    }
     public override int GetHashCode() => HashCode.Combine(__index, __length0, __range1, __precision2);
 }

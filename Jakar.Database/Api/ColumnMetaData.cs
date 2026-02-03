@@ -70,12 +70,17 @@ public sealed class ColumnMetaData
     internal static ColumnMetaData Create( in PropertyInfo property, in ColumnMetaDataAttribute attribute )
     {
         ArgumentNullException.ThrowIfNull(attribute, $"{property.DeclaringType?.Name}.{property.Name}");
-        attribute.Deconstruct(out ColumnOptions options, out SizeInfo length, out ColumnCheckMetaData checks, out string? foreignKeyName);
 
-        PostgresType dbType = property.PropertyType.GetPostgresType(ref options, ref length);
-        if ( IsDbKey(property) ) { options |= ColumnOptions.PrimaryKey; }
+        try
+        {
+            attribute.Deconstruct(out ColumnOptions options, out SizeInfo length, out ColumnCheckMetaData checks, out string? foreignKeyName);
 
-        return new ColumnMetaData(property.Name, dbType, options, foreignKeyName, length, checks);
+            PostgresType dbType = property.PropertyType.GetPostgresType(ref options, ref length);
+            if ( IsDbKey(property) ) { options |= ColumnOptions.PrimaryKey; }
+
+            return new ColumnMetaData(property.Name, dbType, options, foreignKeyName, length, checks);
+        }
+        catch ( Exception ex ) { throw new InvalidOperationException($"Failed to create ColumnMetaData for property '{property.DeclaringType?.FullName}.{property.Name}'.", ex); }
     }
 
 
@@ -112,7 +117,3 @@ public sealed class ColumnMetaData
         return emit.CreateDelegate();
     }
 }
-
-
-
-public readonly record struct IntRange( int Min, int Max );

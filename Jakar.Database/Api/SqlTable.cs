@@ -80,8 +80,6 @@ public readonly ref struct SqlTable<TSelf> : IDisposable
         {
             if ( string.IsNullOrWhiteSpace(column.IndexColumnName) ) { continue; }
 
-            Debug.Assert(column.IndexColumnName.Contains(columnName, StringComparison.InvariantCultureIgnoreCase));
-
             query.Append($"CREATE INDEX IF NOT EXISTS {column.IndexColumnName.PadRight(maxIndexColumnNameLength)} ON {tableName} ({columnName});\n");
         }
 

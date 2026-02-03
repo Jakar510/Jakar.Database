@@ -109,7 +109,7 @@ public sealed class TableMetaData<TSelf> : ITableMetaData
         int                     i       = 0;
 
         foreach ( ( string propertyName, ColumnMetaData column ) in dictionary.OrderBy(static pair => pair.Value.DbType, PostgresTypeComparer.Instance)
-                                                                              .ThenBy(static pair => pair.Value.Length,     Comparer<SizeInfo?>.Default)
+                                                                              .ThenBy(static pair => pair.Value.Length,     Comparer<SizeInfo>.Default)
                                                                               .ThenBy(static pair => pair.Value.ColumnName, StringComparer.InvariantCultureIgnoreCase) )
         {
             column.Index = i;

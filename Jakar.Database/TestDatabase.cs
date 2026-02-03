@@ -1,6 +1,10 @@
 ﻿// Jakar.Extensions :: Experiments
 // 09/28/2023  10:02 AM
 
+using Jakar.Database.Resx;
+
+
+
 namespace Jakar.Database;
 
 
@@ -65,6 +69,36 @@ internal sealed class TestDatabase( IConfiguration configuration, IOptions<DbOpt
                  .ConfigureAwait(false);
     }
 
+
+    public static void PrintCreateTables()
+    {
+        printSql(SqlTable<UserRecord>.CreateTable());
+        printSql(SqlTable<AddressRecord>.CreateTable());
+        printSql(SqlTable<UserAddressRecord>.CreateTable());
+        printSql(SqlTable<GroupRecord>.CreateTable());
+        printSql(SqlTable<UserGroupRecord>.CreateTable());
+        printSql(SqlTable<RoleRecord>.CreateTable());
+        printSql(SqlTable<UserRoleRecord>.CreateTable());
+        printSql(SqlTable<RecoveryCodeRecord>.CreateTable());
+        printSql(SqlTable<UserRecoveryCodeRecord>.CreateTable());
+        printSql(SqlTable<FileRecord>.CreateTable());
+        printSql(SqlTable<UserLoginProviderRecord>.CreateTable());
+        printSql(SqlTable<ResxRowRecord>.CreateTable());
+
+        return;
+
+        static void printSql( string sql, [CallerArgumentExpression(nameof(sql))] string variableName = EMPTY )
+        {
+            const string BOUNDARY = "================================";
+            Console.WriteLine(BOUNDARY);
+            Console.WriteLine();
+            Console.WriteLine(variableName);
+            Console.WriteLine();
+            Console.WriteLine(sql);
+            Console.WriteLine();
+            Console.WriteLine(BOUNDARY);
+        }
+    }
 
     private static async ValueTask TestAll( WebApplication app, CancellationToken token = default )
     {

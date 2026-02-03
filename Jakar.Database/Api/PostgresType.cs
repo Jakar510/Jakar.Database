@@ -952,6 +952,8 @@ public static class PostgresTypes
                 return PostgresType.Enum;
             }
 
+            if ( type.Name.StartsWith("RecordID") || ( TryGetUnderlyingType(type, out underlyingType) && underlyingType.Name.StartsWith("RecordID") ) ) { return PostgresType.Guid; }
+
             if ( type == typeof(byte[]) || type == typeof(Memory<byte>) || type == typeof(ReadOnlyMemory<byte>) || type == typeof(ImmutableArray<byte>) ) { return PostgresType.Binary; }
 
             if ( typeof(JToken).IsAssignableFrom(type) || typeof(JsonNode).IsAssignableFrom(type) || type == typeof(JsonDocument) || type == typeof(JsonElement) ) { return PostgresType.Json; }
@@ -960,7 +962,7 @@ public static class PostgresTypes
 
             if ( type == typeof(Guid) || type == typeof(Guid?) ) { return PostgresType.Guid; }
 
-            if ( type == typeof(string) ) { return PostgresType.String; }
+            if ( type == typeof(string) || type == typeof(UserRights) ) { return PostgresType.String; }
 
             if ( type == typeof(Int128) || type == typeof(Int128?) ) { return PostgresType.Int128; }
 
