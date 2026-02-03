@@ -83,7 +83,7 @@ public readonly struct SizeInfo : IComparable<SizeInfo>, IEquatable<SizeInfo>
     }
 
 
-    public ColumnCheckMetaData Check( in string propertyName ) => Match(in propertyName, ColumnCheckMetaData.Create, ColumnCheckMetaData.Create, ColumnCheckMetaData.Create, ColumnCheckMetaData.Default);
+    public ColumnCheckMetaData Check( in string columnName ) => Match(in columnName, ColumnCheckMetaData.Create, ColumnCheckMetaData.Create, ColumnCheckMetaData.Create, ColumnCheckMetaData.Default);
 
 
     public TResult? Match<TResult>( Func<int, TResult> f0, Func<IntRange, TResult> f1, Func<PrecisionInfo, TResult> f2, [NotNullIfNotNull(nameof(defaultValue))] TResult? defaultValue = default ) => __index switch

@@ -2,11 +2,6 @@
 // 4/2/2024  17:43
 
 
-using System.Data;
-using TelemetrySpan = Jakar.Extensions.TelemetrySpan;
-
-
-
 namespace Jakar.Database;
 
 
@@ -17,40 +12,29 @@ public sealed record FileRecord : TableRecord<FileRecord>, ITableRecord<FileReco
     public const string TABLE_NAME = "files";
 
 
-    public static                                                                      string    TableName       => TABLE_NAME;
-    [ColumnMetaData(ColumnOptions.Nullable, 256)]  public                              string?   FileName        { get; init; }
-    [ColumnMetaData(ColumnOptions.Nullable, 1024)] public                              string?   FileDescription { get; init; }
-    [ColumnMetaData(ColumnOptions.Nullable, 256)]  public                              string?   FileType        { get; init; }
-    public                                                                             long      FileSize        { get; init; }
-    [ColumnMetaData(ColumnOptions.Nullable | ColumnOptions.Indexed, MAX_FIXED)] public string    Hash            { get; init; }
-    public                                                                             MimeType? MimeType        { get; init; }
-    [ColumnMetaData(ColumnOptions.Indexed)]                          public            string    Payload         { get; init; }
-    [ColumnMetaData(ColumnOptions.Nullable | ColumnOptions.Indexed)] public            string?   FullPath        { get; init; }
+    public static                                             string    TableName       => TABLE_NAME;
+    [ColumnMetaData(256)]  public                             string?   FileName        { get; set; }
+    [ColumnMetaData(1024)] public                             string?   FileDescription { get; set; }
+    [ColumnMetaData(256)]  public                             string?   FileType        { get; set; }
+    public                                                    long      FileSize        { get; set; }
+    [ColumnMetaData(ColumnOptions.Indexed, MAX_FIXED)] public string    Hash            { get; set; } = EMPTY;
+    public                                                    MimeType? MimeType        { get; set; }
+    [ColumnMetaData(ColumnOptions.Indexed)] public            string    Payload         { get; set; } = EMPTY;
+    [ColumnMetaData(ColumnOptions.Indexed)] public            string?   FullPath        { get; init; }
 
 
-    public FileRecord( IFileData<Guid, FileMetaData> data, LocalFile?    file                      = null ) : this(data, data.MetaData, file) { }
-    private FileRecord( IFileData<Guid>              data, IFileMetaData metaData, LocalFile? file = null ) : this(metaData.FileName, metaData.FileDescription, metaData.FileType, data.FileSize, data.Hash, metaData.MimeType, data.Payload, file?.FullPath, RecordID<FileRecord>.New(), DateTimeOffset.UtcNow) { }
-    public FileRecord( string?              FileName,
-                       string?              FileDescription,
-                       string?              FileType,
-                       long                 FileSize,
-                       string               Hash,
-                       MimeType?            MimeType,
-                       string               Payload,
-                       string?              FullPath,
-                       RecordID<FileRecord> ID,
-                       DateTimeOffset       DateCreated,
-                       DateTimeOffset?      LastModified = null
-    ) : base(in ID, in DateCreated, in LastModified)
+    public FileRecord( in RecordID<FileRecord>       id,   in DateTimeOffset dateCreated, in DateTimeOffset? lastModified = null, JObject? additionalData = null ) : base(in id, in dateCreated, in lastModified, additionalData) { }
+    public FileRecord( IFileData<Guid, FileMetaData> data, LocalFile?        file = null ) : this(data, data.MetaData, file) { }
+    private FileRecord( IFileData<Guid> data, IFileMetaData metaData, LocalFile? file = null ) : base(RecordID<FileRecord>.New(), DateTimeOffset.UtcNow, null)
     {
-        this.FileName        = FileName;
-        this.FileDescription = FileDescription;
-        this.FileType        = FileType;
-        this.FileSize        = FileSize;
-        this.Hash            = Hash;
-        this.MimeType        = MimeType;
-        this.Payload         = Payload;
-        this.FullPath        = FullPath;
+        FileName        = metaData.FileName;
+        FileDescription = metaData.FileDescription;
+        FileType        = metaData.FileType;
+        FileSize        = data.FileSize;
+        Hash            = data.Hash;
+        MimeType        = metaData.MimeType;
+        Payload         = data.Payload;
+        FullPath        = file?.FullPath;
     }
     internal FileRecord( NpgsqlDataReader reader ) : base(reader)
     {
@@ -117,23 +101,26 @@ public sealed record FileRecord : TableRecord<FileRecord>, ITableRecord<FileReco
     }
 
 
-    [Pure] public async ValueTask<FileRecord> Update( LocalFile file, CancellationToken token = default )
+    public async ValueTask<FileRecord> Update( LocalFile file, CancellationToken token = default )
     {
         if ( FullPath != file.FullPath ) { throw new InvalidOperationException($"{nameof(FullPath)} mismatch. Got {file.FullPath} but expected {FullPath}"); }
 
-        ( long fileSize, string? hash, string payload, _, FileMetaData? metaData ) = await FileData.Create(file, token);
+        FileData data = await FileData.Create(file, token);
+        return With(data, file);
+    }
+    public FileRecord With( IFileData<Guid, FileMetaData> data, LocalFile? file = null ) => With(data, data.MetaData, file);
+    public FileRecord With( IFileData<Guid> data, IFileMetaData metaData, LocalFile? file = null )
+    {
+        if ( FullPath != file?.FullPath ) { throw new InvalidOperationException($"{nameof(FullPath)} mismatch. Got {file?.FullPath} but expected {FullPath}"); }
 
-        return new FileRecord(metaData.FileName,
-                              metaData.FileDescription,
-                              metaData.FileType,
-                              fileSize,
-                              hash,
-                              metaData.MimeType,
-                              payload,
-                              file.FullPath,
-                              ID,
-                              DateCreated,
-                              DateTimeOffset.UtcNow);
+        FileName        = metaData.FileName;
+        FileDescription = metaData.FileDescription;
+        FileType        = metaData.FileType;
+        FileSize        = data.FileSize;
+        Hash            = data.Hash;
+        MimeType        = metaData.MimeType;
+        Payload         = data.Payload;
+        return Modified();
     }
 
 

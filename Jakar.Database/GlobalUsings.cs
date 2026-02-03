@@ -132,3 +132,4 @@ global using static Jakar.Extensions.Constants.Logging;
 global using static Jakar.Extensions.Constants.Telemetry;
 global using static Jakar.Extensions.Constants.Characters;
 global using static Jakar.Extensions.Constants.ErrorTypes;
+global using TelemetrySpan = Jakar.Extensions.TelemetrySpan;

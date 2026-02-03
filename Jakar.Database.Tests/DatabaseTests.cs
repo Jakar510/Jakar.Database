@@ -223,7 +223,17 @@ public sealed class DatabaseTests : Assert
 
     private static async ValueTask<FileRecord> Add_File( Database db, UserRecord user, CancellationToken token = default )
     {
-        FileRecord file = new("file name", "file description", "file type", 0, "hash", MimeType.Unknown, "payload", "path", RecordID<FileRecord>.New(), DateTimeOffset.UtcNow);
+        FileRecord file = new(RecordID<FileRecord>.New(), DateTimeOffset.UtcNow)
+                          {
+                              FileName        = "file name",
+                              FileDescription = "file description",
+                              FileType        = "file type",
+                              FileSize        = 0,
+                              Hash            = "hash",
+                              MimeType        = MimeType.Unknown,
+                              Payload         = "payload",
+                              FullPath        = "full file system path",
+                          };
 
         file = await db.Files.Insert(file, token);
 

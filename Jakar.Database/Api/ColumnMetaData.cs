@@ -41,7 +41,7 @@ public sealed class ColumnMetaData
         string columnName = Validate.ThrowIfNull(propertyName.SqlColumnName());
         IsNullable     = ( options & ColumnOptions.Nullable )   != 0;
         IsPrimaryKey   = ( options & ColumnOptions.PrimaryKey ) != 0;
-        Checks         = checks;
+        Checks         = checks ?? length.Check(columnName);
         Options        = options;
         DbType         = dbType;
         Length         = length;
@@ -73,9 +73,9 @@ public sealed class ColumnMetaData
 
         try
         {
-            attribute.Deconstruct(out ColumnOptions options, out SizeInfo length, out ColumnCheckMetaData checks, out string? foreignKeyName);
+            attribute.Deconstruct(out ColumnOptions options, out SizeInfo length, out ColumnCheckMetaData? checks, out string? foreignKeyName);
 
-            PostgresType dbType = property.PropertyType.GetPostgresType(ref options, ref length);
+            PostgresType dbType = property.PropertyType.GetPostgresType(in property, ref options, ref length);
             if ( IsDbKey(property) ) { options |= ColumnOptions.PrimaryKey; }
 
             return new ColumnMetaData(property.Name, dbType, options, foreignKeyName, length, checks);

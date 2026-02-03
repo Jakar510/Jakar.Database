@@ -15,15 +15,15 @@ public sealed record AddressRecord : OwnedTableRecord<AddressRecord>, IAddress<A
     public const string TABLE_NAME = "addresses";
 
 
-    public static                                                                                         string  TableName       => TABLE_NAME;
-    [ProtectedPersonalData] [ColumnMetaData(ColumnOptions.Indexed,                          512)]  public string  Line1           { get; init; }
-    [ProtectedPersonalData] [ColumnMetaData(ColumnOptions.Indexed,                          512)]  public string  Line2           { get; init; }
-    [ProtectedPersonalData] [ColumnMetaData(ColumnOptions.Indexed,                          512)]  public string  City            { get; init; }
-    [ProtectedPersonalData] [ColumnMetaData(ColumnOptions.Indexed,                          512)]  public string  StateOrProvince { get; init; }
-    [ProtectedPersonalData] [ColumnMetaData(ColumnOptions.Indexed,                          512)]  public string  Country         { get; init; }
-    [ProtectedPersonalData] [ColumnMetaData(ColumnOptions.Indexed,                          512)]  public string  PostalCode      { get; init; }
-    [ProtectedPersonalData] [ColumnMetaData(ColumnOptions.Indexed | ColumnOptions.Nullable, 4096)] public string? Address         { get; init; }
-    public                                                                                                bool    IsPrimary       { get; init; }
+    public static                                                                string  TableName       => TABLE_NAME;
+    [ProtectedPersonalData] [ColumnMetaData(ColumnOptions.Indexed, 512)]  public string  Line1           { get; init; }
+    [ProtectedPersonalData] [ColumnMetaData(ColumnOptions.Indexed, 512)]  public string  Line2           { get; init; }
+    [ProtectedPersonalData] [ColumnMetaData(ColumnOptions.Indexed, 512)]  public string  City            { get; init; }
+    [ProtectedPersonalData] [ColumnMetaData(ColumnOptions.Indexed, 512)]  public string  StateOrProvince { get; init; }
+    [ProtectedPersonalData] [ColumnMetaData(ColumnOptions.Indexed, 512)]  public string  Country         { get; init; }
+    [ProtectedPersonalData] [ColumnMetaData(ColumnOptions.Indexed, 512)]  public string  PostalCode      { get; init; }
+    [ProtectedPersonalData] [ColumnMetaData(ColumnOptions.Indexed, 4096)] public string? Address         { get; init; }
+    public                                                                       bool    IsPrimary       { get; init; }
 
 
     public AddressRecord( IAddress<Guid> address ) : this(address.Line1,

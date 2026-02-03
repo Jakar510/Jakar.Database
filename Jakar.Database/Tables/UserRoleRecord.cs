@@ -12,13 +12,13 @@ public sealed record UserRoleRecord : Mapping<UserRoleRecord, UserRecord, RoleRe
     public static string TableName => TABLE_NAME;
 
 
-    [ColumnMetaData(ColumnOptions.ForeignKey, UserRecord.TABLE_NAME)] public override RecordID<UserRecord> KeyID   { get; init; }
-    [ColumnMetaData(ColumnOptions.ForeignKey, RoleRecord.TABLE_NAME)] public override RecordID<RoleRecord> ValueID { get; init; }
+    [ColumnMetaData(UserRecord.TABLE_NAME)] public override RecordID<UserRecord> KeyID   { get; init; }
+    [ColumnMetaData(RoleRecord.TABLE_NAME)] public override RecordID<RoleRecord> ValueID { get; init; }
 
 
     public UserRoleRecord( RecordID<UserRecord>  key, RecordID<RoleRecord> value ) : base(key, value) { }
     private UserRoleRecord( RecordID<UserRecord> key, RecordID<RoleRecord> value, RecordID<UserRoleRecord> id, DateTimeOffset dateCreated, DateTimeOffset? lastModified ) : base(key, value, id, dateCreated, lastModified) { }
-    internal UserRoleRecord( NpgsqlDataReader reader ) : base(reader) { }
+    internal UserRoleRecord( NpgsqlDataReader    reader ) : base(reader) { }
 
 
     [Pure] public static UserRoleRecord Create( NpgsqlDataReader     reader )                          => new UserRoleRecord(reader).Validate();

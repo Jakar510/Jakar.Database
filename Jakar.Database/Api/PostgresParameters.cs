@@ -1,6 +1,7 @@
 ﻿// Jakar.Database :: Jakar.Database
 // 01/28/2026  18:42
 
+using ZLinq;
 using ZLinq.Linq;
 
 
@@ -14,13 +15,14 @@ public readonly struct PostgresParameters : IEquatable<PostgresParameters>
     internal readonly ITableMetaData        Table;
 
 
-    public int                           Count    => __buffer.Count;
-    public int                           Capacity => __buffer.Capacity;
-    public ReadOnlySpan<NpgsqlParameter> Values   => __buffer.AsSpan();
-    public ValueEnumerable<Select<FromSpan<NpgsqlParameter>, NpgsqlParameter, string>, string> ParameterNames
+    public int                           Count              => __buffer.Count;
+    public int                           Capacity           => __buffer.Capacity;
+    public ReadOnlySpan<NpgsqlParameter> Values             => __buffer.AsSpan();
+    public PooledArray<string>           ParameterNameArray { [Pure] [MustDisposeResource] get => ParameterNames.ToArrayPool(); }
+    public ValueEnumerable<ListSelect<NpgsqlParameter, string>, string> ParameterNames
     {
-        [Pure] get => Values.AsValueEnumerable()
-                            .Select(static x => x.ParameterName);
+        [Pure] get => __buffer.AsValueEnumerable()
+                              .Select(static x => x.ParameterName);
     }
     public StringBuilder Parameters
     {
@@ -184,12 +186,14 @@ public readonly struct PostgresParameters : IEquatable<PostgresParameters>
     public override int GetHashCode() => HashCode.Combine(__buffer);
     public ulong GetHash64()
     {
-        ReadOnlySpan<string> names = ParameterNames.ToArray();
+        using PooledArray<string> array = ParameterNameArray;
+        ReadOnlySpan<string>      names = array.Span;
         return Hashes.Hash(in names);
     }
     public UInt128 GetHash128()
     {
-        ReadOnlySpan<string> names = ParameterNames.ToArray();
+        using PooledArray<string> array = ParameterNameArray;
+        ReadOnlySpan<string>      names = array.Span;
         return Hashes.Hash128(in names);
     }
 

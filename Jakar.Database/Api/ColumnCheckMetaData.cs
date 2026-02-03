@@ -13,8 +13,8 @@ public readonly record struct ColumnCheckMetaData( bool And, params string[] Che
     public ColumnCheckMetaData( string[] checks ) : this(true, checks) { }
 
 
-    public static ColumnCheckMetaData Create( string    propertyName )                  => new($"length({propertyName.SqlColumnName()}) > 0");
-    public static ColumnCheckMetaData Create( string    propertyName, int      length ) => new($"length({propertyName.SqlColumnName()}) > {length}");
-    public static ColumnCheckMetaData Create( string    propertyName, IntRange range )  => new($"length({propertyName.SqlColumnName()}) BETWEEN {range.Min} AND {range.Max}");
-    public static ColumnCheckMetaData Create<T>( string propertyName, T        arg )   => Default;
+    public static ColumnCheckMetaData Create( string    columnName )                  => new($"length({columnName}) > 0");
+    public static ColumnCheckMetaData Create( string    columnName, int      length ) => new($"length({columnName}) > {length}");
+    public static ColumnCheckMetaData Create( string    columnName, IntRange range )  => new($"length({columnName}) BETWEEN {range.Min} AND {range.Max}");
+    public static ColumnCheckMetaData Create<T>( string columnName, T        arg )   => Default;
 }

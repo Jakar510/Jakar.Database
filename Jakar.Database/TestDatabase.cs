@@ -72,18 +72,18 @@ internal sealed class TestDatabase( IConfiguration configuration, IOptions<DbOpt
 
     public static void PrintCreateTables()
     {
-        printSql(SqlTable<UserRecord>.CreateTable());
-        printSql(SqlTable<AddressRecord>.CreateTable());
-        printSql(SqlTable<UserAddressRecord>.CreateTable());
-        printSql(SqlTable<GroupRecord>.CreateTable());
-        printSql(SqlTable<UserGroupRecord>.CreateTable());
-        printSql(SqlTable<RoleRecord>.CreateTable());
-        printSql(SqlTable<UserRoleRecord>.CreateTable());
-        printSql(SqlTable<RecoveryCodeRecord>.CreateTable());
-        printSql(SqlTable<UserRecoveryCodeRecord>.CreateTable());
-        printSql(SqlTable<FileRecord>.CreateTable());
-        printSql(SqlTable<UserLoginProviderRecord>.CreateTable());
-        printSql(SqlTable<ResxRowRecord>.CreateTable());
+        printSql(TableMetaData<UserRecord>.CreateTable());
+        printSql(TableMetaData<AddressRecord>.CreateTable());
+        printSql(TableMetaData<UserAddressRecord>.CreateTable());
+        printSql(TableMetaData<GroupRecord>.CreateTable());
+        printSql(TableMetaData<UserGroupRecord>.CreateTable());
+        printSql(TableMetaData<RoleRecord>.CreateTable());
+        printSql(TableMetaData<UserRoleRecord>.CreateTable());
+        printSql(TableMetaData<RecoveryCodeRecord>.CreateTable());
+        printSql(TableMetaData<UserRecoveryCodeRecord>.CreateTable());
+        printSql(TableMetaData<FileRecord>.CreateTable());
+        printSql(TableMetaData<UserLoginProviderRecord>.CreateTable());
+        printSql(TableMetaData<ResxRowRecord>.CreateTable());
 
         return;
 
@@ -132,7 +132,18 @@ internal sealed class TestDatabase( IConfiguration configuration, IOptions<DbOpt
     }
     private static async ValueTask<FileRecord> Add_File( Database db, UserRecord user, CancellationToken token = default )
     {
-        FileRecord record = new("file name", "file description", "file type", 0, "hash", MimeType.Unknown, "payload", "full file system path", RecordID<FileRecord>.New(), DateTimeOffset.UtcNow);
+        FileRecord record = new(RecordID<FileRecord>.New(), DateTimeOffset.UtcNow)
+                            {
+                                FileName        = "file name",
+                                FileDescription = "file description",
+                                FileType        = "file type",
+                                FileSize        = 0,
+                                Hash            = "hash",
+                                MimeType        = MimeType.Unknown,
+                                Payload         = "payload",
+                                FullPath        = "full file system path",
+                            };
+
         record       = await db.Files.Insert(record, token);
         user.ImageID = record;
         await db.Users.Update(user, token);

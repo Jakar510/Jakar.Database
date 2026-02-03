@@ -1,8 +1,4 @@
-﻿using Jakar.Extensions;
-
-using Microsoft.AspNetCore.DataProtection.KeyManagement;
-
-namespace Jakar.Database;
+﻿namespace Jakar.Database;
 
 
 [Serializable]
@@ -12,11 +8,11 @@ public sealed record RoleRecord : OwnedTableRecord<RoleRecord>, ITableRecord<Rol
     public const string TABLE_NAME = "roles";
 
 
-    public static                                                     string     TableName        => TABLE_NAME;
-    [ColumnMetaData(ColumnOptions.None,    RIGHTS)]            public UserRights Rights           { get; set; }
-    [ColumnMetaData(ColumnOptions.Indexed, NAME)]              public string     NameOfRole       { get; init; }
-    [ColumnMetaData(ColumnOptions.Indexed, NORMALIZED_NAME)]   public string     NormalizedName   { get; init; }
-    [ColumnMetaData(ColumnOptions.None,    CONCURRENCY_STAMP)] public string     ConcurrencyStamp { get; init; }
+    public static                                                   string     TableName        => TABLE_NAME;
+    [ColumnMetaData(RIGHTS)]                                 public UserRights Rights           { get; set; }
+    [ColumnMetaData(ColumnOptions.Indexed, NAME)]            public string     NameOfRole       { get; init; }
+    [ColumnMetaData(ColumnOptions.Indexed, NORMALIZED_NAME)] public string     NormalizedName   { get; init; }
+    [ColumnMetaData(CONCURRENCY_STAMP)]                      public string     ConcurrencyStamp { get; init; }
 
 
     public RoleRecord( IdentityRole role, RecordID<UserRecord>? caller                               = null ) : this(role.Name ?? EMPTY, role.NormalizedName ?? EMPTY, role.ConcurrencyStamp ?? EMPTY, caller) { }
@@ -48,7 +44,7 @@ public sealed record RoleRecord : OwnedTableRecord<RoleRecord>, ITableRecord<Rol
 
     public override ValueTask Export( NpgsqlBinaryExporter exporter, CancellationToken token ) => default;
     public override async ValueTask Import( NpgsqlBinaryImporter importer, CancellationToken token )
-    { 
+    {
         foreach ( ColumnMetaData column in PropertyMetaData.Values.OrderBy(static x => x.Index) )
         {
             switch ( column.PropertyName )
@@ -79,7 +75,7 @@ public sealed record RoleRecord : OwnedTableRecord<RoleRecord>, ITableRecord<Rol
 
                 case nameof(ConcurrencyStamp):
                     await importer.WriteAsync(ConcurrencyStamp, column.PostgresDbType, token);
-                    break; 
+                    break;
 
                 case nameof(LastModified):
                     if ( LastModified.HasValue ) { await importer.WriteAsync(LastModified.Value, column.PostgresDbType, token); }

@@ -4,6 +4,7 @@
 namespace Jakar.Database;
 
 
+/*
 public readonly ref struct SqlTable<TSelf> : IDisposable
     where TSelf : class, ITableRecord<TSelf>
 {
@@ -169,3 +170,4 @@ public readonly ref struct SqlTable<TSelf> : IDisposable
         return Columns.ToFrozenDictionary();
     }
 }
+*/

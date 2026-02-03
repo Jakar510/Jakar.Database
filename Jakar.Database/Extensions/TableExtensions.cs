@@ -34,24 +34,18 @@ public static class TableExtensions
 
         if ( !string.Equals(TSelf.TableName, TSelf.TableName.ToSnakeCase()) ) { throw new InvalidOperationException($"{typeof(TSelf).Name}: {nameof(TSelf.TableName)} is not snake_case: '{TSelf.TableName}'"); }
 
-        PostgresParameters parameters     = self.ToDynamicParameters();
-        string[]           parameterNames = parameters.ParameterNames.ToArray();
-        int                length         = parameterNames.Length;
+        PostgresParameters parameters = self.ToDynamicParameters();
+        int                length     = parameters.Count;
 
 
-        if ( length == TSelf.ClassProperties.Length ) { return self; }
+        if ( length == TSelf.PropertyCount ) { return self; }
 
-
-        HashSet<string> missing =
-        [
-            .. TSelf.ClassProperties.AsValueEnumerable()
-                    .Select(static x => x.Name)
-        ];
-
-        missing.ExceptWith(parameterNames);
+        HashSet<string>           missing = [.. TSelf.ClassProperties.Select(static x => x.Name)];
+        using PooledArray<string> array   = parameters.ParameterNameArray;
+        missing.ExceptWith(array.Array);
 
         string message = $"""
-                          {typeof(TSelf).Name}: {nameof(self.ToDynamicParameters)}.Length ({length}) != {nameof(TSelf.ClassProperties)}.Length ({TSelf.ClassProperties.Length})
+                          {typeof(TSelf).Name}: {nameof(self.ToDynamicParameters)}.Length ({length}) != {nameof(TSelf.ClassProperties)}.Length ({TSelf.PropertyCount})
                           {missing.ToJson()}
                           """;
 

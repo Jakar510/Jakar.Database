@@ -10,53 +10,53 @@ public sealed record UserRecord : OwnedTableRecord<UserRecord>, ITableRecord<Use
     public static readonly TimeSpan DefaultLockoutTime = TimeSpan.FromHours(6);
 
 
-    public                                                         UserRights Rights           { get; set; } = new();
-    public static                                                  string     TableName        => TABLE_NAME;
-    [ColumnMetaData(ColumnOptions.None, AUTHENTICATOR_KEY)] public string     AuthenticatorKey { get; set; } = EMPTY;
-    [ColumnMetaData(ColumnOptions.Nullable)]                public int?       BadLogins        { get; set; }
+    public                                     UserRights Rights           { get; set; } = new();
+    public static                              string     TableName        => TABLE_NAME;
+    [ColumnMetaData(AUTHENTICATOR_KEY)] public string     AuthenticatorKey { get; set; } = EMPTY;
+    public                                     int?       BadLogins        { get; set; }
 
     /// <summary> A random value that must change whenever a user is persisted to the store </summary>
-    [ColumnMetaData(ColumnOptions.None, CONCURRENCY_STAMP)] public string ConcurrencyStamp { get; set; } = EMPTY;
+    [ColumnMetaData(CONCURRENCY_STAMP)] public string ConcurrencyStamp { get; set; } = EMPTY;
 
-    public                                                                                 bool                             IsActive               { get;                    set; }
-    public                                                                                 bool                             IsDisabled             { get;                    set; }
-    public                                                                                 bool                             IsEmailConfirmed       { get;                    set; }
-    public                                                                                 bool                             IsLocked               { get;                    set; }
-    public                                                                                 bool                             IsPhoneNumberConfirmed { get;                    set; }
-    public                                                                                 bool                             IsTwoFactorEnabled     { get;                    set; }
-    [ColumnMetaData(ColumnOptions.Nullable)]                               public          DateTimeOffset?                  LastBadAttempt         { get;                    set; }
-    [ColumnMetaData(ColumnOptions.Nullable)]                               public          DateTimeOffset?                  LastLogin              { get;                    set; }
-    [ColumnMetaData(ColumnOptions.Nullable)]                               public          DateTimeOffset?                  LockDate               { get;                    set; }
-    [ColumnMetaData(ColumnOptions.Nullable)]                               public          DateTimeOffset?                  LockoutEnd             { get;                    set; }
-    [ColumnMetaData(ColumnOptions.None, ENCRYPTED_MAX_PASSWORD_SIZE)]      public          string                           PasswordHash           { get;                    set; } = EMPTY;
-    [ColumnMetaData(ColumnOptions.None, REFRESH_TOKEN)]                    public          UInt128                          RefreshTokenHash       { get;                    set; }
-    [ColumnMetaData(ColumnOptions.Nullable)]                               public          DateTimeOffset?                  RefreshTokenExpiryTime { get;                    set; }
-    [ColumnMetaData(ColumnOptions.None, SECURITY_STAMP)]                   public          string                           SecurityStamp          { get;                    set; } = EMPTY;
-    [ColumnMetaData(ColumnOptions.Nullable)]                               public          Guid?                            SessionID              { get;                    set; }
-    [ColumnMetaData(ColumnOptions.None, MAX_SIZE)] [ProtectedPersonalData] public override JObject?                         AdditionalData         { get => _additionalData; set => _additionalData = value; }
-    [ColumnMetaData(ColumnOptions.None, COMPANY)] [ProtectedPersonalData]  public          string                           Company                { get;                    set; } = EMPTY;
-    Guid? ICreatedByUser<Guid>.                                                                                             CreatedBy              => CreatedBy?.Value;
-    [ColumnMetaData(ColumnOptions.None,    DEPARTMENT)]                    public string                                    Department             { get; set; } = EMPTY;
-    [ColumnMetaData(ColumnOptions.None,    DESCRIPTION)]                   public string                                    Description            { get; set; } = EMPTY;
-    [ColumnMetaData(ColumnOptions.Indexed, EMAIL)] [ProtectedPersonalData] public string                                    Email                  { get; set; } = EMPTY;
-    public                                                                        RecordID<UserRecord>?                     EscalateTo             { get; set; }
-    Guid? IEscalateToUser<Guid>.                                                                                            EscalateTo             => EscalateTo?.Value;
-    [ColumnMetaData(ColumnOptions.None,    PHONE_EXT)] [ProtectedPersonalData]  public string                               Ext                    { get; set; } = EMPTY;
-    [ColumnMetaData(ColumnOptions.Indexed, FIRST_NAME)] [ProtectedPersonalData] public string                               FirstName              { get; set; } = EMPTY;
-    [ColumnMetaData(ColumnOptions.Indexed, FULL_NAME)] [ProtectedPersonalData]  public string                               FullName               { get; set; } = EMPTY;
-    [ColumnMetaData(ColumnOptions.Indexed, GENDER)] [ProtectedPersonalData]     public string                               Gender                 { get; set; } = EMPTY;
-    Guid? IImageID<Guid>.                                                                                                   ImageID                => ImageID?.Value;
-    [ColumnMetaData(ColumnOptions.Nullable | ColumnOptions.ForeignKey, FileRecord.TABLE_NAME)] public RecordID<FileRecord>? ImageID                { get; set; }
-    public                                                                                            bool                  IsValid                => !string.IsNullOrWhiteSpace(UserName) && ID.IsValid();
-    [ColumnMetaData(ColumnOptions.Indexed, 2000)] [ProtectedPersonalData]  public                     string                LastName               { get; set; } = EMPTY;
-    [ColumnMetaData(ColumnOptions.Indexed, PHONE)] [ProtectedPersonalData] public                     string                PhoneNumber            { get; set; } = EMPTY;
-    public                                                                                            SupportedLanguage     PreferredLanguage      { get; set; }
-    [ColumnMetaData(ColumnOptions.Nullable)]    public                                                DateTimeOffset?       SubscriptionExpires    { get; set; }
-    [ColumnMetaData(ColumnOptions.Nullable)]    public                                                Guid?                 SubscriptionID         { get; set; }
-    [ColumnMetaData(ColumnOptions.None, TITLE)] public                                                string                Title                  { get; set; } = EMPTY;
-    public                                                                                            Guid                  UserID                 => ID.Value;
-    [ColumnMetaData(ColumnOptions.None)] [ProtectedPersonalData]          public                      string                UserName               { get; init; } = EMPTY;
-    [ColumnMetaData(ColumnOptions.None, WEBSITE)] [ProtectedPersonalData] public                      string                Website                { get; set; }  = EMPTY;
+    public                                                             bool                             IsActive               { get;                    set; }
+    public                                                             bool                             IsDisabled             { get;                    set; }
+    public                                                             bool                             IsEmailConfirmed       { get;                    set; }
+    public                                                             bool                             IsLocked               { get;                    set; }
+    public                                                             bool                             IsPhoneNumberConfirmed { get;                    set; }
+    public                                                             bool                             IsTwoFactorEnabled     { get;                    set; }
+    public                                                             DateTimeOffset?                  LastBadAttempt         { get;                    set; }
+    public                                                             DateTimeOffset?                  LastLogin              { get;                    set; }
+    public                                                             DateTimeOffset?                  LockDate               { get;                    set; }
+    public                                                             DateTimeOffset?                  LockoutEnd             { get;                    set; }
+    [ColumnMetaData(ENCRYPTED_MAX_PASSWORD_SIZE)] public               string                           PasswordHash           { get;                    set; } = EMPTY;
+    [ColumnMetaData(REFRESH_TOKEN)]               public               UInt128                          RefreshTokenHash       { get;                    set; }
+    public                                                             DateTimeOffset?                  RefreshTokenExpiryTime { get;                    set; }
+    [ColumnMetaData(SECURITY_STAMP)] public                            string                           SecurityStamp          { get;                    set; } = EMPTY;
+    public                                                             Guid?                            SessionID              { get;                    set; }
+    [ColumnMetaData(MAX_SIZE)] [ProtectedPersonalData] public override JObject?                         AdditionalData         { get => _additionalData; set => _additionalData = value; }
+    [ColumnMetaData(COMPANY)] [ProtectedPersonalData]  public          string                           Company                { get;                    set; } = EMPTY;
+    Guid? ICreatedByUser<Guid>.                                                                         CreatedBy              => CreatedBy?.Value;
+    [ColumnMetaData(DEPARTMENT)]                                           public string                Department             { get; set; } = EMPTY;
+    [ColumnMetaData(DESCRIPTION)]                                          public string                Description            { get; set; } = EMPTY;
+    [ColumnMetaData(ColumnOptions.Indexed, EMAIL)] [ProtectedPersonalData] public string                Email                  { get; set; } = EMPTY;
+    public                                                                        RecordID<UserRecord>? EscalateTo             { get; set; }
+    Guid? IEscalateToUser<Guid>.                                                                        EscalateTo             => EscalateTo?.Value;
+    [ColumnMetaData(PHONE_EXT)] [ProtectedPersonalData]                         public string           Ext                    { get; set; } = EMPTY;
+    [ColumnMetaData(ColumnOptions.Indexed, FIRST_NAME)] [ProtectedPersonalData] public string           FirstName              { get; set; } = EMPTY;
+    [ColumnMetaData(ColumnOptions.Indexed, FULL_NAME)] [ProtectedPersonalData]  public string           FullName               { get; set; } = EMPTY;
+    [ColumnMetaData(ColumnOptions.Indexed, GENDER)] [ProtectedPersonalData]     public string           Gender                 { get; set; } = EMPTY;
+    Guid? IImageID<Guid>.                                                                               ImageID                => ImageID?.Value;
+    [ColumnMetaData(FileRecord.TABLE_NAME)] public                                RecordID<FileRecord>? ImageID                { get; set; }
+    public                                                                        bool                  IsValid                => !string.IsNullOrWhiteSpace(UserName) && ID.IsValid();
+    [ColumnMetaData(ColumnOptions.Indexed, 2000)] [ProtectedPersonalData]  public string                LastName               { get; set; } = EMPTY;
+    [ColumnMetaData(ColumnOptions.Indexed, PHONE)] [ProtectedPersonalData] public string                PhoneNumber            { get; set; } = EMPTY;
+    public                                                                        SupportedLanguage     PreferredLanguage      { get; set; }
+    public                                                                        DateTimeOffset?       SubscriptionExpires    { get; set; }
+    public                                                                        Guid?                 SubscriptionID         { get; set; }
+    [ColumnMetaData(TITLE)] public                                                string                Title                  { get; set; } = EMPTY;
+    public                                                                        Guid                  UserID                 => ID.Value;
+    [ProtectedPersonalData]                           public                      string                UserName               { get; init; } = EMPTY;
+    [ColumnMetaData(WEBSITE)] [ProtectedPersonalData] public                      string                Website                { get; set; }  = EMPTY;
 
 
     public UserRecord( in RecordID<UserRecord> ID ) : this(in ID, null, DateTimeOffset.UtcNow) { }

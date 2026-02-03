@@ -1,6 +1,10 @@
 ﻿// Jakar.Extensions :: Jakar.Database
 // 08/14/2022  8:38 PM
 
+using ZLinq.Linq;
+
+
+
 namespace Jakar.Database;
 
 
@@ -44,9 +48,10 @@ public interface IRecordPair<TSelf> : IDateCreated
 public interface ITableRecord<TSelf> : IRecordPair<TSelf>, IJsonModel<TSelf>
     where TSelf : class, ITableRecord<TSelf>
 {
-    public abstract static ReadOnlyMemory<PropertyInfo> ClassProperties  { [Pure] get; }
-    public abstract static TableMetaData<TSelf>         PropertyMetaData { [Pure] get; }
-    public abstract static string                       TableName        { [Pure] get; }
+    public abstract static ValueEnumerable<FromArray<PropertyInfo>, PropertyInfo> ClassProperties  { [Pure] get; }
+    public abstract static int                                                    PropertyCount    { get; }
+    public abstract static TableMetaData<TSelf>                                   PropertyMetaData { [Pure] get; }
+    public abstract static string                                                 TableName        { [Pure] get; }
 
 
     [Pure] public abstract static MigrationRecord CreateTable( ulong migrationID );
@@ -69,18 +74,19 @@ public abstract record TableRecord<TSelf> : BaseRecord<TSelf>, IRecordPair<TSelf
     private                            RecordID<TSelf> __id;
 
 
-    public static                                   TableMetaData<TSelf>         PropertyMetaData => TableMetaData<TSelf>.Instance;
-    public static                                   ReadOnlyMemory<PropertyInfo> ClassProperties  { [Pure] get => Properties; }
-    public                                          DateTimeOffset               DateCreated      { get;                  init; }
-    [Key]                                    public RecordID<TSelf>              ID               { get => __id;          init => __id = value; }
-    [ColumnMetaData(ColumnOptions.Nullable)] public DateTimeOffset?              LastModified     { get => _lastModified; init => _lastModified = value; }
+    public static                                   TableMetaData<TSelf>                                   PropertyMetaData => TableMetaData<TSelf>.Instance;
+    public static                                   ValueEnumerable<FromArray<PropertyInfo>, PropertyInfo> ClassProperties  { [Pure] get => Properties.AsValueEnumerable(); }
+    public static                                   int                                                    PropertyCount    => Properties.Length;
+    public                                          DateTimeOffset                                         DateCreated      { get;                  init; }
+    [Key]                                    public RecordID<TSelf>                                        ID               { get => __id;          init => __id = value; }
+    [ColumnMetaData(ColumnOptions.Nullable)] public DateTimeOffset?                                        LastModified     { get => _lastModified; init => _lastModified = value; }
 
 
     protected TableRecord( in RecordID<TSelf> id, in DateTimeOffset dateCreated, in DateTimeOffset? lastModified, JObject? additionalData = null )
     {
+        ID             = id;
         DateCreated    = dateCreated;
-        _lastModified  = lastModified;
-        __id           = id;
+        LastModified   = lastModified;
         AdditionalData = additionalData;
     }
     protected internal TableRecord( NpgsqlDataReader reader ) : this(RecordID<TSelf>.ID(reader), reader.GetFieldValue<TSelf, DateTimeOffset>(nameof(DateCreated)), reader.GetFieldValue<TSelf, DateTimeOffset>(nameof(LastModified))) { }
@@ -166,7 +172,7 @@ public abstract record TableRecord<TSelf> : BaseRecord<TSelf>, IRecordPair<TSelf
 public abstract record OwnedTableRecord<TSelf> : TableRecord<TSelf>, ICreatedBy
     where TSelf : OwnedTableRecord<TSelf>, ITableRecord<TSelf>
 {
-    [ColumnMetaData(ColumnOptions.ForeignKey | ColumnOptions.Nullable, UserRecord.TABLE_NAME)] public RecordID<UserRecord>? CreatedBy { get; set; }
+    [ColumnMetaData(UserRecord.TABLE_NAME)] public RecordID<UserRecord>? CreatedBy { get; set; }
 
 
     protected OwnedTableRecord( in RecordID<UserRecord>?  createdBy, in RecordID<TSelf> id, in DateTimeOffset dateCreated, in DateTimeOffset? lastModified, JObject? additionalData = null ) : base(in id, in dateCreated, in lastModified, additionalData) => CreatedBy = createdBy;
