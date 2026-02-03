@@ -33,7 +33,7 @@ public sealed class DatabaseTests : Assert
 
         __postgreSqlContainer = containerBuilder.Build();
         await __postgreSqlContainer.StartAsync();
-        
+
         WebApplicationBuilder builder = WebApplication.CreateBuilder();
 
         SecuredStringResolverOptions connectionString = $"User ID={USER};Password={PASSWORD};Host={__postgreSqlContainer.IpAddress};Port={__postgreSqlContainer.GetMappedPublicPort()};Database={TestDatabase.AppName}";
@@ -111,7 +111,7 @@ public sealed class DatabaseTests : Assert
     {
         ( UserRecord admin, UserRecord user )             = await Add_Users(__db);
         ( GroupRecord adminGroup, GroupRecord userGroup ) = await Add_Group(__db, admin);
-        UserGroupRecord[] groups = await Add_Groups(__db, user, [adminGroup, userGroup]);
+        ImmutableArray<UserGroupRecord> groups = await Add_Groups(__db, user, [adminGroup, userGroup]);
 
         That(groups, Has.Length.EqualTo(2));
     }
@@ -194,11 +194,8 @@ public sealed class DatabaseTests : Assert
     private static async ValueTask<ImmutableArray<UserRoleRecord>> Add_Roles( Database db, UserRecord user, RoleRecord[] roles, CancellationToken token = default )
     {
         ImmutableArray<UserRoleRecord> records = UserRoleRecord.Create(user, roles.AsSpan());
-
-        UserRoleRecord[] array = await db.UserRoles.Insert(records, token)
-                                         .ToArray(records.Length, token);
-
-        return array.AsImmutableArray();
+        ImmutableArray<UserRoleRecord> array   = await db.UserRoles.Insert(records, token);
+        return array;
     }
 
     private static async ValueTask<(GroupRecord Admin, GroupRecord User)> Add_Group( Database db, UserRecord adminUser, CancellationToken token = default )
@@ -209,20 +206,16 @@ public sealed class DatabaseTests : Assert
         return ( await db.Groups.Insert(admin, token), await db.Groups.Insert(user, token) );
     }
 
-    private static async ValueTask<UserGroupRecord[]> Add_Groups( Database db, UserRecord user, GroupRecord[] groups, CancellationToken token = default )
+    private static async ValueTask<ImmutableArray<UserGroupRecord>> Add_Groups( Database db, UserRecord user, GroupRecord[] groups, CancellationToken token = default )
     {
         ImmutableArray<UserGroupRecord> records = UserGroupRecord.Create(user, groups.AsSpan());
-
-        return await db.UserGroups.Insert(records, token)
-                       .ToArray(records.Length, token);
+        return await db.UserGroups.Insert(records, token);
     }
 
     private static async ValueTask<(AddressRecord, UserAddressRecord)> Add_Address( Database db, UserRecord user, CancellationToken token = default )
     {
         AddressRecord address = AddressRecord.Create("address line one", "", "city", "state", "postal", "country");
-
         address = await db.Addresses.Insert(address, token);
-
         UserAddressRecord link = await db.UserAddresses.Insert(UserAddressRecord.Create(user, address), token);
 
         return ( address, link );
@@ -249,14 +242,10 @@ public sealed class DatabaseTests : Assert
 
     private static async ValueTask<(ImmutableArray<RecoveryCodeRecord>, ImmutableArray<UserRecoveryCodeRecord>)> Add_RecoveryCodes( Database db, UserRecord user, CancellationToken token = default )
     {
-        RecoveryCodeRecord.Codes codes = RecoveryCodeRecord.Create(user, 10);
+        RecoveryCodeRecord.Codes               codes   = RecoveryCodeRecord.Create(user, 10);
+        ImmutableArray<RecoveryCodeRecord>     records = await db.RecoveryCodes.Insert(codes.Values, token);
+        ImmutableArray<UserRecoveryCodeRecord> links   = await db.UserRecoveryCodes.Insert(UserRecoveryCodeRecord.Create(user, records.AsSpan()), token);
 
-        RecoveryCodeRecord[] records = await db.RecoveryCodes.Insert(codes.Values, token)
-                                               .ToArray(codes.Count, token);
-
-        UserRecoveryCodeRecord[] links = await db.UserRecoveryCodes.Insert(UserRecoveryCodeRecord.Create(user, records.AsSpan()), token)
-                                                 .ToArray(records.Length, token);
-
-        return ( records.AsImmutableArray(), links.AsImmutableArray() );
+        return ( records, links );
     }
 }

@@ -7,40 +7,81 @@ namespace Jakar.Database;
 
 [Serializable]
 [Table(TABLE_NAME)]
-public sealed record UserLoginProviderRecord( [property: StringLength(                                  MAX_FIXED)] string  LoginProvider,
-                                              [property: StringLength(                                  MAX_FIXED)] string? ProviderDisplayName,
-                                              [property: ProtectedPersonalData] [property: StringLength(MAX_FIXED)] string  ProviderKey,
-                                              [property: ProtectedPersonalData] [property: StringLength(MAX_FIXED)] string? Value,
-                                              RecordID<UserLoginProviderRecord>                                             ID,
-                                              RecordID<UserRecord>?                                                         CreatedBy,
-                                              DateTimeOffset                                                                DateCreated,
-                                              DateTimeOffset?                                                               LastModified = null ) : OwnedTableRecord<UserLoginProviderRecord>(in CreatedBy, in ID, in DateCreated, in LastModified), ITableRecord<UserLoginProviderRecord>
+public sealed record UserLoginProviderRecord : OwnedTableRecord<UserLoginProviderRecord>, ITableRecord<UserLoginProviderRecord>
 {
     public const string TABLE_NAME = "user_login_providers";
 
-    public static TableMetaData<UserLoginProviderRecord> PropertyMetaData { get; } = SqlTable<UserLoginProviderRecord>.Default.WithColumn<string>(nameof(LoginProvider), ColumnOptions.None, MAX_FIXED)
-                                                                                                                      .WithColumn<string>(nameof(ProviderDisplayName), ColumnOptions.Nullable, MAX_FIXED)
-                                                                                                                      .WithColumn<string>(nameof(ProviderKey),         ColumnOptions.None,     MAX_FIXED)
-                                                                                                                      .WithColumn<string>(nameof(Value),               ColumnOptions.Nullable, MAX_FIXED)
-                                                                                                                      .With_CreatedBy()
-                                                                                                                      .Build();
 
-
-    public static string TableName => TABLE_NAME;
+    public static                                                          string  TableName           => TABLE_NAME;
+    [ColumnMetaData(                        ColumnOptions.Indexed)] public string  LoginProvider       { get; init; }
+    [ColumnMetaData(                        ColumnOptions.None)]    public string? ProviderDisplayName { get; init; }
+    [ProtectedPersonalData] [ColumnMetaData(ColumnOptions.Indexed)] public string  ProviderKey         { get; init; }
+    [ProtectedPersonalData] [ColumnMetaData(ColumnOptions.Indexed)] public string? Value               { get; init; }
 
 
     public UserLoginProviderRecord( UserRecord user, UserLoginInfo info ) : this(user, info.LoginProvider, info.ProviderKey, info.ProviderDisplayName) { }
     public UserLoginProviderRecord( UserRecord user, string        loginProvider, string providerKey, string? providerDisplayName ) : this(loginProvider, providerDisplayName, providerKey, EMPTY, RecordID<UserLoginProviderRecord>.New(), user.ID, DateTimeOffset.UtcNow) { }
+    public UserLoginProviderRecord( string LoginProvider, string? ProviderDisplayName, string ProviderKey, string? Value, RecordID<UserLoginProviderRecord> ID, RecordID<UserRecord>? CreatedBy, DateTimeOffset DateCreated, DateTimeOffset? LastModified = null ) : base(in CreatedBy, in ID, in DateCreated, in LastModified)
+    {
+        this.LoginProvider       = LoginProvider;
+        this.ProviderDisplayName = ProviderDisplayName;
+        this.ProviderKey         = ProviderKey;
+        this.Value               = Value;
+    }
+    internal UserLoginProviderRecord( NpgsqlDataReader reader ) : base(reader)
+    {
+        LoginProvider       = reader.GetFieldValue<UserLoginProviderRecord, string>(nameof(LoginProvider));
+        ProviderDisplayName = reader.GetFieldValue<UserLoginProviderRecord, string>(nameof(ProviderDisplayName));
+        ProviderKey         = reader.GetFieldValue<UserLoginProviderRecord, string>(nameof(ProviderKey));
+        Value               = reader.GetFieldValue<UserLoginProviderRecord, string>(nameof(Value));
+    }
 
 
     public override ValueTask Export( NpgsqlBinaryExporter exporter, CancellationToken token ) => default;
     public override async ValueTask Import( NpgsqlBinaryImporter importer, CancellationToken token )
     {
-        await base.Import(importer, token);
-        await importer.WriteAsync(LoginProvider,       NpgsqlDbType.Text, token);
-        await importer.WriteAsync(ProviderDisplayName, NpgsqlDbType.Text, token);
-        await importer.WriteAsync(ProviderKey,         NpgsqlDbType.Text, token);
-        await importer.WriteAsync(Value,               NpgsqlDbType.Text, token);
+        foreach ( ColumnMetaData column in PropertyMetaData.Values.OrderBy(static x => x.Index) )
+        {
+            switch ( column.PropertyName )
+            {
+                case nameof(ID):
+                    await importer.WriteAsync(ID.Value, column.PostgresDbType, token);
+                    break;
+
+                case nameof(DateCreated):
+                    await importer.WriteAsync(DateCreated, column.PostgresDbType, token);
+                    break;
+
+                case nameof(CreatedBy):
+                    await importer.WriteAsync(CreatedBy?.Value, column.PostgresDbType, token);
+                    break;
+
+                case nameof(LoginProvider):
+                    await importer.WriteAsync(LoginProvider, column.PostgresDbType, token);
+                    break;
+
+                case nameof(ProviderDisplayName):
+                    await importer.WriteAsync(ProviderDisplayName, column.PostgresDbType, token);
+                    break;
+
+                case nameof(ProviderKey):
+                    await importer.WriteAsync(ProviderKey, column.PostgresDbType, token);
+                    break;
+
+                case nameof(Value):
+                    await importer.WriteAsync(Value, column.PostgresDbType, token);
+                    break;
+
+                case nameof(LastModified):
+                    if ( LastModified.HasValue ) { await importer.WriteAsync(LastModified.Value, column.PostgresDbType, token); }
+                    else { await importer.WriteNullAsync(token); }
+
+                    break;
+
+                default:
+                    throw new InvalidOperationException($"Unknown column: {column.PropertyName}");
+            }
+        }
     }
     public override PostgresParameters ToDynamicParameters()
     {
@@ -53,39 +94,8 @@ public sealed record UserLoginProviderRecord( [property: StringLength(          
     }
 
 
-    public static MigrationRecord CreateTable( ulong migrationID ) =>
-        MigrationRecord.Create<UserLoginProviderRecord>(migrationID,
-                                                        $"create {TABLE_NAME} table",
-                                                        $"""
-                                                         CREATE TABLE {TABLE_NAME}
-                                                         (
-                                                         {nameof(LoginProvider).SqlColumnName()}       char({MAX_FIXED}) NOT NULL,
-                                                         {nameof(ProviderDisplayName).SqlColumnName()} char({MAX_FIXED}) NOT NULL,
-                                                         {nameof(ProviderKey).SqlColumnName()}         char({MAX_FIXED}) NOT NULL,
-                                                         {nameof(Value).SqlColumnName()}               char({MAX_FIXED}) NOT NULL,
-                                                         {nameof(ID).SqlColumnName()}                  uuid              PRIMARY KEY,
-                                                         {nameof(DateCreated).SqlColumnName()}         timestamptz       NOT NULL DEFAULT SYSUTCDATETIME(),
-                                                         {nameof(LastModified).SqlColumnName()}        timestamptz                 
-                                                         );
-
-                                                         CREATE TRIGGER {nameof(MigrationRecord.SetLastModified).SqlColumnName()}
-                                                         BEFORE INSERT OR UPDATE ON {TABLE_NAME}
-                                                         FOR EACH ROW
-                                                         EXECUTE FUNCTION {nameof(MigrationRecord.SetLastModified).SqlColumnName()}();
-                                                         """);
-    [Pure] public static UserLoginProviderRecord Create( NpgsqlDataReader reader )
-    {
-        string                            loginProvider       = reader.GetFieldValue<UserLoginProviderRecord, string>(nameof(LoginProvider));
-        string                            providerDisplayName = reader.GetFieldValue<UserLoginProviderRecord, string>(nameof(ProviderDisplayName));
-        string                            providerKey         = reader.GetFieldValue<UserLoginProviderRecord, string>(nameof(ProviderKey));
-        string                            value               = reader.GetFieldValue<UserLoginProviderRecord, string>(nameof(Value));
-        DateTimeOffset                    dateCreated         = reader.GetFieldValue<UserLoginProviderRecord, DateTimeOffset>(nameof(DateCreated));
-        DateTimeOffset?                   lastModified        = reader.GetFieldValue<UserLoginProviderRecord, DateTimeOffset?>(nameof(LastModified));
-        RecordID<UserRecord>?             ownerUserID         = RecordID<UserRecord>.CreatedBy(reader);
-        RecordID<UserLoginProviderRecord> id                  = RecordID<UserLoginProviderRecord>.ID(reader);
-        UserLoginProviderRecord           record              = new(loginProvider, providerDisplayName, providerKey, value, id, ownerUserID, dateCreated, lastModified);
-        return record.Validate();
-    }
+    public static        MigrationRecord         CreateTable( ulong       migrationID ) => MigrationRecord.CreateTable<UserLoginProviderRecord>(migrationID);
+    [Pure] public static UserLoginProviderRecord Create( NpgsqlDataReader reader )      => new UserLoginProviderRecord(reader).Validate();
 
 
     public static PostgresParameters GetDynamicParameters( UserRecord user, string value )
@@ -150,4 +160,15 @@ public sealed record UserLoginProviderRecord( [property: StringLength(          
                                                                                                     Name          = value.ProviderDisplayName ?? EMPTY,
                                                                                                     Value         = value.ProviderKey
                                                                                                 };
+    public void Deconstruct( out string LoginProvider, out string? ProviderDisplayName, out string ProviderKey, out string? Value, out RecordID<UserLoginProviderRecord> ID, out RecordID<UserRecord>? CreatedBy, out DateTimeOffset DateCreated, out DateTimeOffset? LastModified )
+    {
+        LoginProvider       = this.LoginProvider;
+        ProviderDisplayName = this.ProviderDisplayName;
+        ProviderKey         = this.ProviderKey;
+        Value               = this.Value;
+        ID                  = this.ID;
+        CreatedBy           = this.CreatedBy;
+        DateCreated         = this.DateCreated;
+        LastModified        = this.LastModified;
+    }
 }

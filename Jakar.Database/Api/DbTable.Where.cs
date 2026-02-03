@@ -35,4 +35,33 @@ public partial class DbTable<TSelf>
         SqlCommand<TSelf> sql = new($"SELECT * FROM {TSelf.TableName} WHERE @{nameof(columnName)} = @{nameof(value)};", parameters);
         return Where(connection, transaction, sql, token);
     }
+
+
+    public IAsyncEnumerable<RecordID<TSelf>> WhereID( bool           matchAll,   PostgresParameters parameters, [EnumeratorCancellation] CancellationToken token = default ) => this.TryCall(WhereID, matchAll,                               parameters, token);
+    public IAsyncEnumerable<RecordID<TSelf>> WhereID( string         sql,        PostgresParameters parameters, [EnumeratorCancellation] CancellationToken token = default ) => this.TryCall(WhereID, new SqlCommand<TSelf>(sql, parameters), token);
+    public IAsyncEnumerable<RecordID<TSelf>> WhereID<TValue>( string columnName, TValue?            value,      [EnumeratorCancellation] CancellationToken token = default ) => this.TryCall(WhereID, columnName,                             value, token);
+
+
+    public virtual IAsyncEnumerable<RecordID<TSelf>> WhereID( NpgsqlConnection connection, NpgsqlTransaction? transaction, string sql, PostgresParameters parameters, [EnumeratorCancellation] CancellationToken token = default ) => WhereID(connection, transaction, new SqlCommand<TSelf>(sql, parameters), token);
+    public virtual IAsyncEnumerable<RecordID<TSelf>> WhereID( NpgsqlConnection connection, NpgsqlTransaction? transaction, bool matchAll, PostgresParameters parameters, [EnumeratorCancellation] CancellationToken token = default )
+    {
+        SqlCommand<TSelf> command = SqlCommand<TSelf>.Get(matchAll, parameters);
+        return WhereID(connection, transaction, command, token);
+    }
+    public virtual async IAsyncEnumerable<RecordID<TSelf>> WhereID( NpgsqlConnection connection, NpgsqlTransaction? transaction, SqlCommand<TSelf> command, [EnumeratorCancellation] CancellationToken token = default )
+    {
+        await using NpgsqlCommand    cmd    = command.ToCommand(connection, transaction);
+        await using NpgsqlDataReader reader = await cmd.ExecuteReaderAsync(token);
+        await foreach ( TSelf record in reader.CreateAsync<TSelf>(token) ) { yield return record; }
+    }
+    public virtual IAsyncEnumerable<RecordID<TSelf>> WhereID( SqlCommand<TSelf> command, [EnumeratorCancellation] CancellationToken token = default ) => this.TryCall(WhereID, command, token);
+    public virtual IAsyncEnumerable<RecordID<TSelf>> WhereID<TValue>( NpgsqlConnection connection, NpgsqlTransaction? transaction, string columnName, TValue? value, [EnumeratorCancellation] CancellationToken token = default )
+    {
+        PostgresParameters parameters = PostgresParameters.Create<TSelf>();
+        parameters.Add(nameof(value),      value);
+        parameters.Add(nameof(columnName), columnName);
+
+        SqlCommand<TSelf> sql = new($"SELECT {ColumnMetaData.ID.ColumnName} FROM {TSelf.TableName} WHERE @{nameof(columnName)} = @{nameof(value)};", parameters);
+        return WhereID(connection, transaction, sql, token);
+    }
 }

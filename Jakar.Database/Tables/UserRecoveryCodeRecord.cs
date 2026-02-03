@@ -12,8 +12,13 @@ public sealed record UserRecoveryCodeRecord : Mapping<UserRecoveryCodeRecord, Us
     public static string TableName => TABLE_NAME;
 
 
+    [ColumnMetaData(ColumnOptions.ForeignKey, UserRecord.TABLE_NAME)]         public override RecordID<UserRecord>         KeyID   { get; init; }
+    [ColumnMetaData(ColumnOptions.ForeignKey, RecoveryCodeRecord.TABLE_NAME)] public override RecordID<RecoveryCodeRecord> ValueID { get; init; }
+
+
     public UserRecoveryCodeRecord( RecordID<UserRecord> key, RecordID<RecoveryCodeRecord> value ) : base(key, value) { }
     public UserRecoveryCodeRecord( RecordID<UserRecord> key, RecordID<RecoveryCodeRecord> value, RecordID<UserRecoveryCodeRecord> id, DateTimeOffset dateCreated, DateTimeOffset? lastModified = null ) : base(key, value, id, dateCreated, lastModified) { }
+    internal UserRecoveryCodeRecord( NpgsqlDataReader   reader ) : base(reader) { }
 
 
     public static UserRecoveryCodeRecord Create( UserRecord           key, RecoveryCodeRecord           value ) => new(key, value);

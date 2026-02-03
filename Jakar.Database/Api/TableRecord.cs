@@ -69,19 +69,21 @@ public abstract record TableRecord<TSelf> : BaseRecord<TSelf>, IRecordPair<TSelf
     private                            RecordID<TSelf> __id;
 
 
-    public static ReadOnlyMemory<PropertyInfo> ClassProperties { [Pure] get => Properties; }
-    public        DateTimeOffset               DateCreated     { get;                  init; }
-    [Key] public  RecordID<TSelf>              ID              { get => __id;          init => __id = value; }
-    public        DateTimeOffset?              LastModified    { get => _lastModified; init => _lastModified = value; }
+    public static                                   TableMetaData<TSelf>         PropertyMetaData => TableMetaData<TSelf>.Instance;
+    public static                                   ReadOnlyMemory<PropertyInfo> ClassProperties  { [Pure] get => Properties; }
+    public                                          DateTimeOffset               DateCreated      { get;                  init; }
+    [Key]                                    public RecordID<TSelf>              ID               { get => __id;          init => __id = value; }
+    [ColumnMetaData(ColumnOptions.Nullable)] public DateTimeOffset?              LastModified     { get => _lastModified; init => _lastModified = value; }
 
 
-    protected TableRecord( ref readonly RecordID<TSelf> id, ref readonly DateTimeOffset dateCreated, ref readonly DateTimeOffset? lastModified, JObject? additionalData = null )
+    protected TableRecord( in RecordID<TSelf> id, in DateTimeOffset dateCreated, in DateTimeOffset? lastModified, JObject? additionalData = null )
     {
         DateCreated    = dateCreated;
         _lastModified  = lastModified;
         __id           = id;
         AdditionalData = additionalData;
     }
+    protected internal TableRecord( NpgsqlDataReader reader ) : this(RecordID<TSelf>.ID(reader), reader.GetFieldValue<TSelf, DateTimeOffset>(nameof(DateCreated)), reader.GetFieldValue<TSelf, DateTimeOffset>(nameof(LastModified))) { }
 
 
     [Pure] public UInt128 GetHash()
@@ -112,7 +114,7 @@ public abstract record TableRecord<TSelf> : BaseRecord<TSelf>, IRecordPair<TSelf
 
 
     public static PostgresParameters GetDynamicParameters( TSelf record ) => GetDynamicParameters(in record.__id);
-    public static PostgresParameters GetDynamicParameters( ref readonly RecordID<TSelf> id )
+    public static PostgresParameters GetDynamicParameters( in RecordID<TSelf> id )
     {
         PostgresParameters parameters = PostgresParameters.Create<TSelf>();
         parameters.Add(nameof(ID), id.Value);
@@ -122,14 +124,7 @@ public abstract record TableRecord<TSelf> : BaseRecord<TSelf>, IRecordPair<TSelf
 
     public abstract ValueTask Export( NpgsqlBinaryExporter exporter, CancellationToken token );
     public virtual  ValueTask Import( NpgsqlBatchCommand   batch,    CancellationToken token ) => default;
-    public virtual async ValueTask Import( NpgsqlBinaryImporter importer, CancellationToken token )
-    {
-        await importer.WriteAsync(ID.Value,    NpgsqlDbType.Uuid,        token);
-        await importer.WriteAsync(DateCreated, NpgsqlDbType.TimestampTz, token);
-
-        if ( LastModified.HasValue ) { await importer.WriteAsync(LastModified.Value, NpgsqlDbType.TimestampTz, token); }
-        else { await importer.WriteNullAsync(token); }
-    }
+    public abstract ValueTask Import( NpgsqlBinaryImporter importer, CancellationToken token );
     [Pure] public virtual PostgresParameters ToDynamicParameters()
     {
         PostgresParameters parameters = PostgresParameters.Create<TSelf>();
@@ -171,10 +166,11 @@ public abstract record TableRecord<TSelf> : BaseRecord<TSelf>, IRecordPair<TSelf
 public abstract record OwnedTableRecord<TSelf> : TableRecord<TSelf>, ICreatedBy
     where TSelf : OwnedTableRecord<TSelf>, ITableRecord<TSelf>
 {
-    public RecordID<UserRecord>? CreatedBy { get; set; }
+    [ColumnMetaData(ColumnOptions.ForeignKey | ColumnOptions.Nullable, UserRecord.TABLE_NAME)] public RecordID<UserRecord>? CreatedBy { get; set; }
 
 
-    protected OwnedTableRecord( ref readonly RecordID<UserRecord>? createdBy, ref readonly RecordID<TSelf> id, ref readonly DateTimeOffset dateCreated, ref readonly DateTimeOffset? lastModified, JObject? additionalData = null ) : base(in id, in dateCreated, in lastModified, additionalData) => CreatedBy = createdBy;
+    protected OwnedTableRecord( in RecordID<UserRecord>?  createdBy, in RecordID<TSelf> id, in DateTimeOffset dateCreated, in DateTimeOffset? lastModified, JObject? additionalData = null ) : base(in id, in dateCreated, in lastModified, additionalData) => CreatedBy = createdBy;
+    protected internal OwnedTableRecord( NpgsqlDataReader reader ) : base(reader) => CreatedBy = RecordID<UserRecord>.CreatedBy(reader);
 
 
     public static PostgresParameters GetDynamicParameters( UserRecord user )
@@ -191,13 +187,6 @@ public abstract record OwnedTableRecord<TSelf> : TableRecord<TSelf>, ICreatedBy
     }
 
 
-    public override async ValueTask Import( NpgsqlBinaryImporter importer, CancellationToken token )
-    {
-        await base.Import(importer, token);
-
-        if ( CreatedBy.HasValue ) { await importer.WriteAsync(CreatedBy.Value, NpgsqlDbType.TimestampTz, token); }
-        else { await importer.WriteNullAsync(token); }
-    }
     public override PostgresParameters ToDynamicParameters()
     {
         PostgresParameters parameters = base.ToDynamicParameters();

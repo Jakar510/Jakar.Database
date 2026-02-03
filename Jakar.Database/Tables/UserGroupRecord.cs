@@ -12,8 +12,13 @@ public sealed record UserGroupRecord : Mapping<UserGroupRecord, UserRecord, Grou
     public static string TableName => TABLE_NAME;
 
 
+    [ColumnMetaData(ColumnOptions.ForeignKey, UserRecord.TABLE_NAME)]  public override RecordID<UserRecord>  KeyID   { get; init; }
+    [ColumnMetaData(ColumnOptions.ForeignKey, GroupRecord.TABLE_NAME)] public override RecordID<GroupRecord> ValueID { get; init; }
+
+
     public UserGroupRecord( RecordID<UserRecord>  key, RecordID<GroupRecord> value ) : base(key, value) { }
     private UserGroupRecord( RecordID<UserRecord> key, RecordID<GroupRecord> value, RecordID<UserGroupRecord> id, DateTimeOffset dateCreated, DateTimeOffset? lastModified ) : base(key, value, id, dateCreated, lastModified) { }
+    internal UserGroupRecord( NpgsqlDataReader    reader ) : base(reader) { }
 
 
     [Pure] public static UserGroupRecord Create( UserRecord           key, GroupRecord           value ) => new(key, value);

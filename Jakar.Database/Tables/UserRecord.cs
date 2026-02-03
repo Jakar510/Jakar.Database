@@ -1,7 +1,4 @@
-﻿using System.Data;
-using Jakar.Extensions;
-using Microsoft.AspNetCore.Identity;
-using static Jakar.Database.Telemetry;
+﻿using Org.BouncyCastle.Tls;
 
 
 
@@ -17,83 +14,59 @@ public sealed record UserRecord : OwnedTableRecord<UserRecord>, ITableRecord<Use
     public static readonly TimeSpan DefaultLockoutTime = TimeSpan.FromHours(6);
 
 
-    public static TableMetaData<UserRecord> PropertyMetaData { get; } = SqlTable<UserRecord>.Default.With_AdditionalData()
-                                                                                            .With_CreatedBy()
-                                                                                            .WithColumn<string>(nameof(UserName),                     ColumnOptions.Indexed, USER_NAME)
-                                                                                            .WithColumn<string>(nameof(FirstName),                    ColumnOptions.Indexed, FIRST_NAME)
-                                                                                            .WithColumn<string>(nameof(LastName),                     ColumnOptions.Indexed, LAST_NAME)
-                                                                                            .WithColumn<string>(nameof(FullName),                     ColumnOptions.Indexed, FULL_NAME)
-                                                                                            .WithColumn<string>(nameof(Gender),                       ColumnOptions.None,    GENDER)
-                                                                                            .WithColumn<string>(nameof(Description),                  ColumnOptions.None,    DESCRIPTION)
-                                                                                            .WithColumn<string>(nameof(Company),                      ColumnOptions.None,    COMPANY)
-                                                                                            .WithColumn<string>(nameof(Department),                   ColumnOptions.None,    DEPARTMENT)
-                                                                                            .WithColumn<string>(nameof(Title),                        ColumnOptions.None,    TITLE)
-                                                                                            .WithColumn<SupportedLanguage>(nameof(PreferredLanguage), false)
-                                                                                            .WithColumn<string>(nameof(Email),                        ColumnOptions.None, EMAIL)
-                                                                                            .WithColumn<string>(nameof(PhoneNumber),                  ColumnOptions.None, PHONE)
-                                                                                            .WithColumn<string>(nameof(Ext),                          ColumnOptions.None, PHONE_EXT)
-                                                                                            .WithColumn<Guid>(nameof(SubscriptionID),                 ColumnOptions.Nullable)
-                                                                                            .WithColumn<DateTimeOffset>(nameof(SubscriptionExpires),  ColumnOptions.Nullable)
-                                                                                            .WithColumn<string>(nameof(Rights),                       ColumnOptions.None, RIGHTS)
-                                                                                            .WithColumn<UserRecord>(nameof(EscalateTo))
-                                                                                            .WithColumn<FileRecord>(nameof(ImageID))
-                                                                                            .Build();
-
-
-    [StringLength(RIGHTS)] public            UserRights Rights           { get; set; } = new();
-    public static                            string     TableName        => TABLE_NAME;
-    [StringLength(AUTHENTICATOR_KEY)] public string     AuthenticatorKey { get; set; } = EMPTY;
-    public                                   int?       BadLogins        { get; set; }
-
+    public                                                         UserRights Rights           { get; set; } = new();
+    public static                                                  string     TableName        => TABLE_NAME;
+    [ColumnMetaData(ColumnOptions.None, AUTHENTICATOR_KEY)] public string     AuthenticatorKey { get; set; } = EMPTY;
+    [ColumnMetaData(ColumnOptions.Nullable)]                public int?       BadLogins        { get; set; }
 
     /// <summary> A random value that must change whenever a user is persisted to the store </summary>
-    [StringLength(CONCURRENCY_STAMP)] public string ConcurrencyStamp { get; set; } = EMPTY;
+    [ColumnMetaData(ColumnOptions.None, CONCURRENCY_STAMP)] public string ConcurrencyStamp { get; set; } = EMPTY;
 
-    public                                                           bool            IsActive               { get;                    set; }
-    public                                                           bool            IsDisabled             { get;                    set; }
-    public                                                           bool            IsEmailConfirmed       { get;                    set; }
-    public                                                           bool            IsLocked               { get;                    set; }
-    public                                                           bool            IsPhoneNumberConfirmed { get;                    set; }
-    public                                                           bool            IsTwoFactorEnabled     { get;                    set; }
-    public                                                           DateTimeOffset? LastBadAttempt         { get;                    set; }
-    public                                                           DateTimeOffset? LastLogin              { get;                    set; }
-    public                                                           DateTimeOffset? LockDate               { get;                    set; }
-    public                                                           DateTimeOffset? LockoutEnd             { get;                    set; }
-    [StringLength(ENCRYPTED_MAX_PASSWORD_SIZE)] public               string          PasswordHash           { get;                    set; } = EMPTY;
-    [StringLength(REFRESH_TOKEN)]               public               UInt128         RefreshTokenHash       { get;                    set; }
-    public                                                           DateTimeOffset? RefreshTokenExpiryTime { get;                    set; }
-    [StringLength(SECURITY_STAMP)] public                            string          SecurityStamp          { get;                    set; } = EMPTY;
-    public                                                           Guid?           SessionID              { get;                    set; }
-    [ProtectedPersonalData] [StringLength(MAX_SIZE)] public override JObject?        AdditionalData         { get => _additionalData; set => _additionalData = value; }
-    [ProtectedPersonalData] [StringLength(COMPANY)]  public          string          Company                { get;                    set; } = EMPTY;
-    Guid? ICreatedByUser<Guid>.                                                      CreatedBy              => CreatedBy?.Value;
-    [ProtectedPersonalData] [StringLength(DEPARTMENT)]  public string                Department             { get; set; } = EMPTY;
-    [ProtectedPersonalData] [StringLength(DESCRIPTION)] public string                Description            { get; set; } = EMPTY;
-    [ProtectedPersonalData] [StringLength(EMAIL)]       public string                Email                  { get; set; } = EMPTY;
-    public                                                     RecordID<UserRecord>? EscalateTo             { get; set; }
-    Guid? IEscalateToUser<Guid>.                                                     EscalateTo             => EscalateTo?.Value;
-    [ProtectedPersonalData] [StringLength(PHONE_EXT)]  public string                 Ext                    { get; set; } = EMPTY;
-    [ProtectedPersonalData] [StringLength(FIRST_NAME)] public string                 FirstName              { get; set; } = EMPTY;
-    [ProtectedPersonalData] [StringLength(FULL_NAME)]  public string                 FullName               { get; set; } = EMPTY;
-    [ProtectedPersonalData] [StringLength(GENDER)]     public string                 Gender                 { get; set; } = EMPTY;
-    Guid? IImageID<Guid>.                                                            ImageID                => ImageID?.Value;
-    public                                                 RecordID<FileRecord>?     ImageID                { get; set; }
-    public                                                 bool                      IsValid                => !string.IsNullOrWhiteSpace(UserName) && ID.IsValid();
-    [ProtectedPersonalData] [StringLength(2000)]  public   string                    LastName               { get; set; } = EMPTY;
-    [ProtectedPersonalData] [StringLength(PHONE)] public   string                    PhoneNumber            { get; set; } = EMPTY;
-    public                                                 SupportedLanguage         PreferredLanguage      { get; set; }
-    public                                                 DateTimeOffset?           SubscriptionExpires    { get; set; }
-    public                                                 Guid?                     SubscriptionID         { get; set; }
-    [ProtectedPersonalData] [StringLength(TITLE)] public   string                    Title                  { get; set; } = EMPTY;
-    public                                                 Guid                      UserID                 => ID.Value;
-    public                                                 string                    UserName               { get; init; } = EMPTY;
-    [ProtectedPersonalData] [StringLength(WEBSITE)] public string                    Website                { get; set; }  = EMPTY;
+    public                                                                                 bool                             IsActive               { get;                    set; }
+    public                                                                                 bool                             IsDisabled             { get;                    set; }
+    public                                                                                 bool                             IsEmailConfirmed       { get;                    set; }
+    public                                                                                 bool                             IsLocked               { get;                    set; }
+    public                                                                                 bool                             IsPhoneNumberConfirmed { get;                    set; }
+    public                                                                                 bool                             IsTwoFactorEnabled     { get;                    set; }
+    [ColumnMetaData(ColumnOptions.Nullable)]                               public          DateTimeOffset?                  LastBadAttempt         { get;                    set; }
+    [ColumnMetaData(ColumnOptions.Nullable)]                               public          DateTimeOffset?                  LastLogin              { get;                    set; }
+    [ColumnMetaData(ColumnOptions.Nullable)]                               public          DateTimeOffset?                  LockDate               { get;                    set; }
+    [ColumnMetaData(ColumnOptions.Nullable)]                               public          DateTimeOffset?                  LockoutEnd             { get;                    set; }
+    [ColumnMetaData(ColumnOptions.None, ENCRYPTED_MAX_PASSWORD_SIZE)]      public          string                           PasswordHash           { get;                    set; } = EMPTY;
+    [ColumnMetaData(ColumnOptions.None, REFRESH_TOKEN)]                    public          UInt128                          RefreshTokenHash       { get;                    set; }
+    [ColumnMetaData(ColumnOptions.Nullable)]                               public          DateTimeOffset?                  RefreshTokenExpiryTime { get;                    set; }
+    [ColumnMetaData(ColumnOptions.None, SECURITY_STAMP)]                   public          string                           SecurityStamp          { get;                    set; } = EMPTY;
+    [ColumnMetaData(ColumnOptions.Nullable)]                               public          Guid?                            SessionID              { get;                    set; }
+    [ColumnMetaData(ColumnOptions.None, MAX_SIZE)] [ProtectedPersonalData] public override JObject?                         AdditionalData         { get => _additionalData; set => _additionalData = value; }
+    [ColumnMetaData(ColumnOptions.None, COMPANY)] [ProtectedPersonalData]  public          string                           Company                { get;                    set; } = EMPTY;
+    Guid? ICreatedByUser<Guid>.                                                                                             CreatedBy              => CreatedBy?.Value;
+    [ColumnMetaData(ColumnOptions.None,    DEPARTMENT)]                    public string                                    Department             { get; set; } = EMPTY;
+    [ColumnMetaData(ColumnOptions.None,    DESCRIPTION)]                   public string                                    Description            { get; set; } = EMPTY;
+    [ColumnMetaData(ColumnOptions.Indexed, EMAIL)] [ProtectedPersonalData] public string                                    Email                  { get; set; } = EMPTY;
+    public                                                                        RecordID<UserRecord>?                     EscalateTo             { get; set; }
+    Guid? IEscalateToUser<Guid>.                                                                                            EscalateTo             => EscalateTo?.Value;
+    [ColumnMetaData(ColumnOptions.None,    PHONE_EXT)] [ProtectedPersonalData]  public string                               Ext                    { get; set; } = EMPTY;
+    [ColumnMetaData(ColumnOptions.Indexed, FIRST_NAME)] [ProtectedPersonalData] public string                               FirstName              { get; set; } = EMPTY;
+    [ColumnMetaData(ColumnOptions.Indexed, FULL_NAME)] [ProtectedPersonalData]  public string                               FullName               { get; set; } = EMPTY;
+    [ColumnMetaData(ColumnOptions.Indexed, GENDER)] [ProtectedPersonalData]     public string                               Gender                 { get; set; } = EMPTY;
+    Guid? IImageID<Guid>.                                                                                                   ImageID                => ImageID?.Value;
+    [ColumnMetaData(ColumnOptions.Nullable | ColumnOptions.ForeignKey, FileRecord.TABLE_NAME)] public RecordID<FileRecord>? ImageID                { get; set; }
+    public                                                                                            bool                  IsValid                => !string.IsNullOrWhiteSpace(UserName) && ID.IsValid();
+    [ColumnMetaData(ColumnOptions.Indexed, 2000)] [ProtectedPersonalData]  public                     string                LastName               { get; set; } = EMPTY;
+    [ColumnMetaData(ColumnOptions.Indexed, PHONE)] [ProtectedPersonalData] public                     string                PhoneNumber            { get; set; } = EMPTY;
+    public                                                                                            SupportedLanguage     PreferredLanguage      { get; set; }
+    [ColumnMetaData(ColumnOptions.Nullable)]    public                                                DateTimeOffset?       SubscriptionExpires    { get; set; }
+    [ColumnMetaData(ColumnOptions.Nullable)]    public                                                Guid?                 SubscriptionID         { get; set; }
+    [ColumnMetaData(ColumnOptions.None, TITLE)] public                                                string                Title                  { get; set; } = EMPTY;
+    public                                                                                            Guid                  UserID                 => ID.Value;
+    [ColumnMetaData(ColumnOptions.None)] [ProtectedPersonalData]          public                      string                UserName               { get; init; } = EMPTY;
+    [ColumnMetaData(ColumnOptions.None, WEBSITE)] [ProtectedPersonalData] public                      string                Website                { get; set; }  = EMPTY;
 
 
     public UserRecord( in RecordID<UserRecord> ID ) : this(in ID, null, DateTimeOffset.UtcNow) { }
     public UserRecord( in RecordID<UserRecord> ID, UserRecord?              CreatedBy, in DateTimeOffset DateCreated, in DateTimeOffset? LastModified = null ) : this(in ID, CreatedBy?.ID, in DateCreated, in LastModified) { }
     public UserRecord( in RecordID<UserRecord> ID, in RecordID<UserRecord>? CreatedBy, in DateTimeOffset DateCreated, in DateTimeOffset? LastModified = null ) : base(in CreatedBy, in ID, in DateCreated, in LastModified) { }
-    internal UserRecord( NpgsqlDataReader reader ) : this(RecordID<UserRecord>.ID(reader), RecordID<UserRecord>.CreatedBy(reader), reader.GetFieldValue<UserRecord, DateTimeOffset>(nameof(DateCreated)), reader.GetFieldValue<UserRecord, DateTimeOffset>(nameof(LastModified)))
+    internal UserRecord( NpgsqlDataReader reader ) : base(reader)
     {
         UserName               = reader.GetFieldValue<UserRecord, string>(nameof(UserName));
         FirstName              = reader.GetFieldValue<UserRecord, string>(nameof(FirstName));
@@ -134,6 +107,7 @@ public sealed record UserRecord : OwnedTableRecord<UserRecord>, ITableRecord<Use
         IsActive               = reader.GetFieldValue<UserRecord, bool>(nameof(IsActive));
         IsDisabled             = reader.GetFieldValue<UserRecord, bool>(nameof(IsDisabled));
     }
+
 
     public static UserRecord Create( NpgsqlDataReader reader ) => new UserRecord(reader).Validate();
     public static UserRecord Create<TUser, TEnum>( ILoginRequest<TUser> request, UserRecord? caller = null )
@@ -194,57 +168,166 @@ public sealed record UserRecord : OwnedTableRecord<UserRecord>, ITableRecord<Use
     public override ValueTask Export( NpgsqlBinaryExporter exporter, CancellationToken token ) => default;
     public override async ValueTask Import( NpgsqlBinaryImporter importer, CancellationToken token )
     {
-        await base.Import(importer, token);
-        await importer.WriteAsync(UserName,          NpgsqlDbType.Text,   token);
-        await importer.WriteAsync(FirstName,         NpgsqlDbType.Text,   token);
-        await importer.WriteAsync(LastName,          NpgsqlDbType.Text,   token);
-        await importer.WriteAsync(FullName,          NpgsqlDbType.Text,   token);
-        await importer.WriteAsync(Rights,            NpgsqlDbType.Text,   token);
-        await importer.WriteAsync(Gender,            NpgsqlDbType.Text,   token);
-        await importer.WriteAsync(Company,           NpgsqlDbType.Text,   token);
-        await importer.WriteAsync(Department,        NpgsqlDbType.Text,   token);
-        await importer.WriteAsync(Description,       NpgsqlDbType.Text,   token);
-        await importer.WriteAsync(Title,             NpgsqlDbType.Text,   token);
-        await importer.WriteAsync(Website,           NpgsqlDbType.Text,   token);
-        await importer.WriteAsync(PreferredLanguage, NpgsqlDbType.Bigint, token);
-        await importer.WriteAsync(Email,             NpgsqlDbType.Text,   token);
+        foreach ( ColumnMetaData column in PropertyMetaData.Values.OrderBy(static x => x.Index) )
+        {
+            switch ( column.PropertyName )
+            {
+                case nameof(ID):
+                    await importer.WriteAsync(ID.Value, column.PostgresDbType, token);
+                    break;
 
-        if ( EscalateTo.HasValue ) { await importer.WriteAsync(EscalateTo.Value, NpgsqlDbType.Uuid, token); }
-        else { await importer.WriteNullAsync(token); }
+                case nameof(DateCreated):
+                    await importer.WriteAsync(DateCreated, column.PostgresDbType, token);
+                    break;
 
-        if ( LastBadAttempt.HasValue ) { await importer.WriteAsync(LastBadAttempt.Value, NpgsqlDbType.TimestampTz, token); }
-        else { await importer.WriteNullAsync(token); }
+                case nameof(CreatedBy):
+                    if ( CreatedBy.HasValue ) { await importer.WriteAsync(CreatedBy.Value, column.PostgresDbType, token); }
+                    else { await importer.WriteNullAsync(token); }
 
-        if ( LastLogin.HasValue ) { await importer.WriteAsync(LastLogin.Value, NpgsqlDbType.TimestampTz, token); }
-        else { await importer.WriteNullAsync(token); }
+                    break;
 
-        if ( BadLogins.HasValue ) { await importer.WriteAsync(BadLogins.Value, NpgsqlDbType.Integer, token); }
-        else { await importer.WriteNullAsync(token); }
+                case nameof(Rights):
+                    await importer.WriteAsync(Rights.Value, column.PostgresDbType, token);
+                    break;
 
-        // await importer.WriteAsync(IsLocked, NpgsqlDbType.Boolean, token);
+                case nameof(UserName):
+                    await importer.WriteAsync(UserName, column.PostgresDbType, token);
+                    break;
 
-        if ( LockDate.HasValue ) { await importer.WriteAsync(LockDate.Value, NpgsqlDbType.TimestampTz, token); }
-        else { await importer.WriteNullAsync(token); }
+                case nameof(FirstName):
+                    await importer.WriteAsync(FirstName, column.PostgresDbType, token);
+                    break;
 
-        if ( LockoutEnd.HasValue ) { await importer.WriteAsync(LockoutEnd.Value, NpgsqlDbType.TimestampTz, token); }
-        else { await importer.WriteNullAsync(token); }
+                case nameof(LastName):
+                    await importer.WriteAsync(LastName, column.PostgresDbType, token);
+                    break;
 
-        await importer.WriteAsync(PasswordHash,     NpgsqlDbType.Text, token);
-        await importer.WriteAsync(RefreshTokenHash, NpgsqlDbType.Text, token);
+                case nameof(FullName):
+                    await importer.WriteAsync(FullName, column.PostgresDbType, token);
+                    break;
 
-        if ( RefreshTokenExpiryTime.HasValue ) { await importer.WriteAsync(RefreshTokenExpiryTime.Value, NpgsqlDbType.TimestampTz, token); }
-        else { await importer.WriteNullAsync(token); }
+                case nameof(Gender):
+                    await importer.WriteAsync(Gender, column.PostgresDbType, token);
+                    break;
 
-        if ( SessionID.HasValue ) { await importer.WriteAsync(SessionID.Value, NpgsqlDbType.Uuid, token); }
-        else { await importer.WriteNullAsync(token); }
+                case nameof(Company):
+                    await importer.WriteAsync(Company, column.PostgresDbType, token);
+                    break;
 
-        await importer.WriteAsync(IsActive,         NpgsqlDbType.Boolean, token);
-        await importer.WriteAsync(IsDisabled,       NpgsqlDbType.Boolean, token);
-        await importer.WriteAsync(SecurityStamp,    NpgsqlDbType.Text,    token);
-        await importer.WriteAsync(ConcurrencyStamp, NpgsqlDbType.Text,    token);
+                case nameof(Department):
+                    await importer.WriteAsync(Department, column.PostgresDbType, token);
+                    break;
 
-        await importer.WriteAsync(AuthenticatorKey, NpgsqlDbType.Text, token);
-        await importer.WriteAsync(AdditionalData,   NpgsqlDbType.Json, token);
+                case nameof(Title):
+                    await importer.WriteAsync(Title, column.PostgresDbType, token);
+                    break;
+
+                case nameof(Website):
+                    await importer.WriteAsync(Website, column.PostgresDbType, token);
+                    break;
+
+                case nameof(PreferredLanguage):
+                    await importer.WriteAsync(PreferredLanguage, column.PostgresDbType, token);
+                    break;
+
+                case nameof(Email):
+                    await importer.WriteAsync(Email, column.PostgresDbType, token);
+                    break;
+
+                case nameof(LastModified):
+                    if ( LastModified.HasValue ) { await importer.WriteAsync(LastModified.Value, column.PostgresDbType, token); }
+                    else { await importer.WriteNullAsync(token); }
+
+                    break;
+
+                case nameof(LastBadAttempt):
+                    if ( LastBadAttempt.HasValue ) { await importer.WriteAsync(LastBadAttempt.Value, column.PostgresDbType, token); }
+                    else { await importer.WriteNullAsync(token); }
+
+                    break;
+
+                case nameof(LastLogin):
+                    if ( LastLogin.HasValue ) { await importer.WriteAsync(LastLogin.Value, column.PostgresDbType, token); }
+                    else { await importer.WriteNullAsync(token); }
+
+                    break;
+
+                case nameof(BadLogins):
+                    if ( BadLogins.HasValue ) { await importer.WriteAsync(BadLogins.Value, column.PostgresDbType, token); }
+                    else { await importer.WriteNullAsync(token); }
+
+                    break;
+
+                case nameof(LockDate):
+                    if ( LockDate.HasValue ) { await importer.WriteAsync(LockDate.Value, column.PostgresDbType, token); }
+                    else { await importer.WriteNullAsync(token); }
+
+                    break;
+
+                case nameof(LockoutEnd):
+                    if ( LockoutEnd.HasValue ) { await importer.WriteAsync(LockoutEnd.Value, column.PostgresDbType, token); }
+                    else { await importer.WriteNullAsync(token); }
+
+                    break;
+
+                case nameof(PasswordHash):
+                    await importer.WriteAsync(PasswordHash, column.PostgresDbType, token);
+                    break;
+
+                case nameof(RefreshTokenHash):
+                    await importer.WriteAsync(RefreshTokenHash, column.PostgresDbType, token);
+                    break;
+
+                case nameof(RefreshTokenExpiryTime):
+
+                    if ( RefreshTokenExpiryTime.HasValue ) { await importer.WriteAsync(RefreshTokenExpiryTime.Value, column.PostgresDbType, token); }
+                    else { await importer.WriteNullAsync(token); }
+
+                    break;
+
+                case nameof(SessionID):
+                    if ( SessionID.HasValue ) { await importer.WriteAsync(SessionID.Value, column.PostgresDbType, token); }
+                    else { await importer.WriteNullAsync(token); }
+
+                    break;
+
+                case nameof(IsActive):
+                    await importer.WriteAsync(IsActive, column.PostgresDbType, token);
+                    break;
+
+                case nameof(IsDisabled):
+                    await importer.WriteAsync(IsDisabled, column.PostgresDbType, token);
+                    break;
+
+                case nameof(SecurityStamp):
+                    await importer.WriteAsync(SecurityStamp, column.PostgresDbType, token);
+                    break;
+
+                case nameof(ConcurrencyStamp):
+                    await importer.WriteAsync(ConcurrencyStamp, column.PostgresDbType, token);
+                    break;
+
+                case nameof(AuthenticatorKey):
+                    await importer.WriteAsync(AuthenticatorKey, column.PostgresDbType, token);
+                    break;
+
+                case nameof(AdditionalData):
+                    await importer.WriteAsync(AdditionalData, column.PostgresDbType, token);
+                    break;
+
+                case nameof(EscalateTo):
+                    if ( EscalateTo.HasValue ) { await importer.WriteAsync(EscalateTo.Value, column.PostgresDbType, token); }
+                    else { await importer.WriteNullAsync(token); }
+
+                    break;
+
+                default:
+                    throw new InvalidOperationException($"Unknown column: {column.PropertyName}");
+            }
+        }
+
+
+        // await importer.WriteAsync(IsLocked, column.PostgresDbType, token);
     }
     public override PostgresParameters ToDynamicParameters()
     {
@@ -350,7 +433,7 @@ public sealed record UserRecord : OwnedTableRecord<UserRecord>, ITableRecord<Use
         Rights.Value = rights.ToString();
         return this;
     }
-   
+
 
     public override bool Equals( UserRecord? other )
     {

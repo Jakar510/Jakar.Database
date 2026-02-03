@@ -3,6 +3,30 @@
 
 public static class TableExtensions
 {
+    [Pure] public static StringBuilder Ids<TSelf>( this IEnumerable<RecordID<TSelf>> values )
+        where TSelf : class, ITableRecord<TSelf> => values.AsValueEnumerable()
+                                                          .Ids();
+    [Pure] public static StringBuilder Ids<TEnumerable, TSelf>( this ValueEnumerable<TEnumerable, RecordID<TSelf>> values )
+        where TSelf : class, ITableRecord<TSelf>
+        where TEnumerable : struct, IValueEnumerator<RecordID<TSelf>>, allows ref struct
+    {
+        const string                                        SEPARATOR  = ", ";
+        StringBuilder                                       ids        = new();
+        using ValueEnumerator<TEnumerable, RecordID<TSelf>> enumerator = values.GetEnumerator();
+
+        for ( int i = 0; enumerator.MoveNext(); i++ )
+        {
+            if ( i > 0 ) { ids.Append(SEPARATOR); }
+
+            ids.Append('\'');
+            ids.Append(enumerator.Current.Value);
+            ids.Append('\'');
+        }
+
+        return ids;
+    }
+
+
     [Pure] public static TSelf Validate<TSelf>( this TSelf self )
         where TSelf : class, ITableRecord<TSelf>
     {

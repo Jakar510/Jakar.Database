@@ -17,7 +17,7 @@ try
 
     // TODO: TestDatabase.TestAsync();
 
-
+    /*
     string userSql             = SqlTable<UserRecord>.CreateTable();
     string addressSql          = SqlTable<AddressRecord>.CreateTable();
     string userAddressSql      = SqlTable<UserAddressRecord>.CreateTable();
@@ -41,6 +41,10 @@ try
     printSql(userRecoveryCodeSql);
     printSql(fileSql);
     printSql(loginProviderSql);
+    */
+
+
+    Console.WriteLine();
 }
 catch ( Exception e ) { e.WriteToConsole(); }
 finally { "Bye".WriteToConsole(); }

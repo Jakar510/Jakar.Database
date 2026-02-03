@@ -82,14 +82,14 @@ public abstract partial class Database
         UserRecord? record = await Users.Get(connection, transaction, nameof(UserRecord.UserName), request.UserLogin, token);
         if ( record is null ) { return Error.Unauthorized(request.UserLogin); }
 
-        ErrorOrResult<SubscriptionStatus> status = await ValidateSubscription(connection, transaction, record, token);
+        ErrorOrResult<SubscriptionInfo> subscription = await ValidateSubscription(connection, transaction, record, token);
 
-        if ( status.HasErrors )
+        if ( subscription.TryGetValue(out Errors? errors) )
         {
             record = record.MarkBadLogin();
             await Users.Update(connection, transaction, record, token);
 
-            return status.Error;
+            return errors;
         }
 
         if ( record.IsDisabled )
@@ -122,9 +122,9 @@ public abstract partial class Database
         UserRecord? record = await Users.Get(connection, transaction, nameof(UserRecord.UserName), request.UserLogin, token);
         if ( record is null ) { return Error.Unauthorized(request.UserLogin); }
 
-        ErrorOrResult<SubscriptionStatus> status = await ValidateSubscription(connection, transaction, record, token);
+        ErrorOrResult<SubscriptionInfo> subscription = await ValidateSubscription(connection, transaction, record, token);
 
-        if ( status.TryGetValue(out Errors? errors) )
+        if ( subscription.TryGetValue(out Errors? errors) )
         {
             record = record.MarkBadLogin();
             await Users.Update(connection, transaction, record, token);
@@ -176,15 +176,15 @@ public abstract partial class Database
     public ValueTask<SessionToken> GetToken( UserRecord user, ClaimType types = default, CancellationToken token = default ) => this.TryCall(GetToken, user, types, token);
     public virtual async ValueTask<SessionToken> GetToken( NpgsqlConnection connection, NpgsqlTransaction transaction, UserRecord record, ClaimType types = DEFAULT_CLAIM_TYPES, CancellationToken token = default )
     {
-        Claim[]            claims         = await record.GetUserClaims(connection, transaction, this, types, token);
-        DateTimeOffset?    expires        = await GetSubscriptionExpiration(connection, transaction, record, token);
-        DateTime           refreshExpires = GetExpiration(expires, RefreshTokenExpirationTime);
-        SigningCredentials credentials    = await GetSigningCredentials(token);
+        Claim[]                         claims         = await record.GetUserClaims(connection, transaction, this, types, token);
+        ErrorOrResult<SubscriptionInfo> subscription   = await ValidateSubscription(connection, transaction, record, token);
+        DateTime                        refreshExpires = GetExpiration(subscription.Value.Expires, RefreshTokenExpirationTime);
+        SigningCredentials              credentials    = await GetSigningCredentials(token);
 
         string accessToken = DbTokenHandler.Instance.CreateToken(new SecurityTokenDescriptor
                                                                  {
                                                                      Subject            = new ClaimsIdentity(claims),
-                                                                     Expires            = GetExpiration(expires, AccessTokenExpirationTime),
+                                                                     Expires            = GetExpiration(subscription.Value.Expires, AccessTokenExpirationTime),
                                                                      Issuer             = Options.TokenIssuer,
                                                                      Audience           = Options.TokenAudience,
                                                                      IssuedAt           = DateTime.UtcNow,
@@ -221,7 +221,7 @@ public abstract partial class Database
         ErrorOrResult<UserRecord> result = await VerifyLogin(connection, transaction, refreshToken, types, token);
         if ( !result.TryGetValue(out UserRecord? record, out Errors? error) ) { return error; }
 
-        DateTimeOffset? expires = await GetSubscriptionExpiration(connection, transaction, record, token);
+        ErrorOrResult<SubscriptionInfo> subscription = await ValidateSubscription(connection, transaction, record, token);
 
         if ( !CheckRefreshToken(ref record, refreshToken) )
         {
@@ -236,7 +236,7 @@ public abstract partial class Database
         SecurityTokenDescriptor descriptor = new()
                                              {
                                                  Subject            = new ClaimsIdentity(claims),
-                                                 Expires            = GetExpiration(expires, TimeSpan.FromMinutes(15)),
+                                                 Expires            = GetExpiration(subscription.Value.Expires, TimeSpan.FromMinutes(15)),
                                                  Issuer             = Options.TokenIssuer,
                                                  Audience           = Options.TokenAudience,
                                                  IssuedAt           = DateTime.UtcNow,
@@ -268,34 +268,8 @@ public abstract partial class Database
     }
 
 
-    public ValueTask<ErrorOrResult<UserRecord>> VerifyLogin( string jsonToken, ClaimType types = DEFAULT_CLAIM_TYPES, CancellationToken token = default ) => this.TryCall(VerifyLogin, jsonToken, types, token);
-    protected virtual async ValueTask<ErrorOrResult<UserRecord>> VerifyLogin( NpgsqlConnection connection, NpgsqlTransaction transaction, string jsonToken, ClaimType types = DEFAULT_CLAIM_TYPES, CancellationToken token = default )
-    {
-        JwtSecurityTokenHandler   handler              = new();
-        TokenValidationParameters validationParameters = await GetTokenValidationParameters(token);
-        TokenValidationResult     validationResult     = await handler.ValidateTokenAsync(jsonToken, validationParameters);
 
-        if ( validationResult.Exception is not null )
-        {
-            Exception e = validationResult.Exception;
-
-            string typeName = e.GetType()
-                               .Name;
-
-            return Error.Create(Status.InternalServerError, e.Message, e.Source, e.MethodName(), type: typeName);
-        }
-
-        Claim[]                   claims = validationResult.ClaimsIdentity.Claims.ToArray();
-        ErrorOrResult<UserRecord> result = await UserRecord.TryFromClaims(connection, transaction, this, claims.AsValueEnumerable(), types | DEFAULT_CLAIM_TYPES, token);
-        if ( !result.TryGetValue(out UserRecord? record, out Errors? errors) ) { return errors; }
-
-        record.LastLogin = DateTimeOffset.UtcNow;
-        await Users.Update(connection, transaction, record, token);
-        return record;
-    }
-
-
-    public async ValueTask<UserLoginProviderRecord[]> GetUserLoginInfoRecords( string purpose, UserRecord user, CancellationToken token )
+    public async ValueTask<ImmutableArray<UserLoginProviderRecord>> GetUserLoginInfoRecords( string purpose, UserRecord user, CancellationToken token )
     {
         HashSet<UserLoginProviderRecord> list = await UserLoginProviders.Where(true, UserLoginProviderRecord.GetDynamicParameters(user, purpose), token)
                                                                         .ToHashSet(token);

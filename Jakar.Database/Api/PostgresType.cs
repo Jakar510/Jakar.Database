@@ -3,6 +3,7 @@
 
 using System.Xml;
 using Jakar.Shapes;
+using Org.BouncyCastle.Tls;
 
 
 
@@ -997,44 +998,50 @@ public static class PostgresTypes
 
     extension( PostgresType self )
     {
-        public string GetPostgresDataType( in SizeInfo? info, in ColumnOptions options = 0 )
+        public string GetPostgresDataType( in SizeInfo info, in ColumnOptions options = 0 )
         {
-            LengthInfo length = info?.Length ?? LengthInfo.Default;
+            int length = info.IsInt
+                             ? info.AsInt
+                             : -1;
 
-            PrecisionInfo precision = info?.Precision ??
-                                      self switch
-                                      {
-                                          PostgresType.Double  => PrecisionInfo.Double,
-                                          PostgresType.Single  => PrecisionInfo.Float,
-                                          PostgresType.Int128  => PrecisionInfo.Int128,
-                                          PostgresType.UInt128 => PrecisionInfo.Int128,
-                                          PostgresType.Decimal => PrecisionInfo.Decimal,
-                                          _                    => PrecisionInfo.Default
-                                      };
-
+            PrecisionInfo precision = info.IsPrecisionInfo
+                                          ? info.AsPrecisionInfo
+                                          : self switch
+                                            {
+                                                PostgresType.Double  => PrecisionInfo.Double,
+                                                PostgresType.Single  => PrecisionInfo.Float,
+                                                PostgresType.Int128  => PrecisionInfo.Int128,
+                                                PostgresType.UInt128 => PrecisionInfo.Int128,
+                                                PostgresType.Decimal => PrecisionInfo.Decimal,
+                                                _                    => PrecisionInfo.Default
+                                            };
 
             return self switch
                    {
-                       // !IsValidLength() => throw new OutOfRangeException(Length, $"Max length for Unicode strings is {Constants.UNICODE_CAPACITY}"),
-                       PostgresType.Binary => length.IsValid
-                                                  ? @$"varbit({precision.Scope})"
-                                                  : "bytea",
-                       PostgresType.String => length.IsValid
+                       /*
+                       PostgresType.String => length > 0
                                                   ? length.Value < MAX_FIXED && options.HasFlagValue(ColumnOptions.Fixed)
                                                         ? $"character({length.Value})"
                                                         : $"varchar({length.Value})"
                                                   : "text",
-                       PostgresType.Byte => length.IsValid
-                                                ? $"bit({length.Value})"
+                       */
+
+                       // !IsValidLength() => throw new OutOfRangeException(Length, $"Max length for Unicode strings is {Constants.UNICODE_CAPACITY}"),
+                       PostgresType.Binary => precision.IsValid
+                                                  ? @$"varbit({precision.Scope})"
+                                                  : "bytea",
+                       PostgresType.String => "text",
+                       PostgresType.Byte => length > 0
+                                                ? $"bit({length})"
                                                 : "bit(8)",
-                       PostgresType.SByte => length.IsValid
-                                                 ? $"bit({length.Value})"
+                       PostgresType.SByte => length > 0
+                                                 ? $"bit({length})"
                                                  : "bit(8)",
-                       PostgresType.Bit => length.IsValid
-                                               ? $"bit({length.Value})"
+                       PostgresType.Bit => length > 0
+                                               ? $"bit({length})"
                                                : "bit(8)",
-                       PostgresType.VarBit => length.IsValid
-                                                  ? $"bit varying({length.Value})"
+                       PostgresType.VarBit => length > 0
+                                                  ? $"bit varying({length})"
                                                   : "bit varying(8)",
                        PostgresType.Short                    => "smallint",
                        PostgresType.UShort                   => "smallint",

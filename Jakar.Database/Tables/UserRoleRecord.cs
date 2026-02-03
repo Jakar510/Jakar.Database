@@ -12,10 +12,16 @@ public sealed record UserRoleRecord : Mapping<UserRoleRecord, UserRecord, RoleRe
     public static string TableName => TABLE_NAME;
 
 
+    [ColumnMetaData(ColumnOptions.ForeignKey, UserRecord.TABLE_NAME)] public override RecordID<UserRecord> KeyID   { get; init; }
+    [ColumnMetaData(ColumnOptions.ForeignKey, RoleRecord.TABLE_NAME)] public override RecordID<RoleRecord> ValueID { get; init; }
+
+
     public UserRoleRecord( RecordID<UserRecord>  key, RecordID<RoleRecord> value ) : base(key, value) { }
     private UserRoleRecord( RecordID<UserRecord> key, RecordID<RoleRecord> value, RecordID<UserRoleRecord> id, DateTimeOffset dateCreated, DateTimeOffset? lastModified ) : base(key, value, id, dateCreated, lastModified) { }
+    internal UserRoleRecord( NpgsqlDataReader reader ) : base(reader) { }
 
 
+    [Pure] public static UserRoleRecord Create( NpgsqlDataReader     reader )                          => new UserRoleRecord(reader).Validate();
     [Pure] public static UserRoleRecord Create( UserRecord           key, RoleRecord           value ) => new(key, value);
     [Pure] public static UserRoleRecord Create( RecordID<UserRecord> key, RecordID<RoleRecord> value ) => new(key, value);
     [Pure] public static ImmutableArray<UserRoleRecord> Create( UserRecord key, params ReadOnlySpan<RoleRecord> values )
@@ -41,16 +47,6 @@ public sealed record UserRoleRecord : Mapping<UserRoleRecord, UserRecord, RoleRe
     {
         // ReSharper disable once LoopCanBeConvertedToQuery
         foreach ( RecordID<RoleRecord> value in values ) { yield return Create(key, value); }
-    }
-    [Pure] public static UserRoleRecord Create( NpgsqlDataReader reader )
-    {
-        RecordID<UserRecord>     key          = RecordID<UserRecord>.Create(reader, nameof(KeyID));
-        RecordID<RoleRecord>     value        = RecordID<RoleRecord>.Create(reader, nameof(ValueID));
-        DateTimeOffset           dateCreated  = reader.GetFieldValue<UserRoleRecord, DateTimeOffset>(nameof(DateCreated));
-        DateTimeOffset?          lastModified = reader.GetFieldValue<UserRoleRecord, DateTimeOffset?>(nameof(LastModified));
-        RecordID<UserRoleRecord> id           = RecordID<UserRoleRecord>.ID(reader);
-        UserRoleRecord           record       = new(key, value, id, dateCreated, lastModified);
-        return record.Validate();
     }
 
 

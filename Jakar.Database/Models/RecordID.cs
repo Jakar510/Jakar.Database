@@ -36,6 +36,7 @@ public readonly struct RecordID<TSelf>( Guid id ) : IEquatable<RecordID<TSelf>>,
                                                                                                       ? new RecordID<TSelf>(id.Value)
                                                                                                       : default;
 
+
     public static string          Description()                                                               => $"RecordID<{typeof(TSelf).Name}>";
     public static RecordID<TSelf> Parse( string                         value, IFormatProvider?    provider ) => new(Guid.Parse(value, provider));
     public static bool            TryParse( [NotNullWhen(true)] string? value, out RecordID<TSelf> result )   => TryParse(value, null, out result);

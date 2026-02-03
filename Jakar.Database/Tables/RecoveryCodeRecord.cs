@@ -6,26 +6,53 @@ namespace Jakar.Database;
 
 [Serializable]
 [Table(TABLE_NAME)]
-public sealed record RecoveryCodeRecord( [property: StringLength(1024)] string Code, RecordID<RecoveryCodeRecord> ID, RecordID<UserRecord>? CreatedBy, DateTimeOffset DateCreated, DateTimeOffset? LastModified = null ) : OwnedTableRecord<RecoveryCodeRecord>(in CreatedBy, in ID, in DateCreated, in LastModified), ITableRecord<RecoveryCodeRecord>
+public sealed record RecoveryCodeRecord : OwnedTableRecord<RecoveryCodeRecord>, ITableRecord<RecoveryCodeRecord>
 {
     public const            string                             TABLE_NAME = "recovery_codes";
     private static readonly PasswordHasher<RecoveryCodeRecord> __hasher   = new();
 
-    public static TableMetaData<RecoveryCodeRecord> PropertyMetaData { get; } = SqlTable<RecoveryCodeRecord>.Default.WithColumn<string>(nameof(Code), ColumnOptions.None, 1024)
-                                                                                                            .With_CreatedBy()
-                                                                                                            .Build();
+    [ColumnMetaData(ColumnOptions.Indexed)] public string Code { get; init; }
 
     public static string TableName => TABLE_NAME;
 
 
-    public RecoveryCodeRecord( string code, UserRecord user ) : this(code, RecordID<RecoveryCodeRecord>.New(), user.ID, DateTimeOffset.UtcNow) { }
+    public RecoveryCodeRecord( string code, UserRecord                   user ) : this(code, RecordID<RecoveryCodeRecord>.New(), user.ID, DateTimeOffset.UtcNow) { }
+    public RecoveryCodeRecord( string code, RecordID<RecoveryCodeRecord> ID, RecordID<UserRecord>? CreatedBy, DateTimeOffset DateCreated, DateTimeOffset? LastModified = null ) : base(in CreatedBy, in ID, in DateCreated, in LastModified) => Code = code;
 
 
     public override ValueTask Export( NpgsqlBinaryExporter exporter, CancellationToken token ) => default;
     public override async ValueTask Import( NpgsqlBinaryImporter importer, CancellationToken token )
     {
-        await base.Import(importer, token);
-        await importer.WriteAsync(Code, NpgsqlDbType.Text, token);
+        foreach ( ColumnMetaData column in PropertyMetaData.Values.OrderBy(static x => x.Index) )
+        {
+            switch ( column.PropertyName )
+            {
+                case nameof(ID):
+                    await importer.WriteAsync(ID.Value, column.PostgresDbType, token);
+                    break;
+
+                case nameof(DateCreated):
+                    await importer.WriteAsync(DateCreated, column.PostgresDbType, token);
+                    break;
+
+                case nameof(CreatedBy):
+                    await importer.WriteAsync(CreatedBy?.Value, column.PostgresDbType, token);
+                    break;
+
+                case nameof(Code):
+                    await importer.WriteAsync(Code, column.PostgresDbType, token);
+                    break;
+
+                case nameof(LastModified):
+                    if ( LastModified.HasValue ) { await importer.WriteAsync(LastModified.Value, column.PostgresDbType, token); }
+                    else { await importer.WriteNullAsync(token); }
+
+                    break;
+
+                default:
+                    throw new InvalidOperationException($"Unknown column: {column.PropertyName}");
+            }
+        }
     }
     [Pure] public override PostgresParameters ToDynamicParameters()
     {
@@ -45,28 +72,7 @@ public sealed record RecoveryCodeRecord( [property: StringLength(1024)] string C
     }
 
 
-    public static MigrationRecord CreateTable( ulong migrationID ) =>
-        MigrationRecord.Create<UserRecord>(migrationID,
-                                           $"create {TABLE_NAME} table",
-                                           $"""
-                                            CREATE TABLE IF NOT EXISTS {TABLE_NAME}
-                                            (  
-                                            {nameof(Code).SqlColumnName()}           VARCHAR(1024)  NOT NULL, 
-                                            {nameof(AdditionalData).SqlColumnName()} json           NULL,
-                                            {nameof(ID).SqlColumnName()}             uuid           PRIMARY KEY,
-                                            {nameof(CreatedBy).SqlColumnName()}      uuid           NULL,
-                                            {nameof(DateCreated).SqlColumnName()}    timestamptz    NOT NULL,
-                                            {nameof(LastModified).SqlColumnName()}   timestamptz    NULL,
-                                            FOREIGN KEY({nameof(CreatedBy).SqlColumnName()}) REFERENCES {UserRecord.TABLE_NAME.SqlColumnName()}(id) ON DELETE SET NULL 
-                                            );
-
-                                            CREATE TRIGGER {nameof(MigrationRecord.SetLastModified).SqlColumnName()}
-                                            BEFORE INSERT OR UPDATE ON {TABLE_NAME}
-                                            FOR EACH ROW
-                                            EXECUTE FUNCTION {nameof(MigrationRecord.SetLastModified).SqlColumnName()}();
-                                            """);
-
-
+    public static MigrationRecord CreateTable( ulong migrationID ) => MigrationRecord.CreateTable<UserRecord>(migrationID);
     [Pure] public static Codes Create( UserRecord user, IEnumerable<string> recoveryCodes ) => Create(user,
                                                                                                       recoveryCodes.ToArray()
                                                                                                                    .AsSpan());
@@ -163,5 +169,16 @@ public sealed record RecoveryCodeRecord( [property: StringLength(1024)] string C
         IEnumerator IEnumerable.                                     GetEnumerator()                                                                => ( (IEnumerable)__codes ).GetEnumerator();
         public bool                                                  ContainsKey( string key )                                                      => __codes.ContainsKey(key);
         public bool                                                  TryGetValue( string key, [MaybeNullWhen(false)] out RecoveryCodeRecord value ) => __codes.TryGetValue(key, out value);
+    }
+
+
+
+    public void Deconstruct( out string Code, out RecordID<RecoveryCodeRecord> ID, out RecordID<UserRecord>? CreatedBy, out DateTimeOffset DateCreated, out DateTimeOffset? LastModified )
+    {
+        Code         = this.Code;
+        ID           = this.ID;
+        CreatedBy    = this.CreatedBy;
+        DateCreated  = this.DateCreated;
+        LastModified = this.LastModified;
     }
 }

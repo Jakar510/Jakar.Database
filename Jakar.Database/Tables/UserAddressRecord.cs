@@ -12,9 +12,14 @@ public sealed record UserAddressRecord : Mapping<UserAddressRecord, UserRecord, 
     public static string TableName => TABLE_NAME;
 
 
+    [ColumnMetaData(ColumnOptions.ForeignKey, UserRecord.TABLE_NAME)]    public override RecordID<UserRecord>    KeyID   { get; init; }
+    [ColumnMetaData(ColumnOptions.ForeignKey, AddressRecord.TABLE_NAME)] public override RecordID<AddressRecord> ValueID { get; init; }
+
+
     public UserAddressRecord( UserRecord            key, AddressRecord           value ) : base(key, value) { }
     public UserAddressRecord( RecordID<UserRecord>  key, RecordID<AddressRecord> value ) : base(key, value) { }
     private UserAddressRecord( RecordID<UserRecord> key, RecordID<AddressRecord> value, RecordID<UserAddressRecord> id, DateTimeOffset dateCreated, DateTimeOffset? lastModified ) : base(key, value, id, dateCreated, lastModified) { }
+    internal UserAddressRecord( NpgsqlDataReader    reader ) : base(reader) { }
 
 
     [Pure] public static UserAddressRecord Create( UserRecord           key, AddressRecord           value ) => new(key, value);

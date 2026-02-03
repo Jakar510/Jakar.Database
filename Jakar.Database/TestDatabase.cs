@@ -73,24 +73,20 @@ internal sealed class TestDatabase( IConfiguration configuration, IOptions<DbOpt
         ( UserRecord admin, UserRecord user )             = await Add_Users(db, token);
         ( RoleRecord adminRole, RoleRecord userRole )     = await Add_Roles(db, admin, token);
         ( GroupRecord adminGroup, GroupRecord userGroup ) = await Add_Group(db, admin, token);
-        UserRoleRecord[]  userRoles  = await Add_Roles(db, user, [adminRole, userRole],   token);
-        UserGroupRecord[] userGroups = await Add_Roles(db, user, [adminGroup, userGroup], token);
+        ImmutableArray<UserRoleRecord>  userRoles  = await Add_Roles(db, user, [adminRole, userRole],   token);
+        ImmutableArray<UserGroupRecord> userGroups = await Add_Roles(db, user, [adminGroup, userGroup], token);
         ( AddressRecord address, UserAddressRecord userAddress ) = await Add_Address(db, user, token);
         FileRecord              file          = await Add_File(db, user, token);
         UserLoginProviderRecord loginProvider = await Add_UserLoginProvider(db, user, token);
-        ( RecoveryCodeRecord[] recoveryCodes, UserRecoveryCodeRecord[] userRecoveryCodes ) = await Add_RecoveryCodes(db, user, token);
+        ( ImmutableArray<RecoveryCodeRecord> recoveryCodes, ImmutableArray<UserRecoveryCodeRecord> userRecoveryCodes ) = await Add_RecoveryCodes(db, user, token);
     }
-    private static async ValueTask<(RecoveryCodeRecord[] records, UserRecoveryCodeRecord[] results)> Add_RecoveryCodes( Database db, UserRecord user, CancellationToken token = default )
+    private static async ValueTask<(ImmutableArray<RecoveryCodeRecord> records, ImmutableArray<UserRecoveryCodeRecord> results)> Add_RecoveryCodes( Database db, UserRecord user, CancellationToken token = default )
     {
         RecoveryCodeRecord.Codes codes = RecoveryCodeRecord.Create(user, 10);
 
-        RecoveryCodeRecord[] records = await db.RecoveryCodes.Insert(codes.Values, token)
-                                               .ToArray(codes.Count, token);
-
-        ImmutableArray<UserRecoveryCodeRecord> memory = UserRecoveryCodeRecord.Create(user, records.AsSpan());
-
-        UserRecoveryCodeRecord[] results = await db.UserRecoveryCodes.Insert(memory.AsMemory(), token)
-                                                   .ToArray(records.Length, token);
+        ImmutableArray<RecoveryCodeRecord>     records = await db.RecoveryCodes.Insert(codes.Values, token);
+        ImmutableArray<UserRecoveryCodeRecord> memory  = UserRecoveryCodeRecord.Create(user, records.AsSpan());
+        ImmutableArray<UserRecoveryCodeRecord> results = await db.UserRecoveryCodes.Insert(memory.AsMemory(), token);
 
         return ( records, results );
     }
@@ -115,21 +111,17 @@ internal sealed class TestDatabase( IConfiguration configuration, IOptions<DbOpt
         UserAddressRecord userAddress = await db.UserAddresses.Insert(UserAddressRecord.Create(user, result), token);
         return ( result, userAddress );
     }
-    private static async ValueTask<UserGroupRecord[]> Add_Roles( Database db, UserRecord user, GroupRecord[] roles, CancellationToken token = default )
+    private static async ValueTask<ImmutableArray<UserGroupRecord>> Add_Roles( Database db, UserRecord user, GroupRecord[] roles, CancellationToken token = default )
     {
         ImmutableArray<UserGroupRecord> records = UserGroupRecord.Create(user, roles.AsSpan());
-
-        UserGroupRecord[] results = await db.UserGroups.Insert(records, token)
-                                            .ToArray(records.Length, token);
+        ImmutableArray<UserGroupRecord> results = await db.UserGroups.Insert(records, token);
 
         return results;
     }
-    private static async ValueTask<UserRoleRecord[]> Add_Roles( Database db, UserRecord user, RoleRecord[] roles, CancellationToken token = default )
+    private static async ValueTask<ImmutableArray<UserRoleRecord>> Add_Roles( Database db, UserRecord user, RoleRecord[] roles, CancellationToken token = default )
     {
         ImmutableArray<UserRoleRecord> records = UserRoleRecord.Create(user, roles.AsSpan());
-
-        UserRoleRecord[] results = await db.UserRoles.Insert(records, token)
-                                           .ToArray(records.Length, token);
+        ImmutableArray<UserRoleRecord> results = await db.UserRoles.Insert(records, token);
 
         return results;
     }

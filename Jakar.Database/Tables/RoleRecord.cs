@@ -1,28 +1,22 @@
-﻿namespace Jakar.Database;
+﻿using Jakar.Extensions;
+
+using Microsoft.AspNetCore.DataProtection.KeyManagement;
+
+namespace Jakar.Database;
 
 
 [Serializable]
 [Table(TABLE_NAME)]
-public sealed record RoleRecord( [property: StringLength(NAME)]              string NameOfRole,
-                                 [property: StringLength(NORMALIZED_NAME)]   string NormalizedName,
-                                 [property: StringLength(CONCURRENCY_STAMP)] string ConcurrencyStamp,
-                                 UserRights                                         Rights,
-                                 RecordID<RoleRecord>                               ID,
-                                 RecordID<UserRecord>?                              CreatedBy,
-                                 DateTimeOffset                                     DateCreated,
-                                 DateTimeOffset?                                    LastModified = null ) : OwnedTableRecord<RoleRecord>(in CreatedBy, in ID, in DateCreated, in LastModified), ITableRecord<RoleRecord>, IRoleModel<Guid>
+public sealed record RoleRecord : OwnedTableRecord<RoleRecord>, ITableRecord<RoleRecord>, IRoleModel<Guid>
 {
     public const string TABLE_NAME = "roles";
 
-    public static TableMetaData<RoleRecord> PropertyMetaData { get; } = SqlTable<RoleRecord>.Default.WithColumn<string>(nameof(NameOfRole), ColumnOptions.None, NAME)
-                                                                                            .WithColumn<string>(nameof(NormalizedName),   ColumnOptions.None, NORMALIZED_NAME)
-                                                                                            .WithColumn<string>(nameof(ConcurrencyStamp), ColumnOptions.None, CONCURRENCY_STAMP)
-                                                                                            .WithColumn<string>(nameof(Rights),           ColumnOptions.None, RIGHTS)
-                                                                                            .With_CreatedBy()
-                                                                                            .Build();
 
-    public static                 string     TableName => TABLE_NAME;
-    [StringLength(RIGHTS)] public UserRights Rights    { get; set; } = Rights;
+    public static                                                     string     TableName        => TABLE_NAME;
+    [ColumnMetaData(ColumnOptions.None,    RIGHTS)]            public UserRights Rights           { get; set; }
+    [ColumnMetaData(ColumnOptions.Indexed, NAME)]              public string     NameOfRole       { get; init; }
+    [ColumnMetaData(ColumnOptions.Indexed, NORMALIZED_NAME)]   public string     NormalizedName   { get; init; }
+    [ColumnMetaData(ColumnOptions.None,    CONCURRENCY_STAMP)] public string     ConcurrencyStamp { get; init; }
 
 
     public RoleRecord( IdentityRole role, RecordID<UserRecord>? caller                               = null ) : this(role.Name ?? EMPTY, role.NormalizedName ?? EMPTY, role.ConcurrencyStamp ?? EMPTY, caller) { }
@@ -31,6 +25,22 @@ public sealed record RoleRecord( [property: StringLength(NAME)]              str
     public RoleRecord( string       name, string                normalizedName, RecordID<UserRecord>? caller                                                                       = null ) : this(name, normalizedName, name.GetHash(), EMPTY, RecordID<RoleRecord>.New(), caller, DateTimeOffset.UtcNow) { }
     public RoleRecord( string       name, string                normalizedName, string                concurrencyStamp, RecordID<UserRecord>? caller                               = null ) : this(name, normalizedName, concurrencyStamp, EMPTY, RecordID<RoleRecord>.New(), caller, DateTimeOffset.UtcNow) { }
     public RoleRecord( string       name, string                normalizedName, string                concurrencyStamp, string                rights, RecordID<UserRecord>? caller = null ) : this(name, normalizedName, concurrencyStamp, rights, RecordID<RoleRecord>.New(), caller, DateTimeOffset.UtcNow) { }
+    public RoleRecord( string NameOfRole, string NormalizedName, string ConcurrencyStamp, UserRights Rights, RecordID<RoleRecord> ID, RecordID<UserRecord>? CreatedBy, DateTimeOffset DateCreated, DateTimeOffset? LastModified = null ) : base(in CreatedBy, in ID, in DateCreated, in LastModified)
+    {
+        this.Rights           = Rights;
+        this.NameOfRole       = NameOfRole;
+        this.NormalizedName   = NormalizedName;
+        this.ConcurrencyStamp = ConcurrencyStamp;
+    }
+    internal RoleRecord( NpgsqlDataReader reader ) : base(reader)
+    {
+        Rights           = reader.GetFieldValue<RoleRecord, string>(nameof(Rights));
+        NameOfRole       = reader.GetFieldValue<RoleRecord, string>(nameof(NameOfRole));
+        NormalizedName   = reader.GetFieldValue<RoleRecord, string>(nameof(NormalizedName));
+        ConcurrencyStamp = reader.GetFieldValue<RoleRecord, string>(nameof(ConcurrencyStamp));
+    }
+
+
     public RoleModel ToRoleModel() => new(this);
     public TRoleModel ToRoleModel<TRoleModel>()
         where TRoleModel : class, IRoleModel<TRoleModel, Guid> => TRoleModel.Create(this);
@@ -38,12 +48,49 @@ public sealed record RoleRecord( [property: StringLength(NAME)]              str
 
     public override ValueTask Export( NpgsqlBinaryExporter exporter, CancellationToken token ) => default;
     public override async ValueTask Import( NpgsqlBinaryImporter importer, CancellationToken token )
-    {
-        await base.Import(importer, token);
-        await importer.WriteAsync(NameOfRole,       NpgsqlDbType.Text, token);
-        await importer.WriteAsync(NormalizedName,   NpgsqlDbType.Text, token);
-        await importer.WriteAsync(ConcurrencyStamp, NpgsqlDbType.Text, token);
-        await importer.WriteAsync(Rights.Value,     NpgsqlDbType.Text, token);
+    { 
+        foreach ( ColumnMetaData column in PropertyMetaData.Values.OrderBy(static x => x.Index) )
+        {
+            switch ( column.PropertyName )
+            {
+                case nameof(ID):
+                    await importer.WriteAsync(ID.Value, column.PostgresDbType, token);
+                    break;
+
+                case nameof(DateCreated):
+                    await importer.WriteAsync(DateCreated, column.PostgresDbType, token);
+                    break;
+
+                case nameof(CreatedBy):
+                    await importer.WriteAsync(CreatedBy?.Value, column.PostgresDbType, token);
+                    break;
+
+                case nameof(Rights):
+                    await importer.WriteAsync(Rights.Value, column.PostgresDbType, token);
+                    break;
+
+                case nameof(NameOfRole):
+                    await importer.WriteAsync(NameOfRole, column.PostgresDbType, token);
+                    break;
+
+                case nameof(NormalizedName):
+                    await importer.WriteAsync(NormalizedName, column.PostgresDbType, token);
+                    break;
+
+                case nameof(ConcurrencyStamp):
+                    await importer.WriteAsync(ConcurrencyStamp, column.PostgresDbType, token);
+                    break; 
+
+                case nameof(LastModified):
+                    if ( LastModified.HasValue ) { await importer.WriteAsync(LastModified.Value, column.PostgresDbType, token); }
+                    else { await importer.WriteNullAsync(token); }
+
+                    break;
+
+                default:
+                    throw new InvalidOperationException($"Unknown column: {column.PropertyName}");
+            }
+        }
     }
     [Pure] public override PostgresParameters ToDynamicParameters()
     {
@@ -58,19 +105,8 @@ public sealed record RoleRecord( [property: StringLength(NAME)]              str
 
     [Pure] public static RoleRecord Create<TEnum>( string name, [HandlesResourceDisposal] Permissions<TEnum> rights, string? normalizedName = null, RecordID<UserRecord>? caller = null, string? concurrencyStamp = null )
         where TEnum : unmanaged, Enum => new(name, normalizedName ?? name, concurrencyStamp ?? name.GetHash(), rights.ToStringAndDispose(), caller);
-    [Pure] public static RoleRecord Create( NpgsqlDataReader reader )
-    {
-        string                rights           = reader.GetFieldValue<RoleRecord, string>(nameof(Rights));
-        string                name             = reader.GetFieldValue<RoleRecord, string>(nameof(NameOfRole));
-        string                normalizedName   = reader.GetFieldValue<RoleRecord, string>(nameof(NormalizedName));
-        string                concurrencyStamp = reader.GetFieldValue<RoleRecord, string>(nameof(ConcurrencyStamp));
-        DateTimeOffset        dateCreated      = reader.GetFieldValue<RoleRecord, DateTimeOffset>(nameof(DateCreated));
-        DateTimeOffset?       lastModified     = reader.GetFieldValue<RoleRecord, DateTimeOffset?>(nameof(LastModified));
-        RecordID<UserRecord>? ownerUserID      = RecordID<UserRecord>.CreatedBy(reader);
-        RecordID<RoleRecord>  id               = RecordID<RoleRecord>.ID(reader);
-        RoleRecord            record           = new(name, normalizedName, concurrencyStamp, rights, id, ownerUserID, dateCreated, lastModified);
-        return record.Validate();
-    }
+    [Pure] public static RoleRecord      Create( NpgsqlDataReader reader )      => new RoleRecord(reader).Validate();
+    public static        MigrationRecord CreateTable( ulong       migrationID ) => MigrationRecord.CreateTable<RoleRecord>(migrationID);
 
 
     [Pure] public IAsyncEnumerable<UserRecord> GetUsers( NpgsqlConnection connection, NpgsqlTransaction? transaction, Database db, CancellationToken token ) => UserRoleRecord.Where(connection, transaction, db.Users, this, token);
@@ -82,29 +118,6 @@ public sealed record RoleRecord( [property: StringLength(NAME)]              str
                                                        NormalizedName   = NormalizedName,
                                                        ConcurrencyStamp = ConcurrencyStamp
                                                    };
-
-
-    public static MigrationRecord CreateTable( ulong migrationID ) =>
-        MigrationRecord.Create<RoleRecord>(migrationID,
-                                           $"create {TABLE_NAME} table",
-                                           $"""
-                                            CREATE TABLE IF NOT EXISTS {TABLE_NAME}
-                                            (  
-                                            {nameof(NameOfRole).SqlColumnName()}       varchar(1024) NOT NULL, 
-                                            {nameof(NormalizedName).SqlColumnName()}   varchar(1024) NOT NULL, 
-                                            {nameof(ConcurrencyStamp).SqlColumnName()} varchar(1024) NOT NULL, 
-                                            {nameof(Rights).SqlColumnName()}           varchar(1024) NOT NULL, 
-                                            {nameof(ID).SqlColumnName()}               uuid          PRIMARY KEY,
-                                            {nameof(DateCreated).SqlColumnName()}      timestamptz   NOT NULL,
-                                            {nameof(LastModified).SqlColumnName()}     timestamptz   NULL,
-                                            {nameof(AdditionalData).SqlColumnName()}   json          NULL
-                                            );
-
-                                            CREATE TRIGGER {nameof(MigrationRecord.SetLastModified).SqlColumnName()}
-                                            BEFORE INSERT OR UPDATE ON {TABLE_NAME}
-                                            FOR EACH ROW
-                                            EXECUTE FUNCTION {nameof(MigrationRecord.SetLastModified).SqlColumnName()}();
-                                            """);
 
 
     public override bool Equals( RoleRecord? other )

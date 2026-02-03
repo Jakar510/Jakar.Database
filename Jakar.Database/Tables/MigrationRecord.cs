@@ -34,23 +34,16 @@ public sealed record MigrationRecord : BaseRecord<MigrationRecord>, ITableRecord
                                               """;
 
 
-    public static ReadOnlyMemory<PropertyInfo> ClassProperties => Properties;
-
-    public static TableMetaData<MigrationRecord> PropertyMetaData { get; } = SqlTable<MigrationRecord>.Empty.WithColumn<ulong>(nameof(MigrationID), ColumnOptions.None)
-                                                                                                      .WithColumn<string>(nameof(TableID),     ColumnOptions.None, 256)
-                                                                                                      .WithColumn<string>(nameof(Description), ColumnOptions.None, MAX_FIXED)
-                                                                                                      .With_DateCreated()
-                                                                                                      .With_AdditionalData()
-                                                                                                      .Build();
-
-    public static string                                   TableName   => TABLE_NAME;
-    public        DateTimeOffset                           AppliedOn   { get; init; } = DateTimeOffset.UtcNow;
-    DateTimeOffset IDateCreated.                           DateCreated => AppliedOn;
-    [StringLength(MAX_FIXED)] public required string       Description { get; init; }
-    RecordID<MigrationRecord> IRecordPair<MigrationRecord>.ID          => RecordID<MigrationRecord>.Create(MigrationID.AsGuid());
-    [Key] public required      ulong                       MigrationID { get; init; }
-    internal                   string                      SQL         { get; init; } = EMPTY;
-    [StringLength(256)] public string?                     TableID     { get; init; }
+    public static ReadOnlyMemory<PropertyInfo>                                           ClassProperties  => Properties;
+    public static TableMetaData<MigrationRecord>                                         PropertyMetaData => TableMetaData<MigrationRecord>.Instance;
+    public static string                                                                 TableName        => TABLE_NAME;
+    public        DateTimeOffset                                                         AppliedOn        { get; init; } = DateTimeOffset.UtcNow;
+    DateTimeOffset IDateCreated.                                                         DateCreated      => AppliedOn;
+    [ColumnMetaData(ColumnOptions.None)] public required string                          Description      { get; init; }
+    RecordID<MigrationRecord> IRecordPair<MigrationRecord>.                              ID               => RecordID<MigrationRecord>.Create(MigrationID.AsGuid());
+    [Key] public required                                                        ulong   MigrationID      { get; init; }
+    internal                                                                     string  SQL              { get; init; } = EMPTY;
+    [ColumnMetaData(ColumnOptions.Indexed | ColumnOptions.Nullable, 256)] public string? TableID          { get; init; }
 
 
     [method: SetsRequiredMembers] internal MigrationRecord( ulong migrationID, string description, string? tableID = null )
@@ -99,7 +92,7 @@ public sealed record MigrationRecord : BaseRecord<MigrationRecord>, ITableRecord
                                  EXECUTE FUNCTION {nameof(SetLastModified).SqlColumnName()}();
                                  """);
     public static MigrationRecord CreateTable<TSelf>( ulong migrationID )
-        where TSelf : class, ITableRecord<TSelf> => Create<UserRecord>(migrationID, $"Create '{TSelf.TableName}' Table", SqlTable<TSelf>.CreateTable());
+        where TSelf : class, ITableRecord<TSelf> => Create<TSelf>(migrationID, $"Create '{TSelf.TableName}' Table", SqlTable<TSelf>.CreateTable());
 
 
     public static MigrationRecord FromEnum<TEnum>( ulong migrationID )

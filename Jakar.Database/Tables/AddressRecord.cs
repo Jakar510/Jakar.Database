@@ -10,36 +10,20 @@ namespace Jakar.Database;
 
 
 [Table(TABLE_NAME)]
-public sealed record AddressRecord( [property: ProtectedPersonalData] string  Line1,
-                                    [property: ProtectedPersonalData] string  Line2,
-                                    [property: ProtectedPersonalData] string  City,
-                                    [property: ProtectedPersonalData] string  StateOrProvince,
-                                    [property: ProtectedPersonalData] string  Country,
-                                    [property: ProtectedPersonalData] string  PostalCode,
-                                    [property: ProtectedPersonalData] string? Address,
-                                    bool                                      IsPrimary,
-                                    JObject?                                  AdditionalData,
-                                    RecordID<AddressRecord>                   ID,
-                                    RecordID<UserRecord>?                     CreatedBy,
-                                    DateTimeOffset                            DateCreated,
-                                    DateTimeOffset?                           LastModified = null ) : OwnedTableRecord<AddressRecord>(in CreatedBy, in ID, in DateCreated, in LastModified, AdditionalData), IAddress<AddressRecord, Guid>, ITableRecord<AddressRecord>
+public sealed record AddressRecord : OwnedTableRecord<AddressRecord>, IAddress<AddressRecord, Guid>, ITableRecord<AddressRecord>
 {
     public const string TABLE_NAME = "addresses";
 
-    public static TableMetaData<AddressRecord> PropertyMetaData { get; } = SqlTable<AddressRecord>.Default.WithColumn<string>(nameof(Line1), ColumnOptions.Indexed, 256)
-                                                                                                  .WithColumn<string>(nameof(Line2),           ColumnOptions.Indexed,  1024)
-                                                                                                  .WithColumn<string>(nameof(City),            ColumnOptions.Indexed,  256)
-                                                                                                  .WithColumn<string>(nameof(StateOrProvince), ColumnOptions.Indexed,  256)
-                                                                                                  .WithColumn<string>(nameof(Country),         ColumnOptions.Indexed,  256)
-                                                                                                  .WithColumn<string>(nameof(PostalCode),      ColumnOptions.Indexed,  256)
-                                                                                                  .WithColumn<string>(nameof(Address),         ColumnOptions.Nullable, 256)
-                                                                                                  .WithColumn<bool>(nameof(IsPrimary),         ColumnOptions.None)
-                                                                                                  .With_AdditionalData()
-                                                                                                  .With_CreatedBy()
-                                                                                                  .Build();
 
-
-    public static string TableName => TABLE_NAME;
+    public static                                                                                         string  TableName       => TABLE_NAME;
+    [ProtectedPersonalData] [ColumnMetaData(ColumnOptions.Indexed,                          512)]  public string  Line1           { get; init; }
+    [ProtectedPersonalData] [ColumnMetaData(ColumnOptions.Indexed,                          512)]  public string  Line2           { get; init; }
+    [ProtectedPersonalData] [ColumnMetaData(ColumnOptions.Indexed,                          512)]  public string  City            { get; init; }
+    [ProtectedPersonalData] [ColumnMetaData(ColumnOptions.Indexed,                          512)]  public string  StateOrProvince { get; init; }
+    [ProtectedPersonalData] [ColumnMetaData(ColumnOptions.Indexed,                          512)]  public string  Country         { get; init; }
+    [ProtectedPersonalData] [ColumnMetaData(ColumnOptions.Indexed,                          512)]  public string  PostalCode      { get; init; }
+    [ProtectedPersonalData] [ColumnMetaData(ColumnOptions.Indexed | ColumnOptions.Nullable, 4096)] public string? Address         { get; init; }
+    public                                                                                                bool    IsPrimary       { get; init; }
 
 
     public AddressRecord( IAddress<Guid> address ) : this(address.Line1,
@@ -67,19 +51,97 @@ public sealed record AddressRecord( [property: ProtectedPersonalData] string  Li
                                                                                                                                                        RecordID<AddressRecord>.Create(id),
                                                                                                                                                        null,
                                                                                                                                                        DateTimeOffset.UtcNow) { }
+    public AddressRecord( string                  Line1,
+                          string                  Line2,
+                          string                  City,
+                          string                  StateOrProvince,
+                          string                  Country,
+                          string                  PostalCode,
+                          string?                 Address,
+                          bool                    IsPrimary,
+                          JObject?                AdditionalData,
+                          RecordID<AddressRecord> ID,
+                          RecordID<UserRecord>?   CreatedBy,
+                          DateTimeOffset          DateCreated,
+                          DateTimeOffset?         LastModified = null
+    ) : base(in CreatedBy, in ID, in DateCreated, in LastModified, AdditionalData)
+    {
+        this.Line1           = Line1;
+        this.Line2           = Line2;
+        this.City            = City;
+        this.StateOrProvince = StateOrProvince;
+        this.Country         = Country;
+        this.PostalCode      = PostalCode;
+        this.Address         = Address;
+        this.IsPrimary       = IsPrimary;
+    }
+    internal AddressRecord( NpgsqlDataReader reader ) : base(reader)
+    {
+        Line1           = reader.GetFieldValue<AddressRecord, string>(nameof(Line1));
+        Line2           = reader.GetFieldValue<AddressRecord, string>(nameof(Line2));
+        City            = reader.GetFieldValue<AddressRecord, string>(nameof(City));
+        StateOrProvince = reader.GetFieldValue<AddressRecord, string>(nameof(StateOrProvince));
+        Country         = reader.GetFieldValue<AddressRecord, string>(nameof(Country));
+        PostalCode      = reader.GetFieldValue<AddressRecord, string>(nameof(PostalCode));
+        Address         = reader.GetFieldValue<AddressRecord, string>(nameof(Address));
+        AdditionalData  = reader.GetAdditionalData<AddressRecord>();
+        IsPrimary       = reader.GetFieldValue<AddressRecord, bool>(nameof(IsPrimary));
+    }
 
 
     public override ValueTask Export( NpgsqlBinaryExporter exporter, CancellationToken token ) => default;
     public override async ValueTask Import( NpgsqlBinaryImporter importer, CancellationToken token )
     {
-        await base.Import(importer, token);
-        await importer.WriteAsync(Line1,           NpgsqlDbType.Text, token);
-        await importer.WriteAsync(Line2,           NpgsqlDbType.Text, token);
-        await importer.WriteAsync(City,            NpgsqlDbType.Text, token);
-        await importer.WriteAsync(PostalCode,      NpgsqlDbType.Text, token);
-        await importer.WriteAsync(StateOrProvince, NpgsqlDbType.Text, token);
-        await importer.WriteAsync(Country,         NpgsqlDbType.Text, token);
-        await importer.WriteAsync(Address,         NpgsqlDbType.Text, token);
+        foreach ( ColumnMetaData column in PropertyMetaData.Values.OrderBy(static x => x.Index) )
+        {
+            switch ( column.PropertyName )
+            {
+                case nameof(ID):
+                    await importer.WriteAsync(ID.Value, column.PostgresDbType, token);
+                    break;
+
+                case nameof(DateCreated):
+                    await importer.WriteAsync(DateCreated, column.PostgresDbType, token);
+                    break;
+
+                case nameof(CreatedBy):
+                    await importer.WriteAsync(CreatedBy?.Value, column.PostgresDbType, token);
+                    break;
+
+                case nameof(Address):
+                    await importer.WriteAsync(Address, column.PostgresDbType, token);
+                    break;
+
+                case nameof(City):
+                    await importer.WriteAsync(City, column.PostgresDbType, token);
+                    break;
+
+                case nameof(Country):
+                    await importer.WriteAsync(Country, column.PostgresDbType, token);
+                    break;
+
+                case nameof(StateOrProvince):
+                    await importer.WriteAsync(StateOrProvince, column.PostgresDbType, token);
+                    break;
+
+                case nameof(Line1):
+                    await importer.WriteAsync(Line1, column.PostgresDbType, token);
+                    break;
+
+                case nameof(Line2):
+                    await importer.WriteAsync(Line2, column.PostgresDbType, token);
+                    break;
+
+                case nameof(LastModified):
+                    if ( LastModified.HasValue ) { await importer.WriteAsync(LastModified.Value, column.PostgresDbType, token); }
+                    else { await importer.WriteNullAsync(token); }
+
+                    break;
+
+                default:
+                    throw new InvalidOperationException($"Unknown column: {column.PropertyName}");
+            }
+        }
     }
     [Pure] public override PostgresParameters ToDynamicParameters()
     {
@@ -111,8 +173,10 @@ public sealed record AddressRecord( [property: ProtectedPersonalData] string  Li
     }
 
 
-    [Pure] public static AddressRecord Create( Match          match )   => new(match);
-    [Pure] public static AddressRecord Create( IAddress<Guid> address ) => new(address);
+    [Pure] public static AddressRecord   Create( NpgsqlDataReader reader )      => new AddressRecord(reader).Validate();
+    public static        MigrationRecord CreateTable( ulong       migrationID ) => MigrationRecord.CreateTable<AddressRecord>(migrationID);
+    [Pure] public static AddressRecord   Create( Match            match )       => new(match);
+    [Pure] public static AddressRecord   Create( IAddress<Guid>   address )     => new(address);
     [Pure] public static AddressRecord Create( string line1, string line2, string city, string stateOrProvince, string postalCode, string country, Guid id = default ) => new(line1,
                                                                                                                                                                               line2,
                                                                                                                                                                               city,
@@ -122,38 +186,6 @@ public sealed record AddressRecord( [property: ProtectedPersonalData] string  Li
                                                                                                                                                                               id.IsValidID()
                                                                                                                                                                                   ? id
                                                                                                                                                                                   : Guid.NewGuid());
-    [Pure] public static AddressRecord Create( NpgsqlDataReader reader )
-    {
-        string                  line1           = reader.GetFieldValue<AddressRecord, string>(nameof(Line1));
-        string                  line2           = reader.GetFieldValue<AddressRecord, string>(nameof(Line2));
-        string                  city            = reader.GetFieldValue<AddressRecord, string>(nameof(City));
-        string                  stateOrProvince = reader.GetFieldValue<AddressRecord, string>(nameof(StateOrProvince));
-        string                  country         = reader.GetFieldValue<AddressRecord, string>(nameof(Country));
-        string                  postalCode      = reader.GetFieldValue<AddressRecord, string>(nameof(PostalCode));
-        string                  address         = reader.GetFieldValue<AddressRecord, string>(nameof(Address));
-        JObject?                additionalData  = reader.GetAdditionalData<AddressRecord>();
-        bool                    isPrimary       = reader.GetFieldValue<AddressRecord, bool>(nameof(IsPrimary));
-        RecordID<AddressRecord> id              = RecordID<AddressRecord>.ID(reader);
-        RecordID<UserRecord>?   ownerUserID     = RecordID<UserRecord>.CreatedBy(reader);
-        DateTimeOffset          dateCreated     = reader.GetFieldValue<AddressRecord, DateTimeOffset>(nameof(DateCreated));
-        DateTimeOffset?         lastModified    = reader.GetFieldValue<AddressRecord, DateTimeOffset?>(nameof(LastModified));
-
-        AddressRecord record = new(line1,
-                                   line2,
-                                   city,
-                                   stateOrProvince,
-                                   country,
-                                   postalCode,
-                                   address,
-                                   isPrimary,
-                                   additionalData,
-                                   id,
-                                   ownerUserID,
-                                   dateCreated,
-                                   lastModified);
-
-        return record.Validate();
-    }
 
 
     [Pure] public static async ValueTask<AddressRecord?> TryFromClaims( NpgsqlConnection connection, NpgsqlTransaction transaction, Database db, Claim[] claims, ClaimType types, CancellationToken token )
@@ -281,35 +313,4 @@ public sealed record AddressRecord( [property: ProtectedPersonalData] string  Li
     public static bool operator >=( AddressRecord left, AddressRecord right ) => left.CompareTo(right) >= 0;
     public static bool operator <( AddressRecord  left, AddressRecord right ) => left.CompareTo(right) < 0;
     public static bool operator <=( AddressRecord left, AddressRecord right ) => left.CompareTo(right) <= 0;
-
-
-    public static MigrationRecord CreateTable( ulong migrationID ) =>
-        MigrationRecord.Create<AddressRecord>(migrationID,
-                                              $"create {TABLE_NAME} table",
-                                              $"""
-                                               CREATE TABLE IF NOT EXISTS {TABLE_NAME}
-                                               (
-                                               {nameof(Line1).SqlColumnName()} varchar( 512 ) NOT NULL,
-                                               {nameof(Line2).SqlColumnName()} varchar( 512 ) NOT NULL,
-                                               {nameof(City).SqlColumnName()} varchar( 512 ) NOT NULL,
-                                               {nameof(StateOrProvince).SqlColumnName()} varchar( 512 ) NOT NULL,
-                                               {nameof(Country).SqlColumnName()} varchar( 512 ) NOT NULL,
-                                               {nameof(PostalCode).SqlColumnName()} varchar( 64 ) NOT NULL,
-                                               {nameof(Address).SqlColumnName()} varchar( 3000 ) NULL,
-                                               {nameof(IsPrimary).SqlColumnName()} boolean NOT NULL DEFAULT FALSE,
-                                               {nameof(CreatedBy).SqlColumnName()} uuid NULL, FOREIGN KEY( {nameof(CreatedBy).SqlColumnName()}) REFERENCES {UserRecord.TABLE_NAME.SqlColumnName()}(id) ON DELETE SET NULL,
-                                               {nameof(ID).SqlColumnName()} uuid NOT NULL PRIMARY KEY,
-                                               {nameof(DateCreated).SqlColumnName()} timestamptz NOT NULL DEFAULT SYSUTCDATETIME(),
-                                               {nameof(LastModified).SqlColumnName()} timestamptz NULL,
-                                               {nameof(AdditionalData).SqlColumnName()} json NULL
-                                               );
-
-                                               CREATE TRIGGER {nameof(MigrationRecord.SetLastModified).SqlColumnName()}
-                                               BEFORE INSERT OR UPDATE ON {TABLE_NAME}
-                                               FOR    EACH ROW  EXECUTE FUNCTION {
-                                                   nameof(MigrationRecord.SetLastModified)
-                                                      .SqlColumnName()
-                                               }
-                                               ();
-                                               """);
 }

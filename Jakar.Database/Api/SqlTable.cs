@@ -108,12 +108,12 @@ public readonly ref struct SqlTable<TSelf> : IDisposable
     public SqlTable<TSelf> With_AdditionalData() => WithColumn(ColumnMetaData.AdditionalData);
 
 
-    public SqlTable<TSelf> WithColumn_Json( string propertyName, ColumnOptions options = ColumnOptions.Nullable, ColumnCheckMetaData? checks = null )
+    public SqlTable<TSelf> WithColumn_Json( in string propertyName, ColumnOptions options = ColumnOptions.Nullable, ColumnCheckMetaData? checks = null )
     {
-        ColumnMetaData column = new(propertyName, PostgresType.Json, options, null, SizeInfo.Default, checks);
+        ColumnMetaData column = new(propertyName, PostgresType.Json, options, null, SizeInfo.Empty, checks);
         return WithColumn(column);
     }
-    public SqlTable<TSelf> WithColumn<TValue>( string propertyName, ColumnOptions options, SizeInfo length = default, ColumnCheckMetaData? checks = null )
+    public SqlTable<TSelf> WithColumn<TValue>( in string propertyName, ColumnOptions options, SizeInfo length = default, ColumnCheckMetaData? checks = null )
     {
         if ( typeof(TValue) == typeof(RecordID<TSelf>) || typeof(TValue) == typeof(RecordID<TSelf>?) ) { throw new InvalidOperationException($"Use the other overload of {nameof(WithColumn)} instead for primary key columns {RecordID<TSelf>.Description()}."); }
 
@@ -121,11 +121,13 @@ public readonly ref struct SqlTable<TSelf> : IDisposable
 
         if ( typeof(TValue).IsEnum ) { throw new InvalidOperationException($"Use the other overload of {nameof(WithColumn)} instead for Enum columns ({typeof(TValue).Name})."); }
 
-        PostgresType   dbType = typeof(TValue).GetPostgresType(ref options, ref length);
-        ColumnMetaData column = new(propertyName, dbType, options, null, length, checks);
+
+        PostgresType dbType = typeof(TValue).GetPostgresType(ref options, ref length);
+        checks ??= length.Check(in propertyName);
+        ColumnMetaData column = new(in propertyName, in dbType, in options, null, in length, in checks);
         return WithColumn(column);
     }
-    public SqlTable<TSelf> WithColumn<TValue>( string propertyName, bool isNullable, ColumnCheckMetaData? checks = null )
+    public SqlTable<TSelf> WithColumn<TValue>( in string propertyName, bool isNullable, ColumnCheckMetaData? checks = null )
         where TValue : struct, Enum
     {
         ColumnOptions options = ColumnOptions.ForeignKey;
@@ -139,7 +141,7 @@ public readonly ref struct SqlTable<TSelf> : IDisposable
         ColumnMetaData column = new(propertyName, PostgresType.String, options, typeof(TValue).Name, length, checks);
         return WithColumn(column);
     }
-    public SqlTable<TSelf> WithColumn<TRecord>( string propertyName, ColumnCheckMetaData? checks = null )
+    public SqlTable<TSelf> WithColumn<TRecord>( in string propertyName, ColumnCheckMetaData? checks = null )
         where TRecord : class, ITableRecord<TRecord>
     {
         ColumnMetaData column = new(propertyName, PostgresType.Guid, ColumnOptions.ForeignKey, TRecord.TableName, checks: checks);

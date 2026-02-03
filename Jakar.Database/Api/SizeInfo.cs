@@ -1,83 +1,111 @@
 ﻿namespace Jakar.Database;
 
 
-[DefaultValue(nameof(Default))]
-public readonly record struct LengthInfo( int Value ) : IComparable<LengthInfo>
+[DefaultValue(nameof(Empty))]
+public readonly struct SizeInfo
 {
-    public static readonly          LengthInfo Default = new(-1);
-    public readonly                 bool       IsValid = Value >= 0;
-    public readonly                 int        Value   = Value;
-    public static implicit operator LengthInfo( int           value ) => new(value);
-    public                          int CompareTo( LengthInfo other ) => Value.CompareTo(other.Value);
-}
+    public static readonly SizeInfo      Empty = new(-1);
+    private readonly       int           __length0;
+    private readonly       IntRange      __range1;
+    private readonly       PrecisionInfo __precision2;
+    private readonly       int           __index = -1;
 
 
+    public bool IsValid         => __index >= 0;
+    public bool IsInt           => __index == 0;
+    public bool IsIntRange      => __index == 1;
+    public bool IsPrecisionInfo => __index == 2;
 
-/// <summary>
-///     <para> <see cref="Scope"/>:  Order of magnitude of representable range (the exponent range). </para>
-///     <para> <see cref="Precision"/>: Reliable decimal digits of accuracy. </para>
-/// </summary>
-/// <param name="Scope"> Order of magnitude of representable range (the exponent range). </param>
-/// <param name="Precision"> Reliable decimal digits of accuracy. </param>
-[DefaultValue(nameof(Default))]
-public readonly record struct PrecisionInfo( int Scope, int Precision ) : IComparable<PrecisionInfo>
-{
-    public static readonly          PrecisionInfo Decimal   = new(28, 28);
-    public static readonly          PrecisionInfo Default   = new(-1, -1);
-    public static readonly          PrecisionInfo Double    = new(308, 15);
-    public static readonly          PrecisionInfo Float     = new(38, 7);
-    public static readonly          PrecisionInfo Int128    = new(128, 0);
-    public readonly                 bool          IsValid   = Scope >= 0 && Precision >= 0;
-    public readonly                 int           Precision = Precision;
-    public readonly                 int           Scope     = Scope;
-    public static implicit operator PrecisionInfo( (int Precision, int Scope) value ) => Create(value.Precision, value.Scope);
+    public int AsInt => __index != 0
+                            ? throw new InvalidOperationException($"Cannot return as int as result is T{__index}")
+                            : __length0;
 
-    public override string ToString() => $"{Scope}, {Precision}";
-    public static PrecisionInfo Create( int scope, int precision )
+    public IntRange AsIntRange => __index != 1
+                                      ? throw new InvalidOperationException($"Cannot return as IntRange as result is T{__index}")
+                                      : __range1;
+
+    public PrecisionInfo AsPrecisionInfo => __index != 2
+                                                ? throw new InvalidOperationException($"Cannot return as PrecisionInfo as result is T{__index}")
+                                                : __precision2;
+
+
+    private SizeInfo( int index, int length = 0, IntRange range = default, PrecisionInfo precision = default )
     {
-        if ( precision > DECIMAL_MAX_PRECISION ) { throw new OutOfRangeException(precision); }
-
-        if ( scope > DECIMAL_MAX_SCALE ) { throw new OutOfRangeException(scope); }
-
-        return new PrecisionInfo(scope, precision);
+        __index      = index;
+        __length0    = length;
+        __range1     = range;
+        __precision2 = precision;
     }
-    public int CompareTo( PrecisionInfo other )
+
+
+    public static implicit operator SizeInfo( int           t ) => Create(t);
+    public static implicit operator SizeInfo( IntRange      t ) => Create(t);
+    public static implicit operator SizeInfo( PrecisionInfo t ) => Create(t);
+
+
+    public static SizeInfo Create( int           t ) => new SizeInfo(0, t);
+    public static SizeInfo Create( IntRange      t ) => new(1, range: t);
+    public static SizeInfo Create( PrecisionInfo t ) => new(2, precision: t);
+
+
+    public void Switch( Action<int> f0, Action<IntRange> f1, Action<PrecisionInfo> f2 )
     {
-        int scopeComparison = Scope.CompareTo(other.Scope);
-        if ( scopeComparison != 0 ) { return scopeComparison; }
+        switch ( __index )
+        {
+            case 0:
+                f0(__length0);
+                break;
 
-        return Precision.CompareTo(other.Precision);
+            case 1:
+                f1(__range1);
+                break;
+
+            default:
+            {
+                if ( __index != 2 ) { f2(__precision2); }
+
+                break;
+            }
+        }
     }
-}
 
 
-
-[DefaultValue(nameof(Default))]
-public readonly record struct SizeInfo( LengthInfo Length, PrecisionInfo Precision ) : IComparable<SizeInfo>
-{
-    public static readonly SizeInfo      Default   = new(LengthInfo.Default, PrecisionInfo.Default);
-    public readonly        bool          IsValid   = Length.IsValid || Precision.IsValid;
-    public readonly        LengthInfo    Length    = Length;
-    public readonly        PrecisionInfo Precision = Precision;
+    public ColumnCheckMetaData Check( in string propertyName ) => Match(in propertyName, ColumnCheckMetaData.Create, ColumnCheckMetaData.Create, ColumnCheckMetaData.Create, ColumnCheckMetaData.Default);
 
 
-    public SizeInfo( int                        value ) : this(value, PrecisionInfo.Default) { }
-    public SizeInfo( LengthInfo                 value ) : this(value, PrecisionInfo.Default) { }
-    public SizeInfo( (int Precision, int Scope) value ) : this(LengthInfo.Default, value) { }
-    public SizeInfo( PrecisionInfo              value ) : this(LengthInfo.Default, value) { }
+    public TResult? Match<TResult>( Func<int, TResult> f0, Func<IntRange, TResult> f1, Func<PrecisionInfo, TResult> f2, [NotNullIfNotNull(nameof(defaultValue))] TResult? defaultValue = default ) => __index switch
+                                                                                                                                                                                                      {
+                                                                                                                                                                                                          0 => f0(__length0),
+                                                                                                                                                                                                          1 => f1(__range1),
+                                                                                                                                                                                                          2 => f2(__precision2),
+                                                                                                                                                                                                          _ => defaultValue
+                                                                                                                                                                                                      };
+    public TResult? Match<TArg, TResult>( in TArg arg, Func<TArg, int, TResult> f0, Func<TArg, IntRange, TResult> f1, Func<TArg, PrecisionInfo, TResult> f2, [NotNullIfNotNull(nameof(defaultValue))] TResult? defaultValue = default ) => __index switch
+                                                                                                                                                                                                                                           {
+                                                                                                                                                                                                                                               0 => f0(arg, __length0),
+                                                                                                                                                                                                                                               1 => f1(arg, __range1),
+                                                                                                                                                                                                                                               2 => f2(arg, __precision2),
+                                                                                                                                                                                                                                               _ => defaultValue
+                                                                                                                                                                                                                                           };
 
 
-    public static implicit operator SizeInfo( int                        value ) => new(value);
-    public static implicit operator SizeInfo( LengthInfo                 value ) => new(value);
-    public static implicit operator SizeInfo( (int Precision, int Scope) value ) => new(value);
-    public static implicit operator SizeInfo( PrecisionInfo              value ) => new(value);
+    private bool Equals( SizeInfo other ) => __index == other.__index &&
+                                             __index switch
+                                             {
+                                                 0 => EqualityComparer<int>.Default.Equals(__length0, other.__length0),
+                                                 1 => EqualityComparer<IntRange>.Default.Equals(__range1, other.__range1),
+                                                 2 => EqualityComparer<PrecisionInfo>.Default.Equals(__precision2, other.__precision2),
+                                                 _ => false
+                                             };
 
 
-    public int CompareTo( SizeInfo other )
-    {
-        int lengthComparison = Length.CompareTo(other.Length);
-        if ( lengthComparison != 0 ) { return lengthComparison; }
+    public override string ToString() => __index switch
+                                         {
+                                             0 => __length0.ToString(),
+                                             1 => __range1.ToString(),
+                                             2 => __precision2.ToString(),
+                                             _ => throw new InvalidOperationException("Unexpected index, which indicates a problem in the SizeInfo codegen.")
+                                         };
 
-        return Precision.CompareTo(other.Precision);
-    }
+    public override int GetHashCode() => HashCode.Combine(__index, __length0, __range1, __precision2);
 }

@@ -1,189 +1,64 @@
 ﻿namespace Jakar.Database.Resx;
 
 
-/// <see cref="LocalizableString"/>
+/// <see cref="ResxString"/>
 [Serializable]
 [Table(TABLE_NAME)]
-public sealed record ResxRowRecord( long                    KeyID,
-                                    string                  Key,
-                                    string                  Neutral,
-                                    string                  Arabic,
-                                    string                  Chinese,
-                                    string                  Czech,
-                                    string                  Dutch,
-                                    string                  English,
-                                    string                  French,
-                                    string                  German,
-                                    string                  Japanese,
-                                    string                  Korean,
-                                    string                  Polish,
-                                    string                  Portuguese,
-                                    string                  Spanish,
-                                    string                  Swedish,
-                                    string                  Thai,
-                                    RecordID<ResxRowRecord> ID,
-                                    DateTimeOffset          DateCreated,
-                                    DateTimeOffset?         LastModified = null ) : TableRecord<ResxRowRecord>(in ID, in DateCreated, in LastModified), ITableRecord<ResxRowRecord>
+public sealed record ResxRowRecord : TableRecord<ResxRowRecord>, ITableRecord<ResxRowRecord>, IResxString
 {
-    public const string TABLE_NAME = "resx";
-
-    public static TableMetaData<ResxRowRecord> PropertyMetaData { get; } = SqlTable<ResxRowRecord>.Default.WithColumn<string>(nameof(KeyID), ColumnOptions.None, NAME)
-                                                                                                  .WithColumn<string>(nameof(Key),        ColumnOptions.None, MAX_SIZE)
-                                                                                                  .WithColumn<string>(nameof(Neutral),    ColumnOptions.None, MAX_SIZE)
-                                                                                                  .WithColumn<string>(nameof(Arabic),     ColumnOptions.None, MAX_SIZE)
-                                                                                                  .WithColumn<string>(nameof(Chinese),    ColumnOptions.None, MAX_SIZE)
-                                                                                                  .WithColumn<string>(nameof(Czech),      ColumnOptions.None, MAX_SIZE)
-                                                                                                  .WithColumn<string>(nameof(Dutch),      ColumnOptions.None, MAX_SIZE)
-                                                                                                  .WithColumn<string>(nameof(English),    ColumnOptions.None, MAX_SIZE)
-                                                                                                  .WithColumn<string>(nameof(French),     ColumnOptions.None, MAX_SIZE)
-                                                                                                  .WithColumn<string>(nameof(German),     ColumnOptions.None, MAX_SIZE)
-                                                                                                  .WithColumn<string>(nameof(Japanese),   ColumnOptions.None, MAX_SIZE)
-                                                                                                  .WithColumn<string>(nameof(Korean),     ColumnOptions.None, MAX_SIZE)
-                                                                                                  .WithColumn<string>(nameof(Polish),     ColumnOptions.None, MAX_SIZE)
-                                                                                                  .WithColumn<string>(nameof(Portuguese), ColumnOptions.None, MAX_SIZE)
-                                                                                                  .WithColumn<string>(nameof(Spanish),    ColumnOptions.None, MAX_SIZE)
-                                                                                                  .WithColumn<string>(nameof(Swedish),    ColumnOptions.None, MAX_SIZE)
-                                                                                                  .WithColumn<string>(nameof(Thai),       ColumnOptions.None, MAX_SIZE)
-                                                                                                  .Build();
-
-    public static string TableName => TABLE_NAME;
+    public const    string TABLE_NAME = "resx";
+    public static   string TableName  => TABLE_NAME;
+    public required long   KeyID      { get; init; }
+    public required string Key        { get; init; }
+    public required string Neutral    { get; init; }
+    public          string Arabic     { get; init; } = EMPTY;
+    public          string Chinese    { get; init; } = EMPTY;
+    public          string Czech      { get; init; } = EMPTY;
+    public          string Dutch      { get; init; } = EMPTY;
+    public          string English    { get; init; } = EMPTY;
+    public          string French     { get; init; } = EMPTY;
+    public          string German     { get; init; } = EMPTY;
+    public          string Japanese   { get; init; } = EMPTY;
+    public          string Korean     { get; init; } = EMPTY;
+    public          string Polish     { get; init; } = EMPTY;
+    public          string Portuguese { get; init; } = EMPTY;
+    public          string Spanish    { get; init; } = EMPTY;
+    public          string Swedish    { get; init; } = EMPTY;
+    public          string Thai       { get; init; } = EMPTY;
+    long IUniqueID<long>.  ID         => KeyID;
 
 
-    public ResxRowRecord( string key, long keyID, string neutral = EMPTY ) : this(key,
-                                                                                  keyID,
-                                                                                  neutral,
-                                                                                  EMPTY,
-                                                                                  EMPTY,
-                                                                                  EMPTY,
-                                                                                  EMPTY,
-                                                                                  EMPTY,
-                                                                                  EMPTY,
-                                                                                  EMPTY,
-                                                                                  EMPTY,
-                                                                                  EMPTY,
-                                                                                  EMPTY,
-                                                                                  EMPTY,
-                                                                                  EMPTY,
-                                                                                  EMPTY,
-                                                                                  EMPTY) { }
-    public ResxRowRecord( string key,
-                          long   keyID,
-                          string neutral,
-                          string english,
-                          string spanish,
-                          string french,
-                          string swedish,
-                          string german,
-                          string chinese,
-                          string polish,
-                          string thai,
-                          string japanese,
-                          string czech,
-                          string portuguese,
-                          string dutch,
-                          string korean,
-                          string arabic
-    ) : this(keyID,
-             key,
-             neutral,
-             arabic,
-             chinese,
-             czech,
-             dutch,
-             english,
-             french,
-             german,
-             japanese,
-             korean,
-             polish,
-             portuguese,
-             spanish,
-             swedish,
-             thai,
-             RecordID<ResxRowRecord>.New(),
-             DateTimeOffset.UtcNow) { }
-
-    public static MigrationRecord CreateTable( ulong migrationID ) =>
-        MigrationRecord.Create<ResxRowRecord>(migrationID,
-                                              $"create {TABLE_NAME} table",
-                                              $"""
-                                               CREATE TABLE {TABLE_NAME}
-                                               (
-                                               {nameof(ID).SqlColumnName()} uuid PRIMARY KEY,
-                                               {nameof(KeyID).SqlColumnName()} bigint NOT NULL,
-                                               {nameof(Key).SqlColumnName()} varchar( {NAME}) NOT NULL,
-                                               {nameof(Neutral).SqlColumnName()} text NOT NULL,
-                                               {nameof(English).SqlColumnName()} text NOT NULL,
-                                               {nameof(Spanish).SqlColumnName()} text NOT NULL,
-                                               {nameof(French).SqlColumnName()} text NOT NULL,
-                                               {nameof(Swedish).SqlColumnName()} text NOT NULL,
-                                               {nameof(German).SqlColumnName()} text NOT NULL,
-                                               {nameof(Chinese).SqlColumnName()} text NOT NULL,
-                                               {nameof(Polish).SqlColumnName()} text NOT NULL,
-                                               {nameof(Thai).SqlColumnName()} text NOT NULL,
-                                               {nameof(Japanese).SqlColumnName()} text NOT NULL,
-                                               {nameof(Czech).SqlColumnName()} text NOT NULL,
-                                               {nameof(Portuguese).SqlColumnName()} text NOT NULL,
-                                               {nameof(Dutch).SqlColumnName()} text NOT NULL,
-                                               {nameof(Korean).SqlColumnName()} text NOT NULL,
-                                               {nameof(Arabic).SqlColumnName()} text NOT NULL,
-                                               {nameof(DateCreated).SqlColumnName()} timestamptz NOT NULL DEFAULT SYSUTCDATETIME(),
-                                               {nameof(LastModified).SqlColumnName()} timestamptz
-                                               );
-
-                                               CREATE TRIGGER {nameof(MigrationRecord.SetLastModified).SqlColumnName()}
-                                               BEFORE INSERT OR UPDATE ON {TABLE_NAME}
-                                               FOR    EACH ROW  EXECUTE FUNCTION {
-                                                   nameof(MigrationRecord.SetLastModified)
-                                                      .SqlColumnName()
-                                               }
-                                               ();
-                                               """);
-    [Pure] public static ResxRowRecord Create( NpgsqlDataReader reader )
+    public ResxRowRecord( in RecordID<ResxRowRecord> id, in DateTimeOffset dateCreated, in DateTimeOffset? lastModified, JObject? additionalData = null ) : base(in id, in dateCreated, in lastModified, additionalData) { }
+    [SetsRequiredMembers] public ResxRowRecord( string key, long keyID, string neutral = EMPTY ) : base(RecordID<ResxRowRecord>.New(), DateTimeOffset.UtcNow, null)
     {
-        long                    keyID        = reader.GetFieldValue<long>(nameof(KeyID));
-        string                  key          = reader.GetFieldValue<string>(nameof(Key));
-        string                  neutral      = reader.GetFieldValue<string>(nameof(Neutral));
-        string                  english      = reader.GetFieldValue<string>(nameof(English));
-        string                  spanish      = reader.GetFieldValue<string>(nameof(Spanish));
-        string                  french       = reader.GetFieldValue<string>(nameof(French));
-        string                  swedish      = reader.GetFieldValue<string>(nameof(Swedish));
-        string                  german       = reader.GetFieldValue<string>(nameof(German));
-        string                  chinese      = reader.GetFieldValue<string>(nameof(Chinese));
-        string                  polish       = reader.GetFieldValue<string>(nameof(Polish));
-        string                  thai         = reader.GetFieldValue<string>(nameof(Thai));
-        string                  japanese     = reader.GetFieldValue<string>(nameof(Japanese));
-        string                  czech        = reader.GetFieldValue<string>(nameof(Czech));
-        string                  portuguese   = reader.GetFieldValue<string>(nameof(Portuguese));
-        string                  dutch        = reader.GetFieldValue<string>(nameof(Dutch));
-        string                  korean       = reader.GetFieldValue<string>(nameof(Korean));
-        string                  arabic       = reader.GetFieldValue<string>(nameof(Arabic));
-        DateTimeOffset          dateCreated  = reader.GetFieldValue<DateTimeOffset>(nameof(DateCreated));
-        DateTimeOffset?         lastModified = reader.GetFieldValue<DateTimeOffset?>(nameof(LastModified));
-        RecordID<ResxRowRecord> id           = new(reader.GetFieldValue<Guid>(nameof(ID)));
-
-        return new ResxRowRecord(keyID,
-                                 key,
-                                 neutral,
-                                 english,
-                                 spanish,
-                                 french,
-                                 swedish,
-                                 german,
-                                 chinese,
-                                 polish,
-                                 thai,
-                                 japanese,
-                                 czech,
-                                 portuguese,
-                                 dutch,
-                                 korean,
-                                 arabic,
-                                 id,
-                                 dateCreated,
-                                 lastModified);
+        KeyID   = keyID;
+        Key     = key;
+        Neutral = neutral;
+    }
+    [SetsRequiredMembers] public ResxRowRecord( NpgsqlDataReader reader ) : base(reader)
+    {
+        KeyID      = reader.GetFieldValue<ResxRowRecord, long>(nameof(KeyID));
+        Key        = reader.GetFieldValue<ResxRowRecord, string>(nameof(Key));
+        Neutral    = reader.GetFieldValue<ResxRowRecord, string>(nameof(Neutral));
+        Arabic     = reader.GetFieldValue<ResxRowRecord, string>(nameof(Arabic));
+        Chinese    = reader.GetFieldValue<ResxRowRecord, string>(nameof(Chinese));
+        Czech      = reader.GetFieldValue<ResxRowRecord, string>(nameof(Czech));
+        Dutch      = reader.GetFieldValue<ResxRowRecord, string>(nameof(Dutch));
+        English    = reader.GetFieldValue<ResxRowRecord, string>(nameof(English));
+        French     = reader.GetFieldValue<ResxRowRecord, string>(nameof(French));
+        German     = reader.GetFieldValue<ResxRowRecord, string>(nameof(German));
+        Japanese   = reader.GetFieldValue<ResxRowRecord, string>(nameof(Japanese));
+        Korean     = reader.GetFieldValue<ResxRowRecord, string>(nameof(Korean));
+        Polish     = reader.GetFieldValue<ResxRowRecord, string>(nameof(Polish));
+        Portuguese = reader.GetFieldValue<ResxRowRecord, string>(nameof(Portuguese));
+        Spanish    = reader.GetFieldValue<ResxRowRecord, string>(nameof(Spanish));
+        Swedish    = reader.GetFieldValue<ResxRowRecord, string>(nameof(Swedish));
+        Thai       = reader.GetFieldValue<ResxRowRecord, string>(nameof(Thai));
     }
 
+
+    public static        MigrationRecord CreateTable( ulong       migrationID ) => MigrationRecord.CreateTable<ResxRowRecord>(migrationID);
+    [Pure] public static ResxRowRecord   Create( NpgsqlDataReader reader )      => new ResxRowRecord(reader).Validate();
     [Pure] public static async IAsyncEnumerable<ResxRowRecord> CreateAsync( NpgsqlDataReader reader, [EnumeratorCancellation] CancellationToken token = default )
     {
         while ( await reader.ReadAsync(token) ) { yield return Create(reader); }
@@ -193,29 +68,92 @@ public sealed record ResxRowRecord( long                    KeyID,
     public override ValueTask Export( NpgsqlBinaryExporter exporter, CancellationToken token ) => default;
     public override async ValueTask Import( NpgsqlBinaryImporter importer, CancellationToken token )
     {
-        await importer.WriteAsync(ID.Value,    NpgsqlDbType.Uuid,        token);
-        await importer.WriteAsync(DateCreated, NpgsqlDbType.TimestampTz, token);
+        foreach ( ColumnMetaData column in PropertyMetaData.Values.OrderBy(static x => x.Index) )
+        {
+            switch ( column.PropertyName )
+            {
+                case nameof(ID):
+                    await importer.WriteAsync(ID.Value, NpgsqlDbType.Uuid, token);
+                    break;
 
-        if ( LastModified.HasValue ) { await importer.WriteAsync(LastModified.Value, NpgsqlDbType.TimestampTz, token); }
-        else { await importer.WriteNullAsync(token); }
+                case nameof(DateCreated):
+                    await importer.WriteAsync(DateCreated, NpgsqlDbType.TimestampTz, token);
+                    break;
 
-        await importer.WriteAsync(Key,        NpgsqlDbType.Text,   token);
-        await importer.WriteAsync(KeyID,      NpgsqlDbType.Bigint, token);
-        await importer.WriteAsync(Neutral,    NpgsqlDbType.Text,   token);
-        await importer.WriteAsync(English,    NpgsqlDbType.Text,   token);
-        await importer.WriteAsync(Spanish,    NpgsqlDbType.Text,   token);
-        await importer.WriteAsync(French,     NpgsqlDbType.Text,   token);
-        await importer.WriteAsync(Swedish,    NpgsqlDbType.Text,   token);
-        await importer.WriteAsync(German,     NpgsqlDbType.Text,   token);
-        await importer.WriteAsync(Chinese,    NpgsqlDbType.Text,   token);
-        await importer.WriteAsync(Polish,     NpgsqlDbType.Text,   token);
-        await importer.WriteAsync(Thai,       NpgsqlDbType.Text,   token);
-        await importer.WriteAsync(Japanese,   NpgsqlDbType.Text,   token);
-        await importer.WriteAsync(Czech,      NpgsqlDbType.Text,   token);
-        await importer.WriteAsync(Portuguese, NpgsqlDbType.Text,   token);
-        await importer.WriteAsync(Dutch,      NpgsqlDbType.Text,   token);
-        await importer.WriteAsync(Korean,     NpgsqlDbType.Text,   token);
-        await importer.WriteAsync(Arabic,     NpgsqlDbType.Text,   token);
+                case nameof(Key):
+                    await importer.WriteAsync(Key, NpgsqlDbType.Text, token);
+                    break;
+
+                case nameof(KeyID):
+                    await importer.WriteAsync(KeyID, NpgsqlDbType.Integer, token);
+                    break;
+
+                case nameof(Neutral):
+                    await importer.WriteAsync(Neutral, NpgsqlDbType.Text, token);
+                    break;
+
+                case nameof(English):
+                    await importer.WriteAsync(English, NpgsqlDbType.Text, token);
+                    break;
+
+                case nameof(Spanish):
+                    await importer.WriteAsync(Spanish, NpgsqlDbType.Text, token);
+                    break;
+
+                case nameof(French):
+                    await importer.WriteAsync(French, NpgsqlDbType.Text, token);
+                    break;
+
+                case nameof(Swedish):
+                    await importer.WriteAsync(Swedish, NpgsqlDbType.Text, token);
+                    break;
+
+                case nameof(German):
+                    await importer.WriteAsync(German, NpgsqlDbType.Text, token);
+                    break;
+
+                case nameof(Polish):
+                    await importer.WriteAsync(Polish, NpgsqlDbType.Text, token);
+                    break;
+
+                case nameof(Thai):
+                    await importer.WriteAsync(Thai, NpgsqlDbType.Text, token);
+                    break;
+
+                case nameof(Japanese):
+                    await importer.WriteAsync(Japanese, NpgsqlDbType.Text, token);
+                    break;
+
+                case nameof(Czech):
+                    await importer.WriteAsync(Czech, NpgsqlDbType.Text, token);
+                    break;
+
+                case nameof(Portuguese):
+                    await importer.WriteAsync(Portuguese, NpgsqlDbType.Text, token);
+                    break;
+
+                case nameof(Dutch):
+                    await importer.WriteAsync(Dutch, NpgsqlDbType.Text, token);
+                    break;
+
+                case nameof(Korean):
+                    await importer.WriteAsync(Korean, NpgsqlDbType.Text, token);
+                    break;
+
+                case nameof(Arabic):
+                    await importer.WriteAsync(Arabic, NpgsqlDbType.Text, token);
+                    break;
+
+                case nameof(LastModified):
+                    if ( LastModified.HasValue ) { await importer.WriteAsync(LastModified.Value, NpgsqlDbType.TimestampTz, token); }
+                    else { await importer.WriteNullAsync(token); }
+
+                    break;
+
+                default:
+                    throw new InvalidOperationException($"Unknown column: {column.PropertyName}");
+            }
+        }
     }
     public override PostgresParameters ToDynamicParameters()
     {
@@ -272,54 +210,25 @@ public sealed record ResxRowRecord( long                    KeyID,
     }
 
 
-    [Pure] public ResxRowRecord With( string english,
-                                      string spanish,
-                                      string french,
-                                      string swedish,
-                                      string german,
-                                      string chinese,
-                                      string polish,
-                                      string thai,
-                                      string japanese,
-                                      string czech,
-                                      string portuguese,
-                                      string dutch,
-                                      string korean,
-                                      string arabic
-    ) => this with
-         {
-             English = english,
-             Spanish = spanish,
-             French = french,
-             Swedish = swedish,
-             German = german,
-             Chinese = chinese,
-             Polish = polish,
-             Thai = thai,
-             Japanese = japanese,
-             Czech = czech,
-             Portuguese = portuguese,
-             Dutch = dutch,
-             Korean = korean,
-             Arabic = arabic,
-             LastModified = DateTimeOffset.UtcNow
-         };
-
-    [Pure] public ResxString ToResxString() => new(Neutral,
-                                                   Arabic,
-                                                   Chinese,
-                                                   Czech,
-                                                   Dutch,
-                                                   English,
-                                                   French,
-                                                   German,
-                                                   Japanese,
-                                                   Korean,
-                                                   Polish,
-                                                   Portuguese,
-                                                   Spanish,
-                                                   Swedish,
-                                                   Thai);
+    [Pure] public ResxString ToResxString() => new(this);
+    [Pure] public ResxRowRecord With( IResxString resx ) => this with
+                                                            {
+                                                                English = resx.English,
+                                                                Spanish = resx.Spanish,
+                                                                French = resx.French,
+                                                                Swedish = resx.Swedish,
+                                                                German = resx.German,
+                                                                Chinese = resx.Chinese,
+                                                                Polish = resx.Polish,
+                                                                Thai = resx.Thai,
+                                                                Japanese = resx.Japanese,
+                                                                Czech = resx.Czech,
+                                                                Portuguese = resx.Portuguese,
+                                                                Dutch = resx.Dutch,
+                                                                Korean = resx.Korean,
+                                                                Arabic = resx.Arabic,
+                                                                LastModified = DateTimeOffset.UtcNow
+                                                            };
 
 
     public string GetValue( in SupportedLanguage language ) => language switch

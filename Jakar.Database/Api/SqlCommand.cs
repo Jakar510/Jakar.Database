@@ -188,9 +188,9 @@ public readonly struct SqlCommand<TSelf>( string sql, in PostgresParameters para
     public static SqlCommand<TSelf> Where<TValue>( string columnName, TValue? value )
     {
         string sql = $"SELECT * FROM {TSelf.TableName} WHERE {columnName} = @{nameof(value)};";
-        
+
         PostgresParameters parameters = PostgresParameters.Create<TSelf>();
-        parameters.Add(nameof(value), value); 
+        parameters.Add(nameof(value), value);
 
         return new SqlCommand<TSelf>(sql, in parameters);
     }
@@ -312,11 +312,15 @@ public readonly struct SqlCommand<TSelf>( string sql, in PostgresParameters para
     public static SqlCommand<TSelf> GetCopy()
     {
         string sql = $"""
-                      COPY INTO {TSelf.TableName} 
-                      (
-                        {ColumnNames}
-                      ) 
+                      CREATE TEMP TABLE tmp_mytable (LIKE {TSelf.TableName} INCLUDING DEFAULTS);
+
+                      COPY tmp_mytable ({ColumnNames})
                       FROM STDIN;
+
+                      INSERT INTO {TSelf.TableName}
+                      SELECT *
+                      FROM tmp_mytable
+                      RETURNING *;
                       """;
 
         return sql;

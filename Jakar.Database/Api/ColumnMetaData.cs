@@ -15,7 +15,7 @@ public sealed class ColumnMetaData
     public readonly ColumnCheckMetaData? Checks;
     public readonly ColumnOptions        Options;
     public readonly PostgresType         DbType;
-    public readonly SizeInfo?            Length;
+    public readonly SizeInfo             Length;
     public readonly string               ColumnName;
     public readonly string               KeyValuePair;
     public readonly string               SpacedName;
@@ -24,13 +24,13 @@ public sealed class ColumnMetaData
     public readonly string?              ForeignKeyName;
     public readonly string?              IndexColumnName;
     public readonly string               DataType;
-
+    public readonly NpgsqlDbType         PostgresDbType;
 
     public int  Index        { get; internal set; } = -1;
     public bool IsForeignKey { [MemberNotNullWhen(true, nameof(IndexColumnName))] get => !string.IsNullOrWhiteSpace(IndexColumnName); }
 
 
-    public ColumnMetaData( in string propertyName, in PostgresType dbType, in ColumnOptions options = ColumnOptions.None, in string? foreignKeyName = null, in SizeInfo? length = null, in ColumnCheckMetaData? checks = null )
+    public ColumnMetaData( in string propertyName, in PostgresType dbType, in ColumnOptions options = ColumnOptions.None, in string? foreignKeyName = null, in SizeInfo length = default, in ColumnCheckMetaData? checks = null )
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(propertyName);
         if ( ( options & ColumnOptions.ForeignKey ) != 0 && string.IsNullOrWhiteSpace(foreignKeyName) ) { throw new ArgumentException($"Column '{propertyName}' has a {nameof(ColumnOptions.ForeignKey)} flag but {nameof(foreignKeyName)} is invalid.", nameof(foreignKeyName)); }
@@ -52,6 +52,7 @@ public sealed class ColumnMetaData
         VariableName   = $" @{columnName} ";
         ForeignKeyName = foreignKeyName?.SqlColumnName();
         DataType       = dbType.GetPostgresDataType(in length, in options);
+        PostgresDbType = dbType.ToNpgsqlDbType();
 
         IndexColumnName = ( options & ColumnOptions.Indexed ) != 0
                               ? $"{columnName}_index"
@@ -65,17 +66,14 @@ public sealed class ColumnMetaData
     public static bool   IsDbKey( MemberInfo             property ) => property.GetCustomAttribute<KeyAttribute>() is not null || property.GetCustomAttribute<System.ComponentModel.DataAnnotations.KeyAttribute>() is not null;
 
 
-    public static ColumnMetaData Create( PropertyInfo property ) => Create(property, property.GetCustomAttribute<ColumnMetaDataAttribute>(), property.GetCustomAttribute<MaxLengthAttribute>(), property.GetCustomAttribute<LengthAttribute>());
-    internal static ColumnMetaData Create( PropertyInfo property, ColumnMetaDataAttribute? attribute, MaxLengthAttribute? stringLength, LengthAttribute? maxLength )
+    public static ColumnMetaData Create( in PropertyInfo property ) => Create(in property, property.GetCustomAttribute<ColumnMetaDataAttribute>() ?? ColumnMetaDataAttribute.Default);
+    internal static ColumnMetaData Create( in PropertyInfo property, in ColumnMetaDataAttribute attribute )
     {
-        attribute ??= ColumnMetaDataAttribute.Empty;
-        attribute.Deconstruct(out ColumnOptions options, out string? foreignKeyName, out SizeInfo length, out ColumnCheckMetaData checks);
+        ArgumentNullException.ThrowIfNull(attribute, $"{property.DeclaringType?.Name}.{property.Name}");
+        attribute.Deconstruct(out ColumnOptions options, out SizeInfo length, out ColumnCheckMetaData checks, out string? foreignKeyName);
+
         PostgresType dbType = property.PropertyType.GetPostgresType(ref options, ref length);
-
         if ( IsDbKey(property) ) { options |= ColumnOptions.PrimaryKey; }
-
-        // length = new SizeInfo(Math.Max(maxLength?.MaximumLength ?? -1, stringLength?.Length ?? -1));
-        // checks = new ColumnCheckMetaData(true, $"CHECK (char_length({columnName}) BETWEEN {maxLength?.MinimumLength} AND {maxLength?.MaximumLength})");
 
         return new ColumnMetaData(property.Name, dbType, options, foreignKeyName, length, checks);
     }
@@ -114,3 +112,7 @@ public sealed class ColumnMetaData
         return emit.CreateDelegate();
     }
 }
+
+
+
+public readonly record struct IntRange( int Min, int Max );

@@ -149,10 +149,19 @@ public partial class DbTable<TSelf> : IConnectableDb
                    _                                              => throw new NotImplementedException()
                };
     }
+
+
+    public async ValueTask<int> Execute( NpgsqlConnection connection, NpgsqlTransaction transaction, string sql, PostgresParameters parameters, CancellationToken token )
+    {
+        SqlCommand<TSelf>         command = new(sql, parameters);
+        await using NpgsqlCommand cmd     = command.ToCommand(connection, transaction);
+        return await cmd.ExecuteNonQueryAsync(token);
+    }
 }
 
 
 
+[SuppressMessage("ReSharper", "InconsistentNaming")]
 public enum PostgresCollectionType
 {
     METADATA_COLLECTIONS,
@@ -161,7 +170,7 @@ public enum PostgresCollectionType
     DATA_TYPES,
     RESERVED_WORDS,
 
-// custom collections for npgsql
+    // custom collections for npgsql
     DATABASES,
     SCHEMATA,
     TABLES,

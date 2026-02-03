@@ -96,6 +96,8 @@ public sealed class TableMetaData<TSelf> : ITableMetaData
         MaxDataTypeLength        = dictionary.Values.Max(static x => x.DataType.Length);
         Count                    = dictionary.Count;
     }
+
+
     public static implicit operator TableMetaData<TSelf>( FrozenDictionary<string, ColumnMetaData> dictionary ) => new(dictionary);
 
 
@@ -140,7 +142,7 @@ public sealed class TableMetaData<TSelf> : ITableMetaData
 
 
         SortedDictionary<string, ColumnMetaData> dictionary = new(StringComparer.InvariantCultureIgnoreCase);
-        foreach ( PropertyInfo property in properties ) { dictionary[property.Name] = ColumnMetaData.Create(property); }
+        foreach ( PropertyInfo property in properties ) { dictionary[property.Name] = ColumnMetaData.Create(in property); }
 
         return new TableMetaData<TSelf>(dictionary.ToFrozenDictionary(StringComparer.InvariantCultureIgnoreCase));
     }

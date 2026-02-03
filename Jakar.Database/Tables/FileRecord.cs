@@ -12,35 +12,60 @@ namespace Jakar.Database;
 
 [Serializable]
 [Table(TABLE_NAME)]
-public sealed record FileRecord( string?              FileName,
-                                 string?              FileDescription,
-                                 string?              FileType,
-                                 long                 FileSize,
-                                 string               Hash,
-                                 MimeType?            MimeType,
-                                 string               Payload,
-                                 string?              FullPath,
-                                 RecordID<FileRecord> ID,
-                                 DateTimeOffset       DateCreated,
-                                 DateTimeOffset?      LastModified = null ) : TableRecord<FileRecord>(in ID, in DateCreated, in LastModified), ITableRecord<FileRecord>, IFileData<Guid>, IFileMetaData
+public sealed record FileRecord : TableRecord<FileRecord>, ITableRecord<FileRecord>, IFileData<Guid>, IFileMetaData
 {
     public const string TABLE_NAME = "files";
 
-    public static TableMetaData<FileRecord> PropertyMetaData { get; } = SqlTable<FileRecord>.Default.WithColumn<string>(nameof(FileName), ColumnOptions.Nullable, 256)
-                                                                                            .WithColumn<string>(nameof(FileDescription), ColumnOptions.Nullable, 1024)
-                                                                                            .WithColumn<string>(nameof(FileType),        ColumnOptions.Nullable, 256)
-                                                                                            .WithColumn<string>(nameof(Hash),            ColumnOptions.None,     MAX_FIXED)
-                                                                                            .WithColumn<string>(nameof(FullPath),        ColumnOptions.None,     MAX_FIXED)
-                                                                                            .WithColumn<long>(nameof(FileSize),          ColumnOptions.None)
-                                                                                            .WithColumn<MimeType>(nameof(MimeType),      true)
-                                                                                            .Build();
 
-    public static string TableName => TABLE_NAME;
+    public static                                                                      string    TableName       => TABLE_NAME;
+    [ColumnMetaData(ColumnOptions.Nullable, 256)]  public                              string?   FileName        { get; init; }
+    [ColumnMetaData(ColumnOptions.Nullable, 1024)] public                              string?   FileDescription { get; init; }
+    [ColumnMetaData(ColumnOptions.Nullable, 256)]  public                              string?   FileType        { get; init; }
+    public                                                                             long      FileSize        { get; init; }
+    [ColumnMetaData(ColumnOptions.Nullable | ColumnOptions.Indexed, MAX_FIXED)] public string    Hash            { get; init; }
+    public                                                                             MimeType? MimeType        { get; init; }
+    [ColumnMetaData(ColumnOptions.Indexed)]                          public            string    Payload         { get; init; }
+    [ColumnMetaData(ColumnOptions.Nullable | ColumnOptions.Indexed)] public            string?   FullPath        { get; init; }
 
 
-    public FileRecord( IFileData<Guid, FileMetaData>               data, LocalFile?    file                      = null ) : this(data, data.MetaData, file) { }
-    private FileRecord( IFileData<Guid>                            data, IFileMetaData metaData, LocalFile? file = null ) : this(metaData.FileName, metaData.FileDescription, metaData.FileType, data.FileSize, data.Hash, metaData.MimeType, data.Payload, file?.FullPath, RecordID<FileRecord>.New(), DateTimeOffset.UtcNow) { }
-    public static FileRecord Create( IFileData<Guid, FileMetaData> data, LocalFile?    file = null ) => new(data, file);
+    public FileRecord( IFileData<Guid, FileMetaData> data, LocalFile?    file                      = null ) : this(data, data.MetaData, file) { }
+    private FileRecord( IFileData<Guid>              data, IFileMetaData metaData, LocalFile? file = null ) : this(metaData.FileName, metaData.FileDescription, metaData.FileType, data.FileSize, data.Hash, metaData.MimeType, data.Payload, file?.FullPath, RecordID<FileRecord>.New(), DateTimeOffset.UtcNow) { }
+    public FileRecord( string?              FileName,
+                       string?              FileDescription,
+                       string?              FileType,
+                       long                 FileSize,
+                       string               Hash,
+                       MimeType?            MimeType,
+                       string               Payload,
+                       string?              FullPath,
+                       RecordID<FileRecord> ID,
+                       DateTimeOffset       DateCreated,
+                       DateTimeOffset?      LastModified = null
+    ) : base(in ID, in DateCreated, in LastModified)
+    {
+        this.FileName        = FileName;
+        this.FileDescription = FileDescription;
+        this.FileType        = FileType;
+        this.FileSize        = FileSize;
+        this.Hash            = Hash;
+        this.MimeType        = MimeType;
+        this.Payload         = Payload;
+        this.FullPath        = FullPath;
+    }
+    internal FileRecord( NpgsqlDataReader reader ) : base(reader)
+    {
+        FileName        = reader.GetFieldValue<FileRecord, string?>(nameof(FileName));
+        FileDescription = reader.GetFieldValue<FileRecord, string?>(nameof(FileDescription));
+        FileType        = reader.GetFieldValue<FileRecord, string?>(nameof(FileType));
+        FileSize        = reader.GetFieldValue<FileRecord, long>(nameof(FileSize));
+        Hash            = reader.GetFieldValue<FileRecord, string>(nameof(Hash));
+        MimeType        = reader.GetEnumValue<FileRecord, MimeType>(nameof(MimeType), Extensions.MimeType.NotSet);
+        Payload         = reader.GetFieldValue<FileRecord, string>(nameof(Payload));
+        FullPath        = reader.GetFieldValue<FileRecord, string?>(nameof(FullPath));
+    }
+    [Pure] public static FileRecord      Create( NpgsqlDataReader              reader )                       => new FileRecord(reader).Validate();
+    public static        MigrationRecord CreateTable( ulong                    migrationID )                  => MigrationRecord.CreateTable<FileRecord>(migrationID);
+    public static        FileRecord      Create( IFileData<Guid, FileMetaData> data, LocalFile? file = null ) => new(data, file);
     public static FileRecord Create<TFileMetaData>( IFileData<Guid, TFileMetaData> data, LocalFile? file = null )
         where TFileMetaData : class, IFileMetaData<TFileMetaData> => new(data, data.MetaData, file);
     public TFileData ToFileData<TFileData, TFileMetaData>()
@@ -115,26 +140,64 @@ public sealed record FileRecord( string?              FileName,
     public override ValueTask Export( NpgsqlBinaryExporter exporter, CancellationToken token ) => default;
     public override async ValueTask Import( NpgsqlBinaryImporter importer, CancellationToken token )
     {
-        await importer.WriteAsync(ID.Value,    NpgsqlDbType.Uuid,        token);
-        await importer.WriteAsync(DateCreated, NpgsqlDbType.TimestampTz, token);
+        foreach ( ColumnMetaData column in PropertyMetaData.Values.OrderBy(static x => x.Index) )
+        {
+            switch ( column.PropertyName )
+            {
+                case nameof(ID):
+                    await importer.WriteAsync(ID.Value, column.PostgresDbType, token);
+                    break;
 
-        if ( LastModified.HasValue ) { await importer.WriteAsync(LastModified.Value, NpgsqlDbType.TimestampTz, token); }
-        else { await importer.WriteNullAsync(token); }
+                case nameof(DateCreated):
+                    await importer.WriteAsync(DateCreated, column.PostgresDbType, token);
+                    break;
 
-        await importer.WriteAsync(FileName,        NpgsqlDbType.Text, token);
-        await importer.WriteAsync(FileDescription, NpgsqlDbType.Text, token);
-        await importer.WriteAsync(FileType,        NpgsqlDbType.Text, token);
+                case nameof(LastModified):
+                    if ( LastModified.HasValue ) { await importer.WriteAsync(LastModified.Value, column.PostgresDbType, token); }
+                    else { await importer.WriteNullAsync(token); }
 
-        if ( string.IsNullOrWhiteSpace(FileType) ) { await importer.WriteAsync(FileType, NpgsqlDbType.Uuid, token); }
-        else { await importer.WriteNullAsync(token); }
+                    break;
 
-        await importer.WriteAsync(FileSize, NpgsqlDbType.Bigint, token);
-        await importer.WriteAsync(Hash,     NpgsqlDbType.Text,   token);
-        await importer.WriteAsync(MimeType, NpgsqlDbType.Text,   token);
-        await importer.WriteAsync(Payload,  NpgsqlDbType.Text,   token);
+                case nameof(FileDescription):
+                    await importer.WriteAsync(FileDescription, column.PostgresDbType, token);
+                    break;
 
-        if ( string.IsNullOrWhiteSpace(FullPath) ) { await importer.WriteAsync(FullPath, NpgsqlDbType.Uuid, token); }
-        else { await importer.WriteNullAsync(token); }
+                case nameof(FileName):
+                    await importer.WriteAsync(FileName, column.PostgresDbType, token);
+                    break;
+
+                case nameof(FileType):
+                    if ( string.IsNullOrWhiteSpace(FileType) ) { await importer.WriteAsync(FileType, column.PostgresDbType, token); }
+                    else { await importer.WriteNullAsync(token); }
+
+                    break;
+
+                case nameof(FileSize):
+                    await importer.WriteAsync(FileSize, column.PostgresDbType, token);
+                    break;
+
+                case nameof(Hash):
+                    await importer.WriteAsync(Hash, column.PostgresDbType, token);
+                    break;
+
+                case nameof(MimeType):
+                    await importer.WriteAsync(MimeType, column.PostgresDbType, token);
+                    break;
+
+                case nameof(Payload):
+                    await importer.WriteAsync(Payload, column.PostgresDbType, token);
+                    break;
+
+                case nameof(FullPath):
+                    if ( string.IsNullOrWhiteSpace(FullPath) ) { await importer.WriteAsync(FullPath, column.PostgresDbType, token); }
+                    else { await importer.WriteNullAsync(token); }
+
+                    break;
+
+                default:
+                    throw new InvalidOperationException($"Unknown column: {column.PropertyName}");
+            }
+        }
     }
     [Pure] public override PostgresParameters ToDynamicParameters()
     {
@@ -151,36 +214,6 @@ public sealed record FileRecord( string?              FileName,
         parameters.Add(nameof(DateCreated),     DateCreated);
         parameters.Add(nameof(LastModified),    LastModified);
         return parameters;
-    }
-
-
-    [Pure] public static FileRecord Create( NpgsqlDataReader reader )
-    {
-        string?              name         = reader.GetFieldValue<FileRecord, string?>(nameof(FileName));
-        string?              description  = reader.GetFieldValue<FileRecord, string?>(nameof(FileDescription));
-        string?              fileType     = reader.GetFieldValue<FileRecord, string?>(nameof(FileType));
-        long                 size         = reader.GetFieldValue<FileRecord, long>(nameof(FileSize));
-        string               hash         = reader.GetFieldValue<FileRecord, string>(nameof(Hash));
-        MimeType             mime         = reader.GetEnumValue<FileRecord, MimeType>(nameof(MimeType), Extensions.MimeType.NotSet);
-        string               payload      = reader.GetFieldValue<FileRecord, string>(nameof(Payload));
-        string?              fullPath     = reader.GetFieldValue<FileRecord, string?>(nameof(FullPath));
-        DateTimeOffset       dateCreated  = reader.GetFieldValue<FileRecord, DateTimeOffset>(nameof(DateCreated));
-        DateTimeOffset?      lastModified = reader.GetFieldValue<FileRecord, DateTimeOffset?>(nameof(LastModified));
-        RecordID<FileRecord> id           = RecordID<FileRecord>.ID(reader);
-
-        FileRecord record = new(name,
-                                description,
-                                fileType,
-                                size,
-                                hash,
-                                mime,
-                                payload,
-                                fullPath,
-                                id,
-                                dateCreated,
-                                lastModified);
-
-        return record.Validate();
     }
 
 
@@ -242,29 +275,4 @@ public sealed record FileRecord( string?              FileName,
     public static bool operator >=( FileRecord left, FileRecord right ) => left.CompareTo(right) >= 0;
     public static bool operator <( FileRecord  left, FileRecord right ) => left.CompareTo(right) < 0;
     public static bool operator <=( FileRecord left, FileRecord right ) => left.CompareTo(right) <= 0;
-    public static MigrationRecord CreateTable( ulong migrationID ) =>
-        MigrationRecord.Create<FileRecord>(5,
-                                           $"create {TABLE_NAME} table",
-                                           $"""
-                                            CREATE TABLE IF NOT EXISTS {TABLE_NAME}
-                                            (
-                                            {nameof(FileName).SqlColumnName()}        varchar({FILE_NAME})  NULL UNIQUE,
-                                            {nameof(FileDescription).SqlColumnName()} varchar({MAX_FIXED})  NULL,
-                                            {nameof(FileType).SqlColumnName()}        varchar(TYPE)         NULL,
-                                            {nameof(FullPath).SqlColumnName()}        varchar({MAX_FIXED})  NULL UNIQUE,
-                                            {nameof(FileSize).SqlColumnName()}        bigint                NOT NULL,
-                                            {nameof(Hash).SqlColumnName()}             varchar({MAX_FIXED}) NOT NULL,
-                                            {nameof(MimeType).SqlColumnName()}        varchar(TYPE)         NULL,
-                                            {nameof(Payload).SqlColumnName()}          text                 NOT NULL,
-                                            {nameof(ID).SqlColumnName()}               uuid                 NOT NULL PRIMARY KEY,
-                                            {nameof(DateCreated).SqlColumnName()}     timestamptz           NOT NULL DEFAULT SYSUTCDATETIME(),
-                                            {nameof(LastModified).SqlColumnName()}    timestamptz           NULL,
-                                            FOREIGN KEY({nameof(MimeType).SqlColumnName()}) REFERENCES {nameof(MimeType).SqlColumnName()}(id) ON DELETE SET NULL
-                                            );
-
-                                            CREATE TRIGGER {nameof(MigrationRecord.SetLastModified).SqlColumnName()}
-                                            BEFORE INSERT OR UPDATE ON {TABLE_NAME}
-                                            FOR EACH ROW
-                                            EXECUTE FUNCTION {nameof(MigrationRecord.SetLastModified).SqlColumnName()}();
-                                            """);
 }
