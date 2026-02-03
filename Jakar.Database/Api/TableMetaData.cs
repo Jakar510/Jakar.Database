@@ -17,6 +17,7 @@ public interface ITableMetaData
     public (string PropertyName, ColumnMetaData Column) this[ int index ] { get; }
 
 
+    public string           CreateTable();
     TableMetaDataEnumerator GetEnumerator();
     bool                    ContainsKey( string propertyName );
     bool                    TryGetValue( string propertyName, [MaybeNullWhen(false)] out ColumnMetaData value );
@@ -121,8 +122,7 @@ public sealed class TableMetaData<TSelf> : ITableMetaData
 
 
     public TableMetaDataEnumerator GetEnumerator() => new(this);
-
-
+    string ITableMetaData.         CreateTable()   => CreateTable();
     public static string CreateTable()
     {
         StringBuilder query     = new(10240);

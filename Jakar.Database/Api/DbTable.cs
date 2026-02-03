@@ -6,19 +6,22 @@ namespace Jakar.Database;
 
 
 [SuppressMessage("ReSharper", "ClassWithVirtualMembersNeverInherited.Global")]
-public partial class DbTable<TSelf> : IConnectableDb
+public partial class DbTable<TSelf> : IDbTable<TSelf>
     where TSelf : class, ITableRecord<TSelf>
 {
     protected readonly FusionCache        _cache;
     protected readonly IConnectableDbRoot _database;
 
 
+    public static TableMetaData<TSelf>     PropertyMetaData          { [Pure] get => TSelf.PropertyMetaData; }
     public static TSelf[]                  Empty                     => [];
     public static ImmutableArray<TSelf>    EmptyArray                => [];
     public static FrozenSet<TSelf>         Set                       => FrozenSet<TSelf>.Empty;
     public        FusionCacheEntryOptions? Options                   { get; set; }
     public        RecordGenerator<TSelf>   Records                   => new(this);
-    public        IsolationLevel           TransactionIsolationLevel => _database.TransactionIsolationLevel;
+    ITableMetaData IDbTable.               PropertyMetaData          { [Pure] get => PropertyMetaData; }
+    public IsolationLevel                  TransactionIsolationLevel => _database.TransactionIsolationLevel;
+    public string                          TableName                 { [Pure] get => TSelf.TableName; } 
 
 
     public DbTable( IConnectableDbRoot database, FusionCache cache )
@@ -157,32 +160,4 @@ public partial class DbTable<TSelf> : IConnectableDb
         await using NpgsqlCommand cmd     = command.ToCommand(connection, transaction);
         return await cmd.ExecuteNonQueryAsync(token);
     }
-}
-
-
-
-[SuppressMessage("ReSharper", "InconsistentNaming")]
-public enum PostgresCollectionType
-{
-    METADATA_COLLECTIONS,
-    RESTRICTIONS,
-    DATA_SOURCE_INFORMATION,
-    DATA_TYPES,
-    RESERVED_WORDS,
-
-    // custom collections for npgsql
-    DATABASES,
-    SCHEMATA,
-    TABLES,
-    COLUMNS,
-    VIEWS,
-    MATERIALIZED_VIEWS,
-    USERS,
-    INDEXES,
-    INDEX_COLUMNS,
-    CONSTRAINTS,
-    PRIMARY_KEY,
-    UNIQUE_KEYS,
-    FOREIGN_KEYS,
-    CONSTRAINT_COLUMNS
 }

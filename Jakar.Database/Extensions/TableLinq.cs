@@ -83,13 +83,13 @@ public static class TableLinq
         {
             while ( await reader.ReadAsync(token) ) { yield return TSelf.Create(reader); }
         }
-        public async ValueTask<TSelf[]> CreateAsync<TSelf>( int initialCapacity, [EnumeratorCancellation] CancellationToken token = default )
+        public async ValueTask<ImmutableArray<TSelf>> CreateAsync<TSelf>( int initialCapacity, [EnumeratorCancellation] CancellationToken token = default )
             where TSelf : class, ITableRecord<TSelf>
         {
             List<TSelf> list = new(initialCapacity);
             while ( await reader.ReadAsync(token) ) { list.Add(TSelf.Create(reader)); }
 
-            return list.ToArray();
+            return [..list];
         }
     }
 

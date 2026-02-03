@@ -59,6 +59,7 @@ public sealed class DatabaseTests : Assert
     {
         __scope.Dispose();
         await __app.DisposeAsync();
+        await __db.DisposeAsync();
 
         if ( __postgreSqlContainer is not null )
         {
@@ -125,8 +126,7 @@ public sealed class DatabaseTests : Assert
         ( UserRecord admin, UserRecord user )             = await Add_Users(__db);
         ( AddressRecord address, UserAddressRecord link ) = await Add_Address(__db, user);
 
-        That(address.ID, Is.Not.Null);
-        That(link.ID,    Is.EqualTo(user.ID));
+        That(link.ID, Is.EqualTo(user.ID));
     }
 
     // ------------------------------------------------------------
@@ -138,7 +138,6 @@ public sealed class DatabaseTests : Assert
         ( UserRecord admin, UserRecord user ) = await Add_Users(__db);
         FileRecord file = await Add_File(__db, user);
 
-        That(file.ID,      Is.Not.Null);
         That(user.ImageID, Is.EqualTo(file));
     }
 

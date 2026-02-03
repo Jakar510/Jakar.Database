@@ -5,11 +5,7 @@
 namespace Jakar.Database;
 
 
-public interface IDbTable : IAsyncDisposable;
-
-
-
-public interface IConnectableDb : IDbTable
+public interface IConnectableDb : IAsyncDisposable
 {
     public IsolationLevel TransactionIsolationLevel { get; }
 

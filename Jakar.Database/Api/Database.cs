@@ -33,10 +33,9 @@ public abstract partial class Database : Randoms, IConnectableDbRoot, IHealthChe
     protected                   ActivitySource?                  _activitySource;
     protected                   Meter?                           _meter;
     protected                   string?                          _className;
-
-
-    public static Database?     Current       { get; set; }
-    public static DataProtector DataProtector { get; set; } = new(RSAEncryptionPadding.OaepSHA1);
+    public                      MigrationManager                 MigrationManager { get; }
+    public static               Database?                        Current          { get; set; }
+    public static               DataProtector                    DataProtector    { get; set; } = new(RSAEncryptionPadding.OaepSHA1);
 
     public string ClassName =>
         _className ??= GetType()
@@ -88,6 +87,7 @@ public abstract partial class Database : Randoms, IConnectableDbRoot, IHealthChe
         UserAddresses      = Create<UserAddressRecord>();
         Files              = Create<FileRecord>();
         Migrations         = Create<MigrationRecord>();
+        MigrationManager   = CreateMigrationManager();
         Current            = this;
         Task.Run(InitDataProtector);
     }
@@ -160,7 +160,7 @@ public abstract partial class Database : Randoms, IConnectableDbRoot, IHealthChe
     }
     protected async ValueTask InitDataProtector( LocalFile pem, SecuredStringResolverOptions password, CancellationToken token = default ) => DataProtector = await DataProtector.WithKeyAsync(pem, await password.GetSecuredStringAsync(Configuration, token), token);
 
-
+    protected virtual MigrationManager CreateMigrationManager()                    => new(this);
     protected virtual NpgsqlConnection CreateConnection( in SecuredString secure ) => new(secure.ToString());
     public async ValueTask<NpgsqlConnection> ConnectAsync( CancellationToken token )
     {
@@ -174,16 +174,30 @@ public abstract partial class Database : Randoms, IConnectableDbRoot, IHealthChe
     protected virtual DbTable<TSelf> Create<TSelf>()
         where TSelf : class, ITableRecord<TSelf>
     {
-        DbTable<TSelf> table = new(this, _cache);
+        TableMetaData<TSelf> data  = TSelf.PropertyMetaData;
+        DbTable<TSelf>       table = new(this, _cache);
         return AddDisposable(table);
     }
-
-
     protected TValue AddDisposable<TValue>( TValue value )
         where TValue : IDbTable
     {
         _tables.Add(value);
         return value;
+    }
+
+
+    public virtual async ValueTask<ImmutableArray<MigrationRecord>> AllMigrations( CancellationToken token )
+    {
+        await using NpgsqlConnection connection = await ConnectAsync(token);
+        await using NpgsqlCommand    cmd        = new(null, connection);
+        cmd.Connection  = connection;
+        cmd.CommandText = MigrationRecord.SelectSql;
+        NpgsqlParameter parameter = cmd.CreateParameter();
+        parameter.NpgsqlDbType = NpgsqlDbType.Text;
+
+        await using NpgsqlDataReader    reader  = await cmd.ExecuteReaderAsync(token);
+        ImmutableArray<MigrationRecord> records = await reader.CreateAsync<MigrationRecord>(MigrationManager.Records.Count, token);
+        return records;
     }
 
 
