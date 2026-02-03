@@ -46,12 +46,7 @@ public static class MigrationExtensions
 
 
 
-    private static async Task<ContentHttpResult> GetMigrationsAndRenderHtml( [FromServices] Database db, CancellationToken token )
-    {
-        ImmutableArray<MigrationRecord> records = await db.AllMigrations(token);
-        string                          html    = db.MigrationManager.CreateHtml(in records);
-        return TypedResults.Content(html, "text/html", Encoding.UTF8);
-    }
+    public static async Task<ContentHttpResult> GetMigrationsAndRenderHtml( [FromServices] Database db, CancellationToken token ) => await db.MigrationManager.AppliedMigrations(token);
 
 
     public static PostgresType ToDbPropertyType( this DbType type ) => type switch
@@ -101,8 +96,8 @@ public class MigrationManager
     internal static    ulong                                                 MigrationID => ++field;
 
     public HashSet<MigrationRecord> Records => _records ??= __migrationFactories.AsValueEnumerable()
-                                                                                 .Select(pair => pair.Value(pair.Key))
-                                                                                 .ToHashSet();
+                                                                                .Select(pair => pair.Value(pair.Key))
+                                                                                .ToHashSet();
 
 
     public MigrationManager( Database db )
@@ -139,6 +134,25 @@ public class MigrationManager
     }
 
 
+    public virtual async ValueTask<ContentHttpResult> AppliedMigrations( CancellationToken token )
+    {
+        ImmutableArray<MigrationRecord> records = await AllMigrations(token);
+        string                          html    = CreateHtml(in records);
+        return TypedResults.Content(html, "text/html", Encoding.UTF8);
+    }
+    public virtual async ValueTask<ImmutableArray<MigrationRecord>> AllMigrations( CancellationToken token )
+    {
+        await using NpgsqlConnection connection = await _db.ConnectAsync(token);
+        await using NpgsqlCommand    cmd        = new(null, connection);
+        cmd.Connection  = connection;
+        cmd.CommandText = MigrationRecord.SelectSql;
+        NpgsqlParameter parameter = cmd.CreateParameter();
+        parameter.NpgsqlDbType = NpgsqlDbType.Text;
+
+        await using NpgsqlDataReader    reader  = await cmd.ExecuteReaderAsync(token);
+        ImmutableArray<MigrationRecord> records = await reader.CreateAsync<MigrationRecord>(__migrationFactories.Count, token);
+        return records;
+    }
     public async ValueTask ApplyMigrations( CancellationToken token = default )
     {
         ImmutableArray<MigrationRecord> applied     = await _db.AllMigrations(token);

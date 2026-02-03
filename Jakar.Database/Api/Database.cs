@@ -186,19 +186,6 @@ public abstract partial class Database : Randoms, IConnectableDbRoot, IHealthChe
     }
 
 
-    public virtual async ValueTask<ImmutableArray<MigrationRecord>> AllMigrations( CancellationToken token )
-    {
-        await using NpgsqlConnection connection = await ConnectAsync(token);
-        await using NpgsqlCommand    cmd        = new(null, connection);
-        cmd.Connection  = connection;
-        cmd.CommandText = MigrationRecord.SelectSql;
-        NpgsqlParameter parameter = cmd.CreateParameter();
-        parameter.NpgsqlDbType = NpgsqlDbType.Text;
-
-        await using NpgsqlDataReader    reader  = await cmd.ExecuteReaderAsync(token);
-        ImmutableArray<MigrationRecord> records = await reader.CreateAsync<MigrationRecord>(MigrationManager.Records.Count, token);
-        return records;
-    }
 
 
     public virtual async Task<HealthCheckResult> CheckHealthAsync( HealthCheckContext context, CancellationToken token = default )
