@@ -222,8 +222,7 @@ public static class DbServices
         }
 
         public ILoggingBuilder AddDefaultLogging<TApp>()
-            where TApp : IAppName =>
-            self.Logging.AddDefaultLogging<TApp>(self.Environment.IsDevelopment());
+            where TApp : IAppName => self.Logging.AddDefaultLogging<TApp>(self.Environment.IsDevelopment());
     }
 
 

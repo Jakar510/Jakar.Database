@@ -31,6 +31,11 @@ public readonly struct SqlCommand<TSelf>( string sql, in PostgresParameters para
         command.Parameters.Add(Parameters.Values);
         return command;
     }
+    public async ValueTask ExecuteNonQueryAsync( NpgsqlConnection connection, NpgsqlTransaction transaction, CancellationToken token )
+    {
+        await using NpgsqlCommand command = ToCommand(connection, transaction);
+        await command.ExecuteNonQueryAsync(token);
+    }
 
 
     public          bool Equals( SqlCommand<TSelf> other ) => string.Equals(SQL, other.SQL, StringComparison.InvariantCultureIgnoreCase) && Parameters.Equals(other.Parameters) && CommandType == other.CommandType && Flags == other.Flags;

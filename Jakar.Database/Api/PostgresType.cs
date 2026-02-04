@@ -1101,7 +1101,7 @@ public static class PostgresTypes
 
     extension( PostgresType self )
     {
-        public string GetPostgresDataType( in SizeInfo info, in ColumnOptions options = 0 )
+        public string GetPostgresDataType( in SizeInfo info )
         {
             int length = info.IsInt
                              ? info.AsInt
@@ -1168,8 +1168,8 @@ public static class PostgresTypes
                        PostgresType.Polygon                  => "polygon",
                        PostgresType.LineSegment              => @"lseg",
                        PostgresType.Point                    => "point",
-                       PostgresType.Int128                   => "decimal(128, 0)",
-                       PostgresType.UInt128                  => "decimal(128, 0)",
+                       PostgresType.Int128                   => "int16",
+                       PostgresType.UInt128                  => "uint16",
                        PostgresType.Numeric                  => "numeric",
                        PostgresType.Box                      => "box",
                        PostgresType.Circle                   => "circle",

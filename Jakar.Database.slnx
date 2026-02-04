@@ -8,4 +8,5 @@
   <Project Path="Jakar.Database/Jakar.Database.csproj" />
   <Project Path="Jakar.SqlBuilder.Tests/Jakar.SqlBuilder.Tests.csproj" />
   <Project Path="Jakar.SqlBuilder/Jakar.SqlBuilder.csproj" />
+  <Project Path="SampleApi/SampleApi.csproj" Id="8d382f36-770e-4059-940c-9583b5c1619c" />
 </Solution>

@@ -10,20 +10,34 @@ public static class MigrationExtensions
 {
     extension( WebApplication self )
     {
+        public void InitializeLogging( bool parameterLoggingEnabled = false )
+        {
+            ILoggerFactory factory = self.Services.GetRequiredService<ILoggerFactory>();
+            NpgsqlLoggingConfiguration.InitializeLogging(factory, parameterLoggingEnabled);
+        }
+
         public async ValueTask ApplyMigrations( CancellationToken token = default )
         {
             await using AsyncServiceScope scope = self.Services.CreateAsyncScope();
             Database                      db    = scope.ServiceProvider.GetRequiredService<Database>();
             await db.MigrationManager.ApplyMigrations(token);
         }
-        public async Task RunWithMigrationsAsync( string[]? urls = null, string endpoint = MigrationManager.MIGRATIONS, CancellationToken token = default )
+
+        public async Task RunWithMigrationsAsync( string[]? urls, Func<IServiceProvider, CancellationToken, ValueTask>? beforeRunHandler = null, string migrationsEndpoint = MigrationManager.MIGRATIONS, CancellationToken token = default )
         {
-            self.TryUseMigrationsEndPoint(endpoint);
+            self.TryUseMigrationsEndPoint(migrationsEndpoint);
 
             try
             {
+                self.InitializeLogging();
                 await self.ApplyMigrations(token);
                 if ( urls is not null ) { self.UseUrls(urls); }
+
+                if ( beforeRunHandler is not null )
+                {
+                    await using AsyncServiceScope scope = self.Services.CreateAsyncScope();
+                    await beforeRunHandler(scope.ServiceProvider, token);
+                }
 
                 await self.StartAsync(token)
                           .ConfigureAwait(false);
@@ -37,10 +51,12 @@ public static class MigrationExtensions
                           .ConfigureAwait(false);
             }
         }
+
         public void TryUseMigrationsEndPoint( string endpoint = MigrationManager.MIGRATIONS )
         {
             if ( self.Environment.IsDevelopment() ) { self.UseMigrationsEndPoint(endpoint); }
         }
+
         public void UseMigrationsEndPoint( string endpoint = MigrationManager.MIGRATIONS ) => self.MapGet(endpoint, GetMigrationsAndRenderHtml);
     }
 
@@ -103,6 +119,7 @@ public class MigrationManager
     public MigrationManager( Database db )
     {
         _db                               = db;
+        __migrationFactories[MigrationID] = MigrationRecord.AddPostgreSqlExtensions;
         __migrationFactories[MigrationID] = MigrationRecord.CreateTable;
         __migrationFactories[MigrationID] = MigrationRecord.SetLastModified;
         __migrationFactories[MigrationID] = MigrationRecord.FromEnum<MimeType>;
@@ -140,31 +157,39 @@ public class MigrationManager
         string                          html    = CreateHtml(in records);
         return TypedResults.Content(html, "text/html", Encoding.UTF8);
     }
+
+
     public virtual async ValueTask<ImmutableArray<MigrationRecord>> AllMigrations( CancellationToken token )
     {
         await using NpgsqlConnection connection = await _db.ConnectAsync(token);
-        await using NpgsqlCommand    cmd        = new(null, connection);
-        cmd.Connection  = connection;
-        cmd.CommandText = MigrationRecord.SelectSql;
-        NpgsqlParameter parameter = cmd.CreateParameter();
-        parameter.NpgsqlDbType = NpgsqlDbType.Text;
-
+        return await AllMigrations(connection, null, token);
+    }
+    public virtual async ValueTask<ImmutableArray<MigrationRecord>> AllMigrations( NpgsqlConnection connection, NpgsqlTransaction? transaction, CancellationToken token )
+    {
+        SqlCommand<MigrationRecord>     command = MigrationRecord.SelectSql;
+        await using NpgsqlCommand       cmd     = command.ToCommand(connection, transaction);
         await using NpgsqlDataReader    reader  = await cmd.ExecuteReaderAsync(token);
         ImmutableArray<MigrationRecord> records = await reader.CreateAsync<MigrationRecord>(__migrationFactories.Count, token);
         return records;
     }
+
+
     public async ValueTask ApplyMigrations( CancellationToken token = default )
     {
-        ImmutableArray<MigrationRecord> applied     = await _db.AllMigrations(token);
         await using NpgsqlConnection    connection  = await _db.ConnectAsync(token);
         await using NpgsqlTransaction   transaction = await connection.BeginTransactionAsync(token);
+        ImmutableArray<MigrationRecord> applied     = await AllMigrations(connection, transaction, token);
         HashSet<MigrationRecord>        pending     = Records;
         pending.ExceptWith(applied);
 
         try
         {
-            foreach ( MigrationRecord record in pending.OrderBy(static x => x.MigrationID) ) { await Apply(record, token); }
+            List<Task> tasks = new(pending.Count);
 
+            // ReSharper disable once LoopCanBeConvertedToQuery
+            foreach ( MigrationRecord record in pending.OrderBy(static x => x.MigrationID) ) { tasks.Add(Apply(connection, transaction, record, token)); }
+
+            await Task.WhenAll(tasks.AsSpan());
             await transaction.CommitAsync(token);
         }
         catch ( Exception e )
@@ -173,23 +198,7 @@ public class MigrationManager
             throw new InvalidOperationException("Failed to apply Records", e);
         }
     }
-    public async ValueTask Apply( MigrationRecord self, CancellationToken token )
-    {
-        await using NpgsqlConnection  connection  = await _db.ConnectAsync(token);
-        await using NpgsqlTransaction transaction = await connection.BeginTransactionAsync(token);
-
-        try
-        {
-            await Apply(connection, transaction, self, token);
-            await transaction.CommitAsync(token);
-        }
-        catch ( Exception e )
-        {
-            await transaction.RollbackAsync(token);
-            throw new SqlException<MigrationRecord>(MigrationRecord.ApplySql, e);
-        }
-    }
-    public static async ValueTask Apply( NpgsqlConnection connection, NpgsqlTransaction transaction, MigrationRecord self, CancellationToken token )
+    public virtual async Task Apply( NpgsqlConnection connection, NpgsqlTransaction transaction, MigrationRecord self, CancellationToken token )
     {
         PostgresParameters parameters = PostgresParameters.Create<MigrationRecord>();
         parameters.Add(nameof(MigrationRecord.MigrationID),    self.MigrationID);
@@ -198,8 +207,8 @@ public class MigrationManager
         parameters.Add(nameof(MigrationRecord.AppliedOn),      self.AppliedOn);
         parameters.Add(nameof(MigrationRecord.AdditionalData), self.AdditionalData);
 
-        CommandDefinition command = new(MigrationRecord.ApplySql, parameters, transaction, null, null, CommandFlags.Buffered, token);
-        await connection.ExecuteAsync(command);
+        SqlCommand<MigrationRecord> command = new(MigrationRecord.ApplySql, parameters);
+        await command.ExecuteNonQueryAsync(connection, transaction, token);
     }
 
 

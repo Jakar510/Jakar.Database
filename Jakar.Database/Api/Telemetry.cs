@@ -122,13 +122,7 @@ public static class Telemetry
                 .WithMetrics(configureMetrics)
                 .WithLogging(configureBuilder, configureOptions);
 
-            self.Services.AddSingleton(static x =>
-                                       {
-                                           ILoggerFactory factory = x.GetRequiredService<ILoggerFactory>();
-                                           NpgsqlLoggingConfiguration.InitializeLogging(factory);
-                                           return factory;
-                                       });
-
+            self.Services.AddOpenApi();
             return self;
 
             void configureMetrics( MeterProviderBuilder meterProviderBuilder )

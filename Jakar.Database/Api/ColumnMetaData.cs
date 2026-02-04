@@ -51,7 +51,7 @@ public sealed class ColumnMetaData
         SpacedName     = $" {columnName} ";
         VariableName   = $" @{columnName} ";
         ForeignKeyName = foreignKeyName?.SqlColumnName();
-        DataType       = dbType.GetPostgresDataType(in length, in options);
+        DataType       = dbType.GetPostgresDataType(in length);
         PostgresDbType = dbType.ToNpgsqlDbType();
 
         IndexColumnName = ( options & ColumnOptions.Indexed ) != 0

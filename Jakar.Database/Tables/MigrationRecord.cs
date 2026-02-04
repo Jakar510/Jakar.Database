@@ -74,24 +74,31 @@ public sealed record MigrationRecord : BaseRecord<MigrationRecord>, ITableRecord
     }
 
 
-    public static MigrationRecord CreateTable( ulong migrationID ) =>
+    /// <summary>
+    /// <para> pg_textsearch <see href="https://github.com/timescale/pg_textsearch"/> </para>
+    /// <para> uint128 <see href="https://github.com/pg-uint/pg-uint128"/> </para>
+    /// <para> pg_crypto <see href="https://www.postgresql.org/docs/current/pgcrypto.html"/> </para>
+    /// <para> pg_crypto <see href="https://github.com/pgaudit/pgaudit/tree/main"/> </para>
+    /// <para> pg_crypto <see href="https://learnsql.com/blog/postgis-basic-queries/"/> </para>
+    /// </summary>
+    /// <param name="migrationID"></param>
+    /// <returns></returns>
+    public static MigrationRecord AddPostgreSqlExtensions( ulong migrationID ) =>
         Create<MigrationRecord>(migrationID,
-                                $"create {TABLE_NAME} table",
-                                $"""
-                                 CREATE TABLE IF NOT EXISTS {TABLE_NAME}
-                                 (
-                                 {nameof(MigrationID).SqlColumnName()}    bigint        PRIMARY KEY,
-                                 {nameof(TableID).SqlColumnName()}        varchar(256)  NOT NULL,
-                                 {nameof(Description).SqlColumnName()}    varchar(4096) UNIQUE NOT NULL,
-                                 {nameof(AppliedOn).SqlColumnName()}      timestamptz   NOT NULL DEFAULT SYSUTCDATETIME(),
-                                 {nameof(AdditionalData).SqlColumnName()} json          NULL
-                                 );
+                                "Add PostgreSql extensions",
 
-                                 CREATE TRIGGER {nameof(SetLastModified).SqlColumnName()}
-                                 BEFORE INSERT OR UPDATE ON {TABLE_NAME}
-                                 FOR EACH ROW
-                                 EXECUTE FUNCTION {nameof(SetLastModified).SqlColumnName()}();
-                                 """);
+                                // ReSharper disable StringLiteralTypo
+                                """
+                                CREATE EXTENSION pg_textsearch;
+                                CREATE EXTENSION uint128;
+                                CREATE EXTENSION pg_crypto;
+                                CREATE EXTENSION pgaudit;
+                                CREATE EXTENSION postgis;
+                                """
+
+                                // ReSharper restore StringLiteralTypo
+                               );
+    public static MigrationRecord CreateTable( ulong migrationID ) => CreateTable<MigrationRecord>(migrationID);
     public static MigrationRecord CreateTable<TSelf>( ulong migrationID )
         where TSelf : class, ITableRecord<TSelf> => Create<TSelf>(migrationID, $"Create '{TSelf.TableName}' Table", TableMetaData<TSelf>.CreateTable());
 
