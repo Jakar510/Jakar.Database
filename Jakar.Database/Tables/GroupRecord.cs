@@ -10,12 +10,12 @@ public sealed record GroupRecord : OwnedTableRecord<GroupRecord>, ITableRecord<G
     public const string TABLE_NAME = "groups";
 
 
-    public static string                                                TableName      => TABLE_NAME;
-    Guid? ICreatedByUser<Guid>.                                         CreatedBy      => CreatedBy?.Value;
-    [ColumnMetaData(ColumnOptions.Indexed, MAX_SIZE)] public string?    NormalizedName { get; set; }
-    Guid? IGroupModel<Guid>.                                            OwnerID        => CreatedBy?.Value;
-    [ColumnMetaData(ColumnOptions.Indexed, RIGHTS)]   public UserRights Rights         { get; set; }
-    [ColumnMetaData(ColumnOptions.Indexed, MAX_SIZE)] public string     NameOfGroup    { get; init; }
+    public static string                                                                      TableName      => TABLE_NAME;
+    Guid? ICreatedByUser<Guid>.                                                               CreatedBy      => CreatedBy?.Value;
+    [ColumnMetaData(ColumnOptions.Indexed | ColumnOptions.Fixed, MAX_SIZE)] public string?    NormalizedName { get; set; }
+    Guid? IGroupModel<Guid>.                                                                  OwnerID        => CreatedBy?.Value;
+    public                                                                         UserRights Rights         { get; set; }
+    [ColumnMetaData(ColumnOptions.Indexed | ColumnOptions.Fixed, MAX_SIZE)] public string     NameOfGroup    { get; init; }
 
 
     public GroupRecord( string nameOfGroup, UserRights rights, RecordID<UserRecord>? owner = null, string? normalizedName = null ) : this(nameOfGroup, normalizedName, EMPTY, RecordID<GroupRecord>.New(), owner, DateTimeOffset.UtcNow) { }
@@ -108,7 +108,7 @@ public sealed record GroupRecord : OwnedTableRecord<GroupRecord>, ITableRecord<G
 
                 case nameof(NormalizedName):
                     await importer.WriteAsync(NormalizedName, column.PostgresDbType, token);
-                    break; 
+                    break;
 
                 case nameof(LastModified):
                     if ( LastModified.HasValue ) { await importer.WriteAsync(LastModified.Value, column.PostgresDbType, token); }

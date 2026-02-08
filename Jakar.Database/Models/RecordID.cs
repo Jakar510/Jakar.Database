@@ -32,9 +32,15 @@ public readonly struct RecordID<TSelf>( Guid id ) : IEquatable<RecordID<TSelf>>,
         where TValue : IUniqueID<Guid> => ids.Select(Create);
     [Pure] public static IAsyncEnumerable<RecordID<TSelf>> Create<TValue>( IAsyncEnumerable<TValue> ids )
         where TValue : IUniqueID<Guid> => AsyncLinq.Select(ids, Create);
-    [Pure] public static RecordID<TSelf>? TryCreate( [NotNullIfNotNull(nameof(id))] Guid? id ) => id.HasValue
-                                                                                                      ? new RecordID<TSelf>(id.Value)
-                                                                                                      : default;
+    [Pure] public static RecordID<TSelf>? TryCreate( Guid? id ) => id.HasValue
+                                                                       ? TryCreate(id.Value)
+                                                                       : null;
+    [Pure] public static RecordID<TSelf>? TryCreate( Guid id )
+    {
+        if ( id.IsValidID() ) { return new RecordID<TSelf>(id); }
+
+        return null;
+    }
 
 
     public static string          Description()                                                               => $"RecordID<{typeof(TSelf).Name}>";

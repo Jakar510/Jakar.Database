@@ -1,11 +1,6 @@
 ﻿// Jakar.Extensions :: Jakar.Database
 // 09/29/2023  9:25 PM
 
-using Jakar.Extensions;
-using Microsoft.AspNetCore.Identity;
-
-
-
 namespace Jakar.Database;
 
 
@@ -16,64 +11,36 @@ public sealed record AddressRecord : OwnedTableRecord<AddressRecord>, IAddress<A
 
 
     public static                                                                string  TableName       => TABLE_NAME;
-    [ProtectedPersonalData] [ColumnMetaData(ColumnOptions.Indexed, 512)]  public string  Line1           { get; init; }
-    [ProtectedPersonalData] [ColumnMetaData(ColumnOptions.Indexed, 512)]  public string  Line2           { get; init; }
-    [ProtectedPersonalData] [ColumnMetaData(ColumnOptions.Indexed, 512)]  public string  City            { get; init; }
-    [ProtectedPersonalData] [ColumnMetaData(ColumnOptions.Indexed, 512)]  public string  StateOrProvince { get; init; }
-    [ProtectedPersonalData] [ColumnMetaData(ColumnOptions.Indexed, 512)]  public string  Country         { get; init; }
-    [ProtectedPersonalData] [ColumnMetaData(ColumnOptions.Indexed, 512)]  public string  PostalCode      { get; init; }
-    [ProtectedPersonalData] [ColumnMetaData(ColumnOptions.Indexed, 4096)] public string? Address         { get; init; }
-    public                                                                       bool    IsPrimary       { get; init; }
+    [ProtectedPersonalData] [ColumnMetaData(ColumnOptions.Indexed, 512)]  public string  Line1           { get;                           init; } = EMPTY;
+    [ProtectedPersonalData] [ColumnMetaData(ColumnOptions.Indexed, 512)]  public string  Line2           { get;                           init; } = EMPTY;
+    [ProtectedPersonalData] [ColumnMetaData(ColumnOptions.Indexed, 512)]  public string  City            { get;                           init; } = EMPTY;
+    [ProtectedPersonalData] [ColumnMetaData(ColumnOptions.Indexed, 512)]  public string  StateOrProvince { get;                           init; } = EMPTY;
+    [ProtectedPersonalData] [ColumnMetaData(ColumnOptions.Indexed, 512)]  public string  Country         { get;                           init; } = EMPTY;
+    [ProtectedPersonalData] [ColumnMetaData(ColumnOptions.Indexed, 512)]  public string  PostalCode      { get;                           init; } = EMPTY;
+    [ProtectedPersonalData] [ColumnMetaData(ColumnOptions.Indexed, 4096)] public string? Address         { get => field ??= GetAddress(); init; }
+    public                                                                       bool    IsPrimary       { get;                           init; }
 
 
-    public AddressRecord( IAddress<Guid> address ) : this(address.Line1,
-                                                          address.Line2,
-                                                          address.City,
-                                                          address.StateOrProvince,
-                                                          address.Country,
-                                                          address.PostalCode,
-                                                          address.Address ?? EMPTY,
-                                                          address.IsPrimary,
-                                                          null,
-                                                          RecordID<AddressRecord>.Create(address.ID),
-                                                          null,
-                                                          DateTimeOffset.UtcNow) { }
-    public AddressRecord( Match match ) : this(match.Groups["StreetName"].Value, match.Groups["Apt"].Value, match.Groups["City"].Value, match.Groups["State"].Value, match.Groups["ZipCode"].Value, match.Groups["Country"].Value) { }
-    public AddressRecord( string line1, string line2, string city, string stateOrProvince, string postalCode, string country, Guid? id = null ) : this(line1,
-                                                                                                                                                       line2,
-                                                                                                                                                       city,
-                                                                                                                                                       stateOrProvince,
-                                                                                                                                                       postalCode,
-                                                                                                                                                       country,
-                                                                                                                                                       null,
-                                                                                                                                                       true,
-                                                                                                                                                       null,
-                                                                                                                                                       RecordID<AddressRecord>.Create(id),
-                                                                                                                                                       null,
-                                                                                                                                                       DateTimeOffset.UtcNow) { }
-    public AddressRecord( string                  Line1,
-                          string                  Line2,
-                          string                  City,
-                          string                  StateOrProvince,
-                          string                  Country,
-                          string                  PostalCode,
-                          string?                 Address,
-                          bool                    IsPrimary,
-                          JObject?                AdditionalData,
-                          RecordID<AddressRecord> ID,
-                          RecordID<UserRecord>?   CreatedBy,
-                          DateTimeOffset          DateCreated,
-                          DateTimeOffset?         LastModified = null
-    ) : base(in CreatedBy, in ID, in DateCreated, in LastModified, AdditionalData)
+    public AddressRecord( in RecordID<UserRecord>? createdBy, in RecordID<AddressRecord> id, in DateTimeOffset dateCreated, in DateTimeOffset? lastModified = null, JObject? additionalData = null ) : base(in createdBy, in id, in dateCreated, in lastModified, additionalData) { }
+    public AddressRecord( Match match ) : this(null, RecordID<AddressRecord>.New(), DateTimeOffset.UtcNow)
     {
-        this.Line1           = Line1;
-        this.Line2           = Line2;
-        this.City            = City;
-        this.StateOrProvince = StateOrProvince;
-        this.Country         = Country;
-        this.PostalCode      = PostalCode;
-        this.Address         = Address;
-        this.IsPrimary       = IsPrimary;
+        Line1           = match.Groups["StreetName"].Value;
+        Line2           = match.Groups["Apt"].Value;
+        City            = match.Groups["City"].Value;
+        StateOrProvince = match.Groups["State"].Value;
+        Country         = match.Groups["Country"].Value;
+        PostalCode      = match.Groups["ZipCode"].Value;
+    }
+    public AddressRecord( IAddress<Guid> address ) : this(null, RecordID<AddressRecord>.Create(address.ID), DateTimeOffset.UtcNow)
+    {
+        Line1           = address.Line1;
+        Line2           = address.Line2;
+        City            = address.City;
+        StateOrProvince = address.StateOrProvince;
+        Country         = address.Country;
+        PostalCode      = address.PostalCode;
+        Address         = address.Address;
+        IsPrimary       = IsPrimary;
     }
     internal AddressRecord( NpgsqlDataReader reader ) : base(reader)
     {
@@ -89,6 +56,9 @@ public sealed record AddressRecord : OwnedTableRecord<AddressRecord>, IAddress<A
     }
 
 
+    private string GetAddress() => string.IsNullOrWhiteSpace(Line2)
+                                       ? $"{Line1}. {City}, {StateOrProvince}. {Country}. {PostalCode}"
+                                       : $"{Line1} {Line2}. {City}, {StateOrProvince}. {Country}. {PostalCode}";
     public override ValueTask Export( NpgsqlBinaryExporter exporter, CancellationToken token ) => default;
     public override async ValueTask Import( NpgsqlBinaryImporter importer, CancellationToken token )
     {
@@ -177,15 +147,16 @@ public sealed record AddressRecord : OwnedTableRecord<AddressRecord>, IAddress<A
     public static        MigrationRecord CreateTable( ulong       migrationID ) => MigrationRecord.CreateTable<AddressRecord>(migrationID);
     [Pure] public static AddressRecord   Create( Match            match )       => new(match);
     [Pure] public static AddressRecord   Create( IAddress<Guid>   address )     => new(address);
-    [Pure] public static AddressRecord Create( string line1, string line2, string city, string stateOrProvince, string postalCode, string country, Guid id = default ) => new(line1,
-                                                                                                                                                                              line2,
-                                                                                                                                                                              city,
-                                                                                                                                                                              stateOrProvince,
-                                                                                                                                                                              postalCode,
-                                                                                                                                                                              country,
-                                                                                                                                                                              id.IsValidID()
-                                                                                                                                                                                  ? id
-                                                                                                                                                                                  : Guid.NewGuid());
+    [Pure] public static AddressRecord Create( string line1, string line2, string city, string stateOrProvince, string postalCode, string country, Guid id = default ) => new(null, RecordID<AddressRecord>.Create(id), DateTimeOffset.UtcNow)
+                                                                                                                                                                          {
+                                                                                                                                                                              Line1 =
+                                                                                                                                                                                  line1,
+                                                                                                                                                                              Line2           = line2,
+                                                                                                                                                                              City            = city,
+                                                                                                                                                                              StateOrProvince = stateOrProvince,
+                                                                                                                                                                              PostalCode      = postalCode,
+                                                                                                                                                                              Country         = country
+                                                                                                                                                                          };
 
 
     [Pure] public static async ValueTask<AddressRecord?> TryFromClaims( NpgsqlConnection connection, NpgsqlTransaction transaction, Database db, Claim[] claims, ClaimType types, CancellationToken token )

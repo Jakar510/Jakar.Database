@@ -17,7 +17,7 @@ public sealed record RecoveryCodeRecord : OwnedTableRecord<RecoveryCodeRecord>, 
 
 
     public RecoveryCodeRecord( string code, UserRecord                   user ) : this(code, RecordID<RecoveryCodeRecord>.New(), user.ID, DateTimeOffset.UtcNow) { }
-    public RecoveryCodeRecord( string code, RecordID<RecoveryCodeRecord> ID, RecordID<UserRecord>? CreatedBy, DateTimeOffset DateCreated, DateTimeOffset? LastModified = null ) : base(in CreatedBy, in ID, in DateCreated, in LastModified) => Code = code;
+    public RecoveryCodeRecord( string code, RecordID<RecoveryCodeRecord> ID, RecordID<UserRecord>? CreatedBy, DateTimeOffset DateCreated, DateTimeOffset? LastModified = null ) : base(in CreatedBy, in ID, in DateCreated, in LastModified) => Code = __hasher.HashPassword(this, code);
 
 
     public override ValueTask Export( NpgsqlBinaryExporter exporter, CancellationToken token ) => default;
@@ -73,14 +73,26 @@ public sealed record RecoveryCodeRecord : OwnedTableRecord<RecoveryCodeRecord>, 
 
 
     public static MigrationRecord CreateTable( ulong migrationID ) => MigrationRecord.CreateTable<UserRecord>(migrationID);
-    [Pure] public static Codes Create( UserRecord user, IEnumerable<string> recoveryCodes ) => Create(user,
-                                                                                                      recoveryCodes.ToArray()
-                                                                                                                   .AsSpan());
-    [Pure] public static Codes Create( UserRecord user, List<string>                     recoveryCodes ) => Create(user, CollectionsMarshal.AsSpan(recoveryCodes));
-    [Pure] public static Codes Create( UserRecord user, scoped in ReadOnlyMemory<string> recoveryCodes ) => Create(user, recoveryCodes.Span);
+
+
+    [Pure] public static Codes Create( UserRecord user, IEnumerable<string> recoveryCodes )
+    {
+        Codes codes = new();
+
+        foreach ( string recoveryCode in recoveryCodes )
+        {
+            ( string code, RecoveryCodeRecord record ) = Create(user, recoveryCode);
+            codes[code]                                = record;
+        }
+
+        return codes;
+    }
+    [Pure] public static Codes Create( UserRecord user, Extensions.ObservableCollection<string> recoveryCodes ) => Create(user, recoveryCodes.AsSpan());
+    [Pure] public static Codes Create( UserRecord user, List<string>                            recoveryCodes ) => Create(user, recoveryCodes.AsSpan());
+    [Pure] public static Codes Create( UserRecord user, scoped in ReadOnlyMemory<string>        recoveryCodes ) => Create(user, recoveryCodes.Span);
     [Pure] public static Codes Create( UserRecord user, params ReadOnlySpan<string> recoveryCodes )
     {
-        Codes codes = new(recoveryCodes.Length);
+        Codes codes = new();
 
         foreach ( string recoveryCode in recoveryCodes )
         {
@@ -92,7 +104,7 @@ public sealed record RecoveryCodeRecord : OwnedTableRecord<RecoveryCodeRecord>, 
     }
     [Pure] public static async ValueTask<Codes> Create( UserRecord user, IAsyncEnumerable<string> recoveryCodes, CancellationToken token = default )
     {
-        Codes codes = new(10);
+        Codes codes = new();
 
         await foreach ( string recoveryCode in recoveryCodes.WithCancellation(token) )
         {
@@ -104,7 +116,7 @@ public sealed record RecoveryCodeRecord : OwnedTableRecord<RecoveryCodeRecord>, 
     }
     [Pure] public static Codes Create( UserRecord user, int count )
     {
-        Codes codes = new(count);
+        Codes codes = new();
 
         for ( int i = 0; i < count; i++ )
         {
@@ -114,6 +126,8 @@ public sealed record RecoveryCodeRecord : OwnedTableRecord<RecoveryCodeRecord>, 
 
         return codes;
     }
+
+
     public static (string Code, RecoveryCodeRecord Record) Create( UserRecord user )              => Create(user, Guid.CreateVersion7());
     public static (string Code, RecoveryCodeRecord Record) Create( UserRecord user, Guid   code ) => Create(user, code.ToHex());
     public static (string Code, RecoveryCodeRecord Record) Create( UserRecord user, string code ) => ( code, new RecoveryCodeRecord(code, user) );
@@ -121,7 +135,9 @@ public sealed record RecoveryCodeRecord : OwnedTableRecord<RecoveryCodeRecord>, 
 
     [Pure] public static bool IsValid( string code, ref RecoveryCodeRecord record )
     {
-        switch ( __hasher.VerifyHashedPassword(record, record.Code, code) )
+        PasswordVerificationResult result = __hasher.VerifyHashedPassword(record, record.Code, code);
+
+        switch ( result )
         {
             case PasswordVerificationResult.Failed:
                 return false;
@@ -135,7 +151,7 @@ public sealed record RecoveryCodeRecord : OwnedTableRecord<RecoveryCodeRecord>, 
                 return true;
 
             default:
-                throw new ArgumentOutOfRangeException();
+                throw new OutOfRangeException(result);
         }
     }
 
@@ -158,27 +174,18 @@ public sealed record RecoveryCodeRecord : OwnedTableRecord<RecoveryCodeRecord>, 
 
 
 
-    public sealed class Codes( int count ) : IReadOnlyDictionary<string, RecoveryCodeRecord>
+    public sealed class Codes()
     {
-        private readonly Dictionary<string, RecoveryCodeRecord> __codes = new(count, StringComparer.Ordinal);
-        public           int                                    Count => __codes.Count;
+        private readonly SortedDictionary<string, RecoveryCodeRecord> __codes = new(StringComparer.Ordinal);
+
+        public int Count => __codes.Count;
         public RecoveryCodeRecord this[ string key ] { get => __codes[key]; internal set => __codes[key] = value; }
-        public IEnumerable<string>                                   Keys                                                                           => __codes.Keys;
-        public IEnumerable<RecoveryCodeRecord>                       Values                                                                         => __codes.Values;
-        public IEnumerator<KeyValuePair<string, RecoveryCodeRecord>> GetEnumerator()                                                                => __codes.GetEnumerator();
-        IEnumerator IEnumerable.                                     GetEnumerator()                                                                => ( (IEnumerable)__codes ).GetEnumerator();
-        public bool                                                  ContainsKey( string key )                                                      => __codes.ContainsKey(key);
-        public bool                                                  TryGetValue( string key, [MaybeNullWhen(false)] out RecoveryCodeRecord value ) => __codes.TryGetValue(key, out value);
-    }
+        public SortedDictionary<string, RecoveryCodeRecord>.KeyCollection   Keys   => __codes.Keys;
+        public SortedDictionary<string, RecoveryCodeRecord>.ValueCollection Values => __codes.Values;
 
+        public SortedDictionary<string, RecoveryCodeRecord>.Enumerator GetEnumerator() => __codes.GetEnumerator();
 
-
-    public void Deconstruct( out string Code, out RecordID<RecoveryCodeRecord> ID, out RecordID<UserRecord>? CreatedBy, out DateTimeOffset DateCreated, out DateTimeOffset? LastModified )
-    {
-        Code         = this.Code;
-        ID           = this.ID;
-        CreatedBy    = this.CreatedBy;
-        DateCreated  = this.DateCreated;
-        LastModified = this.LastModified;
+        public bool ContainsKey( string key )                                                      => __codes.ContainsKey(key);
+        public bool TryGetValue( string key, [MaybeNullWhen(false)] out RecoveryCodeRecord value ) => __codes.TryGetValue(key, out value);
     }
 }

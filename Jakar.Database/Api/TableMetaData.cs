@@ -3,18 +3,18 @@
 
 public interface ITableMetaData
 {
-    public abstract static ITableMetaData    Default                  { get; }
-    public                 string            TableName                { [Pure] get; }
-    FrozenDictionary<int, string>            Indexes                  { get; }
-    FrozenDictionary<string, ColumnMetaData> Properties               { get; }
-    int                                      MaxIndexColumnNameLength { get; }
-    int                                      MaxColumnNameLength      { get; }
-    int                                      MaxDataTypeLength        { get; }
-    int                                      Count                    { get; }
-    ImmutableArray<string>                   Keys                     { get; }
-    ImmutableArray<ColumnMetaData>           Values                   { get; }
+    public abstract static ITableMetaData Default { get; }
+    int                                   Count   { get; }
+    FrozenDictionary<int, string>         Indexes { get; }
     ref readonly ColumnMetaData this[ string                      propertyName ] { get; }
     public (string PropertyName, ColumnMetaData Column) this[ int index ] { get; }
+    ImmutableArray<string>                   Keys                     { get; }
+    int                                      MaxColumnNameLength      { get; }
+    int                                      MaxDataTypeLength        { get; }
+    int                                      MaxIndexColumnNameLength { get; }
+    FrozenDictionary<string, ColumnMetaData> Properties               { get; }
+    public string                            TableName                { [Pure] get; }
+    ImmutableArray<ColumnMetaData>           Values                   { get; }
 
 
     public string           CreateTable();
@@ -60,21 +60,15 @@ public ref struct TableMetaDataEnumerator : IEnumerator<(string PropertyName, Co
 public sealed class TableMetaData<TSelf> : ITableMetaData
     where TSelf : class, ITableRecord<TSelf>
 {
+    private static         string?                                  _createTableSql;
     public static readonly TableMetaData<TSelf>                     Instance = Create();
     public readonly        FrozenDictionary<int, string>            Indexes;
     public readonly        FrozenDictionary<string, ColumnMetaData> Properties;
+    public static          ITableMetaData                           Default => Instance;
+    public                 int                                      Count   { get; }
 
 
-    FrozenDictionary<int, string> ITableMetaData.           Indexes                  => Indexes;
-    public static ITableMetaData                            Default                  => Instance;
-    FrozenDictionary<string, ColumnMetaData> ITableMetaData.Properties               => Properties;
-    public int                                              MaxIndexColumnNameLength { get; }
-    public int                                              MaxColumnNameLength      { get; }
-    public int                                              MaxDataTypeLength        { get; }
-    public int                                              Count                    { get; }
-    public ImmutableArray<string>                           Keys                     => Properties.Keys;
-    public ImmutableArray<ColumnMetaData>                   Values                   => Properties.Values;
-    public string                                           TableName                { [Pure] get => TSelf.TableName; }
+    FrozenDictionary<int, string> ITableMetaData.Indexes => Indexes;
     public ref readonly ColumnMetaData this[ string propertyName ] => ref Properties[propertyName];
     public (string PropertyName, ColumnMetaData Column) this[ int index ]
     {
@@ -86,6 +80,13 @@ public sealed class TableMetaData<TSelf> : ITableMetaData
             return ( propertyName, column );
         }
     }
+    public ImmutableArray<string>                           Keys                     => Properties.Keys;
+    public int                                              MaxColumnNameLength      { get; }
+    public int                                              MaxDataTypeLength        { get; }
+    public int                                              MaxIndexColumnNameLength { get; }
+    FrozenDictionary<string, ColumnMetaData> ITableMetaData.Properties               => Properties;
+    public string                                           TableName                { [Pure] get => TSelf.TableName; }
+    public ImmutableArray<ColumnMetaData>                   Values                   => Properties.Values;
 
 
     internal TableMetaData( FrozenDictionary<string, ColumnMetaData> dictionary )
@@ -110,7 +111,8 @@ public sealed class TableMetaData<TSelf> : ITableMetaData
         int                     i       = 0;
 
         foreach ( ( string propertyName, ColumnMetaData column ) in dictionary.OrderBy(static pair => pair.Value.DbType, PostgresTypeComparer.Instance)
-                                                                              .ThenBy(static pair => pair.Value.Length,     Comparer<SizeInfo>.Default)
+                                                                              .ThenBy(static pair => pair.Value.IsFixed, InvertedBoolComparer.Instance)
+                                                                              .ThenBy(static pair => pair.Value.Length,     Comparer<SizeInfo?>.Default)
                                                                               .ThenBy(static pair => pair.Value.ColumnName, StringComparer.InvariantCultureIgnoreCase) )
         {
             column.Index = i;
@@ -120,11 +122,12 @@ public sealed class TableMetaData<TSelf> : ITableMetaData
         return indexes.ToFrozenDictionary();
     }
 
-
     public TableMetaDataEnumerator GetEnumerator() => new(this);
     string ITableMetaData.         CreateTable()   => CreateTable();
     public static string CreateTable()
     {
+        if ( !string.IsNullOrWhiteSpace(_createTableSql) ) { return _createTableSql; }
+
         StringBuilder query     = new(10240);
         string        tableName = TSelf.TableName;
 
@@ -135,23 +138,21 @@ public sealed class TableMetaData<TSelf> : ITableMetaData
 
         foreach ( ( string columnName, ColumnMetaData column ) in Instance )
         {
-            ColumnOptions options  = column.Options;
-            string        dataType = column.DataType;
-
+            string dataType = column.DataType;
             query.Append($"    {columnName.PadRight(Instance.MaxColumnNameLength)} {dataType.PadRight(Instance.MaxDataTypeLength)}");
 
-            if ( ( options & ColumnOptions.PrimaryKey ) != 0 ) { query.Append(" PRIMARY KEY"); }
+            if ( column.IsForeignKey ) { query.Append(" PRIMARY KEY"); }
             else
             {
                 query.Append(column.IsNullable
                                  ? " NULL"
                                  : " NOT NULL");
 
-                if ( ( options & ColumnOptions.Unique ) != 0 ) { query.Append(" UNIQUE"); }
+                if ( column.IsUnique ) { query.Append(" UNIQUE"); }
 
-                if ( ( options & ColumnOptions.AlwaysIdentity ) != 0 ) { query.Append(" GENERATED ALWAYS AS IDENTITY"); }
+                if ( column.IsAlwaysIdentity ) { query.Append(" GENERATED ALWAYS AS IDENTITY"); }
 
-                else if ( ( options & ColumnOptions.DefaultIdentity ) != 0 ) { query.Append(" GENERATED BY DEFAULT AS IDENTITY"); }
+                else if ( column.IsDefaultIdentity ) { query.Append(" GENERATED BY DEFAULT AS IDENTITY"); }
 
 
                 if ( column.Checks?.IsValid is true )
@@ -164,6 +165,12 @@ public sealed class TableMetaData<TSelf> : ITableMetaData
                                      column.Checks.Value.Checks);
 
                     query.Append(" )");
+                }
+
+                if ( column.Defaults?.IsValid is true )
+                {
+                    query.Append(" DEFAULTS ");
+                    query.Append(column.Defaults.Value.Defaults);
                 }
             }
 
@@ -192,7 +199,7 @@ public sealed class TableMetaData<TSelf> : ITableMetaData
                       EXECUTE FUNCTION {nameof(MigrationRecord.SetLastModified).SqlColumnName()}();
                       """);
 
-        return query.ToString();
+        return _createTableSql = query.ToString();
     }
 
 

@@ -3,8 +3,12 @@
 
 public readonly record struct IntRange( int Min, int Max ) : IComparable<IntRange>
 {
+    public static readonly IntRange Empty = new(-1, -1);
+    public                 bool     IsValid => Min >= 0 && Max >= 0 && Min <= Max;
     public int CompareTo( IntRange other )
     {
+        if ( Empty.Equals(other) ) { return 1; }
+
         int minComparison = Min.CompareTo(other.Min);
         if ( minComparison != 0 ) { return minComparison; }
 
@@ -17,11 +21,11 @@ public readonly record struct IntRange( int Min, int Max ) : IComparable<IntRang
 [DefaultValue(nameof(Empty))]
 public readonly struct SizeInfo : IComparable<SizeInfo>, IEquatable<SizeInfo>
 {
-    public static readonly SizeInfo      Empty = new(-1);
-    private readonly       int           __length0;
-    private readonly       IntRange      __range1;
-    private readonly       PrecisionInfo __precision2;
-    private readonly       int           __index = -1;
+    public static readonly SizeInfo      Empty        = new(-1);
+    private readonly       int           __length0    = -1;
+    private readonly       IntRange      __range1     = IntRange.Empty;
+    private readonly       PrecisionInfo __precision2 = PrecisionInfo.Empty;
+    private readonly       int           __index      = -1;
 
 
     public bool IsValid         => __index >= 0;
@@ -30,15 +34,15 @@ public readonly struct SizeInfo : IComparable<SizeInfo>, IEquatable<SizeInfo>
     public bool IsPrecisionInfo => __index == 2;
 
     public int AsInt => __index != 0
-                            ? throw new InvalidOperationException($"Cannot return as int as result is T{__index}")
+                            ? -1
                             : __length0;
 
     public IntRange AsIntRange => __index != 1
-                                      ? throw new InvalidOperationException($"Cannot return as IntRange as result is T{__index}")
+                                      ? IntRange.Empty
                                       : __range1;
 
     public PrecisionInfo AsPrecisionInfo => __index != 2
-                                                ? throw new InvalidOperationException($"Cannot return as PrecisionInfo as result is T{__index}")
+                                                ? PrecisionInfo.Empty
                                                 : __precision2;
 
 
@@ -83,7 +87,7 @@ public readonly struct SizeInfo : IComparable<SizeInfo>, IEquatable<SizeInfo>
     }
 
 
-    public ColumnCheckMetaData Check( in string columnName ) => Match(in columnName, ColumnCheckMetaData.Create, ColumnCheckMetaData.Create, ColumnCheckMetaData.Create, ColumnCheckMetaData.Default);
+    public ColumnCheckMetaData Check( in string columnName ) => Match(in columnName, ColumnCheckMetaData.Create, ColumnCheckMetaData.Create, ColumnCheckMetaData.Create, ColumnCheckMetaData.Empty);
 
 
     public TResult? Match<TResult>( Func<int, TResult> f0, Func<IntRange, TResult> f1, Func<PrecisionInfo, TResult> f2, [NotNullIfNotNull(nameof(defaultValue))] TResult? defaultValue = default ) => __index switch
@@ -117,20 +121,22 @@ public readonly struct SizeInfo : IComparable<SizeInfo>, IEquatable<SizeInfo>
                                                 0 => EqualityComparer<int>.Default.Equals(__length0, other.__length0),
                                                 1 => EqualityComparer<IntRange>.Default.Equals(__range1, other.__range1),
                                                 2 => EqualityComparer<PrecisionInfo>.Default.Equals(__precision2, other.__precision2),
-                                                _ => false
+                                                _ => true
                                             };
     public int CompareTo( SizeInfo other )
     {
-        int indexComparison = __index.CompareTo(other.__index);
-        if ( indexComparison != 0 ) { return indexComparison; }
-        
-        int length0Comparison = __length0.CompareTo(other.__length0);
-        if ( length0Comparison != 0 ) { return length0Comparison; }
+        SizeInfo self = this;
+        if ( self.Equals(other) ) { return 0; }
 
-        int rangeComparison = __range1.CompareTo(other.__range1);
-        if ( rangeComparison != 0 ) { return rangeComparison; }
+        if ( Empty.Equals(other) ) { return 1; }
 
-        return __precision2.CompareTo(other.__precision2);
+        return self.__index switch
+               {
+                   0 => self.__length0.CompareTo(other.__length0),
+                   1 => self.__range1.CompareTo(other.__range1),
+                   2 => self.__precision2.CompareTo(other.__precision2),
+                   _ => 1
+               };
     }
     public override int GetHashCode() => HashCode.Combine(__index, __length0, __range1, __precision2);
 }

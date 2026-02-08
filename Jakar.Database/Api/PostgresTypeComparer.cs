@@ -151,3 +151,13 @@ public sealed class PostgresTypeComparer : Comparer<PostgresType>
         VariableUnbounded = 2
     }
 }
+
+
+
+public sealed class InvertedBoolComparer : Comparer<bool>
+{
+    public static readonly InvertedBoolComparer Instance = new();
+
+    private InvertedBoolComparer() { }
+    public override int Compare( bool x, bool y ) => y.CompareTo(x); // reverse order
+}

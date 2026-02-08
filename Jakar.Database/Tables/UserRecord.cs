@@ -18,45 +18,45 @@ public sealed record UserRecord : OwnedTableRecord<UserRecord>, ITableRecord<Use
     /// <summary> A random value that must change whenever a user is persisted to the store </summary>
     [ColumnMetaData(CONCURRENCY_STAMP)] public string ConcurrencyStamp { get; set; } = EMPTY;
 
-    public                                                             bool                             IsActive               { get;                    set; }
-    public                                                             bool                             IsDisabled             { get;                    set; }
-    public                                                             bool                             IsEmailConfirmed       { get;                    set; }
-    public                                                             bool                             IsLocked               { get;                    set; }
-    public                                                             bool                             IsPhoneNumberConfirmed { get;                    set; }
-    public                                                             bool                             IsTwoFactorEnabled     { get;                    set; }
-    public                                                             DateTimeOffset?                  LastBadAttempt         { get;                    set; }
-    public                                                             DateTimeOffset?                  LastLogin              { get;                    set; }
-    public                                                             DateTimeOffset?                  LockDate               { get;                    set; }
-    public                                                             DateTimeOffset?                  LockoutEnd             { get;                    set; }
-    [ColumnMetaData(ENCRYPTED_MAX_PASSWORD_SIZE)] public               string                           PasswordHash           { get;                    set; } = EMPTY;
-    [ColumnMetaData(REFRESH_TOKEN)]               public               UInt128                          RefreshTokenHash       { get;                    set; }
-    public                                                             DateTimeOffset?                  RefreshTokenExpiryTime { get;                    set; }
-    [ColumnMetaData(SECURITY_STAMP)] public                            string                           SecurityStamp          { get;                    set; } = EMPTY;
-    public                                                             Guid?                            SessionID              { get;                    set; }
-    [ColumnMetaData(MAX_SIZE)] [ProtectedPersonalData] public override JObject?                         AdditionalData         { get => _additionalData; set => _additionalData = value; }
-    [ColumnMetaData(COMPANY)] [ProtectedPersonalData]  public          string                           Company                { get;                    set; } = EMPTY;
-    Guid? ICreatedByUser<Guid>.                                                                         CreatedBy              => CreatedBy?.Value;
-    [ColumnMetaData(DEPARTMENT)]                                           public string                Department             { get; set; } = EMPTY;
-    [ColumnMetaData(DESCRIPTION)]                                          public string                Description            { get; set; } = EMPTY;
-    [ColumnMetaData(ColumnOptions.Indexed, EMAIL)] [ProtectedPersonalData] public string                Email                  { get; set; } = EMPTY;
-    public                                                                        RecordID<UserRecord>? EscalateTo             { get; set; }
-    Guid? IEscalateToUser<Guid>.                                                                        EscalateTo             => EscalateTo?.Value;
-    [ColumnMetaData(PHONE_EXT)] [ProtectedPersonalData]                         public string           Ext                    { get; set; } = EMPTY;
-    [ColumnMetaData(ColumnOptions.Indexed, FIRST_NAME)] [ProtectedPersonalData] public string           FirstName              { get; set; } = EMPTY;
-    [ColumnMetaData(ColumnOptions.Indexed, FULL_NAME)] [ProtectedPersonalData]  public string           FullName               { get; set; } = EMPTY;
-    [ColumnMetaData(ColumnOptions.Indexed, GENDER)] [ProtectedPersonalData]     public string           Gender                 { get; set; } = EMPTY;
-    Guid? IImageID<Guid>.                                                                               ImageID                => ImageID?.Value;
-    [ColumnMetaData(FileRecord.TABLE_NAME)] public                                RecordID<FileRecord>? ImageID                { get; set; }
-    public                                                                        bool                  IsValid                => !string.IsNullOrWhiteSpace(UserName) && ID.IsValid();
-    [ColumnMetaData(ColumnOptions.Indexed, 2000)] [ProtectedPersonalData]  public string                LastName               { get; set; } = EMPTY;
-    [ColumnMetaData(ColumnOptions.Indexed, PHONE)] [ProtectedPersonalData] public string                PhoneNumber            { get; set; } = EMPTY;
-    public                                                                        SupportedLanguage     PreferredLanguage      { get; set; }
-    public                                                                        DateTimeOffset?       SubscriptionExpires    { get; set; }
-    public                                                                        Guid?                 SubscriptionID         { get; set; }
-    [ColumnMetaData(TITLE)] public                                                string                Title                  { get; set; } = EMPTY;
-    public                                                                        Guid                  UserID                 => ID.Value;
-    [ProtectedPersonalData]                           public                      string                UserName               { get; init; } = EMPTY;
-    [ColumnMetaData(WEBSITE)] [ProtectedPersonalData] public                      string                Website                { get; set; }  = EMPTY;
+    public                                                                                 bool                                   IsActive               { get;                    set; }
+    public                                                                                 bool                                   IsDisabled             { get;                    set; }
+    public                                                                                 bool                                   IsEmailConfirmed       { get;                    set; }
+    public                                                                                 bool                                   IsLocked               { get;                    set; }
+    public                                                                                 bool                                   IsPhoneNumberConfirmed { get;                    set; }
+    public                                                                                 bool                                   IsTwoFactorEnabled     { get;                    set; }
+    public                                                                                 DateTimeOffset?                        LastBadAttempt         { get;                    set; }
+    public                                                                                 DateTimeOffset?                        LastLogin              { get;                    set; }
+    public                                                                                 DateTimeOffset?                        LockDate               { get;                    set; }
+    public                                                                                 DateTimeOffset?                        LockoutEnd             { get;                    set; }
+    [ColumnMetaData(ENCRYPTED_MAX_PASSWORD_SIZE)] public                                   string                                 PasswordHash           { get;                    set; } = EMPTY;
+    [ColumnMetaData(REFRESH_TOKEN)]               public                                   UInt128                                RefreshTokenHash       { get;                    set; }
+    public                                                                                 DateTimeOffset?                        RefreshTokenExpiryTime { get;                    set; }
+    [ColumnMetaData(SECURITY_STAMP)] public                                                string                                 SecurityStamp          { get;                    set; } = EMPTY;
+    public                                                                                 Guid?                                  SessionID              { get;                    set; }
+    [ProtectedPersonalData]                                                public override JObject?                               AdditionalData         { get => _additionalData; set => _additionalData = value; }
+    [ColumnMetaData(ColumnOptions.Fixed, COMPANY)] [ProtectedPersonalData] public          string                                 Company                { get;                    set; } = EMPTY;
+    Guid? ICreatedByUser<Guid>.                                                                                                   CreatedBy              => CreatedBy?.Value;
+    [ColumnMetaData(DEPARTMENT)]                                                                 public string                    Department             { get; set; } = EMPTY;
+    [ColumnMetaData(DESCRIPTION)]                                                                public string                    Description            { get; set; } = EMPTY;
+    [ColumnMetaData(ColumnOptions.Indexed | ColumnOptions.Fixed, EMAIL)] [ProtectedPersonalData] public string                    Email                  { get; set; } = EMPTY;
+    public                                                                                              RecordID<UserRecord>?     EscalateTo             { get; set; }
+    Guid? IEscalateToUser<Guid>.                                                                                                  EscalateTo             => EscalateTo?.Value;
+    [ColumnMetaData(PHONE_EXT)] [ProtectedPersonalData]                                               public string               Ext                    { get; set; } = EMPTY;
+    [ColumnMetaData(ColumnOptions.Indexed | ColumnOptions.Fixed, FIRST_NAME)] [ProtectedPersonalData] public string               FirstName              { get; set; } = EMPTY;
+    [ColumnMetaData(ColumnOptions.Indexed | ColumnOptions.Fixed, FULL_NAME)] [ProtectedPersonalData]  public string               FullName               { get; set; } = EMPTY;
+    [ColumnMetaData(ColumnOptions.Indexed | ColumnOptions.Fixed, GENDER)] [ProtectedPersonalData]     public string               Gender                 { get; set; } = EMPTY;
+    Guid? IImageID<Guid>.                                                                                                         ImageID                => ImageID?.Value;
+    [ColumnMetaData(FileRecord.TABLE_NAME)] public                                                          RecordID<FileRecord>? ImageID                { get; set; }
+    public                                                                                                  bool                  IsValid                => !string.IsNullOrWhiteSpace(UserName) && ID.IsValid();
+    [ColumnMetaData(ColumnOptions.Indexed | ColumnOptions.Fixed, LAST_NAME)] [ProtectedPersonalData] public string                LastName               { get; set; } = EMPTY;
+    [ColumnMetaData(ColumnOptions.Indexed | ColumnOptions.Fixed, PHONE)] [ProtectedPersonalData]     public string                PhoneNumber            { get; set; } = EMPTY;
+    public                                                                                                  SupportedLanguage     PreferredLanguage      { get; set; }
+    public                                                                                                  DateTimeOffset?       SubscriptionExpires    { get; set; }
+    public                                                                                                  Guid?                 SubscriptionID         { get; set; }
+    [ColumnMetaData(TITLE)] public                                                                          string                Title                  { get; set; } = EMPTY;
+    public                                                                                                  Guid                  UserID                 => ID.Value;
+    [ColumnMetaData(ColumnOptions.Fixed, USER_NAME)] [ProtectedPersonalData] public                         string                UserName               { get; init; } = EMPTY;
+    [ColumnMetaData(WEBSITE)] [ProtectedPersonalData]                        public                         string                Website                { get; set; }  = EMPTY;
 
 
     public UserRecord( in RecordID<UserRecord> ID ) : this(in ID, null, DateTimeOffset.UtcNow) { }
@@ -154,11 +154,11 @@ public sealed record UserRecord : OwnedTableRecord<UserRecord>, ITableRecord<Use
 
     public static UserRecord Create<TEnum>( string userName, string password, scoped in Permissions<TEnum> rights, UserRecord? caller = null )
         where TEnum : unmanaged, Enum => Create(userName, password, rights.ToString(), caller);
-    public static UserRecord Create( string userName, string password, UserRights rights, UserRecord? caller = null ) => new(RecordID<UserRecord>.New(), caller?.ID, DateTimeOffset.UtcNow)
+    public static UserRecord Create( string userName, string password, UserRights rights, UserRecord? caller = null ) => new UserRecord(RecordID<UserRecord>.New(), caller?.ID, DateTimeOffset.UtcNow)
                                                                                                                          {
                                                                                                                              UserName = userName,
                                                                                                                              Rights   = rights
-                                                                                                                         };
+                                                                                                                         }.WithPassword(password);
 
 
     public override ValueTask Export( NpgsqlBinaryExporter exporter, CancellationToken token ) => default;
@@ -560,30 +560,32 @@ public sealed record UserRecord : OwnedTableRecord<UserRecord>, ITableRecord<Use
 
         return false;
     }
-    public ValueTask<string[]> ReplaceCodes( Database db, int count = 10, CancellationToken token = default ) => db.TryCall(ReplaceCodes, db, count, token);
-    public async ValueTask<string[]> ReplaceCodes( NpgsqlConnection connection, NpgsqlTransaction transaction, Database db, int count = 10, CancellationToken token = default )
+    public ValueTask<ImmutableArray<string>> ReplaceCodes( Database db, int count = 10, CancellationToken token = default ) => db.TryCall(ReplaceCodes, db, count, token);
+    public async ValueTask<ImmutableArray<string>> ReplaceCodes( NpgsqlConnection connection, NpgsqlTransaction transaction, Database db, int count = 10, CancellationToken token = default )
     {
-        IAsyncEnumerable<RecoveryCodeRecord>            old        = Codes(connection, transaction, db, token);
-        IReadOnlyDictionary<string, RecoveryCodeRecord> dictionary = RecoveryCodeRecord.Create(this, count);
-        string[]                                        codes      = dictionary.Keys.ToArray();
+        IAsyncEnumerable<RecoveryCodeRecord> old        = Codes(connection, transaction, db, token);
+        RecoveryCodeRecord.Codes             dictionary = RecoveryCodeRecord.Create(this, count);
+        ImmutableArray<string>               codes      = [..dictionary.Keys];
 
 
         await db.RecoveryCodes.Delete(connection, transaction, old, token);
         await UserRecoveryCodeRecord.Replace(connection, transaction, db.UserRecoveryCodes, this, RecordID<RecoveryCodeRecord>.Create(dictionary.Values), token);
         return codes;
     }
-    public ValueTask<string[]> ReplaceCodes( Database db, IEnumerable<string> recoveryCodes, CancellationToken token = default ) => db.TryCall(ReplaceCodes, db, recoveryCodes, token);
-    public async ValueTask<string[]> ReplaceCodes( NpgsqlConnection connection, NpgsqlTransaction transaction, Database db, IEnumerable<string> recoveryCodes, CancellationToken token = default )
+    public ValueTask<ImmutableArray<string>> ReplaceCodes( Database db, IEnumerable<string> recoveryCodes, CancellationToken token = default ) => db.TryCall(ReplaceCodes, db, recoveryCodes, token);
+    public async ValueTask<ImmutableArray<string>> ReplaceCodes( NpgsqlConnection connection, NpgsqlTransaction transaction, Database db, IEnumerable<string> recoveryCodes, CancellationToken token = default )
     {
         IAsyncEnumerable<RecoveryCodeRecord> old        = Codes(connection, transaction, db, token);
         RecoveryCodeRecord.Codes             dictionary = RecoveryCodeRecord.Create(this, recoveryCodes);
-        string[]                             codes      = [.. dictionary.Keys];
+        ImmutableArray<string>               codes      = [.. dictionary.Keys];
 
 
         await db.RecoveryCodes.Delete(connection, transaction, old, token);
         await UserRecoveryCodeRecord.Replace(connection, transaction, db.UserRecoveryCodes, this, RecordID<RecoveryCodeRecord>.Create(dictionary.Values), token);
         return codes;
     }
+
+
     public       IAsyncEnumerable<RecoveryCodeRecord> Codes( Database                 db,         CancellationToken  token )                                                                                               => db.TryCall(Codes, db, token);
     public       IAsyncEnumerable<RecoveryCodeRecord> Codes( NpgsqlConnection         connection, NpgsqlTransaction  transaction, Database db, CancellationToken                          token )                          => UserRecoveryCodeRecord.Where(connection, transaction, db.RecoveryCodes, this, token);
     public async ValueTask<bool>                      TryAdd( NpgsqlConnection        connection, NpgsqlTransaction  transaction, Database db, AddressRecord                              value, CancellationToken token ) => await UserAddressRecord.TryAdd(connection, transaction, db.UserAddresses, ID, value, token);

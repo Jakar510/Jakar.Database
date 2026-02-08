@@ -10,17 +10,18 @@ namespace Jakar.Database;
 /// </summary>
 /// <param name="Scope"> Order of magnitude of representable range (the exponent range). </param>
 /// <param name="Precision"> Reliable decimal digits of accuracy. </param>
-[DefaultValue(nameof(Default))]
+[DefaultValue(nameof(Empty))]
 public readonly record struct PrecisionInfo( int Scope, int Precision ) : IComparable<PrecisionInfo>
 {
-    public static readonly          PrecisionInfo Decimal   = new(28, 28);
-    public static readonly          PrecisionInfo Default   = new(-1, -1);
-    public static readonly          PrecisionInfo Double    = new(308, 15);
-    public static readonly          PrecisionInfo Float     = new(38, 7);
-    public static readonly          PrecisionInfo Int128    = new(128, 0);
-    public readonly                 bool          IsValid   = Scope >= 0 && Precision >= 0;
-    public readonly                 int           Precision = Precision;
-    public readonly                 int           Scope     = Scope;
+    public static readonly PrecisionInfo Decimal   = new(28, 28);
+    public static readonly PrecisionInfo Empty     = new(-1, -1);
+    public static readonly PrecisionInfo Double    = new(308, 15);
+    public static readonly PrecisionInfo Float     = new(38, 7);
+    public static readonly PrecisionInfo Int128    = new(128, 0);
+    public readonly        int           Precision = Precision;
+    public readonly        int           Scope     = Scope;
+    public                 bool          IsValid => Scope >= 0 && Precision >= 0;
+
     public static implicit operator PrecisionInfo( (int Precision, int Scope) value ) => Create(value.Precision, value.Scope);
 
     public override string ToString() => $"{Scope}, {Precision}";
@@ -34,6 +35,8 @@ public readonly record struct PrecisionInfo( int Scope, int Precision ) : ICompa
     }
     public int CompareTo( PrecisionInfo other )
     {
+        if ( Empty.Equals(other) ) { return 1; }
+
         int scopeComparison = Scope.CompareTo(other.Scope);
         if ( scopeComparison != 0 ) { return scopeComparison; }
 

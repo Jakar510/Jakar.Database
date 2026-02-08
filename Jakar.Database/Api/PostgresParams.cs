@@ -6,6 +6,7 @@ namespace Jakar.Database;
 
 public static class PostgresParams
 {
+    private static readonly ConcurrentDictionary<string, string> __indexNameSnakeCaseCache = new(StringComparer.InvariantCultureIgnoreCase);
     private static readonly ConcurrentDictionary<string, string> __nameSnakeCaseCache = new(StringComparer.InvariantCultureIgnoreCase)
                                                                                         {
                                                                                             [nameof(MimeType)]                   = "mime_types",
@@ -22,9 +23,17 @@ public static class PostgresParams
                                                                                             [nameof(IDateCreated.DateCreated)]   = "date_created",
                                                                                             [nameof(ILastModified.LastModified)] = "last_modified",
                                                                                             [nameof(ICreatedBy.CreatedBy)]       = "created_by",
-                                                                                            [nameof(IJsonModel.AdditionalData)]  = "additional_data",
+                                                                                            [nameof(IJsonModel.AdditionalData)]  = "additional_data"
                                                                                         };
 
 
-    public static string SqlColumnName( this string name ) => __nameSnakeCaseCache.GetOrAdd(name, Strings.ToSnakeCase);
+
+    extension( string name )
+    {
+        public string SqlColumnName()      => __nameSnakeCaseCache.GetOrAdd(name, Strings.ToSnakeCase);
+        public string SqlColumnIndexName() => __indexNameSnakeCaseCache.GetOrAdd(name, static x => $"{x.SqlColumnName()}_index");
+        public string? SqlColumnIndexName( in ColumnOptions options ) => options.HasFlagValue(ColumnOptions.Indexed)
+                                                                             ? name.SqlColumnIndexName()
+                                                                             : null;
+    }
 }
