@@ -57,17 +57,17 @@ public ref struct TableMetaDataEnumerator : IEnumerator<(string PropertyName, Co
 
 
 
-public sealed class TableMetaData<TSelf> : ITableMetaData
+public class TableMetaData<TSelf> : ITableMetaData
     where TSelf : class, ITableRecord<TSelf>
 {
     private static         string?                                  _createTableSql;
     public static readonly TableMetaData<TSelf>                     Instance = Create();
     public readonly        FrozenDictionary<int, string>            Indexes;
     public readonly        FrozenDictionary<string, ColumnMetaData> Properties;
-    public static          ITableMetaData                           Default => Instance;
-    public                 int                                      Count   { get; }
 
 
+    public static ITableMetaData                 Default => Instance;
+    public        int                            Count   { get; }
     FrozenDictionary<int, string> ITableMetaData.Indexes => Indexes;
     public ref readonly ColumnMetaData this[ string propertyName ] => ref Properties[propertyName];
     public (string PropertyName, ColumnMetaData Column) this[ int index ]
@@ -89,31 +89,45 @@ public sealed class TableMetaData<TSelf> : ITableMetaData
     public ImmutableArray<ColumnMetaData>                   Values                   => Properties.Values;
 
 
-    internal TableMetaData( FrozenDictionary<string, ColumnMetaData> dictionary )
+    protected internal TableMetaData( FrozenDictionary<string, ColumnMetaData> properties )
     {
-        Indexes                  = CreateIndexes(dictionary);
-        Properties               = dictionary;
-        MaxIndexColumnNameLength = dictionary.Values.Max(static x => x.IndexColumnName?.Length ?? 0);
-        MaxColumnNameLength      = dictionary.Keys.Max(static x => x.Length);
-        MaxDataTypeLength        = dictionary.Values.Max(static x => x.DataType.Length);
-        Count                    = dictionary.Count;
+        Properties               = properties;
+        Indexes                  = CreateAndValidateIndexes(in properties);
+        MaxIndexColumnNameLength = properties.Values.Max(static x => x.IndexColumnName?.Length ?? 0);
+        MaxColumnNameLength      = properties.Keys.Max(static x => x.Length);
+        MaxDataTypeLength        = properties.Values.Max(static x => x.DataType.Length);
+        Count                    = properties.Count;
     }
 
 
     public static implicit operator TableMetaData<TSelf>( FrozenDictionary<string, ColumnMetaData> dictionary ) => new(dictionary);
 
-
-    private static FrozenDictionary<int, string> CreateIndexes( FrozenDictionary<string, ColumnMetaData> dictionary )
+    protected FrozenDictionary<int, string> CreateAndValidateIndexes( in FrozenDictionary<string, ColumnMetaData> properties )
     {
-        if ( dictionary.Count <= 0 ) { return FrozenDictionary<int, string>.Empty; }
+        FrozenDictionary<int, string> indexes = CreateIndexes(in properties);
+        if ( indexes.Count != properties.Count ) { throw new InvalidOperationException($"Indexes.Count ({indexes.Count}) must match Properties.Count ({properties.Count})"); }
 
+        for ( int i = 0; i < indexes.Count; i++ )
+        {
+            if ( !indexes.ContainsKey(i) ) { throw new InvalidOperationException($"Indexes must be sequential. invalid index: {i}"); }
+        }
+
+        return indexes;
+    }
+
+
+    /// <summary>
+    /// Sets the order of the columns in the generated SQL will be determined by the order of the properties in the provided dictionary. If not overridden, the columns will be ordered by the size of their data type (using the <see cref="PostgresTypeComparer"/>), then by whether they are <see cref="ColumnMetaData.IsFixed"/> (a fixed or variable size/length), then by their (<see cref="ColumnMetaData.Length"/>), and finally by their (<see cref="ColumnMetaData.ColumnName"/>).
+    /// <para>
+    /// IMPORTANT: If you override this method, you must ensure that the <see cref="ColumnMetaData.Index"/> of the columns are set correctly in the provided dictionary, as they will be used to generate the SQL for the table. If the indexes are not set correctly, the generated SQL may be incorrect and could lead to runtime errors when executing the SQL against the database.
+    /// </para>
+    /// </summary>
+    protected virtual FrozenDictionary<int, string> CreateIndexes( in FrozenDictionary<string, ColumnMetaData> properties )
+    {
         Dictionary<int, string> indexes = new(EqualityComparer<int>.Default);
         int                     i       = 0;
 
-        foreach ( ( string propertyName, ColumnMetaData column ) in dictionary.OrderBy(static pair => pair.Value.DbType, PostgresTypeComparer.Instance)
-                                                                              .ThenBy(static pair => pair.Value.IsFixed, InvertedBoolComparer.Instance)
-                                                                              .ThenBy(static pair => pair.Value.Length,     Comparer<SizeInfo?>.Default)
-                                                                              .ThenBy(static pair => pair.Value.ColumnName, StringComparer.InvariantCultureIgnoreCase) )
+        foreach ( ( string propertyName, ColumnMetaData column ) in SortedProperties(in properties) )
         {
             column.Index = i;
             indexes[i++] = propertyName;
@@ -121,6 +135,17 @@ public sealed class TableMetaData<TSelf> : ITableMetaData
 
         return indexes.ToFrozenDictionary();
     }
+    /// <summary>
+    /// Sets the order of the columns in the generated SQL will be determined by the order of the properties in the provided dictionary. If not overridden, the columns will be ordered by the size of their data type (using the <see cref="PostgresTypeComparer"/>), then by whether they are <see cref="ColumnMetaData.IsFixed"/> (a fixed or variable size/length), then by their (<see cref="ColumnMetaData.Length"/>), and finally by their (<see cref="ColumnMetaData.ColumnName"/>).
+    /// </summary>
+    protected virtual IOrderedEnumerable<KeyValuePair<string, ColumnMetaData>> SortedProperties( in FrozenDictionary<string, ColumnMetaData> properties )
+    {
+        return properties.OrderBy(static pair => pair.Value.DbType, PostgresTypeComparer.Instance)
+                         .ThenBy(static pair => pair.Value.IsFixed,    InvertedBoolComparer.Instance)
+                         .ThenBy(static pair => pair.Value.Length,     Comparer<SizeInfo?>.Default)
+                         .ThenBy(static pair => pair.Value.ColumnName, StringComparer.InvariantCultureIgnoreCase);
+    }
+
 
     public TableMetaDataEnumerator GetEnumerator() => new(this);
     string ITableMetaData.         CreateTable()   => CreateTable();
@@ -211,10 +236,10 @@ public sealed class TableMetaData<TSelf> : ITableMetaData
     {
         const BindingFlags ATTRIBUTES = BindingFlags.Instance | BindingFlags.Public | BindingFlags.SetProperty | BindingFlags.GetProperty;
 
-        PropertyInfo[] properties = typeof(TSelf).GetProperties(ATTRIBUTES)
-                                                 .AsValueEnumerable()
-                                                 .Where(static x => !x.HasAttribute<DbIgnoreAttribute>())
-                                                 .ToArray();
+        ImmutableArray<PropertyInfo> properties = typeof(TSelf).GetProperties(ATTRIBUTES)
+                                                               .AsValueEnumerable()
+                                                               .Where(static x => !x.HasAttribute<DbIgnoreAttribute>())
+                                                               .ToImmutableArray();
 
         if ( properties.Length <= 0 ) { throw new InvalidOperationException($"Type '{typeof(TSelf)}' does not have any public instance properties that are not marked with the '{nameof(DbIgnoreAttribute)}' attribute."); }
 

@@ -4,10 +4,11 @@
 namespace Jakar.Database;
 
 
-public sealed class PostgresTypeComparer : Comparer<PostgresType>
+public class PostgresTypeComparer : Comparer<PostgresType>
 {
-    public static readonly PostgresTypeComparer Instance = new();
+    public static PostgresTypeComparer Instance { get; set; } = new();
 
+    protected PostgresTypeComparer() { }
 
     public override int Compare( PostgresType left, PostgresType right )
     {
