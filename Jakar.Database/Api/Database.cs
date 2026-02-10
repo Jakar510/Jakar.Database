@@ -12,30 +12,25 @@ namespace Jakar.Database;
 [SuppressMessage("ReSharper", "InconsistentNaming")]
 public abstract partial class Database : Randoms, IConnectableDbRoot, IHealthCheck, IUserTwoFactorTokenProvider<UserRecord>
 {
-    public const                ClaimType                        DEFAULT_CLAIM_TYPES = ClaimType.UserID | ClaimType.UserName | ClaimType.Group | ClaimType.Role;
-    protected readonly          ConcurrentBag<IDbTable>          _tables             = [];
-    public readonly             DbOptions                        Options;
-    public readonly             DbTable<AddressRecord>           Addresses;
-    public readonly             DbTable<FileRecord>              Files;
-    public readonly             DbTable<GroupRecord>             Groups;
-    protected internal readonly DbTable<MigrationRecord>         Migrations;
-    public readonly             DbTable<RecoveryCodeRecord>      RecoveryCodes;
-    public readonly             DbTable<RoleRecord>              Roles;
-    public readonly             DbTable<UserAddressRecord>       UserAddresses;
-    public readonly             DbTable<UserGroupRecord>         UserGroups;
-    public readonly             DbTable<UserLoginProviderRecord> UserLoginProviders;
-    public readonly             DbTable<UserRecord>              Users;
-    public readonly             DbTable<UserRecoveryCodeRecord>  UserRecoveryCodes;
-    public readonly             DbTable<UserRoleRecord>          UserRoles;
-    protected readonly          FusionCache                      _cache;
-    public readonly             IConfiguration                   Configuration;
-    public readonly             ThreadLocal<UserRecord?>         LoggedInUser = new();
-    protected                   ActivitySource?                  _activitySource;
-    protected                   Meter?                           _meter;
-    protected                   string?                          _className;
-    public                      MigrationManager                 MigrationManager { get; }
-    public static               Database?                        Current          { get; set; }
-    public static               DataProtector                    DataProtector    { get; set; } = new(RSAEncryptionPadding.OaepSHA1);
+    public const       ClaimType                        DEFAULT_CLAIM_TYPES = ClaimType.UserID | ClaimType.UserName | ClaimType.Group | ClaimType.Role;
+    protected readonly ConcurrentBag<IDbTable>          _tables             = [];
+    public readonly    DbOptions                        Options;
+    public readonly    DbTable<AddressRecord>           Addresses;
+    public readonly    DbTable<FileRecord>              Files;
+    public readonly    DbTable<GroupRecord>             Groups;
+    public readonly    DbTable<RecoveryCodeRecord>      RecoveryCodes;
+    public readonly    DbTable<RoleRecord>              Roles;
+    public readonly    DbTable<UserLoginProviderRecord> UserLoginProviders;
+    public readonly    DbTable<UserRecord>              Users;
+    protected readonly FusionCache                      _cache;
+    public readonly    IConfiguration                   Configuration;
+    public readonly    ThreadLocal<UserRecord?>         LoggedInUser = new();
+    protected          ActivitySource?                  _activitySource;
+    protected          Meter?                           _meter;
+    protected          string?                          _className;
+    public             MigrationManager                 MigrationManager { get; }
+    public static      Database?                        Current          { get; set; }
+    public static      DataProtector                    DataProtector    { get; set; } = new(RSAEncryptionPadding.OaepSHA1);
 
     public string ClassName =>
         _className ??= GetType()
@@ -65,10 +60,6 @@ public abstract partial class Database : Randoms, IConnectableDbRoot, IHealthChe
         RecordID<RoleRecord>.RegisterDapperTypeHandlers();
         RecordID<UserRecord>.RegisterDapperTypeHandlers();
         RecordID<UserLoginProviderRecord>.RegisterDapperTypeHandlers();
-        RecordID<UserRecoveryCodeRecord>.RegisterDapperTypeHandlers();
-        RecordID<UserGroupRecord>.RegisterDapperTypeHandlers();
-        RecordID<UserRoleRecord>.RegisterDapperTypeHandlers();
-        RecordID<UserAddressRecord>.RegisterDapperTypeHandlers();
     }
     protected Database( IConfiguration configuration, IOptions<DbOptions> options, FusionCache cache ) : base()
     {
@@ -77,16 +68,11 @@ public abstract partial class Database : Randoms, IConnectableDbRoot, IHealthChe
         Options            = options.Value;
         Users              = Create<UserRecord>();
         Roles              = Create<RoleRecord>();
-        UserRoles          = Create<UserRoleRecord>();
-        UserGroups         = Create<UserGroupRecord>();
         Groups             = Create<GroupRecord>();
         RecoveryCodes      = Create<RecoveryCodeRecord>();
-        UserRecoveryCodes  = Create<UserRecoveryCodeRecord>();
         UserLoginProviders = Create<UserLoginProviderRecord>();
         Addresses          = Create<AddressRecord>();
-        UserAddresses      = Create<UserAddressRecord>();
         Files              = Create<FileRecord>();
-        Migrations         = Create<MigrationRecord>();
         MigrationManager   = CreateMigrationManager();
         Current            = this;
         Task.Run(InitDataProtector);
@@ -172,7 +158,7 @@ public abstract partial class Database : Randoms, IConnectableDbRoot, IHealthChe
 
 
     protected virtual DbTable<TSelf> Create<TSelf>()
-        where TSelf : class, ITableRecord<TSelf>
+        where TSelf : PairRecord<TSelf>, ITableRecord<TSelf>
     {
         TableMetaData<TSelf> data  = TSelf.PropertyMetaData;
         DbTable<TSelf>       table = new(this, _cache);
@@ -184,8 +170,6 @@ public abstract partial class Database : Randoms, IConnectableDbRoot, IHealthChe
         _tables.Add(value);
         return value;
     }
-
-
 
 
     public virtual async Task<HealthCheckResult> CheckHealthAsync( HealthCheckContext context, CancellationToken token = default )
@@ -226,7 +210,7 @@ public abstract partial class Database : Randoms, IConnectableDbRoot, IHealthChe
 
 
     public virtual async IAsyncEnumerable<TSelf> Where<TSelf>( NpgsqlConnection connection, NpgsqlTransaction? transaction, string sql, PostgresParameters parameters, [EnumeratorCancellation] CancellationToken token = default )
-        where TSelf : class, ITableRecord<TSelf>, IDateCreated
+        where TSelf : TableRecord<TSelf>, ITableRecord<TSelf>, IDateCreated
     {
         SqlCommand<TSelf>            command = new(sql, parameters);
         await using NpgsqlCommand    cmd     = command.ToCommand(connection, transaction);
@@ -235,7 +219,7 @@ public abstract partial class Database : Randoms, IConnectableDbRoot, IHealthChe
     }
     public virtual async IAsyncEnumerable<TValue> Where<TSelf, TValue>( NpgsqlConnection connection, NpgsqlTransaction? transaction, string sql, PostgresParameters parameters, [EnumeratorCancellation] CancellationToken token = default )
         where TValue : struct
-        where TSelf : class, ITableRecord<TSelf>
+        where TSelf : TableRecord<TSelf>, ITableRecord<TSelf>
     {
         SqlCommand<TSelf>            command = SqlCommand<TSelf>.Create(sql, parameters);
         await using NpgsqlCommand    cmd     = command.ToCommand(connection, transaction);

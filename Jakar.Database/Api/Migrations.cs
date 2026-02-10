@@ -205,7 +205,6 @@ public class MigrationManager
         parameters.Add(nameof(MigrationRecord.Description),    self.Description);
         parameters.Add(nameof(MigrationRecord.TableID),        self.TableID);
         parameters.Add(nameof(MigrationRecord.AppliedOn),      self.AppliedOn);
-        parameters.Add(nameof(MigrationRecord.AdditionalData), self.AdditionalData);
 
         SqlCommand<MigrationRecord> command = new(MigrationRecord.ApplySql, parameters);
         await command.ExecuteNonQueryAsync(connection, transaction, token);

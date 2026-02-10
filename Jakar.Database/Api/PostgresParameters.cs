@@ -46,11 +46,11 @@ public readonly struct PostgresParameters : IEquatable<PostgresParameters>
 
 
     public static PostgresParameters Create<TSelf>()
-        where TSelf : class, ITableRecord<TSelf> => new(TSelf.PropertyMetaData);
+        where TSelf : TableRecord<TSelf>, ITableRecord<TSelf> => new(TSelf.PropertyMetaData);
     public static PostgresParameters Create<TSelf>( TSelf self )
-        where TSelf : class, ITableRecord<TSelf> => new(TSelf.PropertyMetaData);
+        where TSelf : TableRecord<TSelf>, ITableRecord<TSelf> => new(TSelf.PropertyMetaData);
     public static PostgresParameters Create<TSelf>( IEnumerable<TSelf> records )
-        where TSelf : class, ITableRecord<TSelf>
+        where TSelf : TableRecord<TSelf>, ITableRecord<TSelf>
     {
         PostgresParameters parameters = new(TSelf.PropertyMetaData);
         foreach ( TSelf record in records ) { parameters.With(record.ToDynamicParameters()); }
@@ -58,7 +58,7 @@ public readonly struct PostgresParameters : IEquatable<PostgresParameters>
         return parameters;
     }
     public static PostgresParameters Create<TSelf>( params ReadOnlySpan<TSelf> records )
-        where TSelf : class, ITableRecord<TSelf>
+        where TSelf : TableRecord<TSelf>, ITableRecord<TSelf>
     {
         PostgresParameters parameters = new(TSelf.PropertyMetaData);
         foreach ( TSelf record in records ) { parameters.With(record.ToDynamicParameters()); }

@@ -3,9 +3,11 @@
 
 using System.Collections.Immutable;
 using System.Diagnostics.CodeAnalysis;
+using System.Text.RegularExpressions;
 using Jakar.Extensions;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
+using Npgsql;
 using Testcontainers.PostgreSql;
 
 
@@ -126,7 +128,7 @@ public sealed class DatabaseTests : Assert
         ( UserRecord admin, UserRecord user )             = await Add_Users(__db);
         ( AddressRecord address, UserAddressRecord link ) = await Add_Address(__db, user);
 
-        That(link.ID, Is.EqualTo(user.ID));
+        That(link.KeyID, Is.EqualTo(user.ID));
     }
 
     // ------------------------------------------------------------
@@ -192,9 +194,20 @@ public sealed class DatabaseTests : Assert
 
     private static async ValueTask<ImmutableArray<UserRoleRecord>> Add_Roles( Database db, UserRecord user, RoleRecord[] roles, CancellationToken token = default )
     {
-        ImmutableArray<UserRoleRecord> records = UserRoleRecord.Create(user, roles.AsSpan());
-        ImmutableArray<UserRoleRecord> array   = await db.UserRoles.Insert(records, token);
-        return array;
+        await using NpgsqlConnection  connection  = await db.ConnectAsync(token);
+        await using NpgsqlTransaction transaction = await connection.BeginTransactionAsync(token);
+
+        try
+        {
+            ImmutableArray<UserRoleRecord> records = UserRoleRecord.Create(user, roles.AsSpan());
+            await UserRoleRecord.TryAdd(connection, transaction, records, token);
+            return records;
+        }
+        catch ( Exception )
+        {
+            await transaction.RollbackAsync(token);
+            throw;
+        }
     }
 
     private static async ValueTask<(GroupRecord Admin, GroupRecord User)> Add_Group( Database db, UserRecord adminUser, CancellationToken token = default )
@@ -207,17 +220,40 @@ public sealed class DatabaseTests : Assert
 
     private static async ValueTask<ImmutableArray<UserGroupRecord>> Add_Groups( Database db, UserRecord user, GroupRecord[] groups, CancellationToken token = default )
     {
-        ImmutableArray<UserGroupRecord> records = UserGroupRecord.Create(user, groups.AsSpan());
-        return await db.UserGroups.Insert(records, token);
+        await using NpgsqlConnection  connection  = await db.ConnectAsync(token);
+        await using NpgsqlTransaction transaction = await connection.BeginTransactionAsync(token);
+
+        try
+        {
+            ImmutableArray<UserGroupRecord> records = UserGroupRecord.Create(user, groups.AsSpan());
+            await UserGroupRecord.TryAdd(connection, transaction, records, token);
+            return records;
+        }
+        catch ( Exception )
+        {
+            await transaction.RollbackAsync(token);
+            throw;
+        }
     }
 
     private static async ValueTask<(AddressRecord, UserAddressRecord)> Add_Address( Database db, UserRecord user, CancellationToken token = default )
     {
-        AddressRecord address = AddressRecord.Create("address line one", "", "city", "state", "postal", "country");
-        address = await db.Addresses.Insert(address, token);
-        UserAddressRecord link = await db.UserAddresses.Insert(UserAddressRecord.Create(user, address), token);
+        await using NpgsqlConnection  connection  = await db.ConnectAsync(token);
+        await using NpgsqlTransaction transaction = await connection.BeginTransactionAsync(token);
 
-        return ( address, link );
+        try
+        {
+            AddressRecord address = AddressRecord.Create("address line one", "", "city", "state", "postal", "country");
+            address = await db.Addresses.Insert(connection, transaction, address, token);
+            UserAddressRecord link = UserAddressRecord.Create(user, address);
+            await UserAddressRecord.TryAdd(connection, transaction, link, token);
+            return ( address, link );
+        }
+        catch ( Exception )
+        {
+            await transaction.RollbackAsync(token);
+            throw;
+        }
     }
 
     private static async ValueTask<FileRecord> Add_File( Database db, UserRecord user, CancellationToken token = default )
@@ -251,10 +287,22 @@ public sealed class DatabaseTests : Assert
 
     private static async ValueTask<(ImmutableArray<RecoveryCodeRecord>, ImmutableArray<UserRecoveryCodeRecord>)> Add_RecoveryCodes( Database db, UserRecord user, CancellationToken token = default )
     {
-        RecoveryCodeRecord.Codes               codes   = RecoveryCodeRecord.Create(user, 10);
-        ImmutableArray<RecoveryCodeRecord>     records = await db.RecoveryCodes.Insert(codes.Values, token);
-        ImmutableArray<UserRecoveryCodeRecord> links   = await db.UserRecoveryCodes.Insert(UserRecoveryCodeRecord.Create(user, records.AsSpan()), token);
+        await using NpgsqlConnection  connection  = await db.ConnectAsync(token);
+        await using NpgsqlTransaction transaction = await connection.BeginTransactionAsync(token);
 
-        return ( records, links );
+        try
+        {
+            RecoveryCodeRecord.Codes               codes   = RecoveryCodeRecord.Create(user, 10);
+            ImmutableArray<RecoveryCodeRecord>     records = await db.RecoveryCodes.Insert(connection, transaction, codes.Values, token);
+            ImmutableArray<UserRecoveryCodeRecord> links   = UserRecoveryCodeRecord.Create(user, records.AsSpan());
+            await UserRecoveryCodeRecord.TryAdd(connection, transaction, links, token);
+            await transaction.CommitAsync(token);
+            return ( records, links );
+        }
+        catch ( Exception )
+        {
+            await transaction.RollbackAsync(token);
+            throw;
+        }
     }
 }

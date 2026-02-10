@@ -6,7 +6,7 @@ namespace Jakar.Database;
 
 /*
 public readonly ref struct SqlTable<TSelf> : IDisposable
-    where TSelf : class, ITableRecord<TSelf>
+    where TSelf : TableRecord<TSelf>,  ITableRecord<TSelf>
 {
     internal readonly Dictionary<string, ColumnMetaData> Columns = new(StringComparer.InvariantCultureIgnoreCase);
 

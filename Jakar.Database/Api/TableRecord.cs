@@ -8,7 +8,7 @@ using ZLinq.Linq;
 namespace Jakar.Database;
 
 
-public interface IDateCreated : IUniqueID
+public interface IDateCreated
 {
     public DateTimeOffset DateCreated { get; }
 }
@@ -29,72 +29,39 @@ public interface ICreatedBy : IDateCreated
 
 
 
-public interface IRecordPair<TSelf> : IDateCreated
-    where TSelf : class, IRecordPair<TSelf>, ITableRecord<TSelf>
-{
-    Guid IUniqueID<Guid>.      ID => ID.Value;
-    public new RecordID<TSelf> ID { get; }
-
-
-    public        ValueTask          Import( NpgsqlBatchCommand   importer, CancellationToken token );
-    public        ValueTask          Import( NpgsqlBinaryImporter importer, CancellationToken token );
-    public        ValueTask          Export( NpgsqlBinaryExporter exporter, CancellationToken token );
-    [Pure] public UInt128            GetHash();
-    [Pure] public PostgresParameters ToDynamicParameters();
-}
-
-
-
-public interface ITableRecord<TSelf> : IRecordPair<TSelf>, IJsonModel<TSelf>
-    where TSelf : class, ITableRecord<TSelf>
+public interface ITableRecord<TSelf>
+    where TSelf : TableRecord<TSelf>, ITableRecord<TSelf>
 {
     public abstract static ValueEnumerable<FromArray<PropertyInfo>, PropertyInfo> ClassProperties  { [Pure] get; }
     public abstract static int                                                    PropertyCount    { get; }
     public abstract static TableMetaData<TSelf>                                   PropertyMetaData { [Pure] get; }
     public abstract static string                                                 TableName        { [Pure] get; }
 
-
-    [Pure] public abstract static MigrationRecord CreateTable( ulong migrationID );
-
-
-    [Pure] public                 RecordPair<TSelf> ToPair();
-    public                        TSelf             Modified();
-    [Pure] public abstract static TSelf             Create( NpgsqlDataReader reader );
-    public                        TSelf             NewID( RecordID<TSelf>   id );
+    [Pure] public abstract static TSelf           Create( NpgsqlDataReader reader );
+    [Pure] public abstract static MigrationRecord CreateTable( ulong       migrationID );
 }
 
 
 
 [Serializable]
-public abstract record TableRecord<TSelf> : BaseRecord<TSelf>, IRecordPair<TSelf>, ILastModified
+public abstract record TableRecord<TSelf>( in DateTimeOffset DateCreated ) : IJsonModel<TSelf>, IDateCreated
     where TSelf : TableRecord<TSelf>, ITableRecord<TSelf>
 {
     protected internal static readonly PropertyInfo[]  Properties = typeof(TSelf).GetProperties(BindingFlags.Instance | BindingFlags.Public);
     protected                          DateTimeOffset? _lastModified;
-    private                            RecordID<TSelf> __id;
 
 
-    public static                                   TableMetaData<TSelf>                                   PropertyMetaData => TableMetaData<TSelf>.Instance;
-    public static                                   ValueEnumerable<FromArray<PropertyInfo>, PropertyInfo> ClassProperties  { [Pure] get => Properties.AsValueEnumerable(); }
-    public static                                   int                                                    PropertyCount    => Properties.Length;
-    public                                          DateTimeOffset                                         DateCreated      { get;                  init; }
-    [Key]                                    public RecordID<TSelf>                                        ID               { get => __id;          init => __id = value; }
-    [ColumnMetaData(ColumnOptions.Nullable)] public DateTimeOffset?                                        LastModified     { get => _lastModified; init => _lastModified = value; }
+    public static TableMetaData<TSelf>                                   PropertyMetaData => TableMetaData<TSelf>.Instance;
+    public static ValueEnumerable<FromArray<PropertyInfo>, PropertyInfo> ClassProperties  { [Pure] get => Properties.AsValueEnumerable(); }
+    public static int                                                    PropertyCount    => Properties.Length;
 
 
-    protected TableRecord( in RecordID<TSelf> id, in DateTimeOffset dateCreated, in DateTimeOffset? lastModified, JObject? additionalData = null )
-    {
-        ID             = id;
-        DateCreated    = dateCreated;
-        LastModified   = lastModified;
-        AdditionalData = additionalData;
-    }
-    protected internal TableRecord( NpgsqlDataReader reader ) : this(RecordID<TSelf>.ID(reader), reader.GetFieldValue<TSelf, DateTimeOffset>(nameof(DateCreated)), reader.GetFieldValue<TSelf, DateTimeOffset>(nameof(LastModified))) { }
+    protected internal TableRecord( NpgsqlDataReader reader ) : this(reader.GetFieldValue<TSelf, DateTimeOffset>(nameof(DateCreated))) { }
 
 
     [Pure] public UInt128 GetHash()
     {
-        ReadOnlySpan<char> json = this.ToJson();
+        ReadOnlySpan<char> json = ToString();
         return json.Hash128();
     }
     public TSelf Modified()
@@ -102,6 +69,80 @@ public abstract record TableRecord<TSelf> : BaseRecord<TSelf>, IRecordPair<TSelf
         _lastModified = DateTimeOffset.UtcNow;
         return (TSelf)this;
     }
+
+
+    public abstract bool Equals( TSelf?    other );
+    public abstract int  CompareTo( TSelf? other );
+    public int CompareTo( object? other )
+    {
+        if ( other is null ) { return 1; }
+
+        if ( ReferenceEquals(this, other) ) { return 0; }
+
+        return other is TSelf t
+                   ? CompareTo(t)
+                   : throw new ExpectedValueTypeException(nameof(other), other, typeof(TSelf));
+    }
+
+
+    public static bool TryFromJson( string? json, [NotNullWhen(true)] out TSelf? result )
+    {
+        try
+        {
+            if ( string.IsNullOrWhiteSpace(json) )
+            {
+                result = null;
+                return false;
+            }
+
+            result = FromJson(json);
+            return true;
+        }
+        catch ( Exception e ) { SelfLogger.WriteLine("{Exception}", e.ToString()); }
+
+        result = null;
+        return false;
+    }
+    public static TSelf FromJson( string json ) => json.FromJson<TSelf>();
+
+
+    public virtual  ValueTask Export( NpgsqlBinaryExporter exporter, CancellationToken token ) => default;
+    public virtual  ValueTask Import( NpgsqlBatchCommand   batch,    CancellationToken token ) => default;
+    public abstract ValueTask Import( NpgsqlBinaryImporter importer, CancellationToken token );
+    [Pure] public virtual PostgresParameters ToDynamicParameters()
+    {
+        PostgresParameters parameters = PostgresParameters.Create<TSelf>();
+        parameters.Add(nameof(DateCreated), DateCreated);
+        return parameters;
+    }
+}
+
+
+
+[Serializable]
+public abstract record PairRecord<TSelf> : TableRecord<TSelf>, IUniqueID
+    where TSelf : PairRecord<TSelf>, ITableRecord<TSelf>
+{
+    private   RecordID<TSelf> __id;
+    protected JObject?        _additionalData;
+
+
+    Guid IUniqueID<Guid>.                                           ID             => ID.Value;
+    [ProtectedPersonalData]                  public JObject?        AdditionalData { get => _additionalData; set => _additionalData = value; }
+    [Key]                                    public RecordID<TSelf> ID             { get => __id;            init => __id = value; }
+    [ColumnMetaData(ColumnOptions.Nullable)] public DateTimeOffset? LastModified   { get => _lastModified;   init => _lastModified = value; }
+
+
+    protected PairRecord( in RecordID<TSelf> id, in DateTimeOffset dateCreated, in DateTimeOffset? lastModified, JObject? additionalData = null ) : base(in dateCreated)
+    {
+        ID             = id;
+        DateCreated    = dateCreated;
+        LastModified   = lastModified;
+        AdditionalData = additionalData;
+    }
+    protected internal PairRecord( NpgsqlDataReader reader ) : this(RecordID<TSelf>.ID(reader), reader.GetFieldValue<TSelf, DateTimeOffset>(nameof(DateCreated)), reader.GetFieldValue<TSelf, DateTimeOffset>(nameof(LastModified))) { }
+
+
     public TSelf NewID( RecordID<TSelf> id )
     {
         __id = id;
@@ -110,11 +151,14 @@ public abstract record TableRecord<TSelf> : BaseRecord<TSelf>, IRecordPair<TSelf
     [Pure] public RecordPair<TSelf> ToPair() => new(ID, DateCreated);
 
 
-    public override TSelf WithAdditionalData( JObject? value )
+    public TSelf WithAdditionalData( IJsonModel value ) => WithAdditionalData(value.AdditionalData);
+    public virtual TSelf WithAdditionalData( JObject? additionalData )
     {
-        if ( value is null || value.Count <= 0 ) { return (TSelf)this; }
+        if ( additionalData is null || additionalData.Count <= 0 ) { return (TSelf)this; }
 
-        base.WithAdditionalData(value);
+        JObject json = _additionalData ??= new JObject();
+        foreach ( ( string key, JToken? jToken ) in additionalData ) { json[key] = jToken; }
+
         return Modified();
     }
 
@@ -128,32 +172,12 @@ public abstract record TableRecord<TSelf> : BaseRecord<TSelf>, IRecordPair<TSelf
     }
 
 
-    public abstract ValueTask Export( NpgsqlBinaryExporter exporter, CancellationToken token );
-    public virtual  ValueTask Import( NpgsqlBatchCommand   batch,    CancellationToken token ) => default;
-    public abstract ValueTask Import( NpgsqlBinaryImporter importer, CancellationToken token );
-    [Pure] public virtual PostgresParameters ToDynamicParameters()
+    [Pure] public override PostgresParameters ToDynamicParameters()
     {
-        PostgresParameters parameters = PostgresParameters.Create<TSelf>();
+        PostgresParameters parameters = base.ToDynamicParameters();
         parameters.Add(nameof(ID),           ID.Value);
-        parameters.Add(nameof(DateCreated),  DateCreated);
         parameters.Add(nameof(LastModified), LastModified);
         return parameters;
-    }
-
-
-    [Pure] protected static TValue TryGet<TValue>( NpgsqlDataReader reader, string key )
-    {
-        int index = reader.GetOrdinal(key);
-        return (TValue)reader.GetValue(index);
-    }
-
-
-    public void Deconstruct( out RecordID<TSelf> id, out DateTimeOffset dateCreated, out DateTimeOffset? lastModified, out JObject? additionalData )
-    {
-        additionalData = AdditionalData;
-        id             = ID;
-        dateCreated    = DateCreated;
-        lastModified   = LastModified;
     }
 
 
@@ -169,7 +193,7 @@ public abstract record TableRecord<TSelf> : BaseRecord<TSelf>, IRecordPair<TSelf
 
 
 [Serializable]
-public abstract record OwnedTableRecord<TSelf> : TableRecord<TSelf>, ICreatedBy
+public abstract record OwnedTableRecord<TSelf> : PairRecord<TSelf>, ICreatedBy
     where TSelf : OwnedTableRecord<TSelf>, ITableRecord<TSelf>
 {
     [ColumnMetaData(UserRecord.TABLE_NAME)] public RecordID<UserRecord>? CreatedBy { get; set; }

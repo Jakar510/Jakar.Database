@@ -9,11 +9,10 @@ namespace Jakar.Database;
 
 
 [Serializable]
-public sealed record MigrationRecord : BaseRecord<MigrationRecord>, ITableRecord<MigrationRecord>
+public sealed record MigrationRecord : TableRecord<MigrationRecord>, ITableRecord<MigrationRecord>
 {
-    public const             string         TABLE_NAME = "migrations";
-    internal static readonly PropertyInfo[] Properties = typeof(MigrationRecord).GetProperties(BindingFlags.Instance | BindingFlags.Public);
-    public static readonly   string         SelectSql  = $"SELECT * FROM {TABLE_NAME} ORDER BY {nameof(MigrationID).SqlColumnName()}";
+    public const           string TABLE_NAME = "migrations";
+    public static readonly string SelectSql  = $"SELECT * FROM {TABLE_NAME} ORDER BY {nameof(MigrationID).SqlColumnName()}";
     public static readonly string ApplySql = $"""
                                               INSERT INTO {TABLE_NAME} 
                                               (
@@ -21,7 +20,6 @@ public sealed record MigrationRecord : BaseRecord<MigrationRecord>, ITableRecord
                                               {nameof(TableID).SqlColumnName()},
                                               {nameof(Description).SqlColumnName()},
                                               {nameof(AppliedOn).SqlColumnName()},
-                                              {nameof(AdditionalData).SqlColumnName()}
                                               ) 
                                               VALUES 
                                               (
@@ -29,31 +27,31 @@ public sealed record MigrationRecord : BaseRecord<MigrationRecord>, ITableRecord
                                               @{nameof(TableID).SqlColumnName()},
                                               @{nameof(Description).SqlColumnName()},
                                               @{nameof(AppliedOn).SqlColumnName()},
-                                              @{nameof(AdditionalData).SqlColumnName()}
                                               )
                                               """;
 
 
-    public static ValueEnumerable<FromArray<PropertyInfo>, PropertyInfo> ClassProperties  => Properties.AsValueEnumerable();
-    public static int                                                    PropertyCount    => Properties.Length;
-    public static TableMetaData<MigrationRecord>                         PropertyMetaData => TableMetaData<MigrationRecord>.Instance;
-    public static string                                                 TableName        => TABLE_NAME;
-    public        DateTimeOffset                                         AppliedOn        { get; init; } = DateTimeOffset.UtcNow;
-    DateTimeOffset IDateCreated.                                         DateCreated      => AppliedOn;
-    public required string                                               Description      { get; init; }
-    RecordID<MigrationRecord> IRecordPair<MigrationRecord>.              ID               => RecordID<MigrationRecord>.Create(MigrationID.AsGuid());
-    [Key] public required                               ulong            MigrationID      { get; init; }
-    internal                                            string           SQL              { get; init; } = EMPTY;
-    [ColumnMetaData(ColumnOptions.Indexed, 256)] public string?          TableID          { get; init; }
+    public static                                       string         TableName   => TABLE_NAME;
+    public                                              DateTimeOffset AppliedOn   { get; init; } = DateTimeOffset.UtcNow;
+    public required                                     string         Description { get; init; }
+    [Key] public required                               ulong          MigrationID { get; init; }
+    internal                                            string         SQL         { get; init; } = EMPTY;
+    [ColumnMetaData(ColumnOptions.Indexed, 256)] public string?        TableID     { get; init; }
 
 
-    [method: SetsRequiredMembers] internal MigrationRecord( ulong migrationID, string description, string? tableID = null )
+    [SetsRequiredMembers] internal MigrationRecord( ulong migrationID, string description, string? tableID = null ) : base(DateTimeOffset.UtcNow)
     {
         MigrationID = migrationID;
         Description = description;
         TableID     = tableID;
     }
-
+    [SetsRequiredMembers] public MigrationRecord( NpgsqlDataReader reader ) : base(reader)
+    {
+        Description = reader.GetFieldValue<MigrationRecord, string>(nameof(Description));
+        TableID     = reader.GetFieldValue<MigrationRecord, string?>(nameof(TableID));
+        AppliedOn   = reader.GetFieldValue<MigrationRecord, DateTimeOffset>(nameof(AppliedOn));
+        MigrationID = reader.GetFieldValue<MigrationRecord, ulong>(nameof(MigrationID));
+    }
     public static MigrationRecord SetLastModified( ulong migrationID )
     {
         string name = nameof(SetLastModified)
@@ -100,7 +98,7 @@ public sealed record MigrationRecord : BaseRecord<MigrationRecord>, ITableRecord
                                );
     public static MigrationRecord CreateTable( ulong migrationID ) => CreateTable<MigrationRecord>(migrationID);
     public static MigrationRecord CreateTable<TSelf>( ulong migrationID )
-        where TSelf : class, ITableRecord<TSelf> => Create<TSelf>(migrationID, $"Create '{TSelf.TableName}' Table", TableMetaData<TSelf>.CreateTable());
+        where TSelf : TableRecord<TSelf>, ITableRecord<TSelf> => Create<TSelf>(migrationID, $"Create '{TSelf.TableName}' Table", TableMetaData<TSelf>.CreateTable());
 
 
     public static MigrationRecord FromEnum<TEnum>( ulong migrationID )
@@ -153,7 +151,7 @@ public sealed record MigrationRecord : BaseRecord<MigrationRecord>, ITableRecord
 
 
     public static MigrationRecord Create<TSelf>( ulong migrationID, string description, string sql )
-        where TSelf : class, ITableRecord<TSelf>
+        where TSelf : TableRecord<TSelf>, ITableRecord<TSelf>
     {
         MigrationRecord record = new(migrationID, description)
                                  {
@@ -165,52 +163,51 @@ public sealed record MigrationRecord : BaseRecord<MigrationRecord>, ITableRecord
     }
 
 
-    MigrationRecord ITableRecord<MigrationRecord>.Modified() => this;
     public static MigrationRecord Create( NpgsqlDataReader reader )
     {
-        string         description = reader.GetFieldValue<MigrationRecord, string>(nameof(Description));
-        string?        tableName   = reader.GetFieldValue<MigrationRecord, string?>(nameof(TableID));
-        DateTimeOffset appliedOn   = reader.GetFieldValue<MigrationRecord, DateTimeOffset>(nameof(AppliedOn));
-        ulong          id          = reader.GetFieldValue<MigrationRecord, ulong>(nameof(MigrationID));
-
-        MigrationRecord record = new(id, description)
-                                 {
-                                     TableID   = tableName,
-                                     AppliedOn = appliedOn
-                                 };
-
+        MigrationRecord record = new(reader);
         return record.Validate();
     }
 
 
-    public ValueTask Export( NpgsqlBinaryExporter exporter, CancellationToken token ) => default;
-    public ValueTask Import( NpgsqlBatchCommand   importer, CancellationToken token ) => default;
-    public async ValueTask Import( NpgsqlBinaryImporter importer, CancellationToken token )
+    public override async ValueTask Import( NpgsqlBinaryImporter importer, CancellationToken token )
     {
-        await importer.WriteAsync(MigrationID,    NpgsqlDbType.Bigint,      token);
-        await importer.WriteAsync(AppliedOn,      NpgsqlDbType.TimestampTz, token);
-        await importer.WriteAsync(TableID,        NpgsqlDbType.Bigint,      token);
-        await importer.WriteAsync(Description,    NpgsqlDbType.Text,        token);
-        await importer.WriteAsync(AdditionalData, NpgsqlDbType.Json,        token);
+        using PooledArray<ColumnMetaData> buffer = PropertyMetaData.SortedColumns;
+
+        foreach ( ColumnMetaData column in buffer.Array )
+        {
+            switch ( column.PropertyName )
+            {
+                case nameof(MigrationID):
+                    await importer.WriteAsync(MigrationID, NpgsqlDbType.Bigint, token);
+                    break;
+
+                case nameof(AppliedOn):
+                    await importer.WriteAsync(AppliedOn, NpgsqlDbType.TimestampTz, token);
+                    break;
+
+                case nameof(TableID):
+                    await importer.WriteAsync(TableID, NpgsqlDbType.Bigint, token);
+                    break;
+
+                case nameof(Description):
+                    await importer.WriteAsync(Description, NpgsqlDbType.Text, token);
+                    break;
+
+                case nameof(DateCreated):
+                    await importer.WriteAsync(DateCreated, NpgsqlDbType.TimestampTz, token);
+                    break;
+            }
+        }
     }
-    public PostgresParameters ToDynamicParameters()
+    public override PostgresParameters ToDynamicParameters()
     {
-        PostgresParameters parameters = PostgresParameters.Create<MigrationRecord>();
-        parameters.Add(nameof(MigrationID),    MigrationID);
-        parameters.Add(nameof(TableID),        TableID);
-        parameters.Add(nameof(AppliedOn),      AppliedOn);
-        parameters.Add(nameof(Description),    Description);
-        parameters.Add(nameof(AdditionalData), AdditionalData);
+        PostgresParameters parameters = base.ToDynamicParameters();
+        parameters.Add(nameof(MigrationID), MigrationID);
+        parameters.Add(nameof(TableID),     TableID);
+        parameters.Add(nameof(AppliedOn),   AppliedOn);
+        parameters.Add(nameof(Description), Description);
         return parameters;
-    }
-
-
-    public RecordPair<MigrationRecord> ToPair()                              => new(( (IRecordPair<MigrationRecord>)this ).ID, AppliedOn);
-    public MigrationRecord             NewID( RecordID<MigrationRecord> id ) => throw new NotImplementedException();
-    public UInt128 GetHash()
-    {
-        ReadOnlySpan<char> span = ToString();
-        return span.Hash128();
     }
 
 

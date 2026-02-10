@@ -17,7 +17,7 @@ public sealed record UserRecoveryCodeRecord : Mapping<UserRecoveryCodeRecord, Us
 
 
     public UserRecoveryCodeRecord( RecordID<UserRecord> key, RecordID<RecoveryCodeRecord> value ) : base(key, value) { }
-    public UserRecoveryCodeRecord( RecordID<UserRecord> key, RecordID<RecoveryCodeRecord> value, RecordID<UserRecoveryCodeRecord> id, DateTimeOffset dateCreated, DateTimeOffset? lastModified = null ) : base(key, value, id, dateCreated, lastModified) { }
+    public UserRecoveryCodeRecord( RecordID<UserRecord> key, RecordID<RecoveryCodeRecord> value, DateTimeOffset dateCreated ) : base(key, value, dateCreated) { }
     internal UserRecoveryCodeRecord( NpgsqlDataReader   reader ) : base(reader) { }
 
 
@@ -49,15 +49,7 @@ public sealed record UserRecoveryCodeRecord : Mapping<UserRecoveryCodeRecord, Us
     }
 
 
-    public static UserRecoveryCodeRecord Create( NpgsqlDataReader reader )
-    {
-        RecordID<UserRecord>             key          = new(reader.GetFieldValue<UserRecoveryCodeRecord, Guid>(nameof(KeyID)));
-        RecordID<RecoveryCodeRecord>     value        = new(reader.GetFieldValue<UserRecoveryCodeRecord, Guid>(nameof(KeyID)));
-        DateTimeOffset                   dateCreated  = reader.GetFieldValue<UserRecoveryCodeRecord, DateTimeOffset>(nameof(DateCreated));
-        DateTimeOffset?                  lastModified = reader.GetFieldValue<UserRecoveryCodeRecord, DateTimeOffset?>(nameof(LastModified));
-        RecordID<UserRecoveryCodeRecord> id           = RecordID<UserRecoveryCodeRecord>.ID(reader);
-        return new UserRecoveryCodeRecord(key, value, id, dateCreated, lastModified);
-    }
+    public static UserRecoveryCodeRecord Create( NpgsqlDataReader reader ) => new UserRecoveryCodeRecord(reader).Validate();
     public static async IAsyncEnumerable<UserRecoveryCodeRecord> CreateAsync( NpgsqlDataReader reader, [EnumeratorCancellation] CancellationToken token = default )
     {
         while ( await reader.ReadAsync(token) ) { yield return Create(reader); }

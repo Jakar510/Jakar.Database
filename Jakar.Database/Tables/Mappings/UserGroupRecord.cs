@@ -17,7 +17,7 @@ public sealed record UserGroupRecord : Mapping<UserGroupRecord, UserRecord, Grou
 
 
     public UserGroupRecord( RecordID<UserRecord>  key, RecordID<GroupRecord> value ) : base(key, value) { }
-    private UserGroupRecord( RecordID<UserRecord> key, RecordID<GroupRecord> value, RecordID<UserGroupRecord> id, DateTimeOffset dateCreated, DateTimeOffset? lastModified ) : base(key, value, id, dateCreated, lastModified) { }
+    private UserGroupRecord( RecordID<UserRecord> key, RecordID<GroupRecord> value, DateTimeOffset dateCreated ) : base(key, value, dateCreated) { }
     internal UserGroupRecord( NpgsqlDataReader    reader ) : base(reader) { }
 
 
@@ -47,16 +47,7 @@ public sealed record UserGroupRecord : Mapping<UserGroupRecord, UserRecord, Grou
         // ReSharper disable once LoopCanBeConvertedToQuery
         foreach ( RecordID<GroupRecord> value in values ) { yield return Create(key, value); }
     }
-    [Pure] public static UserGroupRecord Create( NpgsqlDataReader reader )
-    {
-        RecordID<UserRecord>      key          = RecordID<UserRecord>.Create(reader, nameof(KeyID));
-        RecordID<GroupRecord>     value        = RecordID<GroupRecord>.Create(reader, nameof(KeyID));
-        DateTimeOffset            dateCreated  = reader.GetFieldValue<UserGroupRecord, DateTimeOffset>(nameof(DateCreated));
-        DateTimeOffset?           lastModified = reader.GetFieldValue<UserGroupRecord, DateTimeOffset?>(nameof(LastModified));
-        RecordID<UserGroupRecord> id           = RecordID<UserGroupRecord>.ID(reader);
-        UserGroupRecord           record       = new(key, value, id, dateCreated, lastModified);
-        return record.Validate();
-    }
+    [Pure] public static UserGroupRecord Create( NpgsqlDataReader reader ) => new UserGroupRecord(reader).Validate();
 
 
     public static bool operator >( UserGroupRecord  left, UserGroupRecord right ) => left.CompareTo(right) > 0;

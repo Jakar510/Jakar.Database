@@ -5,7 +5,7 @@ namespace Jakar.Database;
 
 
 public sealed class SqlException<TSelf> : Exception
-    where TSelf : class, ITableRecord<TSelf>
+    where TSelf : TableRecord<TSelf>,  ITableRecord<TSelf>
 {
     public PostgresParameters Parameters { get; init; }
     public string             SQL        { get; init; }

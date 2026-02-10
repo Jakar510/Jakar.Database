@@ -6,8 +6,8 @@ namespace Jakar.Database;
 
 [Serializable]
 [method: JsonConstructor]
-public readonly struct RecordPair<TSelf>( RecordID<TSelf> id, DateTimeOffset dateCreated ) : IEqualComparable<RecordPair<TSelf>>, IRecordPair<TSelf>
-    where TSelf : class, ITableRecord<TSelf>
+public readonly struct RecordPair<TSelf>( RecordID<TSelf> id, DateTimeOffset dateCreated ) : IEqualComparable<RecordPair<TSelf>>
+    where TSelf : PairRecord<TSelf>, ITableRecord<TSelf>
 {
     public readonly  RecordID<TSelf> ID          = id;
     public readonly  DateTimeOffset  DateCreated = dateCreated;
@@ -15,11 +15,8 @@ public readonly struct RecordPair<TSelf>( RecordID<TSelf> id, DateTimeOffset dat
 
 
     public static ReadOnlyMemory<PropertyInfo> ClassProperties  { get; } = typeof(RecordPair<TSelf>).GetProperties();
-    public static TableMetaData<TSelf>                PropertyMetaData => TSelf.PropertyMetaData;
+    public static TableMetaData<TSelf>         PropertyMetaData => TSelf.PropertyMetaData;
     public static string                       TableName        => TSelf.TableName;
-    Guid IUniqueID<Guid>.                      ID               => ID.Value;
-    RecordID<TSelf> IRecordPair<TSelf>.        ID               => ID;
-    DateTimeOffset IDateCreated.               DateCreated      => DateCreated;
 
 
     public UInt128 GetHash() => ID.GetHash() | new UInt128(0, (ulong)DateCreated.GetHashCode());

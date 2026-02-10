@@ -7,7 +7,7 @@ namespace Jakar.Database;
 
 [DefaultMember(nameof(Empty))]
 public readonly struct RecordID<TSelf>( Guid id ) : IEquatable<RecordID<TSelf>>, IComparable<RecordID<TSelf>>, ISpanFormattable, ISpanParsable<RecordID<TSelf>>, IRegisterDapperTypeHandlers
-    where TSelf : class, ITableRecord<TSelf>
+    where TSelf : PairRecord<TSelf>, ITableRecord<TSelf>
 {
     public static readonly RecordID<TSelf> Empty = new(Guid.Empty);
     public readonly        string          key   = $"{TSelf.TableName}:{id}";
@@ -18,7 +18,7 @@ public readonly struct RecordID<TSelf>( Guid id ) : IEquatable<RecordID<TSelf>>,
     [Pure] public static RecordID<TSelf>  New( DateTimeOffset              timeStamp )                   => Create(Guid.CreateVersion7(timeStamp));
     [Pure] public static RecordID<TSelf>  Parse( string                    value )                       => Create(Guid.Parse(value));
     [Pure] public static RecordID<TSelf>  Parse( params ReadOnlySpan<char> value )                       => Create(Guid.Parse(value));
-    [Pure] public static RecordID<TSelf>  ID( NpgsqlDataReader             reader )                      => Create(reader, nameof(IDateCreated.ID));
+    [Pure] public static RecordID<TSelf>  ID( NpgsqlDataReader             reader )                      => Create(reader, nameof(IUniqueID.ID));
     [Pure] public static RecordID<TSelf>? CreatedBy( NpgsqlDataReader      reader )                      => TryCreate(reader, nameof(ICreatedBy.CreatedBy));
     [Pure] public static RecordID<TSelf>? TryCreate( NpgsqlDataReader      reader, string propertyName ) => TryCreate(reader.GetFieldValue<Guid?>(TSelf.PropertyMetaData[propertyName].Index));
     [Pure] public static RecordID<TSelf>  Create( NpgsqlDataReader         reader, string propertyName ) => Create(reader.GetFieldValue<Guid>(TSelf.PropertyMetaData[propertyName].Index));
@@ -81,7 +81,7 @@ public readonly struct RecordID<TSelf>( Guid id ) : IEquatable<RecordID<TSelf>>,
     [Pure] public PostgresParameters ToDynamicParameters()
     {
         PostgresParameters parameters = PostgresParameters.Create<TSelf>();
-        parameters.Add(nameof(IDateCreated.ID), Value);
+        parameters.Add(nameof(IUniqueID.ID), Value);
         return parameters;
     }
 

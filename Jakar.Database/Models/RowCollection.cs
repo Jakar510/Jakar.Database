@@ -3,7 +3,7 @@
 
 [Serializable]
 public class RecordCollection<TSelf>( int capacity = DEFAULT_CAPACITY ) : IReadOnlyList<TSelf>
-    where TSelf : class, ITableRecord<TSelf>
+    where TSelf : PairRecord<TSelf>, ITableRecord<TSelf>
 {
     private readonly List<TSelf> __records = new(capacity);
 

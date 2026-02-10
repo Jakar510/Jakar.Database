@@ -83,25 +83,28 @@ public readonly ref struct PropertyColumn( ref readonly string propertyName, ref
 
 
 [AttributeUsage(AttributeTargets.Class)]
-public sealed class TableExtrasAttribute() : Attribute
+public sealed class TableExtrasAttribute : Attribute
 {
-    public (string First, string Second)?              PrimaryKeyOverride { get; init; }
-    public ImmutableArray<(string Left, string Right)> UniquePairs        { get; init; }
+    public (string First, string Second)? PrimaryKeyPropertiesOverride { get; init; }
+    public (string Left, string Right)[]? UniquePropertyPairs          { get; init; }
+
+
+    public TableExtrasAttribute() { }
+    public TableExtrasAttribute( string                               first, string second ) => PrimaryKeyPropertiesOverride = ( first, second );
+    public TableExtrasAttribute( params (string Left, string Right)[] uniquePairs ) => UniquePropertyPairs = uniquePairs;
 }
 
 
 
 public class TableMetaData<TSelf> : ITableMetaData
-    where TSelf : class, ITableRecord<TSelf>
+    where TSelf : TableRecord<TSelf>, ITableRecord<TSelf>
 {
     public static readonly TableMetaData<TSelf> Instance = Create();
-    protected static       string?              _createTableSql;
 
     // ReSharper disable once StaticMemberInGenericType
-
-
-    public readonly FrozenDictionary<int, string>            Indexes;
-    public readonly FrozenDictionary<string, ColumnMetaData> Properties;
+    protected static string?                                  _createTableSql;
+    public readonly  FrozenDictionary<int, string>            Indexes;
+    public readonly  FrozenDictionary<string, ColumnMetaData> Properties;
 
 
     public static ITableMetaData                                                      Default => Instance;
@@ -362,6 +365,34 @@ public class TableMetaData<TSelf> : ITableMetaData
 
             query.Remove(query.Length - 1, 1);
             query.Append('\n');
+        }
+
+        TableExtrasAttribute? extras = Instance.Extras;
+
+        if ( extras is not null )
+        {
+            if ( extras.PrimaryKeyPropertiesOverride.HasValue )
+            {
+                (string First, string Second) keyOverride = extras.PrimaryKeyPropertiesOverride.Value;
+
+                query.Append($"    PRIMARY KEY ({keyOverride.First.SqlColumnName()}, {keyOverride.Second.SqlColumnName()})");
+            }
+
+            if ( extras.UniquePropertyPairs?.Length is not > 0 ) { query.Append('\n'); }
+            else
+            {
+                query.Append(',');
+                query.Append('\n');
+
+                for ( int index = 0; index < extras.UniquePropertyPairs.Length; index++ )
+                {
+                    ( string left, string right ) = extras.UniquePropertyPairs[index];
+                    query.Append($"UNIQUE ({left.SqlColumnName()}, {right.SqlColumnName()})");
+                    if ( index < extras.UniquePropertyPairs.Length - 1 ) { query.Append(','); }
+
+                    query.Append('\n');
+                }
+            }
         }
 
         query.Append(')');

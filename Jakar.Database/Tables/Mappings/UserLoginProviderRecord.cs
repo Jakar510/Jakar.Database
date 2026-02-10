@@ -162,15 +162,4 @@ public sealed record UserLoginProviderRecord : OwnedTableRecord<UserLoginProvide
                                                                                                     Name          = value.ProviderDisplayName ?? EMPTY,
                                                                                                     Value         = value.ProviderKey
                                                                                                 };
-    public void Deconstruct( out string LoginProvider, out string? ProviderDisplayName, out string ProviderKey, out string? Value, out RecordID<UserLoginProviderRecord> ID, out RecordID<UserRecord>? CreatedBy, out DateTimeOffset DateCreated, out DateTimeOffset? LastModified )
-    {
-        LoginProvider       = this.LoginProvider;
-        ProviderDisplayName = this.ProviderDisplayName;
-        ProviderKey         = this.ProviderKey;
-        Value               = this.Value;
-        ID                  = this.ID;
-        CreatedBy           = this.CreatedBy;
-        DateCreated         = this.DateCreated;
-        LastModified        = this.LastModified;
-    }
 }

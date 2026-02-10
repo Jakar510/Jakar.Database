@@ -7,7 +7,7 @@ namespace Jakar.Database;
 
 [SuppressMessage("ReSharper", "ClassWithVirtualMembersNeverInherited.Global")]
 public partial class DbTable<TSelf> : IDbTable<TSelf>
-    where TSelf : class, ITableRecord<TSelf>
+    where TSelf : PairRecord<TSelf>, ITableRecord<TSelf>
 {
     protected readonly FusionCache        _cache;
     protected readonly IConnectableDbRoot _database;
@@ -21,7 +21,7 @@ public partial class DbTable<TSelf> : IDbTable<TSelf>
     public        RecordGenerator<TSelf>   Records                   => new(this);
     ITableMetaData IDbTable.               PropertyMetaData          { [Pure] get => PropertyMetaData; }
     public IsolationLevel                  TransactionIsolationLevel => _database.TransactionIsolationLevel;
-    public string                          TableName                 { [Pure] get => TSelf.TableName; } 
+    public string                          TableName                 { [Pure] get => TSelf.TableName; }
 
 
     public DbTable( IConnectableDbRoot database, FusionCache cache )

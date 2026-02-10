@@ -4,10 +4,10 @@
 public static class TableExtensions
 {
     [Pure] public static StringBuilder Ids<TSelf>( this IEnumerable<RecordID<TSelf>> values )
-        where TSelf : class, ITableRecord<TSelf> => values.AsValueEnumerable()
-                                                          .Ids();
+        where TSelf : PairRecord<TSelf>, ITableRecord<TSelf> => values.AsValueEnumerable()
+                                                                      .Ids();
     [Pure] public static StringBuilder Ids<TEnumerable, TSelf>( this ValueEnumerable<TEnumerable, RecordID<TSelf>> values )
-        where TSelf : class, ITableRecord<TSelf>
+        where TSelf : PairRecord<TSelf>, ITableRecord<TSelf>
         where TEnumerable : struct, IValueEnumerator<RecordID<TSelf>>, allows ref struct
     {
         const string                                        SEPARATOR  = ", ";
@@ -28,7 +28,7 @@ public static class TableExtensions
 
 
     [Pure] public static TSelf Validate<TSelf>( this TSelf self )
-        where TSelf : class, ITableRecord<TSelf>
+        where TSelf : TableRecord<TSelf>, ITableRecord<TSelf>
     {
         if ( !Debugger.IsAttached ) { return self; }
 
@@ -57,7 +57,7 @@ public static class TableExtensions
     extension( NpgsqlDataReader self )
     {
         public JObject? GetAdditionalData<TRecord>()
-            where TRecord : class, ITableRecord<TRecord>
+            where TRecord : TableRecord<TRecord>, ITableRecord<TRecord>
         {
             int ordinal = TRecord.PropertyMetaData[nameof(IJsonModel.AdditionalData)].Index;
 
@@ -67,7 +67,7 @@ public static class TableExtensions
                             ?.GetAdditionalData();
         }
         public TValue GetFieldValue<TRecord, TValue>( string propertyName )
-            where TRecord : class, ITableRecord<TRecord>
+            where TRecord : TableRecord<TRecord>, ITableRecord<TRecord>
         {
             int ordinal = TRecord.PropertyMetaData[propertyName].Index;
 
@@ -76,7 +76,7 @@ public static class TableExtensions
                        : self.GetFieldValue<TValue>(ordinal);
         }
         public TValue GetFieldValue<TRecord, TValue>( string propertyName, TValue defaultValue )
-            where TRecord : class, ITableRecord<TRecord>
+            where TRecord : TableRecord<TRecord>, ITableRecord<TRecord>
             where TValue : IParsable<TValue>
         {
             int ordinal = TRecord.PropertyMetaData[propertyName].Index;
@@ -88,7 +88,7 @@ public static class TableExtensions
                            : defaultValue;
         }
         public TValue GetEnumValue<TRecord, TValue>( string propertyName, TValue defaultValue )
-            where TRecord : class, ITableRecord<TRecord>
+            where TRecord : TableRecord<TRecord>, ITableRecord<TRecord>
             where TValue : unmanaged, Enum
         {
             int ordinal = TRecord.PropertyMetaData[propertyName].Index;

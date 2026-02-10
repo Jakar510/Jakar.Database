@@ -48,7 +48,7 @@ public static class UserSecurities
 
 
     extension<TSelf>( TSelf self )
-        where TSelf : class, IUserSecurity<TSelf>, ITableRecord<TSelf>
+        where TSelf : TableRecord<TSelf>, IUserSecurity<TSelf>, ITableRecord<TSelf>
     {
         public bool HasPassword() => !string.IsNullOrWhiteSpace(self.PasswordHash);
 

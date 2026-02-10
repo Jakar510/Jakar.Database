@@ -8,10 +8,9 @@ namespace Jakar.Database;
 ///     <see href="https://stackoverflow.com/a/15992856/9530917"/>
 /// </summary>
 public sealed class RecordGenerator<TSelf>( DbTable<TSelf> table ) : IAsyncEnumerable<TSelf>, IAsyncEnumerator<TSelf>
-    where TSelf : class, ITableRecord<TSelf>
+    where TSelf : PairRecord<TSelf>,  ITableRecord<TSelf>
 {
     private readonly AsyncKeyGenerator<TSelf> __generator = new(table);
-    private readonly DbTable<TSelf>           __table     = table;
     private          CancellationToken        __token;
     private          TSelf?                   __current;
 
@@ -27,7 +26,7 @@ public sealed class RecordGenerator<TSelf>( DbTable<TSelf> table ) : IAsyncEnume
     }
 
 
-    public ValueTask<bool> MoveNextAsync() => __table.Call(MoveNextAsync, __token);
+    public ValueTask<bool> MoveNextAsync() => table.Call(MoveNextAsync, __token);
     public async ValueTask<bool> MoveNextAsync( NpgsqlConnection connection, NpgsqlTransaction? transaction, CancellationToken token = default )
     {
         if ( token.IsCancellationRequested )
@@ -36,7 +35,7 @@ public sealed class RecordGenerator<TSelf>( DbTable<TSelf> table ) : IAsyncEnume
             return false;
         }
 
-        if ( await __generator.MoveNextAsync(connection, transaction, token) ) { __current = await __table.Get(connection, transaction, __generator.Current, token); }
+        if ( await __generator.MoveNextAsync(connection, transaction, token) ) { __current = await table.Get(connection, transaction, __generator.Current, token); }
         else
         {
             __current = null;

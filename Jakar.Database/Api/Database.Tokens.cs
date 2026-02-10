@@ -15,7 +15,7 @@ public abstract partial class Database
 
 
     public virtual bool TryEnable<TSelf>( scoped ref TSelf record )
-        where TSelf : class, IUserSecurity<TSelf>, ITableRecord<TSelf>
+        where TSelf : TableRecord<TSelf>, IUserSecurity<TSelf>, ITableRecord<TSelf>
     {
         if ( record.LockoutEnd.HasValue && DateTimeOffset.UtcNow <= record.LockoutEnd.Value ) { record = record.Enable(); }
 
@@ -24,9 +24,9 @@ public abstract partial class Database
 
 
     public virtual bool VerifyPassword<TSelf>( scoped ref TSelf record, ILoginRequest request )
-        where TSelf : class, IUserSecurity<TSelf>, ITableRecord<TSelf> => VerifyPassword(ref record, request.UserPassword);
+        where TSelf : TableRecord<TSelf>, IUserSecurity<TSelf>, ITableRecord<TSelf> => VerifyPassword(ref record, request.UserPassword);
     public virtual bool VerifyPassword<TSelf>( scoped ref TSelf record, in string password )
-        where TSelf : class, IUserSecurity<TSelf>, ITableRecord<TSelf>
+        where TSelf : TableRecord<TSelf>, IUserSecurity<TSelf>, ITableRecord<TSelf>
     {
         string value = Database.DataProtector.Decrypt(record.PasswordHash);
 
@@ -42,9 +42,9 @@ public abstract partial class Database
 
 
     public virtual bool CheckRefreshToken<TSelf>( ref TSelf record, SessionToken token )
-        where TSelf : class, IUserSecurity<TSelf>, ITableRecord<TSelf> => CheckRefreshToken(ref record, token.RefreshToken);
+        where TSelf : TableRecord<TSelf>, IUserSecurity<TSelf>, ITableRecord<TSelf> => CheckRefreshToken(ref record, token.RefreshToken);
     public virtual bool CheckRefreshToken<TSelf>( ref TSelf record, string? refreshToken )
-        where TSelf : class, IUserSecurity<TSelf>, ITableRecord<TSelf>
+        where TSelf : TableRecord<TSelf>, IUserSecurity<TSelf>, ITableRecord<TSelf>
     {
         // ReSharper disable once InvertIf
         if ( string.IsNullOrWhiteSpace(refreshToken) || ( record.RefreshTokenExpiryTime.HasValue && DateTimeOffset.UtcNow > record.RefreshTokenExpiryTime.Value ) )
@@ -266,7 +266,6 @@ public abstract partial class Database
                    ? await GetToken(connection, transaction, record, types, token)
                    : error;
     }
-
 
 
     public async ValueTask<ImmutableArray<UserLoginProviderRecord>> GetUserLoginInfoRecords( string purpose, UserRecord user, CancellationToken token )

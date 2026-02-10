@@ -17,7 +17,7 @@ public sealed record UserRoleRecord : Mapping<UserRoleRecord, UserRecord, RoleRe
 
 
     public UserRoleRecord( RecordID<UserRecord>  key, RecordID<RoleRecord> value ) : base(key, value) { }
-    private UserRoleRecord( RecordID<UserRecord> key, RecordID<RoleRecord> value, RecordID<UserRoleRecord> id, DateTimeOffset dateCreated, DateTimeOffset? lastModified ) : base(key, value, id, dateCreated, lastModified) { }
+    private UserRoleRecord( RecordID<UserRecord> key, RecordID<RoleRecord> value, DateTimeOffset dateCreated ) : base(key, value, dateCreated) { }
     internal UserRoleRecord( NpgsqlDataReader    reader ) : base(reader) { }
 
 

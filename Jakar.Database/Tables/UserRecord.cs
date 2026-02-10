@@ -18,23 +18,22 @@ public sealed record UserRecord : OwnedTableRecord<UserRecord>, ITableRecord<Use
     /// <summary> A random value that must change whenever a user is persisted to the store </summary>
     [ColumnMetaData(CONCURRENCY_STAMP)] public string ConcurrencyStamp { get; set; } = EMPTY;
 
-    public                                                                                 bool                                   IsActive               { get;                    set; }
-    public                                                                                 bool                                   IsDisabled             { get;                    set; }
-    public                                                                                 bool                                   IsEmailConfirmed       { get;                    set; }
-    public                                                                                 bool                                   IsLocked               { get;                    set; }
-    public                                                                                 bool                                   IsPhoneNumberConfirmed { get;                    set; }
-    public                                                                                 bool                                   IsTwoFactorEnabled     { get;                    set; }
-    public                                                                                 DateTimeOffset?                        LastBadAttempt         { get;                    set; }
-    public                                                                                 DateTimeOffset?                        LastLogin              { get;                    set; }
-    public                                                                                 DateTimeOffset?                        LockDate               { get;                    set; }
-    public                                                                                 DateTimeOffset?                        LockoutEnd             { get;                    set; }
-    [ColumnMetaData(ENCRYPTED_MAX_PASSWORD_SIZE)] public                                   string                                 PasswordHash           { get;                    set; } = EMPTY;
-    [ColumnMetaData(REFRESH_TOKEN)]               public                                   UInt128                                RefreshTokenHash       { get;                    set; }
-    public                                                                                 DateTimeOffset?                        RefreshTokenExpiryTime { get;                    set; }
-    [ColumnMetaData(SECURITY_STAMP)] public                                                string                                 SecurityStamp          { get;                    set; } = EMPTY;
-    public                                                                                 Guid?                                  SessionID              { get;                    set; }
-    [ProtectedPersonalData]                                                public override JObject?                               AdditionalData         { get => _additionalData; set => _additionalData = value; }
-    [ColumnMetaData(ColumnOptions.Fixed, COMPANY)] [ProtectedPersonalData] public          string                                 Company                { get;                    set; } = EMPTY;
+    public                                                                        bool                                            IsActive               { get; set; }
+    public                                                                        bool                                            IsDisabled             { get; set; }
+    public                                                                        bool                                            IsEmailConfirmed       { get; set; }
+    public                                                                        bool                                            IsLocked               { get; set; }
+    public                                                                        bool                                            IsPhoneNumberConfirmed { get; set; }
+    public                                                                        bool                                            IsTwoFactorEnabled     { get; set; }
+    public                                                                        DateTimeOffset?                                 LastBadAttempt         { get; set; }
+    public                                                                        DateTimeOffset?                                 LastLogin              { get; set; }
+    public                                                                        DateTimeOffset?                                 LockDate               { get; set; }
+    public                                                                        DateTimeOffset?                                 LockoutEnd             { get; set; }
+    [ColumnMetaData(ENCRYPTED_MAX_PASSWORD_SIZE)] public                          string                                          PasswordHash           { get; set; } = EMPTY;
+    [ColumnMetaData(REFRESH_TOKEN)]               public                          UInt128                                         RefreshTokenHash       { get; set; }
+    public                                                                        DateTimeOffset?                                 RefreshTokenExpiryTime { get; set; }
+    [ColumnMetaData(SECURITY_STAMP)] public                                       string                                          SecurityStamp          { get; set; } = EMPTY;
+    public                                                                        Guid?                                           SessionID              { get; set; }
+    [ColumnMetaData(ColumnOptions.Fixed, COMPANY)] [ProtectedPersonalData] public string                                          Company                { get; set; } = EMPTY;
     Guid? ICreatedByUser<Guid>.                                                                                                   CreatedBy              => CreatedBy?.Value;
     [ColumnMetaData(DEPARTMENT)]                                                                 public string                    Department             { get; set; } = EMPTY;
     [ColumnMetaData(DESCRIPTION)]                                                                public string                    Description            { get; set; } = EMPTY;
@@ -536,9 +535,9 @@ public sealed record UserRecord : OwnedTableRecord<UserRecord>, ITableRecord<Use
 
 
     public bool DoesNotOwn<TSelf>( TSelf record )
-        where TSelf : class, ICreatedBy, ITableRecord<TSelf> => record.CreatedBy != ID;
+        where TSelf : TableRecord<TSelf>, ICreatedBy, ITableRecord<TSelf> => record.CreatedBy != ID;
     public bool Owns<TSelf>( TSelf record )
-        where TSelf : class, ICreatedBy, ITableRecord<TSelf> => record.CreatedBy == ID;
+        where TSelf : TableRecord<TSelf>, ICreatedBy, ITableRecord<TSelf> => record.CreatedBy == ID;
 
     #endregion
 
@@ -547,15 +546,12 @@ public sealed record UserRecord : OwnedTableRecord<UserRecord>, ITableRecord<Use
     public ValueTask<bool> RedeemCode( Database db, string code, CancellationToken token ) => db.TryCall(RedeemCode, db, code, token);
     public async ValueTask<bool> RedeemCode( NpgsqlConnection connection, NpgsqlTransaction transaction, Database db, string code, CancellationToken token )
     {
-        await foreach ( UserRecoveryCodeRecord mapping in UserRecoveryCodeRecord.Where(connection, transaction, db.UserRecoveryCodes, this, token) )
+        await foreach ( RecoveryCodeRecord record in UserRecoveryCodeRecord.Where(connection, transaction, db.RecoveryCodes, ID, token) )
         {
-            RecoveryCodeRecord? record = await mapping.Get(connection, transaction, db.RecoveryCodes, token);
-
-            if ( record is null ) { await db.UserRecoveryCodes.Delete(connection, transaction, mapping, token); }
-            else if ( RecoveryCodeRecord.IsValid(code, ref record) )
+            if ( RecoveryCodeRecord.IsValid(code, record) )
             {
                 await db.RecoveryCodes.Delete(connection, transaction, record, token);
-                await db.UserRecoveryCodes.Delete(connection, transaction, mapping, token);
+                await UserRecoveryCodeRecord.Delete(connection, transaction, ID, record.ID, token);
                 return true;
             }
         }
@@ -571,7 +567,7 @@ public sealed record UserRecord : OwnedTableRecord<UserRecord>, ITableRecord<Use
 
 
         await db.RecoveryCodes.Delete(connection, transaction, old, token);
-        await UserRecoveryCodeRecord.Replace(connection, transaction, db.UserRecoveryCodes, this, RecordID<RecoveryCodeRecord>.Create(dictionary.Values), token);
+        await UserRecoveryCodeRecord.Replace(connection, transaction, this, RecordID<RecoveryCodeRecord>.Create(dictionary.Values), token);
         return codes;
     }
     public ValueTask<ImmutableArray<string>> ReplaceCodes( Database db, IEnumerable<string> recoveryCodes, CancellationToken token = default ) => db.TryCall(ReplaceCodes, db, recoveryCodes, token);
@@ -583,25 +579,25 @@ public sealed record UserRecord : OwnedTableRecord<UserRecord>, ITableRecord<Use
 
 
         await db.RecoveryCodes.Delete(connection, transaction, old, token);
-        await UserRecoveryCodeRecord.Replace(connection, transaction, db.UserRecoveryCodes, this, RecordID<RecoveryCodeRecord>.Create(dictionary.Values), token);
+        await UserRecoveryCodeRecord.Replace(connection, transaction, this, RecordID<RecoveryCodeRecord>.Create(dictionary.Values), token);
         return codes;
     }
 
 
     public       IAsyncEnumerable<RecoveryCodeRecord> Codes( Database                 db,         CancellationToken  token )                                                                                               => db.TryCall(Codes, db, token);
     public       IAsyncEnumerable<RecoveryCodeRecord> Codes( NpgsqlConnection         connection, NpgsqlTransaction  transaction, Database db, CancellationToken                          token )                          => UserRecoveryCodeRecord.Where(connection, transaction, db.RecoveryCodes, this, token);
-    public async ValueTask<bool>                      TryAdd( NpgsqlConnection        connection, NpgsqlTransaction  transaction, Database db, AddressRecord                              value, CancellationToken token ) => await UserAddressRecord.TryAdd(connection, transaction, db.UserAddresses, ID, value, token);
+    public async ValueTask<bool>                      TryAdd( NpgsqlConnection        connection, NpgsqlTransaction  transaction, Database db, AddressRecord                              value, CancellationToken token ) => await UserAddressRecord.TryAdd(connection, transaction, ID, value, token);
     public       IAsyncEnumerable<AddressRecord>      GetAddresses( NpgsqlConnection  connection, NpgsqlTransaction? transaction, Database db, [EnumeratorCancellation] CancellationToken token = default )                => UserAddressRecord.Where(connection, transaction, db.Addresses, ID, token);
-    public async ValueTask<bool>                      HasAddress( NpgsqlConnection    connection, NpgsqlTransaction  transaction, Database db, AddressRecord                              value, CancellationToken token ) => await UserAddressRecord.Exists(connection, transaction, db.UserAddresses, ID, value, token);
-    public async ValueTask                            Remove( NpgsqlConnection        connection, NpgsqlTransaction  transaction, Database db, AddressRecord                              value, CancellationToken token ) => await UserAddressRecord.Delete(connection, transaction, db.UserAddresses, ID, value, token);
-    public async ValueTask<bool>                      TryAdd( NpgsqlConnection        connection, NpgsqlTransaction  transaction, Database db, RoleRecord                                 value, CancellationToken token ) => await UserRoleRecord.TryAdd(connection, transaction, db.UserRoles, ID, value, token);
+    public async ValueTask<bool>                      HasAddress( NpgsqlConnection    connection, NpgsqlTransaction  transaction, Database db, AddressRecord                              value, CancellationToken token ) => await UserAddressRecord.Exists(connection, transaction, ID, value, token);
+    public async ValueTask                            Remove( NpgsqlConnection        connection, NpgsqlTransaction  transaction, Database db, AddressRecord                              value, CancellationToken token ) => await UserAddressRecord.Delete(connection, transaction, ID, value, token);
+    public async ValueTask<bool>                      TryAdd( NpgsqlConnection        connection, NpgsqlTransaction  transaction, Database db, RoleRecord                                 value, CancellationToken token ) => await UserRoleRecord.TryAdd(connection, transaction, ID, value, token);
     public       IAsyncEnumerable<RoleRecord>         GetRoles( NpgsqlConnection      connection, NpgsqlTransaction? transaction, Database db, CancellationToken                          token = default )                => UserRoleRecord.Where(connection, transaction, db.Roles, ID, token);
-    public async ValueTask<bool>                      HasRole( NpgsqlConnection       connection, NpgsqlTransaction  transaction, Database db, RoleRecord                                 value, CancellationToken token ) => await UserRoleRecord.Exists(connection, transaction, db.UserRoles, ID, value, token);
-    public async ValueTask                            Remove( NpgsqlConnection        connection, NpgsqlTransaction  transaction, Database db, RoleRecord                                 value, CancellationToken token ) => await UserRoleRecord.Delete(connection, transaction, db.UserRoles, ID, value, token);
-    public async ValueTask<bool>                      TryAdd( NpgsqlConnection        connection, NpgsqlTransaction  transaction, Database db, GroupRecord                                value, CancellationToken token ) => await UserGroupRecord.TryAdd(connection, transaction, db.UserGroups, ID, value, token);
+    public async ValueTask<bool>                      HasRole( NpgsqlConnection       connection, NpgsqlTransaction  transaction, Database db, RoleRecord                                 value, CancellationToken token ) => await UserRoleRecord.Exists(connection, transaction, ID, value, token);
+    public async ValueTask                            Remove( NpgsqlConnection        connection, NpgsqlTransaction  transaction, Database db, RoleRecord                                 value, CancellationToken token ) => await UserRoleRecord.Delete(connection, transaction, ID, value, token);
+    public async ValueTask<bool>                      TryAdd( NpgsqlConnection        connection, NpgsqlTransaction  transaction, Database db, GroupRecord                                value, CancellationToken token ) => await UserGroupRecord.TryAdd(connection, transaction, ID, value, token);
     public       IAsyncEnumerable<GroupRecord>        GetGroups( NpgsqlConnection     connection, NpgsqlTransaction? transaction, Database db, CancellationToken                          token = default )                => UserGroupRecord.Where(connection, transaction, db.Groups, ID, token);
-    public async ValueTask<bool>                      IsPartOfGroup( NpgsqlConnection connection, NpgsqlTransaction  transaction, Database db, GroupRecord                                value, CancellationToken token ) => await UserGroupRecord.Exists(connection, transaction, db.UserGroups, ID, value, token);
-    public async ValueTask                            Remove( NpgsqlConnection        connection, NpgsqlTransaction  transaction, Database db, GroupRecord                                value, CancellationToken token ) => await UserGroupRecord.Delete(connection, transaction, db.UserGroups, ID, value, token);
+    public async ValueTask<bool>                      IsPartOfGroup( NpgsqlConnection connection, NpgsqlTransaction  transaction, Database db, GroupRecord                                value, CancellationToken token ) => await UserGroupRecord.Exists(connection, transaction, ID, value, token);
+    public async ValueTask                            Remove( NpgsqlConnection        connection, NpgsqlTransaction  transaction, Database db, GroupRecord                                value, CancellationToken token ) => await UserGroupRecord.Delete(connection, transaction, ID, value, token);
 
 
 

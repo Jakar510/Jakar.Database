@@ -6,7 +6,7 @@ namespace Jakar.Database;
 
 [DefaultMember(nameof(Empty))]
 public readonly struct AutoRecordID<TSelf>( long id ) : IEquatable<AutoRecordID<TSelf>>, IComparable<AutoRecordID<TSelf>>, ISpanFormattable, ISpanParsable<AutoRecordID<TSelf>>, IRegisterDapperTypeHandlers
-    where TSelf : class, ITableRecord<TSelf>
+    where TSelf : TableRecord<TSelf>, ITableRecord<TSelf>
 {
     public static readonly AutoRecordID<TSelf> Empty = new(0);
     public readonly        string              key   = $"{TSelf.TableName}:{id}";
@@ -15,7 +15,7 @@ public readonly struct AutoRecordID<TSelf>( long id ) : IEquatable<AutoRecordID<
 
     [Pure] public static AutoRecordID<TSelf>  Parse( string                    value )                       => Create(long.Parse(value));
     [Pure] public static AutoRecordID<TSelf>  Parse( params ReadOnlySpan<char> value )                       => Create(long.Parse(value));
-    [Pure] public static AutoRecordID<TSelf>  ID( NpgsqlDataReader             reader )                      => Create(reader, nameof(IDateCreated.ID));
+    [Pure] public static AutoRecordID<TSelf>  ID( NpgsqlDataReader             reader )                      => Create(reader, nameof(IUniqueID.ID));
     [Pure] public static AutoRecordID<TSelf>? CreatedBy( NpgsqlDataReader      reader )                      => TryCreate(reader, nameof(ICreatedBy.CreatedBy));
     [Pure] public static AutoRecordID<TSelf>? TryCreate( NpgsqlDataReader      reader, string propertyName ) => TryCreate(reader.GetFieldValue<long?>(TSelf.PropertyMetaData[propertyName].Index));
     [Pure] public static AutoRecordID<TSelf>  Create( NpgsqlDataReader         reader, string propertyName ) => Create(reader.GetFieldValue<long>(TSelf.PropertyMetaData[propertyName].Index));
@@ -75,7 +75,7 @@ public readonly struct AutoRecordID<TSelf>( long id ) : IEquatable<AutoRecordID<
     [Pure] public PostgresParameters ToDynamicParameters()
     {
         PostgresParameters parameters = PostgresParameters.Create<TSelf>();
-        parameters.Add(nameof(IDateCreated.ID), Value);
+        parameters.Add(nameof(IUniqueID.ID), Value);
         return parameters;
     }
 

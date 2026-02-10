@@ -135,6 +135,17 @@ public sealed record RecoveryCodeRecord : OwnedTableRecord<RecoveryCodeRecord>, 
     public static (string Code, RecoveryCodeRecord Record) Create( UserRecord user, string code ) => ( code, new RecoveryCodeRecord(code, user) );
 
 
+    [Pure] public static bool IsValid( string code, RecoveryCodeRecord record )
+    {
+        PasswordVerificationResult result = __hasher.VerifyHashedPassword(record, record.Code, code);
+
+        return result switch
+               {
+                   PasswordVerificationResult.Failed                                                    => false,
+                   PasswordVerificationResult.Success or PasswordVerificationResult.SuccessRehashNeeded => true,
+                   _                                                                                    => throw new OutOfRangeException(result)
+               };
+    }
     [Pure] public static bool IsValid( string code, ref RecoveryCodeRecord record )
     {
         PasswordVerificationResult result = __hasher.VerifyHashedPassword(record, record.Code, code);

@@ -6,38 +6,39 @@
 [Table(TABLE_NAME)]
 public sealed record ResxRowRecord : TableRecord<ResxRowRecord>, ITableRecord<ResxRowRecord>, IResxString
 {
-    public const    string TABLE_NAME = "resx";
-    public static   string TableName  => TABLE_NAME;
-    public required long   KeyID      { get; init; }
-    public required string Key        { get; init; }
-    public required string Neutral    { get; init; }
-    public          string Arabic     { get; init; } = EMPTY;
-    public          string Chinese    { get; init; } = EMPTY;
-    public          string Czech      { get; init; } = EMPTY;
-    public          string Dutch      { get; init; } = EMPTY;
-    public          string English    { get; init; } = EMPTY;
-    public          string French     { get; init; } = EMPTY;
-    public          string German     { get; init; } = EMPTY;
-    public          string Japanese   { get; init; } = EMPTY;
-    public          string Korean     { get; init; } = EMPTY;
-    public          string Polish     { get; init; } = EMPTY;
-    public          string Portuguese { get; init; } = EMPTY;
-    public          string Spanish    { get; init; } = EMPTY;
-    public          string Swedish    { get; init; } = EMPTY;
-    public          string Thai       { get; init; } = EMPTY;
-    long IUniqueID<long>.  ID         => KeyID;
+    public const          string                      TABLE_NAME = "resx";
+    public static         string                      TableName      => TABLE_NAME;
+    [Key] public required AutoRecordID<ResxRowRecord> KeyID          { get; init; }
+    public required       string                      Key            { get; init; }
+    public required       string                      Neutral        { get; init; }
+    public                string                      Arabic         { get; init; } = EMPTY;
+    public                string                      Chinese        { get; init; } = EMPTY;
+    public                string                      Czech          { get; init; } = EMPTY;
+    public                string                      Dutch          { get; init; } = EMPTY;
+    public                string                      English        { get; init; } = EMPTY;
+    public                string                      French         { get; init; } = EMPTY;
+    public                string                      German         { get; init; } = EMPTY;
+    public                string                      Japanese       { get; init; } = EMPTY;
+    public                string                      Korean         { get; init; } = EMPTY;
+    public                string                      Polish         { get; init; } = EMPTY;
+    public                string                      Portuguese     { get; init; } = EMPTY;
+    public                string                      Spanish        { get; init; } = EMPTY;
+    public                string                      Swedish        { get; init; } = EMPTY;
+    public                string                      Thai           { get; init; } = EMPTY;
+    long IUniqueID<long>.                             ID             => KeyID.Value;
+    public DateTimeOffset?                            LastModified   { get; set; }
+    public JObject?                                   AdditionalData { get; set; }
 
 
-    public ResxRowRecord( in RecordID<ResxRowRecord> id, in DateTimeOffset dateCreated, in DateTimeOffset? lastModified, JObject? additionalData = null ) : base(in id, in dateCreated, in lastModified, additionalData) { }
-    [SetsRequiredMembers] public ResxRowRecord( string key, long keyID, string neutral = EMPTY ) : base(RecordID<ResxRowRecord>.New(), DateTimeOffset.UtcNow, null)
+    public ResxRowRecord( in DateTimeOffset dateCreated ) : base(in dateCreated) { }
+    [SetsRequiredMembers] public ResxRowRecord( string key, string neutral = EMPTY ) : this(DateTimeOffset.UtcNow)
     {
-        KeyID   = keyID;
         Key     = key;
         Neutral = neutral;
     }
     [SetsRequiredMembers] public ResxRowRecord( NpgsqlDataReader reader ) : base(reader)
     {
-        KeyID      = reader.GetFieldValue<ResxRowRecord, long>(nameof(KeyID));
+        KeyID      = AutoRecordID<ResxRowRecord>.Create(reader, nameof(KeyID));
         Key        = reader.GetFieldValue<ResxRowRecord, string>(nameof(Key));
         Neutral    = reader.GetFieldValue<ResxRowRecord, string>(nameof(Neutral));
         Arabic     = reader.GetFieldValue<ResxRowRecord, string>(nameof(Arabic));
@@ -74,10 +75,6 @@ public sealed record ResxRowRecord : TableRecord<ResxRowRecord>, ITableRecord<Re
         {
             switch ( column.PropertyName )
             {
-                case nameof(ID):
-                    await importer.WriteAsync(ID.Value, NpgsqlDbType.Uuid, token);
-                    break;
-
                 case nameof(DateCreated):
                     await importer.WriteAsync(DateCreated, NpgsqlDbType.TimestampTz, token);
                     break;
@@ -259,7 +256,7 @@ public sealed record ResxRowRecord : TableRecord<ResxRowRecord>, ITableRecord<Re
 
         if ( ReferenceEquals(this, other) ) { return true; }
 
-        return Neutral == other.Neutral || ID == other.ID;
+        return Neutral == other.Neutral || KeyID == other.KeyID;
     }
 
 

@@ -18,8 +18,8 @@ public interface IConnectableDbRoot : IConnectableDb
 {
     public ref readonly DbOptions Options { get; }
     public IAsyncEnumerable<TSelf> Where<TSelf>( NpgsqlConnection connection, NpgsqlTransaction? transaction, string sql, PostgresParameters parameters, [EnumeratorCancellation] CancellationToken token = default )
-        where TSelf : class, ITableRecord<TSelf>, IDateCreated;
+        where TSelf : TableRecord<TSelf>, ITableRecord<TSelf>, IDateCreated;
     public IAsyncEnumerable<TValue> Where<TSelf, TValue>( NpgsqlConnection connection, NpgsqlTransaction? transaction, string sql, PostgresParameters parameters, [EnumeratorCancellation] CancellationToken token = default )
         where TValue : struct
-        where TSelf : class, ITableRecord<TSelf>;
+        where TSelf : TableRecord<TSelf>, ITableRecord<TSelf>;
 }

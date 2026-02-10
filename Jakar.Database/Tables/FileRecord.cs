@@ -7,7 +7,7 @@ namespace Jakar.Database;
 
 [Serializable]
 [Table(TABLE_NAME)]
-public sealed record FileRecord : TableRecord<FileRecord>, ITableRecord<FileRecord>, IFileData<Guid>, IFileMetaData
+public sealed record FileRecord : PairRecord<FileRecord>, ITableRecord<FileRecord>, IFileData<Guid>, IFileMetaData
 {
     public const string TABLE_NAME = "files";
 

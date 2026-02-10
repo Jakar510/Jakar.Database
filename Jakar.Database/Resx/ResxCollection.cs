@@ -16,25 +16,25 @@ public sealed class ResxCollection : IResxCollection
     public ResxSet GetSet( in SupportedLanguage language )
     {
         ResxSet set = new(DbOptions.ConcurrencyLevel, Count);
-        foreach ( ResxRowRecord row in this ) { set[row.KeyID] = row.GetValue(language); }
+        foreach ( ResxRowRecord row in __rows ) { set[row.KeyID.Value] = row.GetValue(language); }
 
         return set;
     }
 
-    public async ValueTask<ResxSet> GetSetAsync( IResxProvider provider, SupportedLanguage language, CancellationToken token = default )
+    public async ValueTask<ResxSet> GetSetAsync( IConnectableDb db, IResxProvider provider, SupportedLanguage language, CancellationToken token = default )
     {
-        if ( __rows.IsEmpty ) { await Init(provider, token); }
+        if ( __rows.IsEmpty ) { await Init(db, provider, token); }
 
         return GetSet(language);
     }
 
 
-    public ValueTask Init( IResxProvider  provider, CancellationToken      token                          = default ) => Init(provider, provider.Resx, token);
-    public ValueTask Init( IConnectableDb db,       DbTable<ResxRowRecord> table, CancellationToken token = default ) => db.Call(Init, table, token);
-    public async ValueTask Init( NpgsqlConnection connection, NpgsqlTransaction? transaction, DbTable<ResxRowRecord> table, CancellationToken token = default )
+    public ValueTask Init( IConnectableDb db, IResxProvider provider, CancellationToken token = default ) => db.Call(Init, provider, token);
+    public async ValueTask Init( NpgsqlConnection connection, NpgsqlTransaction? transaction, IResxProvider provider, CancellationToken token = default )
     {
         __rows.Clear();
-        await foreach ( ResxRowRecord record in table.All(connection, transaction, token) ) { __rows.Add(record); }
+        SqlCommand<ResxRowRecord> command = provider.Get;
+        await foreach ( ResxRowRecord record in command.ExecuteAsync(connection, transaction, token) ) { __rows.Add(record); }
     }
 
 

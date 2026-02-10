@@ -5,7 +5,7 @@ namespace Jakar.Database;
 
 
 public readonly struct SqlCommand<TSelf>( string sql, in PostgresParameters parameters, CommandType? commandType = null, CommandFlags flags = CommandFlags.None ) : IEquatable<SqlCommand<TSelf>>
-    where TSelf : class, ITableRecord<TSelf>
+    where TSelf : TableRecord<TSelf>, ITableRecord<TSelf>
 {
     public readonly                 string             SQL         = sql;
     public readonly                 PostgresParameters Parameters  = parameters;
@@ -31,10 +31,18 @@ public readonly struct SqlCommand<TSelf>( string sql, in PostgresParameters para
         command.Parameters.Add(Parameters.Span);
         return command;
     }
-    public async ValueTask ExecuteNonQueryAsync( NpgsqlConnection connection, NpgsqlTransaction transaction, CancellationToken token )
+
+
+    public async ValueTask ExecuteNonQueryAsync( NpgsqlConnection connection, NpgsqlTransaction? transaction, CancellationToken token )
     {
         await using NpgsqlCommand command = ToCommand(connection, transaction);
         await command.ExecuteNonQueryAsync(token);
+    }
+    public async IAsyncEnumerable<TSelf> ExecuteAsync( NpgsqlConnection connection, NpgsqlTransaction? transaction, [EnumeratorCancellation] CancellationToken token )
+    {
+        await using NpgsqlCommand    command = ToCommand(connection, transaction);
+        await using NpgsqlDataReader reader  = await command.ExecuteReaderAsync(token);
+        while ( await reader.ReadAsync(token) ) { yield return TSelf.Create(reader); }
     }
 
 
@@ -202,7 +210,8 @@ public readonly struct SqlCommand<TSelf>( string sql, in PostgresParameters para
     }
 
 
-    public static SqlCommand<TSelf> Get( in RecordID<TSelf> id )
+    public static SqlCommand<TRecord> Get<TRecord>( in RecordID<TRecord> id )
+        where TRecord : PairRecord<TRecord>, ITableRecord<TRecord>
     {
         string sql = $$"""
                        SELECT * FROM {{TSelf.TableName}}
@@ -212,7 +221,8 @@ public readonly struct SqlCommand<TSelf>( string sql, in PostgresParameters para
 
         return string.Format(sql, id.Value.ToString());
     }
-    public static SqlCommand<TSelf> Get( IEnumerable<RecordID<TSelf>> ids )
+    public static SqlCommand<TRecord> Get<TRecord>( IEnumerable<RecordID<TRecord>> ids )
+        where TRecord : PairRecord<TRecord>, ITableRecord<TRecord>
     {
         string sql = $"""
                       SELECT * FROM {TSelf.TableName}
@@ -276,7 +286,8 @@ public readonly struct SqlCommand<TSelf>( string sql, in PostgresParameters para
 
         return new SqlCommand<TSelf>(sql, in parameters);
     }
-    public static SqlCommand<TSelf> GetDeleteID( in RecordID<TSelf> id )
+    public static SqlCommand<TRecord> GetDeleteID<TRecord>( in RecordID<TRecord> id )
+        where TRecord : PairRecord<TRecord>, ITableRecord<TRecord>
     {
         string sql = $"""
                       DELETE FROM {TSelf.TableName}
@@ -285,7 +296,8 @@ public readonly struct SqlCommand<TSelf>( string sql, in PostgresParameters para
 
         return sql;
     }
-    public static SqlCommand<TSelf> GetDelete( IEnumerable<RecordID<TSelf>> ids )
+    public static SqlCommand<TRecord> GetDelete<TRecord>( IEnumerable<RecordID<TRecord>> ids )
+        where TRecord : PairRecord<TRecord>, ITableRecord<TRecord>
     {
         // ReSharper disable PossibleMultipleEnumeration
         StringBuilder sb = new(256 + 30 * ids.Count());
@@ -303,7 +315,8 @@ public readonly struct SqlCommand<TSelf>( string sql, in PostgresParameters para
     public static SqlCommand<TSelf> GetDeleteAll() => $"DELETE FROM {TSelf.TableName};";
 
 
-    public static SqlCommand<TSelf> GetNext( in RecordPair<TSelf> pair )
+    public static SqlCommand<TRecord> GetNext<TRecord>( in RecordPair<TRecord> pair )
+        where TRecord : PairRecord<TRecord>, ITableRecord<TRecord>
     {
         string sql = $"""
                       SELECT * FROM {TSelf.TableName}
@@ -312,7 +325,8 @@ public readonly struct SqlCommand<TSelf>( string sql, in PostgresParameters para
 
         return sql;
     }
-    public static SqlCommand<TSelf> GetNextID( in RecordPair<TSelf> pair )
+    public static SqlCommand<TRecord> GetNextID<TRecord>( in RecordPair<TRecord> pair )
+        where TRecord : PairRecord<TRecord>, ITableRecord<TRecord>
     {
         string sql = $"""
                       SELECT {ID} FROM {TSelf.TableName}
@@ -352,7 +366,7 @@ public readonly struct SqlCommand<TSelf>( string sql, in PostgresParameters para
                       (
                       {parameters.GetVariableNames(1)}
                       )
-                      RETURNING {ID};
+                      RETURNING *;
                       """;
 
         return new SqlCommand<TSelf>(sql, in parameters);
@@ -393,6 +407,8 @@ public readonly struct SqlCommand<TSelf>( string sql, in PostgresParameters para
 
         return new SqlCommand<TSelf>(sql, in parameters);
     }
+
+
     public static SqlCommand<TSelf> GetUpdate( TSelf record ) => new($"""
                                                                       UPDATE {TSelf.TableName} 
                                                                       SET {KeyValuePairs} 
@@ -467,5 +483,6 @@ public readonly struct SqlCommand<TSelf>( string sql, in PostgresParameters para
     }
 
 
-    private static Guid GetValue( RecordID<TSelf> id ) => id.Value;
+    private static Guid GetValue<TRecord>( RecordID<TRecord> id )
+        where TRecord : PairRecord<TRecord>, ITableRecord<TRecord> => id.Value;
 }
