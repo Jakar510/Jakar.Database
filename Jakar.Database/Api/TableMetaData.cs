@@ -1,31 +1,44 @@
-﻿namespace Jakar.Database;
+﻿using ZLinq.Linq;
 
 
+
+namespace Jakar.Database;
+
+
+[SuppressMessage("ReSharper", "InconsistentNaming")]
 public interface ITableMetaData
 {
-    public abstract static ITableMetaData Default { get; }
-    int                                   Count   { get; }
-    FrozenDictionary<int, string>         Indexes { get; }
-    ref readonly ColumnMetaData this[ string                      propertyName ] { get; }
-    public (string PropertyName, ColumnMetaData Column) this[ int index ] { get; }
-    ImmutableArray<string>                   Keys                     { get; }
-    int                                      MaxColumnNameLength      { get; }
-    int                                      MaxDataTypeLength        { get; }
-    int                                      MaxIndexColumnNameLength { get; }
-    FrozenDictionary<string, ColumnMetaData> Properties               { get; }
-    public string                            TableName                { [Pure] get; }
-    ImmutableArray<ColumnMetaData>           Values                   { get; }
+    public abstract static ITableMetaData                                                                             Default     { get; }
+    public                 ValueEnumerable<FromImmutableArray<ColumnMetaData>, ColumnMetaData>                        Columns     { get; }
+    public                 int                                                                                        Count       { get; }
+    public                 ValueEnumerable<Where<FromImmutableArray<ColumnMetaData>, ColumnMetaData>, ColumnMetaData> ForeignKeys { get; }
+    public                 FrozenDictionary<int, string>                                                              Indexes     { get; }
+    public ref readonly ColumnMetaData this[ string propertyName ] { get; }
+    public PropertyColumn this[ int                 index ] { get; }
+    public int                                      MaxLength_ColumnName      { get; }
+    public int                                      MaxLength_DataType        { get; }
+    public int                                      MaxLength_IndexColumnName { get; }
+    public int                                      MaxLength_KeyValuePair    { get; }
+    public int                                      MaxLength_Variables       { get; }
+    public FrozenDictionary<string, ColumnMetaData> Properties                { get; }
+    public PooledArray<ColumnMetaData>              SortedColumns             { get; }
+    public string                                   TableName                 { [Pure] get; }
 
 
-    public string           CreateTable();
-    TableMetaDataEnumerator GetEnumerator();
-    bool                    ContainsKey( string propertyName );
-    bool                    TryGetValue( string propertyName, [MaybeNullWhen(false)] out ColumnMetaData value );
+    public StringBuilder ColumnNames( int   indentLevel );
+    public StringBuilder VariableNames( int indentLevel );
+    public StringBuilder KeyValuePairs( int indentLevel );
+
+
+    public string                  CreateTable();
+    public TableMetaDataEnumerator GetEnumerator();
+    public bool                    ContainsKey( string propertyName );
+    public bool                    TryGetValue( string propertyName, [MaybeNullWhen(false)] out ColumnMetaData value );
 }
 
 
 
-public ref struct TableMetaDataEnumerator : IEnumerator<(string PropertyName, ColumnMetaData Column)>
+public ref struct TableMetaDataEnumerator
 {
     private readonly ITableMetaData __table;
     private          int            __index;
@@ -35,24 +48,45 @@ public ref struct TableMetaDataEnumerator : IEnumerator<(string PropertyName, Co
     {
         __table = table;
         __index = -1;
-        Debug.Assert(__table.Keys.Length == __table.Values.Length);
     }
 
-    public readonly (string PropertyName, ColumnMetaData Column) Current => __table[__index];
-    object IEnumerator.                                          Current => Current;
-
+    public readonly PropertyColumn Current => __table[__index];
 
     public bool MoveNext()
     {
         __index++;
-        if ( (uint)__index < (uint)__table.Keys.Length ) { return true; }
+        if ( (uint)__index < (uint)__table.Properties.Count ) { return true; }
 
-        __index = __table.Keys.Length;
+        __index = __table.Properties.Count;
         return false;
     }
 
-    void IEnumerator.Reset()   => __index = -1;
-    void IDisposable.Dispose() { }
+    public TableMetaDataEnumerator GetEnumerator() => this;
+    public void                    Reset()         => __index = -1;
+    public void                    Dispose()       { }
+}
+
+
+
+public readonly ref struct PropertyColumn( ref readonly string propertyName, ref readonly ColumnMetaData column )
+{
+    public readonly ref readonly    string         PropertyName = ref propertyName;
+    public readonly ref readonly    ColumnMetaData Column       = ref column;
+    public static implicit operator ColumnMetaData( PropertyColumn value ) => value.Column;
+    public void Deconstruct( out string propertyName, out ColumnMetaData column )
+    {
+        column       = Column;
+        propertyName = PropertyName;
+    }
+}
+
+
+
+[AttributeUsage(AttributeTargets.Class)]
+public sealed class TableExtrasAttribute() : Attribute
+{
+    public (string First, string Second)?              PrimaryKeyOverride { get; init; }
+    public ImmutableArray<(string Left, string Right)> UniquePairs        { get; init; }
 }
 
 
@@ -60,47 +94,69 @@ public ref struct TableMetaDataEnumerator : IEnumerator<(string PropertyName, Co
 public class TableMetaData<TSelf> : ITableMetaData
     where TSelf : class, ITableRecord<TSelf>
 {
-    private static         string?                                  _createTableSql;
-    public static readonly TableMetaData<TSelf>                     Instance = Create();
-    public readonly        FrozenDictionary<int, string>            Indexes;
-    public readonly        FrozenDictionary<string, ColumnMetaData> Properties;
+    public static readonly TableMetaData<TSelf> Instance = Create();
+    protected static       string?              _createTableSql;
+
+    // ReSharper disable once StaticMemberInGenericType
 
 
-    public static ITableMetaData                 Default => Instance;
-    public        int                            Count   { get; }
+    public readonly FrozenDictionary<int, string>            Indexes;
+    public readonly FrozenDictionary<string, ColumnMetaData> Properties;
+
+
+    public static ITableMetaData                                                      Default => Instance;
+    public        ValueEnumerable<FromImmutableArray<ColumnMetaData>, ColumnMetaData> Columns => Properties.Values.AsValueEnumerable();
+
+
+    public int                   Count           { get; }
+    public TableExtrasAttribute? Extras          { get; init; }
+    public int                   ForeignKeyCount { get; }
+
+    public ValueEnumerable<Where<FromImmutableArray<ColumnMetaData>, ColumnMetaData>, ColumnMetaData> ForeignKeys => Columns.Where(static x => x.IsForeignKey);
+
     FrozenDictionary<int, string> ITableMetaData.Indexes => Indexes;
     public ref readonly ColumnMetaData this[ string propertyName ] => ref Properties[propertyName];
-    public (string PropertyName, ColumnMetaData Column) this[ int index ]
+    public PropertyColumn this[ int index ]
     {
         get
         {
             Guard.IsLessThan((uint)index, (uint)Properties.Keys.Length);
-            string         propertyName = Indexes[index];
-            ColumnMetaData column       = Properties[propertyName];
-            return ( propertyName, column );
+            ref readonly string         propertyName = ref Indexes[index];
+            ref readonly ColumnMetaData column       = ref Properties[propertyName];
+            return new PropertyColumn(in propertyName, in column);
         }
     }
-    public ImmutableArray<string>                           Keys                     => Properties.Keys;
-    public int                                              MaxColumnNameLength      { get; }
-    public int                                              MaxDataTypeLength        { get; }
-    public int                                              MaxIndexColumnNameLength { get; }
-    FrozenDictionary<string, ColumnMetaData> ITableMetaData.Properties               => Properties;
-    public string                                           TableName                { [Pure] get => TSelf.TableName; }
-    public ImmutableArray<ColumnMetaData>                   Values                   => Properties.Values;
+    public int                                              MaxLength_ColumnName      { get; }
+    public int                                              MaxLength_DataType        { get; }
+    public int                                              MaxLength_IndexColumnName { get; }
+    public int                                              MaxLength_KeyValuePair    { get; }
+    public int                                              MaxLength_Variables       { get; }
+    FrozenDictionary<string, ColumnMetaData> ITableMetaData.Properties                => Properties;
+
+    public PooledArray<ColumnMetaData> SortedColumns
+    {
+        [MustUseReturnValue] [MustDisposeResource] get => Columns.OrderBy(static x => x.Index)
+                                                                 .ToArrayPool();
+    }
+    public string TableName { [Pure] get => TSelf.TableName; }
 
 
     protected internal TableMetaData( FrozenDictionary<string, ColumnMetaData> properties )
     {
-        Properties               = properties;
-        Indexes                  = CreateAndValidateIndexes(in properties);
-        MaxIndexColumnNameLength = properties.Values.Max(static x => x.IndexColumnName?.Length ?? 0);
-        MaxColumnNameLength      = properties.Keys.Max(static x => x.Length);
-        MaxDataTypeLength        = properties.Values.Max(static x => x.DataType.Length);
-        Count                    = properties.Count;
+        Properties                = properties;
+        Indexes                   = CreateAndValidateIndexes(in properties);
+        MaxLength_IndexColumnName = properties.Values.Max(static x => x.IndexColumnName?.Length ?? 0);
+        MaxLength_KeyValuePair    = properties.Values.Max(static x => x.KeyValuePair.Length);
+        MaxLength_Variables       = properties.Values.Max(static x => x.VariableName.Length);
+        MaxLength_ColumnName      = properties.Values.Max(static x => x.ColumnName.Length);
+        MaxLength_DataType        = properties.Values.Max(static x => x.DataType.Length);
+        ForeignKeyCount           = properties.Values.Count(static x => x.IsForeignKey);
+        Count                     = properties.Count;
     }
 
 
     public static implicit operator TableMetaData<TSelf>( FrozenDictionary<string, ColumnMetaData> dictionary ) => new(dictionary);
+
 
     protected FrozenDictionary<int, string> CreateAndValidateIndexes( in FrozenDictionary<string, ColumnMetaData> properties )
     {
@@ -117,10 +173,20 @@ public class TableMetaData<TSelf> : ITableMetaData
 
 
     /// <summary>
-    /// Sets the order of the columns in the generated SQL will be determined by the order of the properties in the provided dictionary. If not overridden, the columns will be ordered by the size of their data type (using the <see cref="PostgresTypeComparer"/>), then by whether they are <see cref="ColumnMetaData.IsFixed"/> (a fixed or variable size/length), then by their (<see cref="ColumnMetaData.Length"/>), and finally by their (<see cref="ColumnMetaData.ColumnName"/>).
-    /// <para>
-    /// IMPORTANT: If you override this method, you must ensure that the <see cref="ColumnMetaData.Index"/> of the columns are set correctly in the provided dictionary, as they will be used to generate the SQL for the table. If the indexes are not set correctly, the generated SQL may be incorrect and could lead to runtime errors when executing the SQL against the database.
-    /// </para>
+    ///     Sets the order of the columns in the generated SQL will be determined by the order of the properties in the provided dictionary. If not overridden, the columns will be ordered by the size of their data type (using the
+    ///     <see
+    ///         cref="PostgresTypeComparer"/>
+    ///     ), then by whether they are
+    ///     <see
+    ///         cref="ColumnMetaData.IsFixed"/>
+    ///     (a fixed or variable size/length), then by their (
+    ///     <see
+    ///         cref="ColumnMetaData.Length"/>
+    ///     ), and finally by their (
+    ///     <see
+    ///         cref="ColumnMetaData.ColumnName"/>
+    ///     ).
+    ///     <para> IMPORTANT: If you override this method, you must ensure that the <see cref="ColumnMetaData.Index"/> of the columns are set correctly in the provided dictionary, as they will be used to generate the SQL for the table. If the indexes are not set correctly, the generated SQL may be incorrect and could lead to runtime errors when executing the SQL against the database. </para>
     /// </summary>
     protected virtual FrozenDictionary<int, string> CreateIndexes( in FrozenDictionary<string, ColumnMetaData> properties )
     {
@@ -135,8 +201,22 @@ public class TableMetaData<TSelf> : ITableMetaData
 
         return indexes.ToFrozenDictionary();
     }
+
+
     /// <summary>
-    /// Sets the order of the columns in the generated SQL will be determined by the order of the properties in the provided dictionary. If not overridden, the columns will be ordered by the size of their data type (using the <see cref="PostgresTypeComparer"/>), then by whether they are <see cref="ColumnMetaData.IsFixed"/> (a fixed or variable size/length), then by their (<see cref="ColumnMetaData.Length"/>), and finally by their (<see cref="ColumnMetaData.ColumnName"/>).
+    ///     Sets the order of the columns in the generated SQL will be determined by the order of the properties in the provided dictionary. If not overridden, the columns will be ordered by the size of their data type (using the
+    ///     <see
+    ///         cref="PostgresTypeComparer"/>
+    ///     ), then by whether they are
+    ///     <see
+    ///         cref="ColumnMetaData.IsFixed"/>
+    ///     (a fixed or variable size/length), then by their (
+    ///     <see
+    ///         cref="ColumnMetaData.Length"/>
+    ///     ), and finally by their (
+    ///     <see
+    ///         cref="ColumnMetaData.ColumnName"/>
+    ///     ).
     /// </summary>
     protected virtual IOrderedEnumerable<KeyValuePair<string, ColumnMetaData>> SortedProperties( in FrozenDictionary<string, ColumnMetaData> properties )
     {
@@ -144,6 +224,72 @@ public class TableMetaData<TSelf> : ITableMetaData
                          .ThenBy(static pair => pair.Value.IsFixed,    InvertedBoolComparer.Instance)
                          .ThenBy(static pair => pair.Value.Length,     Comparer<SizeInfo?>.Default)
                          .ThenBy(static pair => pair.Value.ColumnName, StringComparer.InvariantCultureIgnoreCase);
+    }
+
+
+    public StringBuilder ColumnNames( int indentLevel )
+    {
+        int           length = Columns.Sum(static x => x.ColumnName.Length + 2) + Properties.Count * indentLevel * 4;
+        StringBuilder sb     = new(length);
+        int           index  = 0;
+
+        foreach ( string columnName in Columns.Select(x => x.ColumnName) )
+        {
+            sb.Append(columnName);
+
+            if ( index++ < Count - 1 )
+            {
+                sb.Append(',')
+                  .Append('\n')
+                  .Append(' ', indentLevel * 4);
+            }
+        }
+
+        return sb;
+    }
+
+
+    public StringBuilder VariableNames( int indentLevel )
+    {
+        int           length = Columns.Sum(static x => x.VariableName.Length + 2) + Properties.Count * indentLevel * 4;
+        StringBuilder sb     = new(length);
+        int           index  = 0;
+
+        foreach ( string columnName in Columns.Select(x => x.VariableName) )
+        {
+            sb.Append(columnName);
+
+            if ( index++ < Count - 1 )
+            {
+                sb.Append(',')
+                  .Append('\n')
+                  .Append(' ', indentLevel * 4);
+            }
+        }
+
+        return sb;
+    }
+
+
+    public StringBuilder KeyValuePairs( int indentLevel )
+    {
+        int           length = Columns.Sum(static x => x.KeyValuePair.Length + 2) + Properties.Count * indentLevel * 4;
+        StringBuilder sb     = new(length);
+        int           index  = 0;
+
+        foreach ( string columnName in Columns.Select(x => x.KeyValuePair) )
+        {
+            sb.Append(columnName);
+
+            if ( index++ < Count - 1 )
+            {
+                sb.Append(',')
+                  .Append('\n')
+                  .Append(' ', indentLevel * 4);
+            }
+        }
+
+        return sb;
     }
 
 
@@ -159,14 +305,15 @@ public class TableMetaData<TSelf> : ITableMetaData
         query.Append("CREATE TABLE IF NOT EXISTS ");
         query.Append(tableName);
         query.Append(" (\n");
-        int index = 0;
 
-        foreach ( ( string columnName, ColumnMetaData column ) in Instance )
+        for ( int index = 0; index < Instance.Count; index++ )
         {
-            string dataType = column.DataType;
-            query.Append($"    {columnName.PadRight(Instance.MaxColumnNameLength)} {dataType.PadRight(Instance.MaxDataTypeLength)}");
+            ref readonly ColumnMetaData column     = ref Instance[index].Column;
+            string                      columnName = column.ColumnName_Padded(Instance);
+            string                      dataType   = column.DataType_Padded(Instance);
+            query.Append($"    {columnName} {dataType}");
 
-            if ( column.IsForeignKey ) { query.Append(" PRIMARY KEY"); }
+            if ( column.IsPrimaryKey ) { query.Append(" PRIMARY KEY DEFAULT gen_random_uuid()"); }
             else
             {
                 query.Append(column.IsNullable
@@ -199,9 +346,21 @@ public class TableMetaData<TSelf> : ITableMetaData
                 }
             }
 
+            if ( index < Instance.Count ) { query.Append(','); }
 
-            if ( ++index < Instance.Count ) { query.Append(','); }
+            query.Append('\n');
+        }
 
+        if ( Instance.ForeignKeyCount > 0 )
+        {
+            foreach ( ColumnMetaData column in Instance.ForeignKeys )
+            {
+                query.Append('\n');
+                string foreignKeyName = Validate.ThrowIfNull(column.ForeignKeyName);
+                query.Append($"    FOREIGN KEY ({column.ColumnName}) REFERENCES {foreignKeyName}({ColumnMetaData.ID.ColumnName}),"); //  ON DELETE CASCADE
+            }
+
+            query.Remove(query.Length - 1, 1);
             query.Append('\n');
         }
 
@@ -209,16 +368,16 @@ public class TableMetaData<TSelf> : ITableMetaData
         query.Append('\n');
         query.Append('\n');
 
-        foreach ( ( string columnName, ColumnMetaData column ) in Instance )
+        foreach ( ColumnMetaData column in Instance )
         {
-            if ( string.IsNullOrWhiteSpace(column.IndexColumnName) ) { continue; }
+            if ( !column.IsIndexed ) { continue; }
 
-            query.Append($"CREATE INDEX IF NOT EXISTS {column.IndexColumnName.PadRight(Instance.MaxIndexColumnNameLength)} ON {tableName} ({columnName});\n");
+            query.Append($"CREATE INDEX IF NOT EXISTS {column.IndexColumnName_Padded(Instance)} ON {tableName}({column.ColumnName});\n");
         }
 
         query.Append($"""
 
-                      CREATE TRIGGER {nameof(MigrationRecord.SetLastModified).SqlColumnName()}
+                      CREATE TRIGGER IF NOT EXISTS {tableName}_{nameof(MigrationRecord.SetLastModified).SqlColumnName()}
                       BEFORE INSERT OR UPDATE ON {tableName}
                       FOR EACH ROW
                       EXECUTE FUNCTION {nameof(MigrationRecord.SetLastModified).SqlColumnName()}();
@@ -249,6 +408,6 @@ public class TableMetaData<TSelf> : ITableMetaData
         SortedDictionary<string, ColumnMetaData> dictionary = new(StringComparer.InvariantCultureIgnoreCase);
         foreach ( PropertyInfo property in properties ) { dictionary[property.Name] = ColumnMetaData.Create(in property); }
 
-        return new TableMetaData<TSelf>(dictionary.ToFrozenDictionary(StringComparer.InvariantCultureIgnoreCase));
+        return new TableMetaData<TSelf>(dictionary.ToFrozenDictionary(StringComparer.InvariantCultureIgnoreCase)) { Extras = typeof(TSelf).GetCustomAttribute<TableExtrasAttribute>() };
     }
 }

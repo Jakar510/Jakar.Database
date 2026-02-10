@@ -40,7 +40,9 @@ public sealed record UserLoginProviderRecord : OwnedTableRecord<UserLoginProvide
     public override ValueTask Export( NpgsqlBinaryExporter exporter, CancellationToken token ) => default;
     public override async ValueTask Import( NpgsqlBinaryImporter importer, CancellationToken token )
     {
-        foreach ( ColumnMetaData column in PropertyMetaData.Values.OrderBy(static x => x.Index) )
+        using PooledArray<ColumnMetaData> buffer = PropertyMetaData.SortedColumns;
+
+        foreach ( ColumnMetaData column in buffer.Array )
         {
             switch ( column.PropertyName )
             {

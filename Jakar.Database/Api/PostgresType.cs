@@ -16,6 +16,10 @@ public enum PostgresType
     /// <summary> The default value, indicating that the PostgreSQL type has not been set. </summary>
     NotSet,
 
+    Serial,
+    BigSerial,
+    SmallSerial,
+
     /// <summary>
     ///     Corresponds to the PostgreSQL "enum" type.
     ///     <para>
@@ -700,23 +704,44 @@ public static class PostgresTypes
 
 
 
-    extension( Type type )
+    extension( Type self )
     {
+        private bool IsTypeOrUnderlyingType( in Type targetType )
+        {
+            if ( self == targetType ) { return true; }
+
+            switch ( self.IsGenericType )
+            {
+                case true when self.GetGenericTypeDefinition() == targetType:
+                    return true;
+
+                case true when self.GetGenericTypeDefinition() == typeof(Nullable<>):
+                {
+                    foreach ( Type argument in self.GenericTypeArguments.AsSpan() ) { return argument.IsTypeOrUnderlyingType(in targetType); }
+
+                    break;
+                }
+            }
+
+            return false;
+        }
+
+
         public PostgresType GetPostgresType( out bool isNullable, out bool isEnum, ref SizeInfo length )
         {
-            isEnum     = type.IsEnum           || ( TryGetUnderlyingType(type, out Type? underlyingType) && underlyingType.IsEnum );
-            isNullable = type.IsNullableType() || type.IsBuiltInNullableType();
+            isEnum     = self.IsEnum           || ( TryGetUnderlyingType(self, out Type? underlyingType) && underlyingType.IsEnum );
+            isNullable = self.IsNullableType() || self.IsBuiltInNullableType();
 
-            if ( type == typeof(byte[]) || type == typeof(Memory<byte>) || type == typeof(ReadOnlyMemory<byte>) || type == typeof(ImmutableArray<byte>) ) { return PostgresType.Binary; }
+            if ( self == typeof(byte[]) || self == typeof(Memory<byte>) || self == typeof(ReadOnlyMemory<byte>) || self == typeof(ImmutableArray<byte>) ) { return PostgresType.Binary; }
 
-            if ( typeof(JsonNode).IsAssignableFrom(type) || type == typeof(JsonDocument) || type == typeof(JsonElement) ) { return PostgresType.Json; }
+            if ( typeof(JsonNode).IsAssignableFrom(self) || self == typeof(JsonDocument) || self == typeof(JsonElement) ) { return PostgresType.Json; }
 
-            if ( typeof(XmlNode).IsAssignableFrom(type) ) { return PostgresType.Xml; }
+            if ( typeof(XmlNode).IsAssignableFrom(self) ) { return PostgresType.Xml; }
 
 
-            if ( type == typeof(Guid) ) { return PostgresType.Guid; }
+            if ( self == typeof(Guid) ) { return PostgresType.Guid; }
 
-            if ( type == typeof(Guid?) )
+            if ( self == typeof(Guid?) )
             {
                 Debug.Assert(isNullable);
                 return PostgresType.Guid;
@@ -725,226 +750,226 @@ public static class PostgresTypes
 
             if ( isEnum )
             {
-                length = Enum.GetNames(type)
+                length = Enum.GetNames(self)
                              .AsValueEnumerable()
                              .Max(static x => x.Length);
 
                 return PostgresType.String;
             }
 
-            if ( type == typeof(string) ) { return PostgresType.String; }
+            if ( self == typeof(string) ) { return PostgresType.String; }
 
 
-            if ( type == typeof(Int128) ) { return PostgresType.String; }
+            if ( self == typeof(Int128) ) { return PostgresType.String; }
 
-            if ( type == typeof(Int128?) )
+            if ( self == typeof(Int128?) )
             {
                 Debug.Assert(isNullable);
                 return PostgresType.Int128;
             }
 
-            if ( type == typeof(UInt128) ) { return PostgresType.String; }
+            if ( self == typeof(UInt128) ) { return PostgresType.String; }
 
-            if ( type == typeof(UInt128?) )
+            if ( self == typeof(UInt128?) )
             {
                 Debug.Assert(isNullable);
                 return PostgresType.UInt128;
             }
 
-            if ( type == typeof(byte) ) { return PostgresType.Bit; }
+            if ( self == typeof(byte) ) { return PostgresType.Bit; }
 
-            if ( type == typeof(byte?) )
+            if ( self == typeof(byte?) )
             {
                 Debug.Assert(isNullable);
                 return PostgresType.Bit;
             }
 
-            if ( type == typeof(short) ) { return PostgresType.Short; }
+            if ( self == typeof(short) ) { return PostgresType.Short; }
 
-            if ( type == typeof(short?) )
+            if ( self == typeof(short?) )
             {
                 Debug.Assert(isNullable);
                 return PostgresType.Short;
             }
 
-            if ( type == typeof(ushort) ) { return PostgresType.Short; }
+            if ( self == typeof(ushort) ) { return PostgresType.Short; }
 
-            if ( type == typeof(ushort?) )
+            if ( self == typeof(ushort?) )
             {
                 Debug.Assert(isNullable);
                 return PostgresType.Short;
             }
 
-            if ( type == typeof(int) ) { return PostgresType.Int; }
+            if ( self == typeof(int) ) { return PostgresType.Int; }
 
-            if ( type == typeof(int?) )
+            if ( self == typeof(int?) )
             {
                 Debug.Assert(isNullable);
                 return PostgresType.Int;
             }
 
-            if ( type == typeof(uint) ) { return PostgresType.Int; }
+            if ( self == typeof(uint) ) { return PostgresType.Int; }
 
-            if ( type == typeof(uint?) )
+            if ( self == typeof(uint?) )
             {
                 Debug.Assert(isNullable);
                 return PostgresType.Int;
             }
 
-            if ( type == typeof(long) ) { return PostgresType.Long; }
+            if ( self == typeof(long) ) { return PostgresType.Long; }
 
-            if ( type == typeof(long?) )
+            if ( self == typeof(long?) )
             {
                 Debug.Assert(isNullable);
                 return PostgresType.Long;
             }
 
-            if ( type == typeof(ulong) ) { return PostgresType.Long; }
+            if ( self == typeof(ulong) ) { return PostgresType.Long; }
 
-            if ( type == typeof(ulong?) )
+            if ( self == typeof(ulong?) )
             {
                 Debug.Assert(isNullable);
                 return PostgresType.Long;
             }
 
-            if ( type == typeof(float) ) { return PostgresType.Single; }
+            if ( self == typeof(float) ) { return PostgresType.Single; }
 
-            if ( type == typeof(float?) )
+            if ( self == typeof(float?) )
             {
                 Debug.Assert(isNullable);
                 return PostgresType.Single;
             }
 
-            if ( type == typeof(double) ) { return PostgresType.Double; }
+            if ( self == typeof(double) ) { return PostgresType.Double; }
 
-            if ( type == typeof(double?) )
+            if ( self == typeof(double?) )
             {
                 Debug.Assert(isNullable);
                 return PostgresType.Double;
             }
 
-            if ( type == typeof(decimal) ) { return PostgresType.Decimal; }
+            if ( self == typeof(decimal) ) { return PostgresType.Decimal; }
 
-            if ( type == typeof(decimal?) )
+            if ( self == typeof(decimal?) )
             {
                 Debug.Assert(isNullable);
                 return PostgresType.Decimal;
             }
 
-            if ( type == typeof(bool) ) { return PostgresType.Boolean; }
+            if ( self == typeof(bool) ) { return PostgresType.Boolean; }
 
-            if ( type == typeof(bool?) )
+            if ( self == typeof(bool?) )
             {
                 Debug.Assert(isNullable);
                 return PostgresType.Boolean;
             }
 
-            if ( type == typeof(DateOnly) ) { return PostgresType.Date; }
+            if ( self == typeof(DateOnly) ) { return PostgresType.Date; }
 
-            if ( type == typeof(DateOnly?) )
+            if ( self == typeof(DateOnly?) )
             {
                 Debug.Assert(isNullable);
                 return PostgresType.Date;
             }
 
-            if ( type == typeof(TimeOnly) ) { return PostgresType.Time; }
+            if ( self == typeof(TimeOnly) ) { return PostgresType.Time; }
 
-            if ( type == typeof(TimeOnly?) )
+            if ( self == typeof(TimeOnly?) )
             {
                 Debug.Assert(isNullable);
                 return PostgresType.Time;
             }
 
-            if ( type == typeof(TimeSpan) ) { return PostgresType.Time; }
+            if ( self == typeof(TimeSpan) ) { return PostgresType.Time; }
 
-            if ( type == typeof(TimeSpan?) )
+            if ( self == typeof(TimeSpan?) )
             {
                 Debug.Assert(isNullable);
                 return PostgresType.Time;
             }
 
-            if ( type == typeof(DateTime) ) { return PostgresType.DateTime; }
+            if ( self == typeof(DateTime) ) { return PostgresType.DateTime; }
 
-            if ( type == typeof(DateTime?) )
+            if ( self == typeof(DateTime?) )
             {
                 Debug.Assert(isNullable);
                 return PostgresType.DateTime;
             }
 
-            if ( type == typeof(DateTimeOffset) ) { return PostgresType.DateTimeOffset; }
+            if ( self == typeof(DateTimeOffset) ) { return PostgresType.DateTimeOffset; }
 
-            if ( type == typeof(DateTimeOffset?) )
+            if ( self == typeof(DateTimeOffset?) )
             {
                 Debug.Assert(isNullable);
                 return PostgresType.DateTimeOffset;
             }
 
-            throw new ArgumentException($"Unsupported type: {type.Name}");
+            throw new ArgumentException($"Unsupported type: {self.Name}");
         }
 
         public PostgresType GetPostgresType( out bool isEnum, ref SizeInfo length )
         {
-            isEnum = type.IsEnum || ( TryGetUnderlyingType(type, out Type? underlyingType) && underlyingType.IsEnum );
+            isEnum = self.IsEnum || ( TryGetUnderlyingType(self, out Type? underlyingType) && underlyingType.IsEnum );
 
             if ( isEnum )
             {
-                length = Enum.GetNames(type)
+                length = Enum.GetNames(self)
                              .AsValueEnumerable()
                              .Max(static x => x.Length);
 
                 return PostgresType.String;
             }
 
-            if ( type == typeof(byte[]) || type == typeof(Memory<byte>) || type == typeof(ReadOnlyMemory<byte>) || type == typeof(ImmutableArray<byte>) ) { return PostgresType.Binary; }
+            if ( self == typeof(byte[]) || self == typeof(Memory<byte>) || self == typeof(ReadOnlyMemory<byte>) || self == typeof(ImmutableArray<byte>) ) { return PostgresType.Binary; }
 
-            if ( typeof(JsonNode).IsAssignableFrom(type) || type == typeof(JsonDocument) || type == typeof(JsonElement) ) { return PostgresType.Json; }
+            if ( typeof(JsonNode).IsAssignableFrom(self) || self == typeof(JsonDocument) || self == typeof(JsonElement) ) { return PostgresType.Json; }
 
-            if ( typeof(XmlNode).IsAssignableFrom(type) ) { return PostgresType.Xml; }
+            if ( typeof(XmlNode).IsAssignableFrom(self) ) { return PostgresType.Xml; }
 
-            if ( type == typeof(Guid) || type == typeof(Guid?) ) { return PostgresType.Guid; }
+            if ( self == typeof(Guid) || self == typeof(Guid?) ) { return PostgresType.Guid; }
 
-            if ( type == typeof(string) ) { return PostgresType.String; }
+            if ( self == typeof(string) ) { return PostgresType.String; }
 
-            if ( type == typeof(Int128) || type == typeof(Int128?) ) { return PostgresType.Int128; }
+            if ( self == typeof(Int128) || self == typeof(Int128?) ) { return PostgresType.Int128; }
 
-            if ( type == typeof(UInt128) || type == typeof(UInt128?) ) { return PostgresType.UInt128; }
+            if ( self == typeof(UInt128) || self == typeof(UInt128?) ) { return PostgresType.UInt128; }
 
-            if ( type == typeof(byte) || type == typeof(byte?) ) { return PostgresType.Bit; }
+            if ( self == typeof(byte) || self == typeof(byte?) ) { return PostgresType.Bit; }
 
-            if ( type == typeof(short) || type == typeof(short?) || type == typeof(ushort) || type == typeof(ushort?) ) { return PostgresType.Short; }
+            if ( self == typeof(short) || self == typeof(short?) || self == typeof(ushort) || self == typeof(ushort?) ) { return PostgresType.Short; }
 
-            if ( type == typeof(int) || type == typeof(int?) || type == typeof(uint) || type == typeof(uint?) ) { return PostgresType.Int; }
+            if ( self == typeof(int) || self == typeof(int?) || self == typeof(uint) || self == typeof(uint?) ) { return PostgresType.Int; }
 
-            if ( type == typeof(long) || type == typeof(long?) || type == typeof(ulong) || type == typeof(ulong?) ) { return PostgresType.Long; }
+            if ( self == typeof(long) || self == typeof(long?) || self == typeof(ulong) || self == typeof(ulong?) ) { return PostgresType.Long; }
 
-            if ( type == typeof(float) || type == typeof(float?) ) { return PostgresType.Single; }
+            if ( self == typeof(float) || self == typeof(float?) ) { return PostgresType.Single; }
 
-            if ( type == typeof(double) || type == typeof(double?) ) { return PostgresType.Double; }
+            if ( self == typeof(double) || self == typeof(double?) ) { return PostgresType.Double; }
 
-            if ( type == typeof(decimal) || type == typeof(decimal?) ) { return PostgresType.Decimal; }
+            if ( self == typeof(decimal) || self == typeof(decimal?) ) { return PostgresType.Decimal; }
 
-            if ( type == typeof(bool) || type == typeof(bool?) ) { return PostgresType.Boolean; }
+            if ( self == typeof(bool) || self == typeof(bool?) ) { return PostgresType.Boolean; }
 
-            if ( type == typeof(DateOnly) || type == typeof(DateOnly?) ) { return PostgresType.Date; }
+            if ( self == typeof(DateOnly) || self == typeof(DateOnly?) ) { return PostgresType.Date; }
 
-            if ( type == typeof(TimeOnly) || type == typeof(TimeOnly?) || type == typeof(TimeSpan) || type == typeof(TimeSpan?) ) { return PostgresType.Time; }
+            if ( self == typeof(TimeOnly) || self == typeof(TimeOnly?) || self == typeof(TimeSpan) || self == typeof(TimeSpan?) ) { return PostgresType.Time; }
 
-            if ( type == typeof(DateTime) || type == typeof(DateTime?) ) { return PostgresType.DateTime; }
+            if ( self == typeof(DateTime) || self == typeof(DateTime?) ) { return PostgresType.DateTime; }
 
-            if ( type == typeof(DateTimeOffset) || type == typeof(DateTimeOffset?) ) { return PostgresType.DateTimeOffset; }
+            if ( self == typeof(DateTimeOffset) || self == typeof(DateTimeOffset?) ) { return PostgresType.DateTimeOffset; }
 
-            throw new ArgumentException($"Unsupported type: {type.Name}");
+            throw new ArgumentException($"Unsupported type: {self.Name}");
         }
 
         public PostgresType GetPostgresType( in PropertyInfo property, ref ColumnOptions options, ref SizeInfo? length )
         {
-            bool isNullable = type.IsNullableType() || type.IsBuiltInNullableType() || !property.IsNonNullableReferenceType();
+            bool isNullable = self.IsNullableType() || self.IsBuiltInNullableType() || !property.IsNonNullableReferenceType();
 
             try
             {
-                if ( ( TryGetUnderlyingType(type, out Type? underlyingType) && underlyingType.IsEnum ) || type.IsEnum )
+                if ( ( TryGetUnderlyingType(self, out Type? underlyingType) && underlyingType.IsEnum ) || self.IsEnum )
                 {
-                    length = Enum.GetNames(underlyingType ?? type)
+                    length = Enum.GetNames(underlyingType ?? self)
                                  .AsValueEnumerable()
                                  .Max(static x => x.Length);
 
@@ -952,137 +977,139 @@ public static class PostgresTypes
                     return PostgresType.Enum;
                 }
 
-                if ( type.Name.StartsWith("RecordID") || ( TryGetUnderlyingType(type, out underlyingType) && underlyingType.Name.StartsWith("RecordID") ) ) { return PostgresType.Guid; }
+                if ( ( self.IsTypeOrUnderlyingType(typeof(RecordID<>)) ) ) { return PostgresType.Guid; }
 
-                if ( type == typeof(byte[]) || type == typeof(Memory<byte>) || type == typeof(ReadOnlyMemory<byte>) || type == typeof(ImmutableArray<byte>) ) { return PostgresType.Binary; }
+                if ( ( self.IsTypeOrUnderlyingType(typeof(AutoRecordID<>)) ) ) { return PostgresType.BigSerial; }
 
-                if ( type == typeof(Memory<byte>?) || type == typeof(ReadOnlyMemory<byte>?) || type == typeof(ImmutableArray<byte>?) )
+                if ( self == typeof(byte[]) || self == typeof(Memory<byte>) || self == typeof(ReadOnlyMemory<byte>) || self == typeof(ImmutableArray<byte>) ) { return PostgresType.Binary; }
+
+                if ( self == typeof(Memory<byte>?) || self == typeof(ReadOnlyMemory<byte>?) || self == typeof(ImmutableArray<byte>?) )
                 {
                     Debug.Assert(isNullable);
                     return PostgresType.Binary;
                 }
 
-                if ( typeof(JToken).IsAssignableFrom(type) || typeof(JsonNode).IsAssignableFrom(type) || type == typeof(JsonDocument) || type == typeof(JsonElement) ) { return PostgresType.Json; }
+                if ( typeof(JToken).IsAssignableFrom(self) || typeof(JsonNode).IsAssignableFrom(self) || self == typeof(JsonDocument) || self == typeof(JsonElement) ) { return PostgresType.Json; }
 
-                if ( typeof(XmlNode).IsAssignableFrom(type) ) { return PostgresType.Xml; }
+                if ( typeof(XmlNode).IsAssignableFrom(self) ) { return PostgresType.Xml; }
 
-                if ( type == typeof(Guid) ) { return PostgresType.Guid; }
+                if ( self == typeof(Guid) ) { return PostgresType.Guid; }
 
-                if ( type == typeof(Guid?) )
+                if ( self == typeof(Guid?) )
                 {
                     Debug.Assert(isNullable);
                     return PostgresType.Guid;
                 }
 
-                if ( type == typeof(string) || type == typeof(UserRights) ) { return PostgresType.String; }
+                if ( self == typeof(string) || self == typeof(UserRights) ) { return PostgresType.String; }
 
-                if ( type == typeof(Int128) ) { return PostgresType.Int128; }
+                if ( self == typeof(Int128) ) { return PostgresType.Int128; }
 
-                if ( type == typeof(Int128?) )
+                if ( self == typeof(Int128?) )
                 {
                     Debug.Assert(isNullable);
                     return PostgresType.Int128;
                 }
 
-                if ( type == typeof(UInt128) ) { return PostgresType.UInt128; }
+                if ( self == typeof(UInt128) ) { return PostgresType.UInt128; }
 
-                if ( type == typeof(UInt128?) )
+                if ( self == typeof(UInt128?) )
                 {
                     Debug.Assert(isNullable);
                     return PostgresType.UInt128;
                 }
 
-                if ( type == typeof(byte) ) { return PostgresType.Bit; }
+                if ( self == typeof(byte) ) { return PostgresType.Bit; }
 
-                if ( type == typeof(byte?) )
+                if ( self == typeof(byte?) )
                 {
                     Debug.Assert(isNullable);
                     return PostgresType.Bit;
                 }
 
-                if ( type == typeof(short) || type == typeof(ushort) ) { return PostgresType.Short; }
+                if ( self == typeof(short) || self == typeof(ushort) ) { return PostgresType.Short; }
 
-                if ( type == typeof(short?) || type == typeof(ushort?) )
+                if ( self == typeof(short?) || self == typeof(ushort?) )
                 {
                     Debug.Assert(isNullable);
                     return PostgresType.Short;
                 }
 
-                if ( type == typeof(int) || type == typeof(uint) ) { return PostgresType.Int; }
+                if ( self == typeof(int) || self == typeof(uint) ) { return PostgresType.Int; }
 
-                if ( type == typeof(int?) || type == typeof(uint?) )
+                if ( self == typeof(int?) || self == typeof(uint?) )
                 {
                     Debug.Assert(isNullable);
                     return PostgresType.Int;
                 }
 
-                if ( type == typeof(long) || type == typeof(ulong) ) { return PostgresType.Long; }
+                if ( self == typeof(long) || self == typeof(ulong) ) { return PostgresType.Long; }
 
-                if ( type == typeof(long?) || type == typeof(ulong?) )
+                if ( self == typeof(long?) || self == typeof(ulong?) )
                 {
                     Debug.Assert(isNullable);
                     return PostgresType.Long;
                 }
 
-                if ( type == typeof(float) ) { return PostgresType.Single; }
+                if ( self == typeof(float) ) { return PostgresType.Single; }
 
-                if ( type == typeof(float?) )
+                if ( self == typeof(float?) )
                 {
                     Debug.Assert(isNullable);
                     return PostgresType.Single;
                 }
 
-                if ( type == typeof(double) ) { return PostgresType.Double; }
+                if ( self == typeof(double) ) { return PostgresType.Double; }
 
-                if ( type == typeof(double?) )
+                if ( self == typeof(double?) )
                 {
                     Debug.Assert(isNullable);
                     return PostgresType.Double;
                 }
 
-                if ( type == typeof(decimal) ) { return PostgresType.Decimal; }
+                if ( self == typeof(decimal) ) { return PostgresType.Decimal; }
 
-                if ( type == typeof(decimal?) )
+                if ( self == typeof(decimal?) )
                 {
                     Debug.Assert(isNullable);
                     return PostgresType.Decimal;
                 }
 
-                if ( type == typeof(bool) ) { return PostgresType.Boolean; }
+                if ( self == typeof(bool) ) { return PostgresType.Boolean; }
 
-                if ( type == typeof(bool?) )
+                if ( self == typeof(bool?) )
                 {
                     Debug.Assert(isNullable);
                     return PostgresType.Boolean;
                 }
 
-                if ( type == typeof(DateOnly) ) { return PostgresType.Date; }
+                if ( self == typeof(DateOnly) ) { return PostgresType.Date; }
 
-                if ( type == typeof(DateOnly?) )
+                if ( self == typeof(DateOnly?) )
                 {
                     Debug.Assert(isNullable);
                     return PostgresType.Date;
                 }
 
-                if ( type == typeof(TimeOnly) || type == typeof(TimeSpan) ) { return PostgresType.Time; }
+                if ( self == typeof(TimeOnly) || self == typeof(TimeSpan) ) { return PostgresType.Time; }
 
-                if ( type == typeof(TimeOnly?) || type == typeof(TimeSpan?) )
+                if ( self == typeof(TimeOnly?) || self == typeof(TimeSpan?) )
                 {
                     Debug.Assert(isNullable);
                     return PostgresType.Time;
                 }
 
-                if ( type == typeof(DateTime) ) { return PostgresType.DateTime; }
+                if ( self == typeof(DateTime) ) { return PostgresType.DateTime; }
 
-                if ( type == typeof(DateTime?) )
+                if ( self == typeof(DateTime?) )
                 {
                     Debug.Assert(isNullable);
                     return PostgresType.DateTime;
                 }
 
-                if ( type == typeof(DateTimeOffset) ) { return PostgresType.DateTimeOffset; }
+                if ( self == typeof(DateTimeOffset) ) { return PostgresType.DateTimeOffset; }
 
-                if ( type == typeof(DateTimeOffset?) )
+                if ( self == typeof(DateTimeOffset?) )
                 {
                     Debug.Assert(isNullable);
                     return PostgresType.DateTimeOffset;
@@ -1093,7 +1120,7 @@ public static class PostgresTypes
                 if ( isNullable ) { options |= ColumnOptions.Nullable; }
             }
 
-            throw new ArgumentException($"Unsupported type: {type.Name}");
+            throw new ArgumentException($"Unsupported type: {self.Name}");
         }
     }
 

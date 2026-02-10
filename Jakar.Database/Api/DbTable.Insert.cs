@@ -11,13 +11,46 @@ public partial class DbTable<TSelf>
                                                                  .SQL;
 
 
+    public ValueTask<ImmutableArray<TSelf>> Import( ReadOnlyMemory<TSelf> records, CancellationToken token = default ) => this.TryCall(Import, records, token);
+    public ValueTask<ImmutableArray<TSelf>> Import( ImmutableArray<TSelf> records, CancellationToken token = default ) => this.TryCall(Import, records, token);
+    public ValueTask<ImmutableArray<TSelf>> Import( IEnumerable<TSelf>    records, CancellationToken token = default ) => this.TryCall(Import, records, token);
+    public virtual async ValueTask<ImmutableArray<TSelf>> Import( NpgsqlConnection connection, NpgsqlTransaction transaction, IEnumerable<TSelf> records, [EnumeratorCancellation] CancellationToken token = default )
+    {
+        await using NpgsqlBinaryImporter import = await connection.BeginBinaryImportAsync(_copySQL, token);
+        ImmutableArray<TSelf>            array  = [..records];
+        foreach ( TSelf record in array ) { await record.Import(import, token); }
+
+        await import.CompleteAsync(token);
+        return array;
+    }
+    public virtual async ValueTask<ImmutableArray<TSelf>> Import( NpgsqlConnection connection, NpgsqlTransaction transaction, ReadOnlyMemory<TSelf> records, [EnumeratorCancellation] CancellationToken token = default )
+    {
+        await using NpgsqlBinaryImporter import = await connection.BeginBinaryImportAsync(_copySQL, token);
+
+        for ( int i = 0; i < records.Length; i++ )
+        {
+            TSelf record = records.Span[i];
+            await record.Import(import, token);
+        }
+
+        await import.CompleteAsync(token);
+        return [..records.Span];
+    }
+    public virtual async ValueTask<ImmutableArray<TSelf>> Import( NpgsqlConnection connection, NpgsqlTransaction transaction, ImmutableArray<TSelf> records, [EnumeratorCancellation] CancellationToken token = default )
+    {
+        await using NpgsqlBinaryImporter import = await connection.BeginBinaryImportAsync(_copySQL, token);
+        foreach ( TSelf record in records ) { await record.Import(import, token); }
+
+        await import.CompleteAsync(token);
+        return records;
+    }
+
+
     public ValueTask<ImmutableArray<TSelf>> Insert( ReadOnlyMemory<TSelf>   records, CancellationToken token = default ) => this.TryCall(Insert, records, token);
     public ValueTask<ImmutableArray<TSelf>> Insert( ImmutableArray<TSelf>   records, CancellationToken token = default ) => this.TryCall(Insert, records, token);
     public ValueTask<ImmutableArray<TSelf>> Insert( IEnumerable<TSelf>      records, CancellationToken token = default ) => this.TryCall(Insert, records, token);
     public IAsyncEnumerable<TSelf>          Insert( IAsyncEnumerable<TSelf> records, CancellationToken token = default ) => this.TryCall(Insert, records, token);
     public ValueTask<TSelf>                 Insert( TSelf                   record,  CancellationToken token = default ) => this.TryCall(Insert, record,  token);
-
-
     public virtual async ValueTask<ImmutableArray<TSelf>> Insert( NpgsqlConnection connection, NpgsqlTransaction transaction, IEnumerable<TSelf> records, [EnumeratorCancellation] CancellationToken token = default )
     {
         await using NpgsqlBinaryImporter import = await connection.BeginBinaryImportAsync(_copySQL, token);
@@ -42,10 +75,10 @@ public partial class DbTable<TSelf>
     }
     public virtual async ValueTask<ImmutableArray<TSelf>> Insert( NpgsqlConnection connection, NpgsqlTransaction transaction, ImmutableArray<TSelf> records, [EnumeratorCancellation] CancellationToken token = default )
     {
-        await using NpgsqlBinaryImporter import = await connection.BeginBinaryImportAsync(_copySQL, token);
-        foreach ( TSelf record in records ) { await record.Import(import, token); }
+        SqlCommand<TSelf> command = SqlCommand<TSelf>.GetInsert(records);
+        TSelf[]           results = GC.AllocateUninitializedArray<TSelf>(records.Length);
+        for ( int i = 0; i < records.Length; i++ ) { results[i] = await Insert(connection, transaction, records[i], token); }
 
-        await import.CompleteAsync(token);
         return records;
     }
     public virtual async IAsyncEnumerable<TSelf> Insert( NpgsqlConnection connection, NpgsqlTransaction transaction, IAsyncEnumerable<TSelf> records, [EnumeratorCancellation] CancellationToken token = default )

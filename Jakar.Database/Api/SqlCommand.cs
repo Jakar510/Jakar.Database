@@ -28,7 +28,7 @@ public readonly struct SqlCommand<TSelf>( string sql, in PostgresParameters para
                                     AllResultTypesAreUnknown = false
                                 };
 
-        command.Parameters.Add(Parameters.Values);
+        command.Parameters.Add(Parameters.Span);
         return command;
     }
     public async ValueTask ExecuteNonQueryAsync( NpgsqlConnection connection, NpgsqlTransaction transaction, CancellationToken token )
@@ -162,7 +162,7 @@ public readonly struct SqlCommand<TSelf>( string sql, in PostgresParameters para
     {
         string sql = $"""
                         SELECT * FROM {TSelf.TableName}
-                        {parameters.KeyValuePairs(matchAll)}
+                        {parameters.KeyValuePairs(matchAll, 1)}
                         OFFSET {start}
                         LIMIT {count}
                       """;
@@ -172,8 +172,9 @@ public readonly struct SqlCommand<TSelf>( string sql, in PostgresParameters para
     public static SqlCommand<TSelf> WherePaged( in RecordID<UserRecord> createdBy, int start, int count )
     {
         string sql = $"""
-                      SELECT * FROM {TSelf.TableName} 
-                      WHERE {CREATED_BY} = '{createdBy.Value}'
+                      SELECT * FROM {TSelf.TableName}
+                      WHERE 
+                          {CREATED_BY} = '{createdBy.Value}'
                       OFFSET {start}
                       LIMIT {count};
                       """;
@@ -183,7 +184,7 @@ public readonly struct SqlCommand<TSelf>( string sql, in PostgresParameters para
     public static SqlCommand<TSelf> WherePaged( int start, int count )
     {
         string sql = $"""
-                      SELECT * FROM {TSelf.TableName} 
+                      SELECT * FROM {TSelf.TableName}
                       OFFSET {start}
                       LIMIT {count};
                       """;
@@ -204,8 +205,9 @@ public readonly struct SqlCommand<TSelf>( string sql, in PostgresParameters para
     public static SqlCommand<TSelf> Get( in RecordID<TSelf> id )
     {
         string sql = $$"""
-                       SELECT * FROM {{TSelf.TableName}} 
-                       WHERE {{ID}} = '{0}';
+                       SELECT * FROM {{TSelf.TableName}}
+                       WHERE 
+                           {{ID}} = '{0}';
                        """;
 
         return string.Format(sql, id.Value.ToString());
@@ -214,7 +216,9 @@ public readonly struct SqlCommand<TSelf>( string sql, in PostgresParameters para
     {
         string sql = $"""
                       SELECT * FROM {TSelf.TableName}
-                      WHERE {ID} in ({string.Join(',', ids.Select(GetValue))});
+                      WHERE {ID} in (
+                             {string.Join(",\n        ", ids.Select(GetValue))}
+                      );
                       """;
 
         return sql;
@@ -223,19 +227,20 @@ public readonly struct SqlCommand<TSelf>( string sql, in PostgresParameters para
     {
         string sql = $"""
                       SELECT * FROM {TSelf.TableName}
-                      WHERE {parameters.KeyValuePairs(matchAll)};
+                      WHERE 
+                      {parameters.KeyValuePairs(matchAll, 1)};
                       """;
 
         return new SqlCommand<TSelf>(sql, in parameters);
     }
     public static SqlCommand<TSelf> GetAll() => $"SELECT * FROM {TSelf.TableName};";
     public static SqlCommand<TSelf> GetFirst() => $"""
-                                                   SELECT * FROM {TSelf.TableName} 
+                                                   SELECT * FROM {TSelf.TableName}
                                                    ORDER BY {DATE_CREATED} ASC 
                                                    LIMIT 1;
                                                    """;
     public static SqlCommand<TSelf> GetLast() => $"""
-                                                  SELECT * FROM {TSelf.TableName} 
+                                                  SELECT * FROM {TSelf.TableName}
                                                   ORDER BY {DATE_CREATED} DESC 
                                                   LIMIT 1
                                                   """;
@@ -243,7 +248,7 @@ public readonly struct SqlCommand<TSelf>( string sql, in PostgresParameters para
 
     public static SqlCommand<TSelf> GetCount() => $"SELECT COUNT(*) FROM {TSelf.TableName};";
     public static SqlCommand<TSelf> GetSortedID() => $"""
-                                                      SELECT {ID}, {DATE_CREATED} FROM {TSelf.TableName} 
+                                                      SELECT {ID}, {DATE_CREATED} FROM {TSelf.TableName}
                                                       ORDER BY {DATE_CREATED} DESC;
                                                       """;
     public static SqlCommand<TSelf> GetExists( bool matchAll, in PostgresParameters parameters )
@@ -251,7 +256,8 @@ public readonly struct SqlCommand<TSelf>( string sql, in PostgresParameters para
         string sql = $"""
                       EXISTS( 
                       SELECT * FROM {TSelf.TableName}
-                      WHERE {parameters.KeyValuePairs(matchAll)};
+                      WHERE 
+                      {parameters.KeyValuePairs(matchAll, 1)};
                       """;
 
         return new SqlCommand<TSelf>(sql, in parameters);
@@ -262,7 +268,10 @@ public readonly struct SqlCommand<TSelf>( string sql, in PostgresParameters para
     {
         string sql = $"""
                       DELETE FROM {TSelf.TableName} 
-                      WHERE {ID} in ({parameters.KeyValuePairs(matchAll)});
+                      WHERE 
+                         {ID} in (
+                      {parameters.KeyValuePairs(matchAll, 2)}
+                         );
                       """;
 
         return new SqlCommand<TSelf>(sql, in parameters);
@@ -337,12 +346,48 @@ public readonly struct SqlCommand<TSelf>( string sql, in PostgresParameters para
         string sql = $"""
                       INSERT INTO {TSelf.TableName} 
                       (
-                        {parameters.ColumnNames}
+                      {TSelf.PropertyMetaData.ColumnNames(1)}
                       )
                       VALUES
                       (
-                        {parameters.VariableNames}
-                      ) 
+                      {parameters.GetVariableNames(1)}
+                      )
+                      RETURNING {ID};
+                      """;
+
+        return new SqlCommand<TSelf>(sql, in parameters);
+    }
+    public static SqlCommand<TSelf> GetInsert( IEnumerable<TSelf> records )
+    {
+        PostgresParameters parameters = PostgresParameters.Create(records);
+
+        string sql = $"""
+                      INSERT INTO {TSelf.TableName} 
+                      (
+                      {TSelf.PropertyMetaData.ColumnNames(1)}
+                      )
+                      VALUES
+                      (
+                      {parameters.GetVariableNames(1)}
+                      )
+                      RETURNING {ID};
+                      """;
+
+        return new SqlCommand<TSelf>(sql, in parameters);
+    }
+    public static SqlCommand<TSelf> GetInsert( params ReadOnlySpan<TSelf> records )
+    {
+        PostgresParameters parameters = PostgresParameters.Create(records);
+
+        string sql = $"""
+                      INSERT INTO {TSelf.TableName} 
+                      (
+                      {TSelf.PropertyMetaData.ColumnNames(1)}
+                      )
+                      VALUES
+                      (
+                      {parameters.GetVariableNames(1)}
+                      )
                       RETURNING {ID};
                       """;
 
@@ -360,15 +405,20 @@ public readonly struct SqlCommand<TSelf>( string sql, in PostgresParameters para
                                          .With(in parameters);
 
         string sql = $"""
-                      IF NOT EXISTS(SELECT * FROM {TSelf.TableName} WHERE {parameters.KeyValuePairs(matchAll)})
+                      IF NOT EXISTS (
+                          SELECT * FROM {TSelf.TableName} 
+                          WHERE 
+                          {parameters.KeyValuePairs(matchAll, 2)}
+                      )
+
                       BEGIN
                       INSERT INTO {TSelf.TableName}
                       (
-                        {parameters.ColumnNames}
+                      {TSelf.PropertyMetaData.ColumnNames(1)}
                       )
                       VALUES
                       (
-                        {parameters.VariableNames}
+                      {parameters.GetVariableNames(1)}
                       ) 
                       RETURNING {ID};
                       END
@@ -384,28 +434,32 @@ public readonly struct SqlCommand<TSelf>( string sql, in PostgresParameters para
     public static SqlCommand<TSelf> InsertOrUpdate( TSelf record, bool matchAll, in PostgresParameters parameters )
     {
         PostgresParameters param = record.ToDynamicParameters()
-                                         .With(in parameters);
+                                         .With(parameters);
 
         string sql = $"""
-                      IF NOT EXISTS(SELECT * FROM {TSelf.TableName} WHERE {parameters.KeyValuePairs(matchAll)})
+                      IF NOT EXISTS (
+                      SELECT * FROM {TSelf.TableName}
+                      WHERE
+                      {parameters.KeyValuePairs(matchAll, 2)}
+                      )
                       BEGIN
                       INSERT INTO {TSelf.TableName}
                       (
-                      {param.ColumnNames}
+                      {TSelf.PropertyMetaData.ColumnNames(1)}
                       ) 
                       VALUES 
                       (
-                      {param.VariableNames}
+                      {param.GetVariableNames(1)}
                       ) 
                       RETURNING {ID};
                       END
 
                       ELSE
                       BEGIN
-                          UPDATE {TSelf.TableName} 
-                          SET {KeyValuePairs}
-                          WHERE {ID} = @{ID};
-                      SELECT @{ID};
+                      UPDATE {TSelf.TableName} 
+                        SET {KeyValuePairs}
+                        WHERE {ID} = @{ID};
+                        SELECT @{ID};
                       END
                       """;
 

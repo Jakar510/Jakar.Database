@@ -131,10 +131,9 @@ public readonly struct RecordID<TSelf>( Guid id ) : IEquatable<RecordID<TSelf>>,
 
 
 
-    public class DapperTypeHandler : SqlConverter<DapperTypeHandler, RecordID<TSelf>>
+    public sealed class DapperTypeHandler : SqlConverter<DapperTypeHandler, RecordID<TSelf>>
     {
         public override void SetValue( IDbDataParameter parameter, RecordID<TSelf> value ) => parameter.Value = value.Value;
-
         public override RecordID<TSelf> Parse( object value ) =>
             value switch
             {
@@ -146,27 +145,9 @@ public readonly struct RecordID<TSelf>( Guid id ) : IEquatable<RecordID<TSelf>>,
 
 
 
-    public class JsonNetConverter : JsonConverter<RecordID<TSelf>>
-    {
-        public override RecordID<TSelf> Read( ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options )
-        {
-            Guid? guid = reader.TryGetGuid(out Guid id)
-                             ? id
-                             : null;
-
-            return guid.HasValue
-                       ? new RecordID<TSelf>(guid.Value)
-                       : default;
-        }
-        public override void Write( Utf8JsonWriter writer, RecordID<TSelf> id, JsonSerializerOptions options ) => writer.WriteStringValue(id.Value);
-    }
-
-
-
-    public class NullableDapperTypeHandler : SqlConverter<NullableDapperTypeHandler, RecordID<TSelf>?>
+    public sealed class NullableDapperTypeHandler : SqlConverter<NullableDapperTypeHandler, RecordID<TSelf>?>
     {
         public override void SetValue( IDbDataParameter parameter, RecordID<TSelf>? id ) => parameter.Value = id?.Value;
-
         public override RecordID<TSelf>? Parse( object value ) =>
             value switch
             {
@@ -175,34 +156,5 @@ public readonly struct RecordID<TSelf>( Guid id ) : IEquatable<RecordID<TSelf>>,
                 string stringValue when !string.IsNullOrEmpty(stringValue) && Guid.TryParse(stringValue, out Guid result) => new RecordID<TSelf>(result),
                 _                                                                                                         => throw new InvalidCastException($"Unable to cast object of type {value.GetType()} to RecordID<TSelf>")
             };
-    }
-
-
-
-    public class TypeConverter : System.ComponentModel.TypeConverter
-    {
-        public override bool CanConvertFrom( ITypeDescriptorContext? context, Type sourceType ) => sourceType == typeof(Guid) || sourceType == typeof(string) || base.CanConvertFrom(context, sourceType);
-
-        public override object? ConvertFrom( ITypeDescriptorContext? context, CultureInfo? culture, object value ) =>
-            value switch
-            {
-                Guid guidValue                                                                                            => new RecordID<TSelf>(guidValue),
-                string stringValue when !string.IsNullOrEmpty(stringValue) && Guid.TryParse(stringValue, out Guid result) => new RecordID<TSelf>(result),
-                _                                                                                                         => base.ConvertFrom(context, culture, value)
-            };
-
-        public override bool CanConvertTo( ITypeDescriptorContext? context, Type? sourceType ) => sourceType == typeof(Guid) || sourceType == typeof(string) || base.CanConvertTo(context, sourceType);
-
-        public override object? ConvertTo( ITypeDescriptorContext? context, CultureInfo? culture, object? value, Type destinationType )
-        {
-            if ( value is RecordID<TSelf> idValue )
-            {
-                if ( destinationType == typeof(Guid) ) { return idValue.Value; }
-
-                if ( destinationType == typeof(string) ) { return idValue.ToString(); }
-            }
-
-            return base.ConvertTo(context, culture, value, destinationType);
-        }
     }
 }

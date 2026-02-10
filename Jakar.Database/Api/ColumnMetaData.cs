@@ -1,6 +1,7 @@
 ﻿namespace Jakar.Database;
 
 
+[SuppressMessage("ReSharper", "InconsistentNaming")]
 public sealed class ColumnMetaData
 {
     public static readonly ColumnMetaData AdditionalData = new(nameof(IJsonModel.AdditionalData), PostgresType.Jsonb, ColumnOptions.Nullable);
@@ -13,7 +14,6 @@ public sealed class ColumnMetaData
     public readonly bool                   IsNullable;
     public readonly bool                   IsPrimaryKey;
     public readonly bool                   IsUnique;
-    public readonly bool                   IsIndexed;
     public readonly bool                   IsAlwaysIdentity;
     public readonly bool                   IsDefaultIdentity;
     public readonly ColumnCheckMetaData?   Checks;
@@ -21,7 +21,6 @@ public sealed class ColumnMetaData
     public readonly SizeInfo?              Length;
     public readonly string                 ColumnName;
     public readonly string                 KeyValuePair;
-    public readonly string                 SpacedName;
     public readonly string                 PropertyName;
     public readonly string                 VariableName;
     public readonly string?                ForeignKeyName;
@@ -30,17 +29,24 @@ public sealed class ColumnMetaData
     public readonly NpgsqlDbType           PostgresDbType;
     public readonly ColumnDefaultMetaData? Defaults;
     public readonly bool                   IsFixed;
+    private         string?                _ColumnName_Padded;
+    private         string?                _KeyValuePair_Padded;
+    private         string?                _VariableName_Padded;
+    private         string?                _IndexColumnName_Padded;
+    private         string?                _DataType_Padded;
+
 
     public int  Index        { get; internal set; } = -1;
-    public bool IsForeignKey { [MemberNotNullWhen(true, nameof(IndexColumnName))] get => !string.IsNullOrWhiteSpace(IndexColumnName); }
+    public bool IsForeignKey { [MemberNotNullWhen(true, nameof(ForeignKeyName))] get => !string.IsNullOrWhiteSpace(ForeignKeyName); }
+    public bool IsIndexed    { [MemberNotNullWhen(true, nameof(IndexColumnName))] get => !string.IsNullOrWhiteSpace(IndexColumnName); }
 
 
     public ColumnMetaData( in string propertyName, in PostgresType dbType, in ColumnOptions options = ColumnOptions.None, in string? foreignKeyName = null, in SizeInfo? length = null, in ColumnCheckMetaData? checks = null, in ColumnDefaultMetaData? defaults = null )
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(propertyName);
-        if ( ( options & ColumnOptions.ForeignKey ) != 0 && string.IsNullOrWhiteSpace(foreignKeyName) ) { throw new ArgumentException($"Column '{propertyName}' has a {nameof(ColumnOptions.ForeignKey)} flag but {nameof(foreignKeyName)} is invalid.", nameof(foreignKeyName)); }
+        if ( options.HasFlagValue(ColumnOptions.ForeignKey) && string.IsNullOrWhiteSpace(foreignKeyName) ) { throw new ArgumentException($"Column '{propertyName}' has a {nameof(ColumnOptions.ForeignKey)} flag but {nameof(foreignKeyName)} is invalid.", nameof(foreignKeyName)); }
 
-        if ( ( options & ColumnOptions.ForeignKey ) != 0 && ( options & ColumnOptions.Indexed ) != 0 ) { throw new ArgumentException($"Column '{propertyName}' cannot be both {nameof(ColumnOptions.Indexed)} and a {nameof(ColumnOptions.ForeignKey)}. {nameof(ColumnOptions.ForeignKey)} columns are automatically indexed.", nameof(options)); }
+        if ( options.HasFlagValue(ColumnOptions.ForeignKey) && options.HasFlagValue(ColumnOptions.Indexed) ) { throw new ArgumentException($"Column '{propertyName}' cannot be both {nameof(ColumnOptions.Indexed)} and a {nameof(ColumnOptions.ForeignKey)}. {nameof(ColumnOptions.ForeignKey)} columns are automatically indexed.", nameof(options)); }
 
 
         string columnName = Validate.ThrowIfNull(propertyName.SqlColumnName());
@@ -49,7 +55,6 @@ public sealed class ColumnMetaData
         IsFixed           = options.HasFlagValue(ColumnOptions.Fixed);
         IsDefaultIdentity = options.HasFlagValue(ColumnOptions.DefaultIdentity);
         IsAlwaysIdentity  = options.HasFlagValue(ColumnOptions.AlwaysIdentity);
-        IsIndexed         = options.HasFlagValue(ColumnOptions.Indexed);
         IsUnique          = options.HasFlagValue(ColumnOptions.Unique);
         Checks            = checks ?? length?.Check(columnName);
         Defaults          = defaults;
@@ -57,9 +62,8 @@ public sealed class ColumnMetaData
         Length            = length;
         PropertyName      = propertyName;
         ColumnName        = columnName;
-        KeyValuePair      = $" {columnName} = @{columnName} ";
-        SpacedName        = $" {columnName} ";
-        VariableName      = $" @{columnName} ";
+        KeyValuePair      = $"{columnName} = @{columnName}";
+        VariableName      = $"@{columnName}";
         DataType          = GetPostgresDataType(in options, in dbType, in length);
         IndexColumnName   = propertyName.SqlColumnIndexName(in options);
         ForeignKeyName    = foreignKeyName?.SqlColumnName();
@@ -67,13 +71,33 @@ public sealed class ColumnMetaData
     }
 
 
-    public static string GetColumnName( ColumnMetaData   column )   => column.ColumnName;
-    public static string GetVariableName( ColumnMetaData column )   => column.VariableName;
-    public static string GetKeyValuePair( ColumnMetaData column )   => column.KeyValuePair;
-    public static bool   IsDbKey( MemberInfo             property ) => property.GetCustomAttribute<KeyAttribute>() is not null || property.GetCustomAttribute<System.ComponentModel.DataAnnotations.KeyAttribute>() is not null;
+    internal      string ColumnName_Padded( ITableMetaData      table )    => _ColumnName_Padded ??= ColumnName.PadRight(table.MaxLength_ColumnName);
+    internal      string KeyValuePair_Padded( ITableMetaData    table )    => _KeyValuePair_Padded ??= KeyValuePair.PadRight(table.MaxLength_KeyValuePair);
+    internal      string VariableName_Padded( ITableMetaData    table )    => _VariableName_Padded ??= VariableName.PadRight(table.MaxLength_Variables);
+    internal      string IndexColumnName_Padded( ITableMetaData table )    => _IndexColumnName_Padded ??= IndexColumnName?.PadRight(table.MaxLength_IndexColumnName) ?? EMPTY;
+    internal      string DataType_Padded( ITableMetaData        table )    => _DataType_Padded ??= DataType.PadRight(table.MaxLength_DataType);
+    public static string GetColumnName( ColumnMetaData          column )   => column.ColumnName;
+    public static string GetVariableName( ColumnMetaData        column )   => column.VariableName;
+    public static string GetKeyValuePair( ColumnMetaData        column )   => column.KeyValuePair;
+    public static bool   IsDbKey( MemberInfo                    property ) => property.GetCustomAttribute<KeyAttribute>() is not null || property.GetCustomAttribute<System.ComponentModel.DataAnnotations.KeyAttribute>() is not null;
+
+
+    public NpgsqlParameter ToParameter<T>( T value, [CallerArgumentExpression(nameof(value))] string parameterName = EMPTY, ParameterDirection direction = ParameterDirection.Input, DataRowVersion sourceVersion = DataRowVersion.Default )
+    {
+        NpgsqlParameter parameter = new(parameterName.SqlColumnName(), PostgresDbType, 0, ColumnName)
+                                    {
+                                        IsNullable    = IsNullable,
+                                        SourceVersion = sourceVersion,
+                                        Direction     = direction,
+                                        Value         = value
+                                    };
+
+        return parameter;
+    }
 
 
     public static ColumnMetaData Create( in PropertyInfo property ) => Create(in property, property.GetCustomAttribute<ColumnMetaDataAttribute>() ?? ColumnMetaDataAttribute.Default);
+
     internal static ColumnMetaData Create( in PropertyInfo property, in ColumnMetaDataAttribute attribute )
     {
         ArgumentNullException.ThrowIfNull(attribute, $"{property.DeclaringType?.Name}.{property.Name}");
@@ -92,6 +116,7 @@ public sealed class ColumnMetaData
 
 
     public static Func<TSelf, object?> GetTablePropertyValueAccessor<TSelf>( string propertyName ) => GetTablePropertyValueAccessor<TSelf>(typeof(TSelf).GetProperty(propertyName) ?? throw new InvalidOperationException($"Property '{propertyName}' not found on type '{typeof(TSelf).FullName}'"));
+
     private static Func<TSelf, object?> GetTablePropertyValueAccessor<TSelf>( PropertyInfo property )
     {
         // Validate getter and declaring type once
@@ -180,6 +205,9 @@ public sealed class ColumnMetaData
                                               ? $"bit varying({length})"
                                               : "bit varying(8)",
 
+                   PostgresType.Serial                   => "serial",
+                   PostgresType.BigSerial                => @"bigserial",
+                   PostgresType.SmallSerial              => @"smallserial",
                    PostgresType.Short                    => "smallint",
                    PostgresType.UShort                   => "smallint",
                    PostgresType.Int                      => "integer",

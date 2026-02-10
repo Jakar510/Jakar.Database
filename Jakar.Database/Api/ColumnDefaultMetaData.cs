@@ -17,7 +17,11 @@ public readonly record struct ColumnDefaultMetaData( string? Defaults )
     {
         if ( type == typeof(DateTimeOffset) ) { return new ColumnDefaultMetaData(@"SYSUTCDATETIME()"); }
 
-        if ( type == typeof(DateTime) ) { return new ColumnDefaultMetaData(@"CURRENT_TIMESTAMP()"); }
+        if ( type == typeof(DateTime) ) { return new ColumnDefaultMetaData(@"NOW()"); }
+
+        if ( type == typeof(Guid) ) { return new ColumnDefaultMetaData(@"gen_random_uuid()"); }
+
+        if ( type == typeof(DateOnly) ) { return new ColumnDefaultMetaData(@"CURRENT_DATE"); }
 
         return null;
     }
