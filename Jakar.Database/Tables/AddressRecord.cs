@@ -11,13 +11,13 @@ public sealed record AddressRecord : OwnedTableRecord<AddressRecord>, IAddress<A
 
 
     public static                                                                string  TableName       => TABLE_NAME;
-    [ProtectedPersonalData] [ColumnMetaData(ColumnOptions.Indexed, 512)]  public string  Line1           { get;                           init; } = EMPTY;
-    [ProtectedPersonalData] [ColumnMetaData(ColumnOptions.Indexed, 512)]  public string  Line2           { get;                           init; } = EMPTY;
-    [ProtectedPersonalData] [ColumnMetaData(ColumnOptions.Indexed, 512)]  public string  City            { get;                           init; } = EMPTY;
-    [ProtectedPersonalData] [ColumnMetaData(ColumnOptions.Indexed, 512)]  public string  StateOrProvince { get;                           init; } = EMPTY;
-    [ProtectedPersonalData] [ColumnMetaData(ColumnOptions.Indexed, 512)]  public string  Country         { get;                           init; } = EMPTY;
-    [ProtectedPersonalData] [ColumnMetaData(ColumnOptions.Indexed, 512)]  public string  PostalCode      { get;                           init; } = EMPTY;
-    [ProtectedPersonalData] [ColumnMetaData(ColumnOptions.Indexed, 4096)] public string? Address         { get => field ??= GetAddress(); init; }
+    [ProtectedPersonalData] [ColumnInfo(ColumnOptions.Indexed, 512)]  public string  Line1           { get;                           init; } = EMPTY;
+    [ProtectedPersonalData] [ColumnInfo(ColumnOptions.Indexed, 512)]  public string  Line2           { get;                           init; } = EMPTY;
+    [ProtectedPersonalData] [ColumnInfo(ColumnOptions.Indexed, 512)]  public string  City            { get;                           init; } = EMPTY;
+    [ProtectedPersonalData] [ColumnInfo(ColumnOptions.Indexed, 512)]  public string  StateOrProvince { get;                           init; } = EMPTY;
+    [ProtectedPersonalData] [ColumnInfo(ColumnOptions.Indexed, 512)]  public string  Country         { get;                           init; } = EMPTY;
+    [ProtectedPersonalData] [ColumnInfo(ColumnOptions.Indexed, 512)]  public string  PostalCode      { get;                           init; } = EMPTY;
+    [ProtectedPersonalData] [ColumnInfo(ColumnOptions.Indexed, 4096)] public string? Address         { get => field ??= GetAddress(); init; }
     public                                                                       bool    IsPrimary       { get;                           init; }
 
 

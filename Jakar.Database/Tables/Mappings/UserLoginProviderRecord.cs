@@ -13,10 +13,10 @@ public sealed record UserLoginProviderRecord : OwnedTableRecord<UserLoginProvide
 
 
     public static                                                          string  TableName           => TABLE_NAME;
-    [ColumnMetaData(ColumnOptions.Indexed)] public                         string  LoginProvider       { get; init; }
+    [ColumnInfo(ColumnOptions.Indexed)] public                         string  LoginProvider       { get; init; }
     public                                                                 string? ProviderDisplayName { get; init; }
-    [ColumnMetaData(ColumnOptions.Indexed)] [ProtectedPersonalData] public string  ProviderKey         { get; init; }
-    [ColumnMetaData(ColumnOptions.Indexed)] [ProtectedPersonalData] public string? Value               { get; init; }
+    [ColumnInfo(ColumnOptions.Indexed)] [ProtectedPersonalData] public string  ProviderKey         { get; init; }
+    [ColumnInfo(ColumnOptions.Indexed)] [ProtectedPersonalData] public string? Value               { get; init; }
 
 
     public UserLoginProviderRecord( UserRecord user, UserLoginInfo info ) : this(user, info.LoginProvider, info.ProviderKey, info.ProviderDisplayName) { }

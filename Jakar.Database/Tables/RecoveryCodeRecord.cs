@@ -13,7 +13,7 @@ public sealed record RecoveryCodeRecord : OwnedTableRecord<RecoveryCodeRecord>, 
 
 
     public static                                  string TableName => TABLE_NAME;
-    [ColumnMetaData(ColumnOptions.Indexed)] public string Code      { get; init; }
+    [ColumnInfo(ColumnOptions.Indexed)] public string Code      { get; init; }
 
 
     public RecoveryCodeRecord( string code, UserRecord                   user ) : this(code, RecordID<RecoveryCodeRecord>.New(), user.ID, DateTimeOffset.UtcNow) { }

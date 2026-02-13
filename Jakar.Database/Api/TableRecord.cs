@@ -130,7 +130,7 @@ public abstract record PairRecord<TSelf> : TableRecord<TSelf>, IUniqueID
     Guid IUniqueID<Guid>.                                           ID             => ID.Value;
     [ProtectedPersonalData]                  public JObject?        AdditionalData { get => _additionalData; set => _additionalData = value; }
     [Key]                                    public RecordID<TSelf> ID             { get => __id;            init => __id = value; }
-    [ColumnMetaData(ColumnOptions.Nullable)] public DateTimeOffset? LastModified   { get => _lastModified;   init => _lastModified = value; }
+    [ColumnInfo(ColumnOptions.Nullable)] public DateTimeOffset? LastModified   { get => _lastModified;   init => _lastModified = value; }
 
 
     protected PairRecord( in RecordID<TSelf> id, in DateTimeOffset dateCreated, in DateTimeOffset? lastModified, JObject? additionalData = null ) : base(in dateCreated)
@@ -196,7 +196,7 @@ public abstract record PairRecord<TSelf> : TableRecord<TSelf>, IUniqueID
 public abstract record OwnedTableRecord<TSelf> : PairRecord<TSelf>, ICreatedBy
     where TSelf : OwnedTableRecord<TSelf>, ITableRecord<TSelf>
 {
-    [ColumnMetaData(UserRecord.TABLE_NAME)] public RecordID<UserRecord>? CreatedBy { get; set; }
+    [ColumnInfo(UserRecord.TABLE_NAME)] public RecordID<UserRecord>? CreatedBy { get; set; }
 
 
     protected OwnedTableRecord( in RecordID<UserRecord>?  createdBy, in RecordID<TSelf> id, in DateTimeOffset dateCreated, in DateTimeOffset? lastModified, JObject? additionalData = null ) : base(in id, in dateCreated, in lastModified, additionalData) => CreatedBy = createdBy;

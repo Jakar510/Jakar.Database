@@ -979,6 +979,8 @@ public static class PostgresTypes
 
                 if ( ( self.IsTypeOrUnderlyingType(typeof(RecordID<>)) ) ) { return PostgresType.Guid; }
 
+                if ( ( self.IsTypeOrUnderlyingType(typeof(RecordID<,>)) ) ) { return PostgresType.NotSet; }
+
                 if ( ( self.IsTypeOrUnderlyingType(typeof(AutoRecordID<>)) ) ) { return PostgresType.BigSerial; }
 
                 if ( self == typeof(byte[]) || self == typeof(Memory<byte>) || self == typeof(ReadOnlyMemory<byte>) || self == typeof(ImmutableArray<byte>) ) { return PostgresType.Binary; }
@@ -1133,6 +1135,9 @@ public static class PostgresTypes
             return self switch
                    {
                        PostgresType.Enum                     => NpgsqlDbType.Bigint,
+                       PostgresType.Serial                   => NpgsqlDbType.Integer,
+                       PostgresType.BigSerial                => NpgsqlDbType.Bigint,
+                       PostgresType.SmallSerial              => NpgsqlDbType.Smallint,
                        PostgresType.Boolean                  => NpgsqlDbType.Boolean,
                        PostgresType.Short                    => NpgsqlDbType.Smallint,
                        PostgresType.UShort                   => NpgsqlDbType.Smallint,
@@ -1211,7 +1216,7 @@ public static class PostgresTypes
                        PostgresType.TimestampMultirange      => NpgsqlDbType.TimestampMultirange,
                        PostgresType.DateTimeOffsetMultirange => NpgsqlDbType.TimestampTzMultirange,
                        PostgresType.DateMultirange           => NpgsqlDbType.DateMultirange,
-                       PostgresType.NotSet                   => throw new OutOfRangeException(self),
+                       PostgresType.NotSet                   => 0,
                        _                                     => throw new OutOfRangeException(self)
                    };
         }

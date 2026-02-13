@@ -36,7 +36,7 @@ public sealed record MigrationRecord : TableRecord<MigrationRecord>, ITableRecor
     public required                                     string         Description { get; init; }
     [Key] public required                               ulong          MigrationID { get; init; }
     internal                                            string         SQL         { get; init; } = EMPTY;
-    [ColumnMetaData(ColumnOptions.Indexed, 256)] public string?        TableID     { get; init; }
+    [ColumnInfo(ColumnOptions.Indexed, 256)] public string?        TableID     { get; init; }
 
 
     [SetsRequiredMembers] internal MigrationRecord( ulong migrationID, string description, string? tableID = null ) : base(DateTimeOffset.UtcNow)

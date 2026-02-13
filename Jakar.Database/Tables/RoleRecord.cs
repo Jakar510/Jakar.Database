@@ -10,9 +10,9 @@ public sealed record RoleRecord : OwnedTableRecord<RoleRecord>, ITableRecord<Rol
 
     public static                                                                         string     TableName        => TABLE_NAME;
     public                                                                                UserRights Rights           { get; set; }
-    [ColumnMetaData(ColumnOptions.Indexed | ColumnOptions.Fixed, NAME)]            public string     NameOfRole       { get; init; }
-    [ColumnMetaData(ColumnOptions.Indexed | ColumnOptions.Fixed, NORMALIZED_NAME)] public string     NormalizedName   { get; init; }
-    [ColumnMetaData(CONCURRENCY_STAMP)]                                            public string     ConcurrencyStamp { get; init; }
+    [ColumnInfo(ColumnOptions.Indexed | ColumnOptions.Fixed, NAME)]            public string     NameOfRole       { get; init; }
+    [ColumnInfo(ColumnOptions.Indexed | ColumnOptions.Fixed, NORMALIZED_NAME)] public string     NormalizedName   { get; init; }
+    [ColumnInfo(CONCURRENCY_STAMP)]                                            public string     ConcurrencyStamp { get; init; }
 
 
     public RoleRecord( IdentityRole role, RecordID<UserRecord>? caller                               = null ) : this(role.Name ?? EMPTY, role.NormalizedName ?? EMPTY, role.ConcurrencyStamp ?? EMPTY, caller) { }

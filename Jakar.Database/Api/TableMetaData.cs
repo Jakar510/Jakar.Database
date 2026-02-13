@@ -115,7 +115,7 @@ public class TableMetaData<TSelf> : ITableMetaData
     public TableExtrasAttribute? Extras          { get; init; }
     public int                   ForeignKeyCount { get; }
 
-    public ValueEnumerable<Where<FromImmutableArray<ColumnMetaData>, ColumnMetaData>, ColumnMetaData> ForeignKeys => Columns.Where(static x => x.IsForeignKey);
+    public ValueEnumerable<Where<FromImmutableArray<ColumnMetaData>, ColumnMetaData>, ColumnMetaData> ForeignKeys => Columns.Where(static x => x.ForeignKeyName.IsValid);
 
     FrozenDictionary<int, string> ITableMetaData.Indexes => Indexes;
     public ref readonly ColumnMetaData this[ string propertyName ] => ref Properties[propertyName];
@@ -153,7 +153,7 @@ public class TableMetaData<TSelf> : ITableMetaData
         MaxLength_Variables       = properties.Values.Max(static x => x.VariableName.Length);
         MaxLength_ColumnName      = properties.Values.Max(static x => x.ColumnName.Length);
         MaxLength_DataType        = properties.Values.Max(static x => x.DataType.Length);
-        ForeignKeyCount           = properties.Values.Count(static x => x.IsForeignKey);
+        ForeignKeyCount           = properties.Values.Count(static x => x.ForeignKeyName.IsValid);
         Count                     = properties.Count;
     }
 
@@ -359,12 +359,21 @@ public class TableMetaData<TSelf> : ITableMetaData
             foreach ( ColumnMetaData column in Instance.ForeignKeys )
             {
                 query.Append('\n');
-                string foreignKeyName = Validate.ThrowIfNull(column.ForeignKeyName);
-                query.Append($"    FOREIGN KEY ({column.ColumnName}) REFERENCES {foreignKeyName}({ColumnMetaData.ID.ColumnName}),"); //  ON DELETE CASCADE
+                ForeignKeyInfo foreignKeyName = column.ForeignKeyName;
+                query.Append($"    FOREIGN KEY ({column.ColumnName}) REFERENCES {foreignKeyName.ForeignTableName}({ColumnMetaData.ID.ColumnName})");
+
+                if ( !foreignKeyName.Info.IsValid )
+                {
+                    query.Append(',');
+                    continue;
+                }
+
+                query.Append(' ');
+                query.Append(foreignKeyName.Info.Action);
+                query.Append(',');
             }
 
-            query.Remove(query.Length - 1, 1);
-            query.Append('\n');
+            query.Length--; // Remove the last comma
         }
 
         TableExtrasAttribute? extras = Instance.Extras;
@@ -375,7 +384,7 @@ public class TableMetaData<TSelf> : ITableMetaData
             {
                 (string First, string Second) keyOverride = extras.PrimaryKeyPropertiesOverride.Value;
 
-                query.Append($"    PRIMARY KEY ({keyOverride.First.SqlColumnName()}, {keyOverride.Second.SqlColumnName()})");
+                query.Append($",\n    PRIMARY KEY ({keyOverride.First.SqlColumnName()}, {keyOverride.Second.SqlColumnName()})");
             }
 
             if ( extras.UniquePropertyPairs?.Length is not > 0 ) { query.Append('\n'); }
@@ -395,6 +404,7 @@ public class TableMetaData<TSelf> : ITableMetaData
             }
         }
 
+        query.Append('\n');
         query.Append(')');
         query.Append('\n');
         query.Append('\n');
@@ -437,7 +447,14 @@ public class TableMetaData<TSelf> : ITableMetaData
 
 
         SortedDictionary<string, ColumnMetaData> dictionary = new(StringComparer.InvariantCultureIgnoreCase);
-        foreach ( PropertyInfo property in properties ) { dictionary[property.Name] = ColumnMetaData.Create(in property); }
+
+        foreach ( PropertyInfo property in properties )
+        {
+            ColumnMetaData data = ColumnMetaData.Create(in property);
+            if ( data.DbType is PostgresType.NotSet ) { continue; }
+
+            dictionary[property.Name] = data;
+        }
 
         return new TableMetaData<TSelf>(dictionary.ToFrozenDictionary(StringComparer.InvariantCultureIgnoreCase)) { Extras = typeof(TSelf).GetCustomAttribute<TableExtrasAttribute>() };
     }

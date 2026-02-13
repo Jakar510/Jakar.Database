@@ -5,50 +5,43 @@
 public sealed class ColumnMetaData
 {
     public static readonly ColumnMetaData AdditionalData = new(nameof(IJsonModel.AdditionalData), PostgresType.Jsonb, ColumnOptions.Nullable);
-    public static readonly ColumnMetaData CreatedBy      = new(nameof(ICreatedBy.CreatedBy), PostgresType.Guid, ColumnOptions.Nullable, UserRecord.TABLE_NAME);
+    public static readonly ColumnMetaData CreatedBy      = new(nameof(ICreatedBy.CreatedBy), PostgresType.Guid, ColumnOptions.Nullable, null, ForeignKeyInfo.Create<UserRecord>(OnActionInfo.OnDelete()));
     public static readonly ColumnMetaData DateCreated    = new(nameof(IDateCreated.DateCreated), PostgresType.DateTimeOffset, ColumnOptions.Indexed);
     public static readonly ColumnMetaData ID             = new(nameof(IUniqueID.ID), PostgresType.Guid, ColumnOptions.PrimaryKey                       | ColumnOptions.AlwaysIdentity);
     public static readonly ColumnMetaData LastModified   = new(nameof(ILastModified.LastModified), PostgresType.DateTimeOffset, ColumnOptions.Nullable | ColumnOptions.Indexed);
 
 
-    public readonly bool                   IsNullable;
-    public readonly bool                   IsPrimaryKey;
-    public readonly bool                   IsUnique;
-    public readonly bool                   IsAlwaysIdentity;
-    public readonly bool                   IsDefaultIdentity;
-    public readonly ColumnCheckMetaData?   Checks;
-    public readonly PostgresType           DbType;
-    public readonly SizeInfo?              Length;
-    public readonly string                 ColumnName;
-    public readonly string                 KeyValuePair;
-    public readonly string                 PropertyName;
-    public readonly string                 VariableName;
-    public readonly string?                ForeignKeyName;
-    public readonly string?                IndexColumnName;
-    public readonly string                 DataType;
-    public readonly NpgsqlDbType           PostgresDbType;
-    public readonly ColumnDefaultMetaData? Defaults;
-    public readonly bool                   IsFixed;
-    private         string?                _ColumnName_Padded;
-    private         string?                _KeyValuePair_Padded;
-    private         string?                _VariableName_Padded;
-    private         string?                _IndexColumnName_Padded;
-    private         string?                _DataType_Padded;
+    public readonly bool            IsNullable;
+    public readonly bool            IsPrimaryKey;
+    public readonly bool            IsUnique;
+    public readonly bool            IsAlwaysIdentity;
+    public readonly bool            IsDefaultIdentity;
+    public readonly ColumnChecks?   Checks;
+    public readonly PostgresType    DbType;
+    public readonly SizeInfo?       Length;
+    public readonly string          ColumnName;
+    public readonly string          KeyValuePair;
+    public readonly string          PropertyName;
+    public readonly string          VariableName;
+    public readonly ForeignKeyInfo  ForeignKeyName;
+    public readonly string?         IndexColumnName;
+    public readonly string          DataType;
+    public readonly NpgsqlDbType    PostgresDbType;
+    public readonly ColumnDefaults? Defaults;
+    public readonly bool            IsFixed;
+    private         string?         _ColumnName_Padded;
+    private         string?         _KeyValuePair_Padded;
+    private         string?         _VariableName_Padded;
+    private         string?         _IndexColumnName_Padded;
+    private         string?         _DataType_Padded;
 
 
-    public int  Index        { get; internal set; } = -1;
-    public bool IsForeignKey { [MemberNotNullWhen(true, nameof(ForeignKeyName))] get => !string.IsNullOrWhiteSpace(ForeignKeyName); }
-    public bool IsIndexed    { [MemberNotNullWhen(true, nameof(IndexColumnName))] get => !string.IsNullOrWhiteSpace(IndexColumnName); }
+    public int  Index     { get; internal set; } = -1;
+    public bool IsIndexed { [MemberNotNullWhen(true, nameof(IndexColumnName))] get => !string.IsNullOrWhiteSpace(IndexColumnName); }
 
 
-    public ColumnMetaData( in string propertyName, in PostgresType dbType, in ColumnOptions options = ColumnOptions.None, in string? foreignKeyName = null, in SizeInfo? length = null, in ColumnCheckMetaData? checks = null, in ColumnDefaultMetaData? defaults = null )
+    public ColumnMetaData( in string propertyName, in PostgresType dbType, in ColumnOptions options, in SizeInfo? length = null, in ForeignKeyInfo? foreignKeyName = null, in ColumnDefaults? defaults = null )
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(propertyName);
-        if ( options.HasFlagValue(ColumnOptions.ForeignKey) && string.IsNullOrWhiteSpace(foreignKeyName) ) { throw new ArgumentException($"Column '{propertyName}' has a {nameof(ColumnOptions.ForeignKey)} flag but {nameof(foreignKeyName)} is invalid.", nameof(foreignKeyName)); }
-
-        if ( options.HasFlagValue(ColumnOptions.ForeignKey) && options.HasFlagValue(ColumnOptions.Indexed) ) { throw new ArgumentException($"Column '{propertyName}' cannot be both {nameof(ColumnOptions.Indexed)} and a {nameof(ColumnOptions.ForeignKey)}. {nameof(ColumnOptions.ForeignKey)} columns are automatically indexed.", nameof(options)); }
-
-
         string columnName = Validate.ThrowIfNull(propertyName.SqlColumnName());
         IsNullable        = options.HasFlagValue(ColumnOptions.Nullable);
         IsPrimaryKey      = options.HasFlagValue(ColumnOptions.PrimaryKey);
@@ -56,7 +49,7 @@ public sealed class ColumnMetaData
         IsDefaultIdentity = options.HasFlagValue(ColumnOptions.DefaultIdentity);
         IsAlwaysIdentity  = options.HasFlagValue(ColumnOptions.AlwaysIdentity);
         IsUnique          = options.HasFlagValue(ColumnOptions.Unique);
-        Checks            = checks ?? length?.Check(columnName);
+        Checks            = length?.Check(columnName);
         Defaults          = defaults;
         DbType            = dbType;
         Length            = length;
@@ -66,10 +59,35 @@ public sealed class ColumnMetaData
         VariableName      = $"@{columnName}";
         DataType          = GetPostgresDataType(in options, in dbType, in length);
         IndexColumnName   = propertyName.SqlColumnIndexName(in options);
-        ForeignKeyName    = foreignKeyName?.SqlColumnName();
+        ForeignKeyName    = foreignKeyName ?? ForeignKeyInfo.Empty;
         PostgresDbType    = dbType.ToNpgsqlDbType();
     }
+    public static ColumnMetaData Create( in PropertyInfo property ) => Create(in property, property.GetCustomAttribute<ColumnInfoAttribute>() ?? ColumnInfoAttribute.Empty);
+    public static ColumnMetaData Create( in PropertyInfo property, in ColumnInfoAttribute attribute )
+    {
+        ArgumentNullException.ThrowIfNull(property);
+        ArgumentNullException.ThrowIfNull(attribute, $"{property.DeclaringType?.Name}.{property.Name}");
 
+        try
+        {
+            string propertyName = property.Name;
+            ArgumentException.ThrowIfNullOrWhiteSpace(propertyName);
+
+            ColumnOptions   options  = attribute.Options;
+            SizeInfo?       length   = attribute.Length;
+            ColumnDefaults? defaults = attribute.Defaults;
+            PostgresType    dbType   = property.PropertyType.GetPostgresType(in property, ref options, ref length);
+            if ( IsDbKey(property) ) { options |= ColumnOptions.PrimaryKey; }
+
+            ForeignKeyInfo? foreignKey = attribute.ForeignKey;
+            if ( options.HasFlagValue(ColumnOptions.ForeignKey) && foreignKey.HasValue && string.IsNullOrWhiteSpace(foreignKey.Value.ForeignTableName) ) { throw new ArgumentException($"Column '{propertyName}' has a {nameof(ColumnOptions.ForeignKey)} flag but {nameof(foreignKey)} is invalid.", nameof(foreignKey)); }
+
+            if ( options.HasFlagValue(ColumnOptions.ForeignKey) && options.HasFlagValue(ColumnOptions.Indexed) ) { throw new ArgumentException($"Column '{propertyName}' cannot be both {nameof(ColumnOptions.Indexed)} and a {nameof(ColumnOptions.ForeignKey)}. {nameof(ColumnOptions.ForeignKey)} columns are automatically indexed.", nameof(options)); }
+
+            return new ColumnMetaData(in propertyName, in dbType, in options, in length, in foreignKey, in defaults);
+        }
+        catch ( Exception ex ) { throw new InvalidOperationException($"Failed to create ColumnMetaData for property '{property.DeclaringType?.FullName}.{property.Name}'.", ex); }
+    }
 
     internal      string ColumnName_Padded( ITableMetaData      table )    => _ColumnName_Padded ??= ColumnName.PadRight(table.MaxLength_ColumnName);
     internal      string KeyValuePair_Padded( ITableMetaData    table )    => _KeyValuePair_Padded ??= KeyValuePair.PadRight(table.MaxLength_KeyValuePair);
@@ -93,25 +111,6 @@ public sealed class ColumnMetaData
                                     };
 
         return parameter;
-    }
-
-
-    public static ColumnMetaData Create( in PropertyInfo property ) => Create(in property, property.GetCustomAttribute<ColumnMetaDataAttribute>() ?? ColumnMetaDataAttribute.Default);
-
-    internal static ColumnMetaData Create( in PropertyInfo property, in ColumnMetaDataAttribute attribute )
-    {
-        ArgumentNullException.ThrowIfNull(attribute, $"{property.DeclaringType?.Name}.{property.Name}");
-
-        try
-        {
-            attribute.Deconstruct(out ColumnOptions options, out SizeInfo? length, out ColumnCheckMetaData? checks, out string? foreignKeyName);
-
-            PostgresType dbType = property.PropertyType.GetPostgresType(in property, ref options, ref length);
-            if ( IsDbKey(property) ) { options |= ColumnOptions.PrimaryKey; }
-
-            return new ColumnMetaData(property.Name, dbType, options, foreignKeyName, length, checks);
-        }
-        catch ( Exception ex ) { throw new InvalidOperationException($"Failed to create ColumnMetaData for property '{property.DeclaringType?.FullName}.{property.Name}'.", ex); }
     }
 
 
@@ -281,7 +280,7 @@ public sealed class ColumnMetaData
                    PostgresType.TimestampMultirange      => @"tsmultirange",
                    PostgresType.DateTimeOffsetMultirange => @"tstzmultirange",
                    PostgresType.DateMultirange           => @"datemultirange",
-                   PostgresType.NotSet                   => throw new OutOfRangeException(self),
+                   PostgresType.NotSet                   => nameof(NotImplementedException),
                    _                                     => throw new OutOfRangeException(self)
                };
     }

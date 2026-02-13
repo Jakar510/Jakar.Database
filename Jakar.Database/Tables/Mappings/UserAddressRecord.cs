@@ -6,14 +6,15 @@ namespace Jakar.Database;
 
 [Serializable]
 [Table(TABLE_NAME)]
+[SuppressMessage("ReSharper", "LoopCanBeConvertedToQuery")]
 public sealed record UserAddressRecord : Mapping<UserAddressRecord, UserRecord, AddressRecord>, ICreateMapping<UserAddressRecord, UserRecord, AddressRecord>
 {
     public const  string TABLE_NAME = "user_adreesses";
     public static string TableName => TABLE_NAME;
 
 
-    [ColumnMetaData(UserRecord.TABLE_NAME)]    public override RecordID<UserRecord>    KeyID   { get; init; }
-    [ColumnMetaData(AddressRecord.TABLE_NAME)] public override RecordID<AddressRecord> ValueID { get; init; }
+    [ColumnInfo(UserRecord.TABLE_NAME)]    public override RecordID<UserRecord>    KeyID   { get; init; }
+    [ColumnInfo(AddressRecord.TABLE_NAME)] public override RecordID<AddressRecord> ValueID { get; init; }
 
 
     public UserAddressRecord( UserRecord            key, AddressRecord           value ) : base(key, value) { }
@@ -40,7 +41,7 @@ public sealed record UserAddressRecord : Mapping<UserAddressRecord, UserRecord, 
     }
     [Pure] public static IEnumerable<UserAddressRecord> Create( UserRecord key, IEnumerable<AddressRecord> values )
     {
-        foreach ( RecordID<AddressRecord> value in values ) { yield return Create(key, value); }
+        foreach ( AddressRecord value in values ) { yield return Create(key, value); }
     }
     [Pure] public static IEnumerable<UserAddressRecord> Create( RecordID<UserRecord> key, IEnumerable<RecordID<AddressRecord>> values )
     {

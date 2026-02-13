@@ -2,36 +2,30 @@
 
 
 [AttributeUsage(AttributeTargets.Property)]
-public sealed class ColumnMetaDataAttribute : Attribute
+public sealed class ColumnInfoAttribute : Attribute
 {
-    public static readonly ColumnMetaDataAttribute Default = new(ColumnOptions.None);
-    public                 string?                 ForeignKey { get; init; }
-    public                 SizeInfo?               Length     { get; init; }
-    public                 ColumnOptions           Options    { get; init; }
-    public                 ColumnCheckMetaData?    Checks     { get; init; }
+    public static readonly ColumnInfoAttribute Empty = new(ColumnOptions.None);
 
 
-    public ColumnMetaDataAttribute( string        foreignKeyName ) : this(ColumnOptions.ForeignKey, null, foreignKeyName) { }
-    public ColumnMetaDataAttribute( ColumnOptions options ) : this(options, null, null) { }
-    public ColumnMetaDataAttribute( ColumnOptions options,   int           length,    string? foreignKeyName = null ) : this(options, SizeInfo.Create(length), foreignKeyName) { }
-    public ColumnMetaDataAttribute( ColumnOptions options,   IntRange      range,     string? foreignKeyName = null ) : this(options, SizeInfo.Create(range), foreignKeyName) { }
-    public ColumnMetaDataAttribute( ColumnOptions options,   PrecisionInfo precision, string? foreignKeyName = null ) : this(options, SizeInfo.Create(precision), foreignKeyName) { }
-    public ColumnMetaDataAttribute( int           length,    string?       foreignKeyName = null ) : this(ColumnOptions.None, SizeInfo.Create(length), foreignKeyName) { }
-    public ColumnMetaDataAttribute( IntRange      range,     string?       foreignKeyName = null ) : this(ColumnOptions.None, SizeInfo.Create(range), foreignKeyName) { }
-    public ColumnMetaDataAttribute( PrecisionInfo precision, string?       foreignKeyName = null ) : this(ColumnOptions.None, SizeInfo.Create(precision), foreignKeyName) { }
-    private ColumnMetaDataAttribute( ColumnOptions options, SizeInfo? length, string? foreignKeyName )
+    public ForeignKeyInfo? ForeignKey { get; init; }
+    public SizeInfo?       Length     { get; init; }
+    public ColumnOptions   Options    { get; init; }
+    public ColumnChecks?   Checks     { get; init; }
+    public ColumnDefaults? Defaults   { get; init; }
+
+
+    public ColumnInfoAttribute( string        foreignKeyName, string? onAction = "ON DELETE CASCADE" ) : this(ColumnOptions.ForeignKey, null, new ForeignKeyInfo(foreignKeyName, OnActionInfo.TryCreate(onAction))) { }
+    public ColumnInfoAttribute( ColumnOptions options ) : this(options, null) { }
+    public ColumnInfoAttribute( ColumnOptions options, int           length ) : this(options, SizeInfo.Create(length)) { }
+    public ColumnInfoAttribute( ColumnOptions options, IntRange      range ) : this(options, SizeInfo.Create(range)) { }
+    public ColumnInfoAttribute( ColumnOptions options, PrecisionInfo precision ) : this(options, SizeInfo.Create(precision)) { }
+    public ColumnInfoAttribute( int           length ) : this(ColumnOptions.None, SizeInfo.Create(length)) { }
+    public ColumnInfoAttribute( IntRange      range ) : this(ColumnOptions.None, SizeInfo.Create(range)) { }
+    public ColumnInfoAttribute( PrecisionInfo precision ) : this(ColumnOptions.None, SizeInfo.Create(precision)) { }
+    private ColumnInfoAttribute( ColumnOptions options, SizeInfo? length, ForeignKeyInfo? foreignKey = null )
     {
-        ForeignKey = foreignKeyName;
+        ForeignKey = foreignKey;
         Length     = length;
         Options    = options;
-    }
-
-
-    public void Deconstruct( out ColumnOptions options, out SizeInfo? length, out ColumnCheckMetaData? checks, out string? foreignKeyName )
-    {
-        options        = Options;
-        foreignKeyName = ForeignKey;
-        length         = Length;
-        checks         = Checks;
     }
 }

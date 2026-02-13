@@ -12,8 +12,8 @@ public sealed record UserRecoveryCodeRecord : Mapping<UserRecoveryCodeRecord, Us
     public static string TableName => TABLE_NAME;
 
 
-    [ColumnMetaData(UserRecord.TABLE_NAME)]         public override RecordID<UserRecord>         KeyID   { get; init; }
-    [ColumnMetaData(RecoveryCodeRecord.TABLE_NAME)] public override RecordID<RecoveryCodeRecord> ValueID { get; init; }
+    [ColumnInfo(UserRecord.TABLE_NAME)]         public override RecordID<UserRecord>         KeyID   { get; init; }
+    [ColumnInfo(RecoveryCodeRecord.TABLE_NAME)] public override RecordID<RecoveryCodeRecord> ValueID { get; init; }
 
 
     public UserRecoveryCodeRecord( RecordID<UserRecord> key, RecordID<RecoveryCodeRecord> value ) : base(key, value) { }

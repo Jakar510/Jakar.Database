@@ -34,8 +34,9 @@ public abstract record Mapping<TSelf, TKey, TValue> : TableRecord<TSelf>
     private WeakReference<TValue>? __value;
 
 
-    public abstract RecordID<TKey>   KeyID   { get; init; }
-    public abstract RecordID<TValue> ValueID { get; init; }
+    public abstract RecordID<TKey>         KeyID   { get; init; }
+    public abstract RecordID<TValue>       ValueID { get; init; }
+    [Key] public    RecordID<TKey, TValue> ID      => new(KeyID, ValueID);
 
 
     protected Mapping( RecordID<TKey> key, RecordID<TValue> value ) : this(key, value, DateTimeOffset.UtcNow) { }

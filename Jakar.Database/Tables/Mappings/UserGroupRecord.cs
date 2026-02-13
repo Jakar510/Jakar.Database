@@ -12,8 +12,8 @@ public sealed record UserGroupRecord : Mapping<UserGroupRecord, UserRecord, Grou
     public static string TableName => TABLE_NAME;
 
 
-    [ColumnMetaData(UserRecord.TABLE_NAME)]  public override RecordID<UserRecord>  KeyID   { get; init; }
-    [ColumnMetaData(GroupRecord.TABLE_NAME)] public override RecordID<GroupRecord> ValueID { get; init; }
+    [ColumnInfo(UserRecord.TABLE_NAME)]  public override RecordID<UserRecord>  KeyID   { get; init; }
+    [ColumnInfo(GroupRecord.TABLE_NAME)] public override RecordID<GroupRecord> ValueID { get; init; }
 
 
     public UserGroupRecord( RecordID<UserRecord>  key, RecordID<GroupRecord> value ) : base(key, value) { }

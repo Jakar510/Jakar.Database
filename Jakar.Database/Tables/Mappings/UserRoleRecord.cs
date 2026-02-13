@@ -12,8 +12,8 @@ public sealed record UserRoleRecord : Mapping<UserRoleRecord, UserRecord, RoleRe
     public static string TableName => TABLE_NAME;
 
 
-    [ColumnMetaData(UserRecord.TABLE_NAME)] public override RecordID<UserRecord> KeyID   { get; init; }
-    [ColumnMetaData(RoleRecord.TABLE_NAME)] public override RecordID<RoleRecord> ValueID { get; init; }
+    [ColumnInfo(UserRecord.TABLE_NAME)] public override RecordID<UserRecord> KeyID   { get; init; }
+    [ColumnInfo(RoleRecord.TABLE_NAME)] public override RecordID<RoleRecord> ValueID { get; init; }
 
 
     public UserRoleRecord( RecordID<UserRecord>  key, RecordID<RoleRecord> value ) : base(key, value) { }

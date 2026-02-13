@@ -6,6 +6,18 @@ namespace Jakar.Database;
 
 
 [DefaultMember(nameof(Empty))]
+public readonly record struct RecordID<TKey, TValue>( RecordID<TKey> Key, RecordID<TValue> Value )
+    where TKey : PairRecord<TKey>, ITableRecord<TKey>
+    where TValue : PairRecord<TValue>, ITableRecord<TValue>
+{
+    public static readonly RecordID<TKey, TValue> Empty = new(RecordID<TKey>.Empty, RecordID<TValue>.Empty);
+    public readonly        RecordID<TKey>         Key   = Key;
+    public readonly        RecordID<TValue>       Value = Value;
+}
+
+
+
+[DefaultMember(nameof(Empty))]
 public readonly struct RecordID<TSelf>( Guid id ) : IEquatable<RecordID<TSelf>>, IComparable<RecordID<TSelf>>, ISpanFormattable, ISpanParsable<RecordID<TSelf>>, IRegisterDapperTypeHandlers
     where TSelf : PairRecord<TSelf>, ITableRecord<TSelf>
 {

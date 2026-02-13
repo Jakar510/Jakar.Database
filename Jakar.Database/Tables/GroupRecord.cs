@@ -12,10 +12,10 @@ public sealed record GroupRecord : OwnedTableRecord<GroupRecord>, ITableRecord<G
 
     public static string                                                                      TableName      => TABLE_NAME;
     Guid? ICreatedByUser<Guid>.                                                               CreatedBy      => CreatedBy?.Value;
-    [ColumnMetaData(ColumnOptions.Indexed | ColumnOptions.Fixed, MAX_SIZE)] public string?    NormalizedName { get; set; }
+    [ColumnInfo(ColumnOptions.Indexed | ColumnOptions.Fixed, MAX_SIZE)] public string?    NormalizedName { get; set; }
     Guid? IGroupModel<Guid>.                                                                  OwnerID        => CreatedBy?.Value;
     public                                                                         UserRights Rights         { get; set; }
-    [ColumnMetaData(ColumnOptions.Indexed | ColumnOptions.Fixed, MAX_SIZE)] public string     NameOfGroup    { get; init; }
+    [ColumnInfo(ColumnOptions.Indexed | ColumnOptions.Fixed, MAX_SIZE)] public string     NameOfGroup    { get; init; }
 
 
     public GroupRecord( string nameOfGroup, UserRights rights, RecordID<UserRecord>? owner = null, string? normalizedName = null ) : this(nameOfGroup, normalizedName, EMPTY, RecordID<GroupRecord>.New(), owner, DateTimeOffset.UtcNow) { }

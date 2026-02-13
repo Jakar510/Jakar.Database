@@ -13,14 +13,14 @@ public sealed record FileRecord : PairRecord<FileRecord>, ITableRecord<FileRecor
 
 
     public static                                      string    TableName       => TABLE_NAME;
-    [ColumnMetaData(ColumnOptions.Fixed, 256)]  public string?   FileName        { get; set; }
-    [ColumnMetaData(ColumnOptions.Fixed, 1024)] public string?   FileDescription { get; set; }
-    [ColumnMetaData(ColumnOptions.Fixed, 256)]  public string?   FileType        { get; set; }
+    [ColumnInfo(ColumnOptions.Fixed, 256)]  public string?   FileName        { get; set; }
+    [ColumnInfo(ColumnOptions.Fixed, 1024)] public string?   FileDescription { get; set; }
+    [ColumnInfo(ColumnOptions.Fixed, 256)]  public string?   FileType        { get; set; }
     public                                             long      FileSize        { get; set; }
     public                                             string    Hash            { get; set; } = EMPTY;
-    [ColumnMetaData(ColumnOptions.Indexed)] public     MimeType? MimeType        { get; set; }
+    [ColumnInfo(ColumnOptions.Indexed)] public     MimeType? MimeType        { get; set; }
     public                                             string    Payload         { get; set; } = EMPTY;
-    [ColumnMetaData(ColumnOptions.Indexed)] public     string?   FullPath        { get; init; }
+    [ColumnInfo(ColumnOptions.Indexed)] public     string?   FullPath        { get; init; }
 
 
     public FileRecord( in RecordID<FileRecord>       id,   in DateTimeOffset dateCreated, in DateTimeOffset? lastModified = null, JObject? additionalData = null ) : base(in id, in dateCreated, in lastModified, additionalData) { }
