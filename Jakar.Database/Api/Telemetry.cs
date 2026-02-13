@@ -95,7 +95,6 @@ public static class Telemetry
             OpenTelemetryActivityEnricher enricher = new(options, source);
             config.Enrich.With(enricher);
 
-
             config.WriteTo.Console();
 
             seqConfig?.Configure(config.WriteTo);

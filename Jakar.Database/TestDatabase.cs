@@ -10,21 +10,22 @@ namespace Jakar.Database;
 
 internal sealed class TestDatabase( IConfiguration configuration, IOptions<DbOptions> options, FusionCache cache ) : Database(configuration, options, cache), IAppID
 {
-    public static Guid       AppID      { get; } = Guid.NewGuid();
-    public static string     AppName    => nameof(TestDatabase);
-    public static AppVersion AppVersion { get; } = new(1, 0, 0, 1);
-
+    public static          Guid            AppID      { get; } = Guid.NewGuid();
+    public static          string          AppName    => nameof(TestDatabase);
+    public static          AppVersion      AppVersion { get; } = new(1, 0, 0, 1);
+    public static readonly TelemetrySource Source = new(AppVersion, AppID, AppName, "Jakar.Database");
 
     protected override NpgsqlConnection CreateConnection( in SecuredString secure ) => new(secure);
 
 
-    public static TestDatabase Create( [MustDisposeResource] out WebApplication app )
+    public static WebApplicationBuilder Create()
     {
         WebApplicationBuilder        builder          = WebApplication.CreateBuilder();
         SecuredStringResolverOptions connectionString = $"User ID=dev;Password=dev;Host=localhost;Port=5432;Database={AppName}";
 
         DbOptions options = new()
                             {
+                                TelemetrySource          = Source,
                                 ConnectionStringResolver = connectionString,
                                 CommandTimeout           = 30,
                                 TokenIssuer              = AppName,
@@ -32,26 +33,19 @@ internal sealed class TestDatabase( IConfiguration configuration, IOptions<DbOpt
                             };
 
         builder.AddDatabase<TestDatabase>(options);
-
-        app = builder.Build();
-        return app.Services.GetRequiredService<TestDatabase>();
+        return builder;
+    }
+    [MustDisposeResource] public static WebApplication Create( [MustDisposeResource] out TestDatabase database )
+    {
+        WebApplicationBuilder builder = Create();
+        WebApplication        app     = builder.Build();
+        database = app.Services.GetRequiredService<TestDatabase>();
+        return app;
     }
     public static async Task TestAsync( CancellationToken token = default )
     {
-        WebApplicationBuilder        builder          = WebApplication.CreateBuilder();
-        SecuredStringResolverOptions connectionString = $"User ID=dev;Password=dev;Host=localhost;Port=5432;Database={AppName}";
-
-        DbOptions options = new()
-                            {
-                                ConnectionStringResolver = connectionString,
-                                CommandTimeout           = 30,
-                                TokenIssuer              = AppName,
-                                TokenAudience            = AppName
-                            };
-
-        builder.AddDatabase<TestDatabase>(options);
-
-        await using WebApplication app = builder.Build();
+        WebApplicationBuilder      builder = Create();
+        await using WebApplication app     = builder.Build();
 
         app.UseDefaults();
 
@@ -62,10 +56,7 @@ internal sealed class TestDatabase( IConfiguration configuration, IOptions<DbOpt
 
         await TestAll(app, token);
 
-        await app.StartAsync(token)
-                 .ConfigureAwait(false);
-
-        await app.WaitForShutdownAsync(token)
+        await app.RunWithMigrationsAsync(["localhost:8081"], token: token)
                  .ConfigureAwait(false);
     }
 

@@ -109,17 +109,21 @@ public class MigrationManager
     private readonly   SortedDictionary<ulong, Func<ulong, MigrationRecord>> __migrationFactories = new(Comparer<ulong>.Default);
     protected readonly Database                                              _db;
     protected          HashSet<MigrationRecord>?                             _records;
-    internal static    ulong                                                 MigrationID => ++field;
+    internal static    ulong                                                 MigrationID    => ++field;
+    public static      MigrationRecord?                                      CreateDatabase { get; set; }
+
 
     public HashSet<MigrationRecord> Records => _records ??= __migrationFactories.AsValueEnumerable()
-                                                                                .Select(pair => pair.Value(pair.Key))
+                                                                                .Select(static pair => pair.Value(pair.Key))
                                                                                 .ToHashSet();
 
 
     public MigrationManager( Database db )
     {
-        _db                               = db;
+        _db = db;
         __migrationFactories[MigrationID] = MigrationRecord.AddPostgreSqlExtensions;
+        if ( CreateDatabase is not null ) { __migrationFactories[MigrationID] = GetCreateDatabase; }
+
         __migrationFactories[MigrationID] = MigrationRecord.CreateTable;
         __migrationFactories[MigrationID] = MigrationRecord.SetLastModified;
         __migrationFactories[MigrationID] = MigrationRecord.FromEnum<MimeType>;
@@ -143,6 +147,13 @@ public class MigrationManager
         __migrationFactories[MigrationID] = AddressRecord.CreateTable;
         __migrationFactories[MigrationID] = UserAddressRecord.CreateTable;
     }
+    public static MigrationRecord GetCreateDatabase( ulong migrationID )
+    {
+        MigrationRecord record = Validate.ThrowIfNull(CreateDatabase);
+        record.MigrationIdValue = migrationID;
+        return record;
+    }
+
 
     public void Add( Func<ulong, MigrationRecord> func )
     {
@@ -201,10 +212,10 @@ public class MigrationManager
     public virtual async Task Apply( NpgsqlConnection connection, NpgsqlTransaction transaction, MigrationRecord self, CancellationToken token )
     {
         PostgresParameters parameters = PostgresParameters.Create<MigrationRecord>();
-        parameters.Add(nameof(MigrationRecord.MigrationID),    self.MigrationID);
-        parameters.Add(nameof(MigrationRecord.Description),    self.Description);
-        parameters.Add(nameof(MigrationRecord.TableID),        self.TableID);
-        parameters.Add(nameof(MigrationRecord.AppliedOn),      self.AppliedOn);
+        parameters.Add(nameof(MigrationRecord.MigrationID), self.MigrationID);
+        parameters.Add(nameof(MigrationRecord.Description), self.Description);
+        parameters.Add(nameof(MigrationRecord.TableID),     self.TableID);
+        parameters.Add(nameof(MigrationRecord.AppliedOn),   self.AppliedOn);
 
         SqlCommand<MigrationRecord> command = new(MigrationRecord.ApplySql, parameters);
         await command.ExecuteNonQueryAsync(connection, transaction, token);

@@ -29,14 +29,15 @@ public sealed record MigrationRecord : TableRecord<MigrationRecord>, ITableRecor
                                               @{nameof(AppliedOn).SqlColumnName()},
                                               )
                                               """;
+    internal ulong MigrationIdValue;
 
 
-    public static                                       string         TableName   => TABLE_NAME;
-    public                                              DateTimeOffset AppliedOn   { get; init; } = DateTimeOffset.UtcNow;
-    public required                                     string         Description { get; init; }
-    [Key] public required                               ulong          MigrationID { get; init; }
-    internal                                            string         SQL         { get; init; } = EMPTY;
-    [ColumnInfo(ColumnOptions.Indexed, 256)] public string?        TableID     { get; init; }
+    public static                                   string         TableName   => TABLE_NAME;
+    public                                          DateTimeOffset AppliedOn   { get;                     init; } = DateTimeOffset.UtcNow;
+    public required                                 string         Description { get;                     init; }
+    [Key] public required                           ulong          MigrationID { get => MigrationIdValue; init => MigrationIdValue = value; }
+    public                                          string         SQL         { get;                     internal init; } = EMPTY;
+    [ColumnInfo(ColumnOptions.Indexed, 256)] public string?        TableID     { get;                     init; }
 
 
     [SetsRequiredMembers] internal MigrationRecord( ulong migrationID, string description, string? tableID = null ) : base(DateTimeOffset.UtcNow)
@@ -96,6 +97,27 @@ public sealed record MigrationRecord : TableRecord<MigrationRecord>, ITableRecor
 
                                 // ReSharper restore StringLiteralTypo
                                );
+
+
+    public static MigrationRecord CreateDatabase( ulong migrationID, string databaseName, string? ownerName = null )
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(databaseName);
+
+        string sql = string.IsNullOrWhiteSpace(ownerName)
+                         ? $"""
+                            create database {databaseName.SqlColumnName()}
+                                  WITH 
+                                      ENCODING = 'Unicode'
+                            """
+                         : $"""
+                            create database {databaseName.SqlColumnName()}
+                                  WITH 
+                                      ENCODING = 'Unicode'
+                                      OWNER = {ownerName}
+                            """;
+
+        return new MigrationRecord(migrationID, $"Create database {databaseName}", databaseName) { SQL = sql };
+    }
     public static MigrationRecord CreateTable( ulong migrationID ) => CreateTable<MigrationRecord>(migrationID);
     public static MigrationRecord CreateTable<TSelf>( ulong migrationID )
         where TSelf : TableRecord<TSelf>, ITableRecord<TSelf> => Create<TSelf>(migrationID, $"Create '{TSelf.TableName}' Table", TableMetaData<TSelf>.CreateTable());
