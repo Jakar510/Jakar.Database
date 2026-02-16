@@ -73,7 +73,7 @@ public sealed class EmailBuilder
     }
 
 
-    public async ValueTask<MimeMessage> Create()
+    public async ValueTask<MimeMessage> Create( CancellationToken token = default )
     {
         BodyBuilder builder = new()
                               {
@@ -81,7 +81,10 @@ public sealed class EmailBuilder
                                   HtmlBody = __html
                               };
 
-        foreach ( Attachment element in __attachments ) { await builder.Attachments.AddAsync(element.Name, element.ContentStream); }
+        foreach ( Attachment element in __attachments )
+        {
+            if ( element.Name is not null ) { await builder.Attachments.AddAsync(element.Name, element.ContentStream, token); }
+        }
 
         return new MimeMessage(__senders, __recipients, __subject, builder.ToMessageBody());
     }

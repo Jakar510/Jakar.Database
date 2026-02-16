@@ -282,7 +282,7 @@ public abstract record Mapping<TSelf, TKey, TValue> : TableRecord<TSelf>
         SqlCommand<TSelf> command = sql;
 
         return await command.ExecuteAsync(connection, transaction, token)
-                            .Any(token);
+                            .AnyAsync(token);
     }
 
 

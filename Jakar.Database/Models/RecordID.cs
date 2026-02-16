@@ -31,7 +31,7 @@ public readonly struct RecordID<TSelf>( Guid id ) : IEquatable<RecordID<TSelf>>,
     [Pure] public static RecordID<TSelf>  Parse( string                    value )                       => Create(Guid.Parse(value));
     [Pure] public static RecordID<TSelf>  Parse( params ReadOnlySpan<char> value )                       => Create(Guid.Parse(value));
     [Pure] public static RecordID<TSelf>  ID( NpgsqlDataReader             reader )                      => Create(reader, nameof(IUniqueID.ID));
-    [Pure] public static RecordID<TSelf>? CreatedBy( NpgsqlDataReader      reader )                      => TryCreate(reader, nameof(ICreatedBy.CreatedBy));
+    [Pure] public static RecordID<TSelf>  UserID( NpgsqlDataReader         reader )                      => Create(reader, nameof(IUserRecordID.UserID));
     [Pure] public static RecordID<TSelf>? TryCreate( NpgsqlDataReader      reader, string propertyName ) => TryCreate(reader.GetFieldValue<Guid?>(TSelf.PropertyMetaData[propertyName].Index));
     [Pure] public static RecordID<TSelf>  Create( NpgsqlDataReader         reader, string propertyName ) => Create(reader.GetFieldValue<Guid>(TSelf.PropertyMetaData[propertyName].Index));
     [Pure] public static RecordID<TSelf>  Create( Guid                     id ) => new(id);
@@ -43,7 +43,7 @@ public readonly struct RecordID<TSelf>( Guid id ) : IEquatable<RecordID<TSelf>>,
     [Pure] public static IEnumerable<RecordID<TSelf>> Create<TValue>( IEnumerable<TValue> ids )
         where TValue : IUniqueID<Guid> => ids.Select(Create);
     [Pure] public static IAsyncEnumerable<RecordID<TSelf>> Create<TValue>( IAsyncEnumerable<TValue> ids )
-        where TValue : IUniqueID<Guid> => AsyncLinq.Select(ids, Create);
+        where TValue : IUniqueID<Guid> => ids.Select(Create);
     [Pure] public static RecordID<TSelf>? TryCreate( Guid? id ) => id.HasValue
                                                                        ? TryCreate(id.Value)
                                                                        : null;

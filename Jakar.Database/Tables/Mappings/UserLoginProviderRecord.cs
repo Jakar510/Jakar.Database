@@ -12,16 +12,16 @@ public sealed record UserLoginProviderRecord : OwnedTableRecord<UserLoginProvide
     public const string TABLE_NAME = "user_login_providers";
 
 
-    public static                                                          string  TableName           => TABLE_NAME;
+    public static                                                      string  TableName           => TABLE_NAME;
     [ColumnInfo(ColumnOptions.Indexed)] public                         string  LoginProvider       { get; init; }
-    public                                                                 string? ProviderDisplayName { get; init; }
+    public                                                             string? ProviderDisplayName { get; init; }
     [ColumnInfo(ColumnOptions.Indexed)] [ProtectedPersonalData] public string  ProviderKey         { get; init; }
     [ColumnInfo(ColumnOptions.Indexed)] [ProtectedPersonalData] public string? Value               { get; init; }
 
 
     public UserLoginProviderRecord( UserRecord user, UserLoginInfo info ) : this(user, info.LoginProvider, info.ProviderKey, info.ProviderDisplayName) { }
     public UserLoginProviderRecord( UserRecord user, string        loginProvider, string providerKey, string? providerDisplayName ) : this(loginProvider, providerDisplayName, providerKey, EMPTY, RecordID<UserLoginProviderRecord>.New(), user.ID, DateTimeOffset.UtcNow) { }
-    public UserLoginProviderRecord( string LoginProvider, string? ProviderDisplayName, string ProviderKey, string? Value, RecordID<UserLoginProviderRecord> ID, RecordID<UserRecord>? CreatedBy, DateTimeOffset DateCreated, DateTimeOffset? LastModified = null ) : base(in CreatedBy, in ID, in DateCreated, in LastModified)
+    public UserLoginProviderRecord( string LoginProvider, string? ProviderDisplayName, string ProviderKey, string? Value, RecordID<UserLoginProviderRecord> ID, RecordID<UserRecord> UserID, DateTimeOffset DateCreated, DateTimeOffset? LastModified = null ) : base(in UserID, in ID, in DateCreated, in LastModified)
     {
         this.LoginProvider       = LoginProvider;
         this.ProviderDisplayName = ProviderDisplayName;
@@ -54,8 +54,8 @@ public sealed record UserLoginProviderRecord : OwnedTableRecord<UserLoginProvide
                     await importer.WriteAsync(DateCreated, column.PostgresDbType, token);
                     break;
 
-                case nameof(CreatedBy):
-                    await importer.WriteAsync(CreatedBy?.Value, column.PostgresDbType, token);
+                case nameof(UserID):
+                    await importer.WriteAsync(UserID.Value, column.PostgresDbType, token);
                     break;
 
                 case nameof(LoginProvider):
@@ -103,8 +103,8 @@ public sealed record UserLoginProviderRecord : OwnedTableRecord<UserLoginProvide
     public static PostgresParameters GetDynamicParameters( UserRecord user, string value )
     {
         PostgresParameters parameters = PostgresParameters.Create<UserRecord>();
-        parameters.Add(nameof(CreatedBy), user.ID.Value);
-        parameters.Add(nameof(Value),     value);
+        parameters.Add(nameof(UserID), user.ID.Value);
+        parameters.Add(nameof(Value),  value);
         return parameters;
     }
     [Pure] public static PostgresParameters GetDynamicParameters( UserRecord user, UserLoginInfo info ) => GetDynamicParameters(user, info.LoginProvider, info.ProviderKey);
@@ -150,14 +150,14 @@ public sealed record UserLoginProviderRecord : OwnedTableRecord<UserLoginProvide
     public static implicit operator UserLoginInfo( UserLoginProviderRecord value ) => value.ToUserLoginInfo();
     public static implicit operator IdentityUserToken<string>( UserLoginProviderRecord value ) => new()
                                                                                                   {
-                                                                                                      UserId        = value.CreatedBy?.ToString() ?? throw new NullReferenceException(nameof(value.CreatedBy)),
+                                                                                                      UserId        = value.UserID.ToString() ?? throw new NullReferenceException(nameof(value.UserID)),
                                                                                                       LoginProvider = value.LoginProvider,
                                                                                                       Name          = value.ProviderDisplayName ?? EMPTY,
                                                                                                       Value         = value.ProviderKey
                                                                                                   };
     public static implicit operator IdentityUserToken<Guid>( UserLoginProviderRecord value ) => new()
                                                                                                 {
-                                                                                                    UserId        = value.CreatedBy?.Value ?? Guid.Empty,
+                                                                                                    UserId        = value.UserID.Value,
                                                                                                     LoginProvider = value.LoginProvider,
                                                                                                     Name          = value.ProviderDisplayName ?? EMPTY,
                                                                                                     Value         = value.ProviderKey

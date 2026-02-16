@@ -9,15 +9,15 @@ namespace Jakar.Database;
 public interface IEmailer : IEmailTokenService
 {
     Uri               Domain { get; }
-    ValueTask         SendAsync( string?                      email,   string            subject, string body );
+    ValueTask         SendAsync( string?                      email,   string            subject, string body, CancellationToken token = default );
     ValueTask         SendAsync( MailboxAddress               target,  string            subject, string body, CancellationToken token, params ReadOnlySpan<Attachment> attachments );
-    ValueTask         SendAsync( EmailBuilder                 builder, CancellationToken token );
+    ValueTask         SendAsync( EmailBuilder                 builder, CancellationToken token = default );
     string            GetUrl( SessionToken                    result );
-    ValueTask<string> GenerateAccessToken( IEnumerable<Claim> claims, CancellationToken token );
+    ValueTask<string> GenerateAccessToken( IEnumerable<Claim> claims, CancellationToken token = default );
     string            CreateContent( SessionToken             result, in string         header );
     string            CreateHTMLContent( SessionToken         result, in string         header );
-    Task              VerifyEmail( UserRecord                 user,   ClaimType         types, CancellationToken token );
-    Task              VerifyHTMLEmail( UserRecord             user,   ClaimType         types, CancellationToken token );
+    Task              VerifyEmail( UserRecord                 user,   ClaimType         types, CancellationToken token = default );
+    Task              VerifyHTMLEmail( UserRecord             user,   ClaimType         types, CancellationToken token = default );
 }
 
 
@@ -158,8 +158,11 @@ public class Emailer( EmailTokenProvider tokenProvider, IConfiguration configura
     }
 
 
-    private ValueTask SendAsync( MimeMessage message, CancellationToken token = default )      => SendAsync(_Settings,                   message, token);
-    public  ValueTask SendAsync( string?     email,   string            subject, string body ) => SendAsync(MailboxAddress.Parse(email), subject, body, CancellationToken.None);
+    private ValueTask SendAsync( MimeMessage message, CancellationToken token = default ) => SendAsync(_Settings, message, token);
+    public async ValueTask SendAsync( string? email, string subject, string body, CancellationToken token = default )
+    {
+        if ( MailboxAddress.TryParse(email, out MailboxAddress? address) ) { await SendAsync(address, subject, body, token); }
+    }
     public ValueTask SendAsync( MailboxAddress target, string subject, string body, CancellationToken token, params ReadOnlySpan<Attachment> attachments ) =>
         SendAsync(EmailBuilder.From(_options.GetSender())
                               .To(target)
@@ -171,7 +174,7 @@ public class Emailer( EmailTokenProvider tokenProvider, IConfiguration configura
     {
         try
         {
-            MimeMessage message = await builder.Create();
+            MimeMessage message = await builder.Create(token);
             await SendAsync(message, token);
         }
         catch ( Exception e ) { DbLog.Error(_logger, e, this); }

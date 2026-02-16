@@ -12,12 +12,12 @@ public sealed record RecoveryCodeRecord : OwnedTableRecord<RecoveryCodeRecord>, 
     private static readonly PasswordHasher<RecoveryCodeRecord> __hasher   = new();
 
 
-    public static                                  string TableName => TABLE_NAME;
+    public static                              string TableName => TABLE_NAME;
     [ColumnInfo(ColumnOptions.Indexed)] public string Code      { get; init; }
 
 
     public RecoveryCodeRecord( string code, UserRecord                   user ) : this(code, RecordID<RecoveryCodeRecord>.New(), user.ID, DateTimeOffset.UtcNow) { }
-    public RecoveryCodeRecord( string code, RecordID<RecoveryCodeRecord> ID, RecordID<UserRecord>? CreatedBy, DateTimeOffset DateCreated, DateTimeOffset? LastModified = null ) : base(in CreatedBy, in ID, in DateCreated, in LastModified) => Code = __hasher.HashPassword(this, code);
+    public RecoveryCodeRecord( string code, RecordID<RecoveryCodeRecord> ID, RecordID<UserRecord> UserID, DateTimeOffset DateCreated, DateTimeOffset? LastModified = null ) : base(in UserID, in ID, in DateCreated, in LastModified) => Code = __hasher.HashPassword(this, code);
 
 
     public override ValueTask Export( NpgsqlBinaryExporter exporter, CancellationToken token ) => default;
@@ -37,8 +37,8 @@ public sealed record RecoveryCodeRecord : OwnedTableRecord<RecoveryCodeRecord>, 
                     await importer.WriteAsync(DateCreated, column.PostgresDbType, token);
                     break;
 
-                case nameof(CreatedBy):
-                    await importer.WriteAsync(CreatedBy?.Value, column.PostgresDbType, token);
+                case nameof(UserID):
+                    await importer.WriteAsync(UserID.Value, column.PostgresDbType, token);
                     break;
 
                 case nameof(Code):
@@ -67,7 +67,7 @@ public sealed record RecoveryCodeRecord : OwnedTableRecord<RecoveryCodeRecord>, 
         string                       code         = reader.GetFieldValue<RecoveryCodeRecord, string>(nameof(Code));
         DateTimeOffset               dateCreated  = reader.GetFieldValue<RecoveryCodeRecord, DateTimeOffset>(nameof(DateCreated));
         DateTimeOffset?              lastModified = reader.GetFieldValue<RecoveryCodeRecord, DateTimeOffset?>(nameof(LastModified));
-        RecordID<UserRecord>?        ownerUserID  = RecordID<UserRecord>.CreatedBy(reader);
+        RecordID<UserRecord>         ownerUserID  = RecordID<UserRecord>.UserID(reader);
         RecordID<RecoveryCodeRecord> id           = RecordID<RecoveryCodeRecord>.ID(reader);
         RecoveryCodeRecord           record       = new(code, id, ownerUserID, dateCreated, lastModified);
         return record.Validate();

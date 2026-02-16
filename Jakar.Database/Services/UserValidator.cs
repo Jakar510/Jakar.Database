@@ -16,11 +16,11 @@ public class UserValidator : IUserValidator<UserRecord>
         where TValue : ICollection<IdentityError>
     {
         /*
-        if ( user.CreatedBy.IsValidID() )
+        if ( user.UserID.IsValidID() )
         {
             errors.Add( new IdentityError
                         {
-                            Description = $"{nameof(UserRecord.CreatedBy)} is invalid"
+                            Description = $"{nameof(UserRecord.UserID)} is invalid"
                         } );
         }
         */

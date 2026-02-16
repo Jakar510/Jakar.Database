@@ -5,7 +5,7 @@
 public sealed class ColumnMetaData
 {
     public static readonly ColumnMetaData AdditionalData = new(nameof(IJsonModel.AdditionalData), PostgresType.Jsonb, ColumnOptions.Nullable);
-    public static readonly ColumnMetaData CreatedBy      = new(nameof(ICreatedBy.CreatedBy), PostgresType.Guid, ColumnOptions.Nullable, null, ForeignKeyInfo.Create<UserRecord>(OnActionInfo.OnDelete()));
+    public static readonly ColumnMetaData UserID      = new(nameof(IUserRecordID.UserID), PostgresType.Guid, ColumnOptions.Nullable, null, ForeignKeyInfo.Create<UserRecord>(OnActionInfo.OnDelete()));
     public static readonly ColumnMetaData DateCreated    = new(nameof(IDateCreated.DateCreated), PostgresType.DateTimeOffset, ColumnOptions.Indexed);
     public static readonly ColumnMetaData ID             = new(nameof(IUniqueID.ID), PostgresType.Guid, ColumnOptions.PrimaryKey                       | ColumnOptions.AlwaysIdentity);
     public static readonly ColumnMetaData LastModified   = new(nameof(ILastModified.LastModified), PostgresType.DateTimeOffset, ColumnOptions.Nullable | ColumnOptions.Indexed);

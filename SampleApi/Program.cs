@@ -10,6 +10,7 @@ SecuredStringResolverOptions connectionString = $"User ID=dev;Password=dev;Host=
 
 DbOptions options = new()
                     {
+                        TelemetrySource          = new TelemetrySource(AppVersion.Default, Guid.NewGuid(), nameof(SampleApi), typeof(Program).Assembly.FullName),
                         ConnectionStringResolver = connectionString,
                         CommandTimeout           = 30,
                         TokenIssuer              = SampleDatabase.AppName,

@@ -153,11 +153,11 @@ public readonly struct SqlCommand<TSelf>( string sql, in PostgresParameters para
         return sql;
     }
     public static SqlCommand<TSelf> GetRandom( UserRecord user, int count ) => GetRandom(user.ID, count);
-    public static SqlCommand<TSelf> GetRandom( in RecordID<UserRecord> createdBy, int count )
+    public static SqlCommand<TSelf> GetRandom( in RecordID<UserRecord> userID, int count )
     {
         string sql = $"""
                       SELECT * FROM {TSelf.TableName} 
-                      WHERE {CREATED_BY} = '{createdBy.Value}'
+                      WHERE {CREATED_BY} = '{userID.Value}'
                       ORDER BY RANDOM() 
                       LIMIT {count};
                       """;
@@ -177,12 +177,12 @@ public readonly struct SqlCommand<TSelf>( string sql, in PostgresParameters para
 
         return new SqlCommand<TSelf>(sql, in parameters);
     }
-    public static SqlCommand<TSelf> WherePaged( in RecordID<UserRecord> createdBy, int start, int count )
+    public static SqlCommand<TSelf> WherePaged( in RecordID<UserRecord> userID, int start, int count )
     {
         string sql = $"""
                       SELECT * FROM {TSelf.TableName}
                       WHERE 
-                          {CREATED_BY} = '{createdBy.Value}'
+                          {CREATED_BY} = '{userID.Value}'
                       OFFSET {start}
                       LIMIT {count};
                       """;

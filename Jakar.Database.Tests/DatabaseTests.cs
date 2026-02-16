@@ -7,6 +7,7 @@ using System.Text.RegularExpressions;
 using Jakar.Extensions;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.VisualStudio.TestPlatform.TestHost;
 using Npgsql;
 using Testcontainers.PostgreSql;
 
@@ -36,12 +37,12 @@ public sealed class DatabaseTests : Assert
         __postgreSqlContainer = containerBuilder.Build();
         await __postgreSqlContainer.StartAsync();
 
-        WebApplicationBuilder builder = WebApplication.CreateBuilder();
-
+        WebApplicationBuilder        builder          = WebApplication.CreateBuilder();
         SecuredStringResolverOptions connectionString = $"User ID={USER};Password={PASSWORD};Host={__postgreSqlContainer.IpAddress};Port={__postgreSqlContainer.GetMappedPublicPort()};Database={TestDatabase.AppName}";
 
         DbOptions options = new()
                             {
+                                TelemetrySource          = new TelemetrySource(AppVersion.Default, Guid.NewGuid(), nameof(DatabaseTests), typeof(DatabaseTests).Assembly.FullName),
                                 ConnectionStringResolver = connectionString,
                                 CommandTimeout           = 30,
                                 TokenIssuer              = TestDatabase.AppName,
@@ -87,7 +88,7 @@ public sealed class DatabaseTests : Assert
                      That(user.ID.Value, Is.Not.EqualTo(Guid.Empty));
                      That(user.ID.Value, Is.Not.EqualTo(Guid.AllBitsSet));
 
-                     That(admin.Rights,
+                     That(admin.Rights.Value,
                           Is.EqualTo(Permissions<TestDatabase.TestRight>.SA()
                                                                         .ToString()));
                  });
@@ -152,7 +153,7 @@ public sealed class DatabaseTests : Assert
         ( UserRecord admin, UserRecord user ) = await Add_Users(__db);
         UserLoginProviderRecord record = await Add_UserLoginProvider(__db, user);
 
-        That(record.ID, Is.EqualTo(user.ID));
+        That(record.UserID, Is.EqualTo(user.ID));
     }
 
     // ------------------------------------------------------------

@@ -16,10 +16,11 @@ public readonly struct AutoRecordID<TSelf>( long id ) : IEquatable<AutoRecordID<
     [Pure] public static AutoRecordID<TSelf>  Parse( string                    value )                       => Create(long.Parse(value));
     [Pure] public static AutoRecordID<TSelf>  Parse( params ReadOnlySpan<char> value )                       => Create(long.Parse(value));
     [Pure] public static AutoRecordID<TSelf>  ID( NpgsqlDataReader             reader )                      => Create(reader, nameof(IUniqueID.ID));
-    [Pure] public static AutoRecordID<TSelf>? CreatedBy( NpgsqlDataReader      reader )                      => TryCreate(reader, nameof(ICreatedBy.CreatedBy));
+    [Pure] public static AutoRecordID<TSelf>? UserID( NpgsqlDataReader         reader )                      => TryCreate(reader, nameof(IUserRecordID.UserID));
     [Pure] public static AutoRecordID<TSelf>? TryCreate( NpgsqlDataReader      reader, string propertyName ) => TryCreate(reader.GetFieldValue<long?>(TSelf.PropertyMetaData[propertyName].Index));
     [Pure] public static AutoRecordID<TSelf>  Create( NpgsqlDataReader         reader, string propertyName ) => Create(reader.GetFieldValue<long>(TSelf.PropertyMetaData[propertyName].Index));
-    [Pure] public static AutoRecordID<TSelf>  Create( long                     id ) => new(id);
+    [Pure] public static AutoRecordID<TSelf>  Create( IUniqueID<long>          value ) => Create(value.ID);
+    [Pure] public static AutoRecordID<TSelf>  Create( long                     id )    => new(id);
     [Pure] public static AutoRecordID<TSelf> Create( [NotNullIfNotNull(nameof(id))] long? id ) => id.HasValue
                                                                                                       ? new AutoRecordID<TSelf>(id.Value)
                                                                                                       : Empty;
@@ -28,7 +29,7 @@ public readonly struct AutoRecordID<TSelf>( long id ) : IEquatable<AutoRecordID<
     [Pure] public static IEnumerable<AutoRecordID<TSelf>> Create<TValue>( IEnumerable<TValue> ids )
         where TValue : IUniqueID<long> => ids.Select(Create);
     [Pure] public static IAsyncEnumerable<AutoRecordID<TSelf>> Create<TValue>( IAsyncEnumerable<TValue> ids )
-        where TValue : IUniqueID<long> => AsyncLinq.Select(ids, Create);
+        where TValue : IUniqueID<long> => ids.Select(Create);
     [Pure] public static AutoRecordID<TSelf>? TryCreate( long? id ) => id.HasValue
                                                                            ? TryCreate(id.Value)
                                                                            : null;

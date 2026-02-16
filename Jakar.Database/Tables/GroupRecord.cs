@@ -10,16 +10,16 @@ public sealed record GroupRecord : OwnedTableRecord<GroupRecord>, ITableRecord<G
     public const string TABLE_NAME = "groups";
 
 
-    public static string                                                                      TableName      => TABLE_NAME;
-    Guid? ICreatedByUser<Guid>.                                                               CreatedBy      => CreatedBy?.Value;
+    public static string                                                                  TableName      => TABLE_NAME;
+    Guid? ICreatedByUser<Guid>.                                                           CreatedBy      => UserID.Value;
     [ColumnInfo(ColumnOptions.Indexed | ColumnOptions.Fixed, MAX_SIZE)] public string?    NormalizedName { get; set; }
-    Guid? IGroupModel<Guid>.                                                                  OwnerID        => CreatedBy?.Value;
-    public                                                                         UserRights Rights         { get; set; }
+    Guid? IGroupModel<Guid>.                                                              OwnerID        => UserID.Value;
+    public                                                                     UserRights Rights         { get; set; }
     [ColumnInfo(ColumnOptions.Indexed | ColumnOptions.Fixed, MAX_SIZE)] public string     NameOfGroup    { get; init; }
 
 
-    public GroupRecord( string nameOfGroup, UserRights rights, RecordID<UserRecord>? owner = null, string? normalizedName = null ) : this(nameOfGroup, normalizedName, EMPTY, RecordID<GroupRecord>.New(), owner, DateTimeOffset.UtcNow) { }
-    public GroupRecord( string NameOfGroup, string? NormalizedName, UserRights Rights, RecordID<GroupRecord> ID, RecordID<UserRecord>? __CreatedBy, DateTimeOffset DateCreated, DateTimeOffset? LastModified = null ) : base(in __CreatedBy, in ID, in DateCreated, in LastModified)
+    public GroupRecord( string nameOfGroup, UserRights rights, RecordID<UserRecord> userID = default, string? normalizedName = null ) : this(nameOfGroup, normalizedName, EMPTY, RecordID<GroupRecord>.New(), userID, DateTimeOffset.UtcNow) { }
+    public GroupRecord( string NameOfGroup, string? NormalizedName, UserRights Rights, RecordID<GroupRecord> ID, RecordID<UserRecord> userID, DateTimeOffset DateCreated, DateTimeOffset? LastModified = null ) : base(in userID, in ID, in DateCreated, in LastModified)
     {
         this.NormalizedName = NormalizedName;
         this.Rights         = Rights;
@@ -34,13 +34,13 @@ public sealed record GroupRecord : OwnedTableRecord<GroupRecord>, ITableRecord<G
         UserRights            rights         = reader.GetFieldValue<GroupRecord, string>(nameof(Rights));
         DateTimeOffset        dateCreated    = reader.GetFieldValue<GroupRecord, DateTimeOffset>(nameof(DateCreated));
         DateTimeOffset?       lastModified   = reader.GetFieldValue<GroupRecord, DateTimeOffset?>(nameof(LastModified));
-        RecordID<UserRecord>? ownerUserID    = RecordID<UserRecord>.CreatedBy(reader);
+        RecordID<UserRecord>  ownerUserID    = RecordID<UserRecord>.UserID(reader);
         RecordID<GroupRecord> id             = RecordID<GroupRecord>.ID(reader);
         GroupRecord           record         = new(nameOfGroup, normalizedName, rights, id, ownerUserID, dateCreated, lastModified);
         return record.Validate();
     }
-    [Pure] public static GroupRecord Create<TEnum>( string name, [HandlesResourceDisposal] Permissions<TEnum> rights, string? normalizedName = null, RecordID<UserRecord>? caller = null )
-        where TEnum : unmanaged, Enum => new(name, normalizedName, rights.ToStringAndDispose(), RecordID<GroupRecord>.New(), caller, DateTimeOffset.UtcNow);
+    [Pure] public static GroupRecord Create<TEnum>( string name, [HandlesResourceDisposal] Permissions<TEnum> rights, string? normalizedName = null, RecordID<UserRecord> userID = default )
+        where TEnum : unmanaged, Enum => new(name, normalizedName, rights.ToStringAndDispose(), RecordID<GroupRecord>.New(), userID, DateTimeOffset.UtcNow);
 
 
     public GroupModel ToGroupModel() => new(this);
@@ -96,8 +96,8 @@ public sealed record GroupRecord : OwnedTableRecord<GroupRecord>, ITableRecord<G
                     await importer.WriteAsync(DateCreated, column.PostgresDbType, token);
                     break;
 
-                case nameof(CreatedBy):
-                    await importer.WriteAsync(CreatedBy?.Value, column.PostgresDbType, token);
+                case nameof(UserID):
+                    await importer.WriteAsync(UserID.Value, column.PostgresDbType, token);
                     break;
 
                 case nameof(Rights):
@@ -128,13 +128,13 @@ public sealed record GroupRecord : OwnedTableRecord<GroupRecord>, ITableRecord<G
         PostgresParameters parameters = base.ToDynamicParameters();
         parameters.Add(nameof(NormalizedName), NormalizedName);
         parameters.Add(nameof(NameOfGroup),    NameOfGroup);
-        parameters.Add(nameof(CreatedBy),      CreatedBy);
+        parameters.Add(nameof(UserID),         UserID);
         parameters.Add(nameof(Rights),         Rights);
         return parameters;
     }
 
 
-    [Pure] public async ValueTask<ErrorOrResult<UserRecord>> GetOwner( NpgsqlConnection connection, NpgsqlTransaction? transaction, Database db, CancellationToken token ) => await db.Users.Get(connection, transaction, CreatedBy, token);
+    [Pure] public async ValueTask<ErrorOrResult<UserRecord>> GetOwner( NpgsqlConnection connection, NpgsqlTransaction? transaction, Database db, CancellationToken token ) => await db.Users.Get(connection, transaction, UserID, token);
     [Pure] public       IAsyncEnumerable<UserRecord>         GetUsers( NpgsqlConnection connection, NpgsqlTransaction? transaction, Database db, CancellationToken token ) => UserGroupRecord.Where(connection, transaction, db.Users, ID, token);
 
 

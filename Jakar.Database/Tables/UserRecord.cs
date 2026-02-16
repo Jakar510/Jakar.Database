@@ -4,63 +4,78 @@
 [Serializable]
 [Table(TABLE_NAME)]
 [SuppressMessage("ReSharper", "InconsistentNaming")]
-public sealed record UserRecord : OwnedTableRecord<UserRecord>, ITableRecord<UserRecord>, IUserID, IUserModel, IUserSecurity<UserRecord>
+public sealed record UserRecord : PairRecord<UserRecord>, ITableRecord<UserRecord>, IUserModel, IUserSecurity
 {
-    public const           string   TABLE_NAME         = "users";
-    public static readonly TimeSpan DefaultLockoutTime = TimeSpan.FromHours(6);
+    public const string TABLE_NAME = "users";
 
 
-    public                                     UserRights Rights           { get; set; } = new();
-    public static                              string     TableName        => TABLE_NAME;
+    public static string                                                               TableName           => TABLE_NAME;
+    public        RecordID<UserRecord>?                                                EscalateTo          { get; set; }
+    Guid? IEscalateToUser<Guid>.                                                       EscalateTo          => EscalateTo?.Value;
+    Guid? IImageID<Guid>.                                                              ImageID             => ImageID?.Value;
+    [ColumnInfo(FileRecord.TABLE_NAME)] public RecordID<FileRecord>?                   ImageID             { get; set; }
+    public                                     bool                                    IsValid             => !string.IsNullOrWhiteSpace(UserName) && ID.IsValid();
+    public                                     SupportedLanguage                       PreferredLanguage   { get; set; }
+    public                                     DateTimeOffset?                         SubscriptionExpires { get; set; }
+    public                                     Guid?                                   SubscriptionID      { get; set; }
+    public                                     Guid                                    UserID              => ID.Value;
+    RecordID<UserRecord> IUserRecordID.                                                UserID              => ID;
+    [ColumnInfo(ColumnOptions.Fixed, USER_NAME)] [ProtectedPersonalData] public string UserName            { get; init; } = EMPTY;
+
+
+
+    #region Security
+
+    public                                 UserRights Rights           { get; set; } = new();
     [ColumnInfo(AUTHENTICATOR_KEY)] public string     AuthenticatorKey { get; set; } = EMPTY;
-    public                                     int?       BadLogins        { get; set; }
+    public                                 int?       BadLogins        { get; set; }
 
     /// <summary> A random value that must change whenever a user is persisted to the store </summary>
     [ColumnInfo(CONCURRENCY_STAMP)] public string ConcurrencyStamp { get; set; } = EMPTY;
 
-    public                                                                        bool                                            IsActive               { get; set; }
-    public                                                                        bool                                            IsDisabled             { get; set; }
-    public                                                                        bool                                            IsEmailConfirmed       { get; set; }
-    public                                                                        bool                                            IsLocked               { get; set; }
-    public                                                                        bool                                            IsPhoneNumberConfirmed { get; set; }
-    public                                                                        bool                                            IsTwoFactorEnabled     { get; set; }
-    public                                                                        DateTimeOffset?                                 LastBadAttempt         { get; set; }
-    public                                                                        DateTimeOffset?                                 LastLogin              { get; set; }
-    public                                                                        DateTimeOffset?                                 LockDate               { get; set; }
-    public                                                                        DateTimeOffset?                                 LockoutEnd             { get; set; }
-    [ColumnInfo(ENCRYPTED_MAX_PASSWORD_SIZE)] public                          string                                          PasswordHash           { get; set; } = EMPTY;
-    [ColumnInfo(REFRESH_TOKEN)]               public                          UInt128                                         RefreshTokenHash       { get; set; }
-    public                                                                        DateTimeOffset?                                 RefreshTokenExpiryTime { get; set; }
-    [ColumnInfo(SECURITY_STAMP)] public                                       string                                          SecurityStamp          { get; set; } = EMPTY;
-    public                                                                        Guid?                                           SessionID              { get; set; }
-    [ColumnInfo(ColumnOptions.Fixed, COMPANY)] [ProtectedPersonalData] public string                                          Company                { get; set; } = EMPTY;
-    Guid? ICreatedByUser<Guid>.                                                                                                   CreatedBy              => CreatedBy?.Value;
-    [ColumnInfo(DEPARTMENT)]                                                                 public string                    Department             { get; set; } = EMPTY;
-    [ColumnInfo(DESCRIPTION)]                                                                public string                    Description            { get; set; } = EMPTY;
-    [ColumnInfo(ColumnOptions.Indexed | ColumnOptions.Fixed, EMAIL)] [ProtectedPersonalData] public string                    Email                  { get; set; } = EMPTY;
-    public                                                                                              RecordID<UserRecord>?     EscalateTo             { get; set; }
-    Guid? IEscalateToUser<Guid>.                                                                                                  EscalateTo             => EscalateTo?.Value;
-    [ColumnInfo(PHONE_EXT)] [ProtectedPersonalData]                                               public string               Ext                    { get; set; } = EMPTY;
-    [ColumnInfo(ColumnOptions.Indexed | ColumnOptions.Fixed, FIRST_NAME)] [ProtectedPersonalData] public string               FirstName              { get; set; } = EMPTY;
-    [ColumnInfo(ColumnOptions.Indexed | ColumnOptions.Fixed, FULL_NAME)] [ProtectedPersonalData]  public string               FullName               { get; set; } = EMPTY;
-    [ColumnInfo(ColumnOptions.Indexed | ColumnOptions.Fixed, GENDER)] [ProtectedPersonalData]     public string               Gender                 { get; set; } = EMPTY;
-    Guid? IImageID<Guid>.                                                                                                         ImageID                => ImageID?.Value;
-    [ColumnInfo(FileRecord.TABLE_NAME)] public                                                          RecordID<FileRecord>? ImageID                { get; set; }
-    public                                                                                                  bool                  IsValid                => !string.IsNullOrWhiteSpace(UserName) && ID.IsValid();
-    [ColumnInfo(ColumnOptions.Indexed | ColumnOptions.Fixed, LAST_NAME)] [ProtectedPersonalData] public string                LastName               { get; set; } = EMPTY;
-    [ColumnInfo(ColumnOptions.Indexed | ColumnOptions.Fixed, PHONE)] [ProtectedPersonalData]     public string                PhoneNumber            { get; set; } = EMPTY;
-    public                                                                                                  SupportedLanguage     PreferredLanguage      { get; set; }
-    public                                                                                                  DateTimeOffset?       SubscriptionExpires    { get; set; }
-    public                                                                                                  Guid?                 SubscriptionID         { get; set; }
-    [ColumnInfo(TITLE)] public                                                                          string                Title                  { get; set; } = EMPTY;
-    public                                                                                                  Guid                  UserID                 => ID.Value;
-    [ColumnInfo(ColumnOptions.Fixed, USER_NAME)] [ProtectedPersonalData] public                         string                UserName               { get; init; } = EMPTY;
-    [ColumnInfo(WEBSITE)] [ProtectedPersonalData]                        public                         string                Website                { get; set; }  = EMPTY;
+    public                                           bool            IsActive               { get; set; }
+    public                                           bool            IsDisabled             { get; set; }
+    public                                           bool            IsEmailConfirmed       { get; set; }
+    public                                           bool            IsLocked               { get; set; }
+    public                                           bool            IsPhoneNumberConfirmed { get; set; }
+    public                                           bool            IsTwoFactorEnabled     { get; set; }
+    public                                           DateTimeOffset? LastBadAttempt         { get; set; }
+    public                                           DateTimeOffset? LastLogin              { get; set; }
+    public                                           DateTimeOffset? LockDate               { get; set; }
+    public                                           DateTimeOffset? LockoutEnd             { get; set; }
+    [ColumnInfo(ENCRYPTED_MAX_PASSWORD_SIZE)] public string          PasswordHash           { get; set; } = EMPTY;
+    [ColumnInfo(REFRESH_TOKEN)]               public UInt128         RefreshTokenHash       { get; set; }
+    public                                           DateTimeOffset? RefreshTokenExpiryTime { get; set; }
+    [ColumnInfo(SECURITY_STAMP)] public              string          SecurityStamp          { get; set; } = EMPTY;
+    public                                           Guid?           SessionID              { get; set; }
+
+    #endregion Security
+
+
+
+    #region Details
+
+    [ColumnInfo(ColumnOptions.Fixed, COMPANY)] [ProtectedPersonalData] public string                             Company     { get; set; } = EMPTY;
+    Guid? ICreatedByUser<Guid>.                                                                                  CreatedBy   => EscalateTo?.Value;
+    [ColumnInfo(DEPARTMENT)]                                                                      public string  Department  { get; set; } = EMPTY;
+    [ColumnInfo(DESCRIPTION)]                                                                     public string? Description { get; set; } 
+    [ColumnInfo(ColumnOptions.Indexed | ColumnOptions.Fixed, EMAIL)] [ProtectedPersonalData]      public string  Email       { get; set; } = EMPTY;
+    [ColumnInfo(WEBSITE)] [ProtectedPersonalData]                                                 public string  Website     { get; set; } = EMPTY;
+    [ColumnInfo(ColumnOptions.Indexed | ColumnOptions.Fixed, LAST_NAME)] [ProtectedPersonalData]  public string  LastName    { get; set; } = EMPTY;
+    [ColumnInfo(ColumnOptions.Indexed | ColumnOptions.Fixed, PHONE)] [ProtectedPersonalData]      public string  PhoneNumber { get; set; } = EMPTY;
+    [ColumnInfo(PHONE_EXT)] [ProtectedPersonalData]                                               public string  Ext         { get; set; } = EMPTY;
+    [ColumnInfo(TITLE)]                                                                           public string  Title       { get; set; } = EMPTY;
+    [ColumnInfo(ColumnOptions.Indexed | ColumnOptions.Fixed, FIRST_NAME)] [ProtectedPersonalData] public string  FirstName   { get; set; } = EMPTY;
+    [ColumnInfo(ColumnOptions.Indexed | ColumnOptions.Fixed, FULL_NAME)] [ProtectedPersonalData]  public string  FullName    { get; set; } = EMPTY;
+    [ColumnInfo(ColumnOptions.Indexed | ColumnOptions.Fixed, GENDER)] [ProtectedPersonalData]     public string  Gender      { get; set; } = EMPTY;
+
+    #endregion Details
+
 
 
     public UserRecord( in RecordID<UserRecord> ID ) : this(in ID, null, DateTimeOffset.UtcNow) { }
-    public UserRecord( in RecordID<UserRecord> ID, UserRecord?              CreatedBy, in DateTimeOffset DateCreated, in DateTimeOffset? LastModified = null ) : this(in ID, CreatedBy?.ID, in DateCreated, in LastModified) { }
-    public UserRecord( in RecordID<UserRecord> ID, in RecordID<UserRecord>? CreatedBy, in DateTimeOffset DateCreated, in DateTimeOffset? LastModified = null ) : base(in CreatedBy, in ID, in DateCreated, in LastModified) { }
+    public UserRecord( in RecordID<UserRecord> ID, UserRecord?             user,   in DateTimeOffset DateCreated, in DateTimeOffset? LastModified = null ) : this(in ID, user?.ID ?? RecordID<UserRecord>.Empty, in DateCreated, in LastModified) { }
+    public UserRecord( in RecordID<UserRecord> ID, in RecordID<UserRecord> userID, in DateTimeOffset DateCreated, in DateTimeOffset? LastModified = null ) : base(in ID, in DateCreated, in LastModified) => EscalateTo = userID;
     internal UserRecord( NpgsqlDataReader reader ) : base(reader)
     {
         UserName               = reader.GetFieldValue<UserRecord, string>(nameof(UserName));
@@ -104,7 +119,8 @@ public sealed record UserRecord : OwnedTableRecord<UserRecord>, ITableRecord<Use
     }
 
 
-    public static UserRecord Create( NpgsqlDataReader reader ) => new UserRecord(reader).Validate();
+    public static MigrationRecord CreateTable( ulong       migrationID ) => MigrationRecord.CreateTable<UserRecord>(migrationID);
+    public static UserRecord      Create( NpgsqlDataReader reader )      => new UserRecord(reader).Validate();
     public static UserRecord Create<TUser, TEnum>( ILoginRequest<TUser> request, UserRecord? caller = null )
         where TUser : class, IUserData<Guid>
         where TEnum : unmanaged, Enum => Create(request, request.Data.Rights, caller);
@@ -126,7 +142,7 @@ public sealed record UserRecord : OwnedTableRecord<UserRecord>, ITableRecord<Use
     {
         RecordID<UserRecord> id = RecordID<UserRecord>.New();
 
-        UserRecord user = new(id, caller?.ID, DateTimeOffset.UtcNow)
+        UserRecord user = new(id, caller, DateTimeOffset.UtcNow)
                           {
                               UserName          = userName,
                               FirstName         = data.FirstName,
@@ -153,7 +169,7 @@ public sealed record UserRecord : OwnedTableRecord<UserRecord>, ITableRecord<Use
 
     public static UserRecord Create<TEnum>( string userName, string password, scoped in Permissions<TEnum> rights, UserRecord? caller = null )
         where TEnum : unmanaged, Enum => Create(userName, password, rights.ToString(), caller);
-    public static UserRecord Create( string userName, string password, UserRights rights, UserRecord? caller = null ) => new UserRecord(RecordID<UserRecord>.New(), caller?.ID, DateTimeOffset.UtcNow)
+    public static UserRecord Create( string userName, string password, UserRights rights, UserRecord? caller = null ) => new UserRecord(RecordID<UserRecord>.New(), caller, DateTimeOffset.UtcNow)
                                                                                                                          {
                                                                                                                              UserName = userName,
                                                                                                                              Rights   = rights
@@ -175,12 +191,6 @@ public sealed record UserRecord : OwnedTableRecord<UserRecord>, ITableRecord<Use
 
                 case nameof(DateCreated):
                     await importer.WriteAsync(DateCreated, column.PostgresDbType, token);
-                    break;
-
-                case nameof(CreatedBy):
-                    if ( CreatedBy.HasValue ) { await importer.WriteAsync(CreatedBy.Value, column.PostgresDbType, token); }
-                    else { await importer.WriteNullAsync(token); }
-
                     break;
 
                 case nameof(Rights):
@@ -397,7 +407,7 @@ public sealed record UserRecord : OwnedTableRecord<UserRecord>, ITableRecord<Use
     }
 
 
-    public string        GetDescription()              => IUserData.GetDescription(this);
+    public string        GetDescription()              => Description ??= IUserData.GetDescription(this);
     void IUserData<Guid>.With( IUserData<Guid> value ) => With(value);
     public UserRecord With( IUserData<Guid> value )
     {
@@ -491,6 +501,9 @@ public sealed record UserRecord : OwnedTableRecord<UserRecord>, ITableRecord<Use
     public static bool operator <=( UserRecord left, UserRecord right ) => left.CompareTo(right) <= 0;
 
 
+
+    #region Helpers
+
     public UserModel ToUserModel() => ToUserModel<UserModel>();
     public TSelf ToUserModel<TSelf>()
         where TSelf : UserModel<TSelf, Guid, UserAddress, GroupModel, RoleModel>, ICreateUserModel<TSelf, Guid, UserAddress, GroupModel, RoleModel>, IJsonModel<TSelf>, new() => ToUserModel<TSelf, UserAddress, GroupModel, RoleModel>();
@@ -520,27 +533,6 @@ public sealed record UserRecord : OwnedTableRecord<UserRecord>, ITableRecord<Use
 
         return model;
     }
-
-
-    public static MigrationRecord CreateTable( ulong migrationID ) => MigrationRecord.CreateTable<UserRecord>(migrationID);
-
-
-
-    #region Owners
-
-    public async ValueTask<ErrorOrResult<UserRecord>> GetBoss( NpgsqlConnection connection, NpgsqlTransaction? transaction, Database db, CancellationToken token ) =>
-        EscalateTo.HasValue
-            ? await db.Users.Get(connection, transaction, EscalateTo.Value, token)
-            : Error.Gone();
-
-
-    public bool DoesNotOwn<TSelf>( TSelf record )
-        where TSelf : TableRecord<TSelf>, ICreatedBy, ITableRecord<TSelf> => record.CreatedBy != ID;
-    public bool Owns<TSelf>( TSelf record )
-        where TSelf : TableRecord<TSelf>, ICreatedBy, ITableRecord<TSelf> => record.CreatedBy == ID;
-
-    #endregion
-
 
 
     public ValueTask<bool> RedeemCode( Database db, string code, CancellationToken token ) => db.TryCall(RedeemCode, db, code, token);
@@ -598,6 +590,25 @@ public sealed record UserRecord : OwnedTableRecord<UserRecord>, ITableRecord<Use
     public       IAsyncEnumerable<GroupRecord>        GetGroups( NpgsqlConnection     connection, NpgsqlTransaction? transaction, Database db, CancellationToken                          token = default )                => UserGroupRecord.Where(connection, transaction, db.Groups, ID, token);
     public async ValueTask<bool>                      IsPartOfGroup( NpgsqlConnection connection, NpgsqlTransaction  transaction, Database db, GroupRecord                                value, CancellationToken token ) => await UserGroupRecord.Exists(connection, transaction, ID, value, token);
     public async ValueTask                            Remove( NpgsqlConnection        connection, NpgsqlTransaction  transaction, Database db, GroupRecord                                value, CancellationToken token ) => await UserGroupRecord.Delete(connection, transaction, ID, value, token);
+
+    #endregion Helpers
+
+
+
+    #region Owners
+
+    public async ValueTask<ErrorOrResult<UserRecord>> GetBoss( NpgsqlConnection connection, NpgsqlTransaction? transaction, Database db, CancellationToken token ) =>
+        EscalateTo.HasValue
+            ? await db.Users.Get(connection, transaction, EscalateTo.Value, token)
+            : Error.Gone();
+
+
+    public bool DoesNotOwn<TSelf>( TSelf record )
+        where TSelf : TableRecord<TSelf>, IUserRecordID, ITableRecord<TSelf> => record.UserID != ID;
+    public bool Owns<TSelf>( TSelf record )
+        where TSelf : TableRecord<TSelf>, IUserRecordID, ITableRecord<TSelf> => record.UserID == ID;
+
+    #endregion Owners
 
 
 
@@ -715,5 +726,5 @@ public sealed record UserRecord : OwnedTableRecord<UserRecord>, ITableRecord<Use
         await foreach ( UserRecord record in db.Users.Where(connection, transaction, true, parameters, token) ) { yield return record; }
     }
 
-    #endregion
+    #endregion Claims
 }

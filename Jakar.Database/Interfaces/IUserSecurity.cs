@@ -1,21 +1,13 @@
 ﻿// Jakar.Database :: Jakar.Database
 // 02/01/2026  20:25
 
-using System;
-using Jakar.Extensions;
-using Microsoft.AspNetCore.Identity;
-
-
-
 namespace Jakar.Database;
 
 
-public interface IUserSecurity<out TSelf>
-    where TSelf : IUserSecurity<TSelf>
+public interface IUserSecurity : IUserRecordID
 {
-    [StringLength(AUTHENTICATOR_KEY)] public string AuthenticatorKey { get; set; }
-    public                                   int?   BadLogins        { get; set; }
-
+    [StringLength(AUTHENTICATOR_KEY)] public string               AuthenticatorKey { get; set; }
+    public                                   int?                 BadLogins        { get; set; }
 
     /// <summary> A random value that must change whenever a user is persisted to the store </summary>
     [StringLength(CONCURRENCY_STAMP)] public string ConcurrencyStamp { get; set; }
@@ -48,7 +40,7 @@ public static class UserSecurities
 
 
     extension<TSelf>( TSelf self )
-        where TSelf : TableRecord<TSelf>, IUserSecurity<TSelf>, ITableRecord<TSelf>
+        where TSelf : TableRecord<TSelf>, IUserSecurity, ITableRecord<TSelf>
     {
         public bool HasPassword() => !string.IsNullOrWhiteSpace(self.PasswordHash);
 

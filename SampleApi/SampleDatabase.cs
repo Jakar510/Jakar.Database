@@ -21,6 +21,7 @@ internal sealed class SampleDatabase( IConfiguration configuration, IOptions<DbO
 
         DbOptions options = new()
                             {
+                                TelemetrySource          = new TelemetrySource(AppVersion.Default, Guid.NewGuid(), nameof(SampleDatabase), typeof(SampleDatabase).Assembly.FullName),
                                 ConnectionStringResolver = connectionString,
                                 CommandTimeout           = 30,
                                 TokenIssuer              = AppName,

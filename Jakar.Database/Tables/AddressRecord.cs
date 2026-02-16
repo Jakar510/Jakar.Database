@@ -10,7 +10,7 @@ public sealed record AddressRecord : OwnedTableRecord<AddressRecord>, IAddress<A
     public const string TABLE_NAME = "addresses";
 
 
-    public static                                                                string  TableName       => TABLE_NAME;
+    public static                                                            string  TableName       => TABLE_NAME;
     [ProtectedPersonalData] [ColumnInfo(ColumnOptions.Indexed, 512)]  public string  Line1           { get;                           init; } = EMPTY;
     [ProtectedPersonalData] [ColumnInfo(ColumnOptions.Indexed, 512)]  public string  Line2           { get;                           init; } = EMPTY;
     [ProtectedPersonalData] [ColumnInfo(ColumnOptions.Indexed, 512)]  public string  City            { get;                           init; } = EMPTY;
@@ -18,11 +18,11 @@ public sealed record AddressRecord : OwnedTableRecord<AddressRecord>, IAddress<A
     [ProtectedPersonalData] [ColumnInfo(ColumnOptions.Indexed, 512)]  public string  Country         { get;                           init; } = EMPTY;
     [ProtectedPersonalData] [ColumnInfo(ColumnOptions.Indexed, 512)]  public string  PostalCode      { get;                           init; } = EMPTY;
     [ProtectedPersonalData] [ColumnInfo(ColumnOptions.Indexed, 4096)] public string? Address         { get => field ??= GetAddress(); init; }
-    public                                                                       bool    IsPrimary       { get;                           init; }
+    public                                                                   bool    IsPrimary       { get;                           init; }
 
 
-    public AddressRecord( in RecordID<UserRecord>? createdBy, in RecordID<AddressRecord> id, in DateTimeOffset dateCreated, in DateTimeOffset? lastModified = null, JObject? additionalData = null ) : base(in createdBy, in id, in dateCreated, in lastModified, additionalData) { }
-    public AddressRecord( Match match ) : this(null, RecordID<AddressRecord>.New(), DateTimeOffset.UtcNow)
+    public AddressRecord( in RecordID<UserRecord> userID, in RecordID<AddressRecord> id, in DateTimeOffset dateCreated, in DateTimeOffset? lastModified = null, JObject? additionalData = null ) : base(in userID, in id, in dateCreated, in lastModified, additionalData) { }
+    public AddressRecord( Match match, RecordID<UserRecord> userID = default ) : this(userID, RecordID<AddressRecord>.New(), DateTimeOffset.UtcNow)
     {
         Line1           = match.Groups["StreetName"].Value;
         Line2           = match.Groups["Apt"].Value;
@@ -31,7 +31,7 @@ public sealed record AddressRecord : OwnedTableRecord<AddressRecord>, IAddress<A
         Country         = match.Groups["Country"].Value;
         PostalCode      = match.Groups["ZipCode"].Value;
     }
-    public AddressRecord( IAddress<Guid> address ) : this(null, RecordID<AddressRecord>.Create(address.ID), DateTimeOffset.UtcNow)
+    public AddressRecord( IAddress<Guid> address, RecordID<UserRecord> userID = default ) : this(userID, RecordID<AddressRecord>.Create(address.ID), DateTimeOffset.UtcNow)
     {
         Line1           = address.Line1;
         Line2           = address.Line2;
@@ -76,8 +76,8 @@ public sealed record AddressRecord : OwnedTableRecord<AddressRecord>, IAddress<A
                     await importer.WriteAsync(DateCreated, column.PostgresDbType, token);
                     break;
 
-                case nameof(CreatedBy):
-                    await importer.WriteAsync(CreatedBy?.Value, column.PostgresDbType, token);
+                case nameof(UserID):
+                    await importer.WriteAsync(UserID.Value, column.PostgresDbType, token);
                     break;
 
                 case nameof(Address):
@@ -145,20 +145,21 @@ public sealed record AddressRecord : OwnedTableRecord<AddressRecord>, IAddress<A
     }
 
 
-    [Pure] public static AddressRecord   Create( NpgsqlDataReader reader )      => new AddressRecord(reader).Validate();
-    public static        MigrationRecord CreateTable( ulong       migrationID ) => MigrationRecord.CreateTable<AddressRecord>(migrationID);
-    [Pure] public static AddressRecord   Create( Match            match )       => new(match);
-    [Pure] public static AddressRecord   Create( IAddress<Guid>   address )     => new(address);
-    [Pure] public static AddressRecord Create( string line1, string line2, string city, string stateOrProvince, string postalCode, string country, Guid id = default ) => new(null, RecordID<AddressRecord>.Create(id), DateTimeOffset.UtcNow)
-                                                                                                                                                                          {
-                                                                                                                                                                              Line1 =
-                                                                                                                                                                                  line1,
-                                                                                                                                                                              Line2           = line2,
-                                                                                                                                                                              City            = city,
-                                                                                                                                                                              StateOrProvince = stateOrProvince,
-                                                                                                                                                                              PostalCode      = postalCode,
-                                                                                                                                                                              Country         = country
-                                                                                                                                                                          };
+    [Pure] public static AddressRecord   Create( NpgsqlDataReader reader )                                                                                                         => new AddressRecord(reader).Validate();
+    public static        MigrationRecord CreateTable( ulong       migrationID )                                                                                                    => MigrationRecord.CreateTable<AddressRecord>(migrationID);
+    [Pure] public static AddressRecord   Create( Match            match )                                                                                                          => new(match);
+    [Pure] public static AddressRecord   Create( IAddress<Guid>   address )                                                                                                        => new(address);
+    public static        AddressRecord   Create( string           line1, string line2, string city, string stateOrProvince, string postalCode, string country, Guid id = default ) => Create(line1, line2, city, stateOrProvince, postalCode, country, id, RecordID<UserRecord>.Empty);
+    [Pure] public static AddressRecord Create( string line1, string line2, string city, string stateOrProvince, string postalCode, string country, Guid id, RecordID<UserRecord> userID ) =>
+        new(userID, RecordID<AddressRecord>.Create(id), DateTimeOffset.UtcNow)
+        {
+            Line1           = line1,
+            Line2           = line2,
+            City            = city,
+            StateOrProvince = stateOrProvince,
+            PostalCode      = postalCode,
+            Country         = country
+        };
 
 
     [Pure] public static async ValueTask<AddressRecord?> TryFromClaims( NpgsqlConnection connection, NpgsqlTransaction transaction, Database db, Claim[] claims, ClaimType types, CancellationToken token )
@@ -169,35 +170,35 @@ public sealed record AddressRecord : OwnedTableRecord<AddressRecord>, IAddress<A
         if ( hasFlag(types, ClaimType.StreetAddressLine1) )
         {
             parameters.Add(nameof(Line1),
-                           span.Single(static ( ref readonly Claim x ) => x.Type == ClaimType.StreetAddressLine1.ToClaimTypes())
+                           span.Single(static ( ref readonly x ) => x.Type == ClaimType.StreetAddressLine1.ToClaimTypes())
                                .Value);
         }
 
         if ( hasFlag(types, ClaimType.StreetAddressLine2) )
         {
             parameters.Add(nameof(Line2),
-                           span.Single(static ( ref readonly Claim x ) => x.Type == ClaimType.StreetAddressLine2.ToClaimTypes())
+                           span.Single(static ( ref readonly x ) => x.Type == ClaimType.StreetAddressLine2.ToClaimTypes())
                                .Value);
         }
 
         if ( hasFlag(types, ClaimType.StateOrProvince) )
         {
             parameters.Add(nameof(StateOrProvince),
-                           span.Single(static ( ref readonly Claim x ) => x.Type == ClaimType.StateOrProvince.ToClaimTypes())
+                           span.Single(static ( ref readonly x ) => x.Type == ClaimType.StateOrProvince.ToClaimTypes())
                                .Value);
         }
 
         if ( hasFlag(types, ClaimType.Country) )
         {
             parameters.Add(nameof(Country),
-                           span.Single(static ( ref readonly Claim x ) => x.Type == ClaimType.Country.ToClaimTypes())
+                           span.Single(static ( ref readonly x ) => x.Type == ClaimType.Country.ToClaimTypes())
                                .Value);
         }
 
         if ( hasFlag(types, ClaimType.PostalCode) )
         {
             parameters.Add(nameof(PostalCode),
-                           span.Single(static ( ref readonly Claim x ) => x.Type == ClaimType.PostalCode.ToClaimTypes())
+                           span.Single(static ( ref readonly x ) => x.Type == ClaimType.PostalCode.ToClaimTypes())
                                .Value);
         }
 

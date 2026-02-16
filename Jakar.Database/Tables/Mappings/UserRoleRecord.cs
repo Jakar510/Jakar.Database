@@ -41,7 +41,7 @@ public sealed record UserRoleRecord : Mapping<UserRoleRecord, UserRecord, RoleRe
     [Pure] public static IEnumerable<UserRoleRecord> Create( UserRecord key, IEnumerable<RoleRecord> values )
     {
         // ReSharper disable once LoopCanBeConvertedToQuery
-        foreach ( RecordID<RoleRecord> value in values ) { yield return Create(key, value); }
+        foreach ( RecordID<RoleRecord> value in values ) { yield return Create(key.ID, value); }
     }
     [Pure] public static IEnumerable<UserRoleRecord> Create( RecordID<UserRecord> key, IEnumerable<RecordID<RoleRecord>> values )
     {

@@ -103,7 +103,7 @@ public readonly ref struct SqlTable<TSelf> : IDisposable
 
 
     public SqlTable<TSelf> With_DateCreated()    => WithColumn(ColumnMetaData.DateCreated);
-    public SqlTable<TSelf> With_CreatedBy()      => WithColumn(ColumnMetaData.CreatedBy);
+    public SqlTable<TSelf> With_CreatedBy()      => WithColumn(ColumnMetaData.UserID);
     public SqlTable<TSelf> With_AdditionalData() => WithColumn(ColumnMetaData.AdditionalData);
 
 

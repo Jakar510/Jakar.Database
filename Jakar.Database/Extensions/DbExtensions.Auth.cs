@@ -48,11 +48,11 @@ public static partial class DbExtensions
     {
         public bool TryParse( out RecordID<UserRecord> userID, out string userName )
         {
-            userName = self.FirstOrDefault(static ( ref readonly Claim x ) => x.IsUserName())
+            userName = self.FirstOrDefault(static ( ref readonly x ) => x.IsUserName())
                             ?.Value ??
                        EMPTY;
 
-            if ( Guid.TryParse(self.FirstOrDefault(static ( ref readonly Claim x ) => x.IsUserID())
+            if ( Guid.TryParse(self.FirstOrDefault(static ( ref readonly x ) => x.IsUserID())
                                     ?.Value,
                                out Guid id) )
             {
@@ -65,11 +65,11 @@ public static partial class DbExtensions
         }
         public bool TryParse( [NotNullWhen(true)] out RecordID<UserRecord>? userID, out string userName )
         {
-            userName = self.FirstOrDefault(static ( ref readonly Claim x ) => x.IsUserName())
+            userName = self.FirstOrDefault(static ( ref readonly x ) => x.IsUserName())
                             ?.Value ??
                        EMPTY;
 
-            if ( Guid.TryParse(self.FirstOrDefault(static ( ref readonly Claim x ) => x.IsUserID())
+            if ( Guid.TryParse(self.FirstOrDefault(static ( ref readonly x ) => x.IsUserID())
                                     ?.Value,
                                out Guid id) )
             {

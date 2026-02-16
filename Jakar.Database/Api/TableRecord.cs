@@ -22,13 +22,6 @@ public interface ILastModified : IDateCreated
 
 
 
-public interface ICreatedBy : IDateCreated
-{
-    public RecordID<UserRecord>? CreatedBy { get; }
-}
-
-
-
 public interface ITableRecord<TSelf>
     where TSelf : TableRecord<TSelf>, ITableRecord<TSelf>
 {
@@ -120,27 +113,52 @@ public abstract record TableRecord<TSelf>( in DateTimeOffset DateCreated ) : IJs
 
 
 [Serializable]
-public abstract record PairRecord<TSelf> : TableRecord<TSelf>, IUniqueID
+public abstract record LastModifiedRecord<TSelf> : TableRecord<TSelf>, ILastModified
+    where TSelf : LastModifiedRecord<TSelf>, ITableRecord<TSelf>
+{
+    [ColumnInfo(ColumnOptions.Nullable)] public DateTimeOffset? LastModified { get => _lastModified; init => _lastModified = value; }
+
+
+    protected LastModifiedRecord( in DateTimeOffset dateCreated, in DateTimeOffset? lastModified ) : base(in dateCreated)
+    {
+        DateCreated  = dateCreated;
+        LastModified = lastModified;
+    }
+    protected internal LastModifiedRecord( NpgsqlDataReader reader ) : this(reader.GetFieldValue<TSelf, DateTimeOffset>(nameof(DateCreated)), reader.GetFieldValue<TSelf, DateTimeOffset>(nameof(LastModified))) { }
+
+
+    [Pure] public override PostgresParameters ToDynamicParameters()
+    {
+        PostgresParameters parameters = base.ToDynamicParameters();
+        parameters.Add(nameof(LastModified), LastModified);
+        return parameters;
+    }
+}
+
+
+
+[Serializable]
+public abstract record PairRecord<TSelf> : LastModifiedRecord<TSelf>, IUniqueID
     where TSelf : PairRecord<TSelf>, ITableRecord<TSelf>
 {
     private   RecordID<TSelf> __id;
     protected JObject?        _additionalData;
 
 
-    Guid IUniqueID<Guid>.                                           ID             => ID.Value;
-    [ProtectedPersonalData]                  public JObject?        AdditionalData { get => _additionalData; set => _additionalData = value; }
-    [Key]                                    public RecordID<TSelf> ID             { get => __id;            init => __id = value; }
-    [ColumnInfo(ColumnOptions.Nullable)] public DateTimeOffset? LastModified   { get => _lastModified;   init => _lastModified = value; }
+    Guid IUniqueID<Guid>.                          ID             => ID.Value;
+    [ProtectedPersonalData] public JObject?        AdditionalData { get => _additionalData; set => _additionalData = value; }
+    [Key]                   public RecordID<TSelf> ID             { get => __id;            init => __id = value; }
 
 
-    protected PairRecord( in RecordID<TSelf> id, in DateTimeOffset dateCreated, in DateTimeOffset? lastModified, JObject? additionalData = null ) : base(in dateCreated)
+    protected PairRecord( in RecordID<TSelf> id, in DateTimeOffset dateCreated, in DateTimeOffset? lastModified, JObject? additionalData = null ) : base(in dateCreated, in lastModified)
     {
         ID             = id;
-        DateCreated    = dateCreated;
-        LastModified   = lastModified;
         AdditionalData = additionalData;
     }
-    protected internal PairRecord( NpgsqlDataReader reader ) : this(RecordID<TSelf>.ID(reader), reader.GetFieldValue<TSelf, DateTimeOffset>(nameof(DateCreated)), reader.GetFieldValue<TSelf, DateTimeOffset>(nameof(LastModified))) { }
+    protected internal PairRecord( NpgsqlDataReader reader ) : this(RecordID<TSelf>.ID(reader), reader.GetFieldValue<TSelf, DateTimeOffset>(nameof(DateCreated)), reader.GetFieldValue<TSelf, DateTimeOffset>(nameof(LastModified)), reader.GetAdditionalData<TSelf>()) { }
+
+
+    public static implicit operator RecordID<TSelf>( PairRecord<TSelf>? record ) => record?.ID ?? RecordID<TSelf>.Empty;
 
 
     public TSelf NewID( RecordID<TSelf> id )
@@ -176,7 +194,7 @@ public abstract record PairRecord<TSelf> : TableRecord<TSelf>, IUniqueID
     {
         PostgresParameters parameters = base.ToDynamicParameters();
         parameters.Add(nameof(ID),           ID.Value);
-        parameters.Add(nameof(LastModified), LastModified);
+        parameters.Add(nameof(AdditionalData), AdditionalData);
         return parameters;
     }
 
@@ -192,27 +210,38 @@ public abstract record PairRecord<TSelf> : TableRecord<TSelf>, IUniqueID
 
 
 
+public interface IUserRecordID : IDateCreated, IUniqueID, IUserID
+{
+    public new RecordID<UserRecord> UserID { get; }
+}
+
+
+
 [Serializable]
-public abstract record OwnedTableRecord<TSelf> : PairRecord<TSelf>, ICreatedBy
+public abstract record OwnedTableRecord<TSelf> : PairRecord<TSelf>, IUserRecordID
     where TSelf : OwnedTableRecord<TSelf>, ITableRecord<TSelf>
 {
-    [ColumnInfo(UserRecord.TABLE_NAME)] public RecordID<UserRecord>? CreatedBy { get; set; }
+    [ColumnInfo(UserRecord.TABLE_NAME)] public virtual RecordID<UserRecord> UserID { get; init; }
+    Guid IUserID.                                                           UserID => UserID.Value;
 
 
-    protected OwnedTableRecord( in RecordID<UserRecord>?  createdBy, in RecordID<TSelf> id, in DateTimeOffset dateCreated, in DateTimeOffset? lastModified, JObject? additionalData = null ) : base(in id, in dateCreated, in lastModified, additionalData) => CreatedBy = createdBy;
-    protected internal OwnedTableRecord( NpgsqlDataReader reader ) : base(reader) => CreatedBy = RecordID<UserRecord>.CreatedBy(reader);
+    protected OwnedTableRecord( in RecordID<UserRecord>   userID, in RecordID<TSelf> id, in DateTimeOffset dateCreated, in DateTimeOffset? lastModified, JObject? additionalData = null ) : base(in id, in dateCreated, in lastModified, additionalData) => UserID = userID;
+    protected internal OwnedTableRecord( NpgsqlDataReader reader ) : base(reader) => UserID = RecordID<UserRecord>.UserID(reader);
+
+
+    public static implicit operator RecordID<UserRecord>( OwnedTableRecord<TSelf>? record ) => record?.UserID ?? RecordID<UserRecord>.Empty;
 
 
     public static PostgresParameters GetDynamicParameters( UserRecord user )
     {
         PostgresParameters parameters = PostgresParameters.Create<TSelf>();
-        parameters.Add(nameof(CreatedBy), user.ID.Value);
+        parameters.Add(nameof(UserID), user.ID.Value);
         return parameters;
     }
     protected static PostgresParameters GetDynamicParameters( OwnedTableRecord<TSelf> record )
     {
         PostgresParameters parameters = PostgresParameters.Create<TSelf>();
-        parameters.Add(nameof(CreatedBy), record.CreatedBy);
+        parameters.Add(nameof(UserID), record.UserID);
         return parameters;
     }
 
@@ -220,18 +249,18 @@ public abstract record OwnedTableRecord<TSelf> : PairRecord<TSelf>, ICreatedBy
     public override PostgresParameters ToDynamicParameters()
     {
         PostgresParameters parameters = base.ToDynamicParameters();
-        parameters.Add(nameof(CreatedBy), CreatedBy);
+        parameters.Add(nameof(UserID), UserID);
         return parameters;
     }
 
 
-    public async ValueTask<UserRecord?> GetUser( NpgsqlConnection           connection, NpgsqlTransaction? transaction, Database db, CancellationToken token ) => await db.Users.Get(connection, transaction, true,      GetDynamicParameters(this), token);
-    public async ValueTask<UserRecord?> GetUserWhoCreated( NpgsqlConnection connection, NpgsqlTransaction? transaction, Database db, CancellationToken token ) => await db.Users.Get(connection, transaction, CreatedBy, token);
+    public async ValueTask<UserRecord?> GetUser( NpgsqlConnection           connection, NpgsqlTransaction? transaction, Database db, CancellationToken token ) => await db.Users.Get(connection, transaction, true,   GetDynamicParameters(this), token);
+    public async ValueTask<UserRecord?> GetUserWhoCreated( NpgsqlConnection connection, NpgsqlTransaction? transaction, Database db, CancellationToken token ) => await db.Users.Get(connection, transaction, UserID, token);
 
 
-    public TSelf WithOwner( UserRecord  user )   => (TSelf)( this with { CreatedBy = user.ID } );
-    public bool  Owns( UserRecord       record ) => CreatedBy == record.ID;
-    public bool  DoesNotOwn( UserRecord record ) => CreatedBy != record.ID;
+    public TSelf WithOwner( UserRecord  user )   => (TSelf)( this with { UserID = user.ID } );
+    public bool  Owns( UserRecord       record ) => UserID == record.ID;
+    public bool  DoesNotOwn( UserRecord record ) => UserID != record.ID;
 
 
     public override int CompareTo( TSelf? other )
@@ -240,14 +269,6 @@ public abstract record OwnedTableRecord<TSelf> : PairRecord<TSelf>, ICreatedBy
 
         if ( ReferenceEquals(this, other) ) { return 0; }
 
-        return Nullable.Compare(CreatedBy, other.CreatedBy);
-    }
-    public void Deconstruct( out RecordID<UserRecord>? createdBy, out RecordID<TSelf> id, out DateTimeOffset dateCreated, out DateTimeOffset? lastModified, out JObject? additionalData )
-    {
-        createdBy      = CreatedBy;
-        id             = ID;
-        dateCreated    = DateCreated;
-        lastModified   = LastModified;
-        additionalData = AdditionalData;
+        return UserID.CompareTo(other.UserID);
     }
 }

@@ -21,7 +21,7 @@ public sealed record UserRecoveryCodeRecord : Mapping<UserRecoveryCodeRecord, Us
     internal UserRecoveryCodeRecord( NpgsqlDataReader   reader ) : base(reader) { }
 
 
-    public static UserRecoveryCodeRecord Create( UserRecord           key, RecoveryCodeRecord           value ) => new(key, value);
+    public static UserRecoveryCodeRecord Create( UserRecord           key, RecoveryCodeRecord           value ) => new(key.ID, value);
     public static UserRecoveryCodeRecord Create( RecordID<UserRecord> key, RecordID<RecoveryCodeRecord> value ) => new(key, value);
     [Pure] public static ImmutableArray<UserRecoveryCodeRecord> Create( UserRecord key, params ReadOnlySpan<RecoveryCodeRecord> values )
     {
@@ -40,7 +40,7 @@ public sealed record UserRecoveryCodeRecord : Mapping<UserRecoveryCodeRecord, Us
     [Pure] public static IEnumerable<UserRecoveryCodeRecord> Create( UserRecord key, IEnumerable<RecoveryCodeRecord> values )
     {
         // ReSharper disable once LoopCanBeConvertedToQuery
-        foreach ( RecordID<RecoveryCodeRecord> value in values ) { yield return Create(key, value); }
+        foreach ( RecordID<RecoveryCodeRecord> value in values ) { yield return Create(key.ID, value); }
     }
     [Pure] public static IEnumerable<UserRecoveryCodeRecord> Create( RecordID<UserRecord> key, IEnumerable<RecordID<RecoveryCodeRecord>> values )
     {

@@ -8,20 +8,20 @@ public sealed record RoleRecord : OwnedTableRecord<RoleRecord>, ITableRecord<Rol
     public const string TABLE_NAME = "roles";
 
 
-    public static                                                                         string     TableName        => TABLE_NAME;
-    public                                                                                UserRights Rights           { get; set; }
+    public static                                                                     string     TableName        => TABLE_NAME;
+    public                                                                            UserRights Rights           { get; set; }
     [ColumnInfo(ColumnOptions.Indexed | ColumnOptions.Fixed, NAME)]            public string     NameOfRole       { get; init; }
     [ColumnInfo(ColumnOptions.Indexed | ColumnOptions.Fixed, NORMALIZED_NAME)] public string     NormalizedName   { get; init; }
     [ColumnInfo(CONCURRENCY_STAMP)]                                            public string     ConcurrencyStamp { get; init; }
 
 
-    public RoleRecord( IdentityRole role, RecordID<UserRecord>? caller                               = null ) : this(role.Name ?? EMPTY, role.NormalizedName ?? EMPTY, role.ConcurrencyStamp ?? EMPTY, caller) { }
-    public RoleRecord( IdentityRole role, string                rights, RecordID<UserRecord>? caller = null ) : this(role.Name ?? EMPTY, role.NormalizedName ?? EMPTY, role.ConcurrencyStamp ?? EMPTY, rights, caller) { }
-    public RoleRecord( string       name, RecordID<UserRecord>? caller                                                                                                             = null ) : this(name, name, caller) { }
-    public RoleRecord( string       name, string                normalizedName, RecordID<UserRecord>? caller                                                                       = null ) : this(name, normalizedName, name.GetHash(), EMPTY, RecordID<RoleRecord>.New(), caller, DateTimeOffset.UtcNow) { }
-    public RoleRecord( string       name, string                normalizedName, string                concurrencyStamp, RecordID<UserRecord>? caller                               = null ) : this(name, normalizedName, concurrencyStamp, EMPTY, RecordID<RoleRecord>.New(), caller, DateTimeOffset.UtcNow) { }
-    public RoleRecord( string       name, string                normalizedName, string                concurrencyStamp, string                rights, RecordID<UserRecord>? caller = null ) : this(name, normalizedName, concurrencyStamp, rights, RecordID<RoleRecord>.New(), caller, DateTimeOffset.UtcNow) { }
-    public RoleRecord( string NameOfRole, string NormalizedName, string ConcurrencyStamp, UserRights Rights, RecordID<RoleRecord> ID, RecordID<UserRecord>? CreatedBy, DateTimeOffset DateCreated, DateTimeOffset? LastModified = null ) : base(in CreatedBy, in ID, in DateCreated, in LastModified)
+    public RoleRecord( IdentityRole role, RecordID<UserRecord> userID                              = default ) : this(role.Name ?? EMPTY, role.NormalizedName ?? EMPTY, role.ConcurrencyStamp ?? EMPTY, userID) { }
+    public RoleRecord( IdentityRole role, string               rights, RecordID<UserRecord> userID = default ) : this(role.Name ?? EMPTY, role.NormalizedName ?? EMPTY, role.ConcurrencyStamp ?? EMPTY, rights, userID) { }
+    public RoleRecord( string       name, RecordID<UserRecord> userID                                                                                                          = default ) : this(name, name, userID) { }
+    public RoleRecord( string       name, string               normalizedName, RecordID<UserRecord> userID                                                                     = default ) : this(name, normalizedName, name.GetHash(), EMPTY, RecordID<RoleRecord>.New(), userID, DateTimeOffset.UtcNow) { }
+    public RoleRecord( string       name, string               normalizedName, string               concurrencyStamp, RecordID<UserRecord> userID                              = default ) : this(name, normalizedName, concurrencyStamp, EMPTY, RecordID<RoleRecord>.New(), userID, DateTimeOffset.UtcNow) { }
+    public RoleRecord( string       name, string               normalizedName, string               concurrencyStamp, string               rights, RecordID<UserRecord> userID = default ) : this(name, normalizedName, concurrencyStamp, rights, RecordID<RoleRecord>.New(), userID, DateTimeOffset.UtcNow) { }
+    public RoleRecord( string NameOfRole, string NormalizedName, string ConcurrencyStamp, UserRights Rights, RecordID<RoleRecord> ID, RecordID<UserRecord> UserID, DateTimeOffset DateCreated, DateTimeOffset? LastModified = null ) : base(in UserID, in ID, in DateCreated, in LastModified)
     {
         this.Rights           = Rights;
         this.NameOfRole       = NameOfRole;
@@ -59,8 +59,8 @@ public sealed record RoleRecord : OwnedTableRecord<RoleRecord>, ITableRecord<Rol
                     await importer.WriteAsync(DateCreated, column.PostgresDbType, token);
                     break;
 
-                case nameof(CreatedBy):
-                    await importer.WriteAsync(CreatedBy?.Value, column.PostgresDbType, token);
+                case nameof(UserID):
+                    await importer.WriteAsync(UserID.Value, column.PostgresDbType, token);
                     break;
 
                 case nameof(Rights):
@@ -101,8 +101,8 @@ public sealed record RoleRecord : OwnedTableRecord<RoleRecord>, ITableRecord<Rol
     }
 
 
-    [Pure] public static RoleRecord Create<TEnum>( string name, [HandlesResourceDisposal] Permissions<TEnum> rights, string? normalizedName = null, RecordID<UserRecord>? caller = null, string? concurrencyStamp = null )
-        where TEnum : unmanaged, Enum => new(name, normalizedName ?? name, concurrencyStamp ?? name.GetHash(), rights.ToStringAndDispose(), caller);
+    [Pure] public static RoleRecord Create<TEnum>( string name, [HandlesResourceDisposal] Permissions<TEnum> rights, string? normalizedName = null, RecordID<UserRecord> userID = default, string? concurrencyStamp = null )
+        where TEnum : unmanaged, Enum => new(name, normalizedName ?? name, concurrencyStamp ?? name.GetHash(), rights.ToStringAndDispose(), userID);
     [Pure] public static RoleRecord      Create( NpgsqlDataReader reader )      => new RoleRecord(reader).Validate();
     public static        MigrationRecord CreateTable( ulong       migrationID ) => MigrationRecord.CreateTable<RoleRecord>(migrationID);
 
