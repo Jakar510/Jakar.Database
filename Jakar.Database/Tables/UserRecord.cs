@@ -1,10 +1,14 @@
-﻿namespace Jakar.Database;
+﻿using Microsoft.AspNetCore.Http.HttpResults;
+
+
+
+namespace Jakar.Database;
 
 
 [Serializable]
 [Table(TABLE_NAME)]
 [SuppressMessage("ReSharper", "InconsistentNaming")]
-public sealed record UserRecord : PairRecord<UserRecord>, ITableRecord<UserRecord>, IUserModel, IUserSecurity
+public sealed record UserRecord : PairRecord<UserRecord>, ITableRecord<UserRecord>, IUserModel, IUserSecurity, IUserDetails
 {
     public const string TABLE_NAME = "users";
 
@@ -27,11 +31,11 @@ public sealed record UserRecord : PairRecord<UserRecord>, ITableRecord<UserRecor
     #region Security
 
     public                                 UserRights Rights           { get; set; } = new();
-    [ColumnInfo(AUTHENTICATOR_KEY)] public string     AuthenticatorKey { get; set; } = EMPTY;
+    [ColumnInfo(AUTHENTICATOR_KEY)] public string?    AuthenticatorKey { get; set; } = EMPTY;
     public                                 int?       BadLogins        { get; set; }
 
     /// <summary> A random value that must change whenever a user is persisted to the store </summary>
-    [ColumnInfo(CONCURRENCY_STAMP)] public string ConcurrencyStamp { get; set; } = EMPTY;
+    [ColumnInfo(CONCURRENCY_STAMP)] public string? ConcurrencyStamp { get; set; } = EMPTY;
 
     public                                           bool            IsActive               { get; set; }
     public                                           bool            IsDisabled             { get; set; }
@@ -43,10 +47,10 @@ public sealed record UserRecord : PairRecord<UserRecord>, ITableRecord<UserRecor
     public                                           DateTimeOffset? LastLogin              { get; set; }
     public                                           DateTimeOffset? LockDate               { get; set; }
     public                                           DateTimeOffset? LockoutEnd             { get; set; }
-    [ColumnInfo(ENCRYPTED_MAX_PASSWORD_SIZE)] public string          PasswordHash           { get; set; } = EMPTY;
-    [ColumnInfo(REFRESH_TOKEN)]               public UInt128         RefreshTokenHash       { get; set; }
+    [ColumnInfo(ENCRYPTED_MAX_PASSWORD_SIZE)] public string?         PasswordHash           { get; set; }
+    [ColumnInfo(REFRESH_TOKEN)]               public string?         RefreshTokenHash       { get; set; }
     public                                           DateTimeOffset? RefreshTokenExpiryTime { get; set; }
-    [ColumnInfo(SECURITY_STAMP)] public              string          SecurityStamp          { get; set; } = EMPTY;
+    [ColumnInfo(SECURITY_STAMP)] public              string?         SecurityStamp          { get; set; }
     public                                           Guid?           SessionID              { get; set; }
 
     #endregion Security
@@ -55,19 +59,19 @@ public sealed record UserRecord : PairRecord<UserRecord>, ITableRecord<UserRecor
 
     #region Details
 
-    [ColumnInfo(ColumnOptions.Fixed, COMPANY)] [ProtectedPersonalData] public string                             Company     { get; set; } = EMPTY;
+    [ColumnInfo(ColumnOptions.Fixed, COMPANY)] [ProtectedPersonalData] public string?                            Company     { get; set; } = EMPTY;
     Guid? ICreatedByUser<Guid>.                                                                                  CreatedBy   => EscalateTo?.Value;
-    [ColumnInfo(DEPARTMENT)]                                                                      public string  Department  { get; set; } = EMPTY;
-    [ColumnInfo(DESCRIPTION)]                                                                     public string? Description { get; set; } 
-    [ColumnInfo(ColumnOptions.Indexed | ColumnOptions.Fixed, EMAIL)] [ProtectedPersonalData]      public string  Email       { get; set; } = EMPTY;
-    [ColumnInfo(WEBSITE)] [ProtectedPersonalData]                                                 public string  Website     { get; set; } = EMPTY;
-    [ColumnInfo(ColumnOptions.Indexed | ColumnOptions.Fixed, LAST_NAME)] [ProtectedPersonalData]  public string  LastName    { get; set; } = EMPTY;
-    [ColumnInfo(ColumnOptions.Indexed | ColumnOptions.Fixed, PHONE)] [ProtectedPersonalData]      public string  PhoneNumber { get; set; } = EMPTY;
-    [ColumnInfo(PHONE_EXT)] [ProtectedPersonalData]                                               public string  Ext         { get; set; } = EMPTY;
-    [ColumnInfo(TITLE)]                                                                           public string  Title       { get; set; } = EMPTY;
-    [ColumnInfo(ColumnOptions.Indexed | ColumnOptions.Fixed, FIRST_NAME)] [ProtectedPersonalData] public string  FirstName   { get; set; } = EMPTY;
-    [ColumnInfo(ColumnOptions.Indexed | ColumnOptions.Fixed, FULL_NAME)] [ProtectedPersonalData]  public string  FullName    { get; set; } = EMPTY;
-    [ColumnInfo(ColumnOptions.Indexed | ColumnOptions.Fixed, GENDER)] [ProtectedPersonalData]     public string  Gender      { get; set; } = EMPTY;
+    [ColumnInfo(DEPARTMENT)]                                                                      public string? Department  { get; set; } = EMPTY;
+    [ColumnInfo(DESCRIPTION)]                                                                     public string? Description { get; set; }
+    [ColumnInfo(ColumnOptions.Indexed | ColumnOptions.Fixed, EMAIL)] [ProtectedPersonalData]      public string? Email       { get; set; } = EMPTY;
+    [ColumnInfo(WEBSITE)] [ProtectedPersonalData]                                                 public string? Website     { get; set; } = EMPTY;
+    [ColumnInfo(ColumnOptions.Indexed | ColumnOptions.Fixed, LAST_NAME)] [ProtectedPersonalData]  public string? LastName    { get; set; } = EMPTY;
+    [ColumnInfo(ColumnOptions.Indexed | ColumnOptions.Fixed, PHONE)] [ProtectedPersonalData]      public string? PhoneNumber { get; set; } = EMPTY;
+    [ColumnInfo(PHONE_EXT)] [ProtectedPersonalData]                                               public string? Ext         { get; set; } = EMPTY;
+    [ColumnInfo(TITLE)]                                                                           public string? Title       { get; set; } = EMPTY;
+    [ColumnInfo(ColumnOptions.Indexed | ColumnOptions.Fixed, FIRST_NAME)] [ProtectedPersonalData] public string? FirstName   { get; set; } = EMPTY;
+    [ColumnInfo(ColumnOptions.Indexed | ColumnOptions.Fixed, FULL_NAME)] [ProtectedPersonalData]  public string? FullName    { get; set; } = EMPTY;
+    [ColumnInfo(ColumnOptions.Indexed | ColumnOptions.Fixed, GENDER)] [ProtectedPersonalData]     public string? Gender      { get; set; } = EMPTY;
 
     #endregion Details
 
@@ -75,24 +79,24 @@ public sealed record UserRecord : PairRecord<UserRecord>, ITableRecord<UserRecor
 
     public UserRecord( in RecordID<UserRecord> ID ) : this(in ID, null, DateTimeOffset.UtcNow) { }
     public UserRecord( in RecordID<UserRecord> ID, UserRecord?             user,   in DateTimeOffset DateCreated, in DateTimeOffset? LastModified = null ) : this(in ID, user?.ID ?? RecordID<UserRecord>.Empty, in DateCreated, in LastModified) { }
-    public UserRecord( in RecordID<UserRecord> ID, in RecordID<UserRecord> userID, in DateTimeOffset DateCreated, in DateTimeOffset? LastModified = null ) : base(in ID, in DateCreated, in LastModified) => EscalateTo = userID;
+    public UserRecord( in RecordID<UserRecord> ID, in RecordID<UserRecord> userID, in DateTimeOffset DateCreated, in DateTimeOffset? LastModified = null ) : base(in ID, in DateCreated, null, in LastModified) => EscalateTo = userID;
     internal UserRecord( NpgsqlDataReader reader ) : base(reader)
     {
         UserName               = reader.GetFieldValue<UserRecord, string>(nameof(UserName));
-        FirstName              = reader.GetFieldValue<UserRecord, string>(nameof(FirstName));
-        LastName               = reader.GetFieldValue<UserRecord, string>(nameof(LastName));
-        FullName               = reader.GetFieldValue<UserRecord, string>(nameof(FullName));
+        FirstName              = reader.GetFieldValue<UserRecord, string?>(nameof(FirstName));
+        LastName               = reader.GetFieldValue<UserRecord, string?>(nameof(LastName));
+        FullName               = reader.GetFieldValue<UserRecord, string?>(nameof(FullName));
         Rights                 = reader.GetFieldValue<UserRecord, string>(nameof(Rights));
-        Gender                 = reader.GetFieldValue<UserRecord, string>(nameof(Gender));
-        Company                = reader.GetFieldValue<UserRecord, string>(nameof(Company));
-        Description            = reader.GetFieldValue<UserRecord, string>(nameof(Description));
-        Department             = reader.GetFieldValue<UserRecord, string>(nameof(Department));
-        Title                  = reader.GetFieldValue<UserRecord, string>(nameof(Title));
-        Website                = reader.GetFieldValue<UserRecord, string>(nameof(Website));
+        Gender                 = reader.GetFieldValue<UserRecord, string?>(nameof(Gender));
+        Company                = reader.GetFieldValue<UserRecord, string?>(nameof(Company));
+        Description            = reader.GetFieldValue<UserRecord, string?>(nameof(Description));
+        Department             = reader.GetFieldValue<UserRecord, string?>(nameof(Department));
+        Title                  = reader.GetFieldValue<UserRecord, string?>(nameof(Title));
+        Website                = reader.GetFieldValue<UserRecord, string?>(nameof(Website));
         PreferredLanguage      = reader.GetEnumValue<UserRecord, SupportedLanguage>(nameof(PreferredLanguage), SupportedLanguage.Unspecified);
-        Email                  = reader.GetFieldValue<UserRecord, string>(nameof(Email));
-        PhoneNumber            = reader.GetFieldValue<UserRecord, string>(nameof(PhoneNumber));
-        Ext                    = reader.GetFieldValue<UserRecord, string>(nameof(Ext));
+        Email                  = reader.GetFieldValue<UserRecord, string?>(nameof(Email));
+        PhoneNumber            = reader.GetFieldValue<UserRecord, string?>(nameof(PhoneNumber));
+        Ext                    = reader.GetFieldValue<UserRecord, string?>(nameof(Ext));
         SubscriptionID         = reader.GetFieldValue<UserRecord, Guid?>(nameof(SubscriptionID));
         SubscriptionExpires    = reader.GetFieldValue<UserRecord, DateTimeOffset?>(nameof(SubscriptionExpires));
         EscalateTo             = RecordID<UserRecord>.TryCreate(reader, nameof(EscalateTo));
@@ -103,13 +107,13 @@ public sealed record UserRecord : PairRecord<UserRecord>, ITableRecord<UserRecor
         BadLogins              = reader.GetFieldValue<UserRecord, int>(nameof(BadLogins));
         LockDate               = reader.GetFieldValue<UserRecord, DateTimeOffset?>(nameof(LockDate));
         LockoutEnd             = reader.GetFieldValue<UserRecord, DateTimeOffset?>(nameof(LockoutEnd));
-        PasswordHash           = reader.GetFieldValue<UserRecord, string>(nameof(PasswordHash));
-        AuthenticatorKey       = reader.GetFieldValue<UserRecord, string>(nameof(AuthenticatorKey));
-        RefreshTokenHash       = reader.GetFieldValue<UserRecord, UInt128>(nameof(RefreshTokenHash), UInt128.Zero);
+        PasswordHash           = reader.GetFieldValue<UserRecord, string?>(nameof(PasswordHash));
+        AuthenticatorKey       = reader.GetFieldValue<UserRecord, string?>(nameof(AuthenticatorKey));
+        RefreshTokenHash       = reader.GetFieldValue<UserRecord, string?>(nameof(RefreshTokenHash));
         RefreshTokenExpiryTime = reader.GetFieldValue<UserRecord, DateTimeOffset?>(nameof(RefreshTokenExpiryTime));
         SessionID              = reader.GetFieldValue<UserRecord, Guid?>(nameof(SessionID));
-        SecurityStamp          = reader.GetFieldValue<UserRecord, string>(nameof(SecurityStamp));
-        ConcurrencyStamp       = reader.GetFieldValue<UserRecord, string>(nameof(ConcurrencyStamp));
+        SecurityStamp          = reader.GetFieldValue<UserRecord, string?>(nameof(SecurityStamp));
+        ConcurrencyStamp       = reader.GetFieldValue<UserRecord, string?>(nameof(ConcurrencyStamp));
         IsEmailConfirmed       = reader.GetFieldValue<UserRecord, bool>(nameof(IsEmailConfirmed));
         IsPhoneNumberConfirmed = reader.GetFieldValue<UserRecord, bool>(nameof(IsPhoneNumberConfirmed));
         IsTwoFactorEnabled     = reader.GetFieldValue<UserRecord, bool>(nameof(IsTwoFactorEnabled));
@@ -119,16 +123,53 @@ public sealed record UserRecord : PairRecord<UserRecord>, ITableRecord<UserRecor
     }
 
 
+    public UserRecord( IUserData<Guid> value ) : base(RecordID<UserRecord>.Create(value.ID), DateTimeOffset.UtcNow, value.AdditionalData, null) => With(value);
+    public static UserRecord Create<TValue>( TValue value )
+        where TValue : IUserData<Guid>, IUserDetails
+    {
+        UserRecord self = new(value);
+        return self.With(value);
+    }
+    public UserRecord With<TValue>( TValue value )
+        where TValue : IUserData<Guid>, IUserDetails
+    {
+        FirstName   = value.FirstName;
+        LastName    = value.LastName;
+        FullName    = value.FullName;
+        Description = value.Description;
+        Website     = value.Website;
+        Email       = value.Email;
+        PhoneNumber = value.PhoneNumber;
+        Ext         = value.Ext;
+        Title       = value.Title;
+        Department  = value.Department;
+        Company     = value.Company;
+        return With((IUserData<Guid>)value);
+    }
+    public UserRecord With( IUserData<Guid> value )
+    {
+        if ( UserName != value.UserName ) { throw new InvalidOperationException($"Username mismatch: '{UserName}'"); }
+
+        Rights            = value.Rights;
+        ImageID           = RecordID<FileRecord>.Create(value.ImageID);
+        EscalateTo        = RecordID<UserRecord>.Create(value.CreatedBy);
+        EscalateTo        = RecordID<UserRecord>.Create(value.EscalateTo);
+        PreferredLanguage = value.PreferredLanguage;
+        Rights            = value.Rights;
+        return WithAdditionalData(value.AdditionalData);
+    }
+    public string GetDescription() => Description ??= IUserDetails.GetDescription(this);
+
+
     public static MigrationRecord CreateTable( ulong       migrationID ) => MigrationRecord.CreateTable<UserRecord>(migrationID);
     public static UserRecord      Create( NpgsqlDataReader reader )      => new UserRecord(reader).Validate();
-    public static UserRecord Create<TUser, TEnum>( ILoginRequest<TUser> request, UserRecord? caller = null )
-        where TUser : class, IUserData<Guid>
-        where TEnum : unmanaged, Enum => Create(request, request.Data.Rights, caller);
+    public static UserRecord Create<TUser>( ILoginRequest<TUser> request, UserRecord? caller = null )
+        where TUser : class, IUserData<Guid>, IUserDetails => Create(request, request.Data.Rights, caller);
     public static UserRecord Create<TUser, TEnum>( ILoginRequest<TUser> request, scoped in Permissions<TEnum> rights, UserRecord? caller = null )
-        where TUser : class, IUserData<Guid>
+        where TUser : class, IUserData<Guid>, IUserDetails
         where TEnum : unmanaged, Enum => Create(request, rights.ToString(), caller);
     public static UserRecord Create<TUser>( ILoginRequest<TUser> request, UserRights rights, UserRecord? caller = null )
-        where TUser : class, IUserData<Guid>
+        where TUser : class, IUserData<Guid>, IUserDetails
     {
         ArgumentNullException.ThrowIfNull(request.Data);
         UserRecord user = Create(request.UserLogin, rights, request.Data, caller);
@@ -138,7 +179,7 @@ public sealed record UserRecord : PairRecord<UserRecord>, ITableRecord<UserRecor
     }
 
     public static UserRecord Create<TUser>( string userName, UserRights rights, TUser data, UserRecord? caller = null )
-        where TUser : class, IUserData<Guid>
+        where TUser : class, IUserData<Guid>, IUserDetails
     {
         RecordID<UserRecord> id = RecordID<UserRecord>.New();
 
@@ -378,7 +419,7 @@ public sealed record UserRecord : PairRecord<UserRecord>, ITableRecord<UserRecor
     }
 
 
-    public static PostgresParameters GetDynamicParameters( IUserData data )
+    public static PostgresParameters GetDynamicParameters( IUserDetails data )
     {
         PostgresParameters parameters = PostgresParameters.Create<UserRecord>();
         parameters.Add(nameof(Email),     data.Email);
@@ -404,28 +445,6 @@ public sealed record UserRecord : PairRecord<UserRecord>, ITableRecord<UserRecor
         PostgresParameters parameters = PostgresParameters.Create<UserRecord>();
         parameters.Add(nameof(ID), userID);
         return parameters;
-    }
-
-
-    public string        GetDescription()              => Description ??= IUserData.GetDescription(this);
-    void IUserData<Guid>.With( IUserData<Guid> value ) => With(value);
-    public UserRecord With( IUserData<Guid> value )
-    {
-        FirstName         = value.FirstName;
-        LastName          = value.LastName;
-        FullName          = value.FullName;
-        Description       = value.Description;
-        Website           = value.Website;
-        Email             = value.Email;
-        PhoneNumber       = value.PhoneNumber;
-        Ext               = value.Ext;
-        Title             = value.Title;
-        Department        = value.Department;
-        Company           = value.Company;
-        PreferredLanguage = value.PreferredLanguage;
-        EscalateTo        = RecordID<UserRecord>.TryCreate(value.EscalateTo);
-        ImageID           = RecordID<FileRecord>.TryCreate(value.ImageID);
-        return WithAdditionalData(value);
     }
 
 
@@ -727,4 +746,16 @@ public sealed record UserRecord : PairRecord<UserRecord>, ITableRecord<UserRecor
     }
 
     #endregion Claims
+
+
+
+    public event PropertyChangedEventHandler? PropertyChanged;
+    private void                              OnPropertyChanged( [CallerMemberName] string? propertyName = null ) { PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName)); }
+    private bool SetField<T>( ref T field, T value, [CallerMemberName] string? propertyName = null )
+    {
+        if ( EqualityComparer<T>.Default.Equals(field, value) ) return false;
+        field = value;
+        OnPropertyChanged(propertyName);
+        return true;
+    }
 }

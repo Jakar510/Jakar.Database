@@ -28,9 +28,7 @@ public abstract partial class Database
     public virtual bool VerifyPassword<TSelf>( scoped ref TSelf record, in string password )
         where TSelf : TableRecord<TSelf>, IUserSecurity, ITableRecord<TSelf>
     {
-        string value = Database.DataProtector.Decrypt(record.PasswordHash);
-
-        if ( string.Equals(value, password, StringComparison.InvariantCulture) )
+        if ( !string.IsNullOrWhiteSpace(record.PasswordHash) && string.Equals(Database.DataProtector.Decrypt(record.PasswordHash), password, StringComparison.InvariantCulture) )
         {
             record = record.SetActive();
             return true;
@@ -53,7 +51,7 @@ public abstract partial class Database
             return false;
         }
 
-        return record.RefreshTokenHash > 0 && record.RefreshTokenHash.Equals(refreshToken.Hash128());
+        return record.RefreshTokenHash?.Equals(refreshToken.GetHash()) is true;
     }
 
 

@@ -49,7 +49,7 @@ public abstract record TableRecord<TSelf>( in DateTimeOffset DateCreated ) : IJs
     public static int                                                    PropertyCount    => Properties.Length;
 
 
-    protected internal TableRecord( NpgsqlDataReader reader ) : this(reader.GetFieldValue<TSelf, DateTimeOffset>(nameof(DateCreated))) { }
+    protected internal TableRecord( NpgsqlDataReader reader ) : this(reader.DateCreated<TSelf>()) { }
 
 
     [Pure] public UInt128 GetHash()
@@ -124,7 +124,7 @@ public abstract record LastModifiedRecord<TSelf> : TableRecord<TSelf>, ILastModi
         DateCreated  = dateCreated;
         LastModified = lastModified;
     }
-    protected internal LastModifiedRecord( NpgsqlDataReader reader ) : this(reader.GetFieldValue<TSelf, DateTimeOffset>(nameof(DateCreated)), reader.GetFieldValue<TSelf, DateTimeOffset>(nameof(LastModified))) { }
+    protected internal LastModifiedRecord( NpgsqlDataReader reader ) : base(reader) => LastModified = reader.LastModified<TSelf>();
 
 
     [Pure] public override PostgresParameters ToDynamicParameters()
@@ -150,12 +150,16 @@ public abstract record PairRecord<TSelf> : LastModifiedRecord<TSelf>, IUniqueID
     [Key]                   public RecordID<TSelf> ID             { get => __id;            init => __id = value; }
 
 
-    protected PairRecord( in RecordID<TSelf> id, in DateTimeOffset dateCreated, in DateTimeOffset? lastModified, JObject? additionalData = null ) : base(in dateCreated, in lastModified)
+    protected PairRecord( in RecordID<TSelf> id, in DateTimeOffset dateCreated, JObject? additionalData = null, in DateTimeOffset? lastModified = null ) : base(in dateCreated, in lastModified)
     {
         ID             = id;
         AdditionalData = additionalData;
     }
-    protected internal PairRecord( NpgsqlDataReader reader ) : this(RecordID<TSelf>.ID(reader), reader.GetFieldValue<TSelf, DateTimeOffset>(nameof(DateCreated)), reader.GetFieldValue<TSelf, DateTimeOffset>(nameof(LastModified)), reader.GetAdditionalData<TSelf>()) { }
+    protected internal PairRecord( NpgsqlDataReader reader ) : base(reader)
+    {
+        ID             = RecordID<TSelf>.ID(reader);
+        AdditionalData = reader.GetAdditionalData<TSelf>();
+    }
 
 
     public static implicit operator RecordID<TSelf>( PairRecord<TSelf>? record ) => record?.ID ?? RecordID<TSelf>.Empty;
@@ -193,7 +197,7 @@ public abstract record PairRecord<TSelf> : LastModifiedRecord<TSelf>, IUniqueID
     [Pure] public override PostgresParameters ToDynamicParameters()
     {
         PostgresParameters parameters = base.ToDynamicParameters();
-        parameters.Add(nameof(ID),           ID.Value);
+        parameters.Add(nameof(ID),             ID.Value);
         parameters.Add(nameof(AdditionalData), AdditionalData);
         return parameters;
     }
@@ -225,7 +229,7 @@ public abstract record OwnedTableRecord<TSelf> : PairRecord<TSelf>, IUserRecordI
     Guid IUserID.                                                           UserID => UserID.Value;
 
 
-    protected OwnedTableRecord( in RecordID<UserRecord>   userID, in RecordID<TSelf> id, in DateTimeOffset dateCreated, in DateTimeOffset? lastModified, JObject? additionalData = null ) : base(in id, in dateCreated, in lastModified, additionalData) => UserID = userID;
+    protected OwnedTableRecord( in RecordID<UserRecord>   userID, in RecordID<TSelf> id, in DateTimeOffset dateCreated, in DateTimeOffset? lastModified, JObject? additionalData = null ) : base(in id, in dateCreated, additionalData, in lastModified) => UserID = userID;
     protected internal OwnedTableRecord( NpgsqlDataReader reader ) : base(reader) => UserID = RecordID<UserRecord>.UserID(reader);
 
 

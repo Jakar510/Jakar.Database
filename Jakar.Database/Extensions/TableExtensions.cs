@@ -1,4 +1,8 @@
-﻿namespace Jakar.Database;
+﻿using System.Data;
+
+
+
+namespace Jakar.Database;
 
 
 public static class TableExtensions
@@ -56,6 +60,13 @@ public static class TableExtensions
 
     extension( NpgsqlDataReader self )
     {
+        public DateTimeOffset DateCreated<TRecord>()
+            where TRecord : TableRecord<TRecord>, ITableRecord<TRecord>, IDateCreated => self.GetFieldValue<TRecord, DateTimeOffset>(nameof(IDateCreated.DateCreated));
+
+        public DateTimeOffset? LastModified<TRecord>()
+            where TRecord : LastModifiedRecord<TRecord>, ITableRecord<TRecord>, ILastModified => self.GetFieldValue<TRecord, DateTimeOffset?>(nameof(ILastModified.LastModified));
+
+
         public JObject? GetAdditionalData<TRecord>()
             where TRecord : TableRecord<TRecord>, ITableRecord<TRecord>
         {

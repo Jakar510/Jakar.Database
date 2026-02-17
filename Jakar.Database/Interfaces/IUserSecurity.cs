@@ -6,11 +6,11 @@ namespace Jakar.Database;
 
 public interface IUserSecurity : IUserRecordID
 {
-    [StringLength(AUTHENTICATOR_KEY)] public string               AuthenticatorKey { get; set; }
-    public                                   int?                 BadLogins        { get; set; }
+    [StringLength(AUTHENTICATOR_KEY)] public string? AuthenticatorKey { get; set; }
+    public                                   int?    BadLogins        { get; set; }
 
     /// <summary> A random value that must change whenever a user is persisted to the store </summary>
-    [StringLength(CONCURRENCY_STAMP)] public string ConcurrencyStamp { get; set; }
+    [StringLength(CONCURRENCY_STAMP)] public string? ConcurrencyStamp { get; set; }
 
     public                                             bool            IsActive               { get; set; }
     public                                             bool            IsDisabled             { get; set; }
@@ -22,10 +22,10 @@ public interface IUserSecurity : IUserRecordID
     public                                             DateTimeOffset? LastLogin              { get; set; }
     public                                             DateTimeOffset? LockDate               { get; set; }
     public                                             DateTimeOffset? LockoutEnd             { get; set; }
-    [StringLength(ENCRYPTED_MAX_PASSWORD_SIZE)] public string          PasswordHash           { get; set; }
-    public                                             UInt128         RefreshTokenHash       { get; set; }
+    [StringLength(ENCRYPTED_MAX_PASSWORD_SIZE)] public string?         PasswordHash           { get; set; }
+    public                                             string?         RefreshTokenHash       { get; set; }
     public                                             DateTimeOffset? RefreshTokenExpiryTime { get; set; }
-    [StringLength(SECURITY_STAMP)] public              string          SecurityStamp          { get; set; }
+    [StringLength(SECURITY_STAMP)] public              string?         SecurityStamp          { get; set; }
     public                                             Guid?           SessionID              { get; set; }
 }
 
@@ -159,14 +159,14 @@ public static class UserSecurities
         {
             if ( string.IsNullOrEmpty(refreshToken) )
             {
-                self.RefreshTokenHash       = UInt128.Zero;
+                self.RefreshTokenHash       = null;
                 self.RefreshTokenExpiryTime = null;
                 self.SecurityStamp          = securityStamp ?? Randoms.RandomString(30);
                 return self.Modified();
             }
 
             self.SecurityStamp          = securityStamp ?? refreshToken.Hash_SHA256();
-            self.RefreshTokenHash       = refreshToken.Hash128();
+            self.RefreshTokenHash       = refreshToken.GetHash();
             self.RefreshTokenExpiryTime = expires;
             return self.Modified();
         }

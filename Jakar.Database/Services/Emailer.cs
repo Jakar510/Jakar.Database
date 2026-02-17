@@ -138,7 +138,7 @@ public class Emailer( EmailTokenProvider tokenProvider, IConfiguration configura
         string content = await CreateContent(subject, user, types, token);
 
         EmailBuilder builder = EmailBuilder.From(_options.GetSender())
-                                           .To(MailboxAddress.Parse(user.Email))
+                                           .To(MailboxAddress.Parse(Validate.ThrowIfNull(user.Email)))
                                            .WithSubject(subject)
                                            .WithBody(content);
 
@@ -150,7 +150,7 @@ public class Emailer( EmailTokenProvider tokenProvider, IConfiguration configura
         string content = await CreateHTMLContent(subject, user, types, token);
 
         EmailBuilder builder = EmailBuilder.From(_options.GetSender())
-                                           .To(MailboxAddress.Parse(user.Email))
+                                           .To(MailboxAddress.Parse(Validate.ThrowIfNull(user.Email)))
                                            .WithSubject(subject)
                                            .WithHTML(content);
 

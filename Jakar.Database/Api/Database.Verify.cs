@@ -229,7 +229,7 @@ public abstract partial class Database
 
 
     public virtual async ValueTask<ErrorOrResult<SessionToken>> Register<TUser>( NpgsqlConnection connection, NpgsqlTransaction transaction, ILoginRequest<TUser> request, CancellationToken token = default )
-        where TUser : class, IUserData<Guid>
+        where TUser : class, IUserData<Guid>, IUserDetails
     {
         UserRecord? record = await Users.Get(connection, transaction, true, UserRecord.GetDynamicParameters(request), token);
         if ( record is not null ) { return Error.Conflict($"{nameof(UserRecord.UserName)} is already taken. Chose another {nameof(request.UserLogin)}"); }
@@ -238,14 +238,12 @@ public abstract partial class Database
         record = await Users.Insert(connection, transaction, record, token);
         return await GetToken(connection, transaction, record, DEFAULT_CLAIM_TYPES, token);
     }
-
-
     protected virtual UserRecord CreateNewUser<TUser>( ILoginRequest<TUser> request, UserRecord? caller = null )
-        where TUser : class, IUserData<Guid> => UserRecord.Create(request, request.Data.Rights, caller);
+        where TUser : class, IUserData<Guid>, IUserDetails => UserRecord.Create(request, request.Data.Rights, caller);
 
 
     public ValueTask<ErrorOrResult<SessionToken>> Register<TUser>( ILoginRequest<TUser> request, CancellationToken token = default )
-        where TUser : class, IUserData<Guid> => this.TryCall(Register, request, token);
+        where TUser : class, IUserData<Guid>, IUserDetails => this.TryCall(Register, request, token);
     public ValueTask<ErrorOrResult<TValue>> Verify<TValue>( ILoginRequest request, Func<NpgsqlConnection, NpgsqlTransaction, UserRecord, ErrorOrResult<TValue>>                               func, CancellationToken token = default ) => this.TryCall(Verify, request, func, token);
     public ValueTask<ErrorOrResult<TValue>> Verify<TValue>( ILoginRequest request, Func<NpgsqlConnection, NpgsqlTransaction, UserRecord, CancellationToken, ValueTask<ErrorOrResult<TValue>>> func, CancellationToken token = default ) => this.TryCall(Verify, request, func, token);
     public ValueTask<ErrorOrResult<TValue>> Verify<TValue>( ILoginRequest request, Func<NpgsqlConnection, NpgsqlTransaction, UserRecord, CancellationToken, Task<ErrorOrResult<TValue>>>      func, CancellationToken token = default ) => this.TryCall(Verify, request, func, token);
