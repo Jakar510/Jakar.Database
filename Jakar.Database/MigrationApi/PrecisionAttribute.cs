@@ -18,6 +18,25 @@ public enum PrecisionInfo
 
 
 
+public readonly record struct PrecisionPair( int Scope, int Precision ) : IComparable<PrecisionPair>
+{
+    public static readonly PrecisionPair Empty     = new(-1, -1);
+    public readonly        int           Scope     = Scope;
+    public readonly        int           Precision = Precision;
+    public                 bool          IsValid => Scope >= 0 && Precision >= 0 && Scope <= Precision;
+    public int CompareTo( PrecisionPair other )
+    {
+        if ( Empty.Equals(other) ) { return 1; }
+
+        int minComparison = Scope.CompareTo(other.Scope);
+        if ( minComparison != 0 ) { return minComparison; }
+
+        return Precision.CompareTo(other.Precision);
+    }
+}
+
+
+
 /// <summary>
 ///     <para> <see cref="Scope"/>:  Order of magnitude of representable range (the exponent range). </para>
 ///     <para> <see cref="Precision"/>: Reliable decimal digits of accuracy. </para>
@@ -30,13 +49,13 @@ public sealed class PrecisionAttribute : DatabaseAttribute
     public          bool IsValid => Scope >= 0 && Precision >= 0;
 
 
-    public PrecisionAttribute( (int Scope, int Precison) pair ) : this(pair.Scope, pair.Precison) { }
+    public PrecisionAttribute( PrecisionPair pair ) : this(pair.Scope, pair.Precision) { }
     public PrecisionAttribute( PrecisionInfo info ) : this(info switch
                                                            {
-                                                               PrecisionInfo.Decimal => ( 28, 0 ),
-                                                               PrecisionInfo.Double  => ( 308, 15 ),
-                                                               PrecisionInfo.Float   => ( 38, 7 ),
-                                                               PrecisionInfo.Int128  => ( 128, 0 ),
+                                                               PrecisionInfo.Decimal => new PrecisionPair(28,  0),
+                                                               PrecisionInfo.Double  => new PrecisionPair(308, 15),
+                                                               PrecisionInfo.Float   => new PrecisionPair(38,  7),
+                                                               PrecisionInfo.Int128  => new PrecisionPair(128, 0),
                                                                _                     => throw new OutOfRangeException(info)
                                                            }) { }
 

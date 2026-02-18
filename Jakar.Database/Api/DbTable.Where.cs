@@ -61,7 +61,7 @@ public partial class DbTable<TSelf>
         parameters.Add(nameof(value),      value);
         parameters.Add(nameof(columnName), columnName);
 
-        SqlCommand<TSelf> sql = new($"SELECT {ColumnMetaData.ID.ColumnName} FROM {TSelf.TableName} WHERE @{nameof(columnName)} = @{nameof(value)};", parameters);
+        SqlCommand<TSelf> sql = new($"SELECT {nameof(IUniqueID.ID).SqlColumnName()} FROM {TSelf.TableName} WHERE @{nameof(columnName)} = @{nameof(value)};", parameters);
         return WhereID(connection, transaction, sql, token);
     }
 }

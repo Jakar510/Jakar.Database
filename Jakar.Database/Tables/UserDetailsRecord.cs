@@ -10,7 +10,7 @@ public sealed record UserDetailsRecord : LastModifiedRecord<UserDetailsRecord>, 
 {
     public const                                                                                                  string               TABLE_NAME = "user_details";
     public static                                                                                                 string               TableName   => TABLE_NAME;
-    [ColumnInfo(ColumnOptions.Fixed, COMPANY)] [ProtectedPersonalData]                            public          string               Company     { get; set; } = EMPTY;
+    [Fixed( COMPANY)] [ProtectedPersonalData]                            public          string               Company     { get; set; } = EMPTY;
     [ColumnInfo(DEPARTMENT)]                                                                      public          string               Department  { get; set; } = EMPTY;
     [ColumnInfo(DESCRIPTION)]                                                                     public          string               Description { get; set; } = EMPTY;
     [ColumnInfo(ColumnOptions.Indexed | ColumnOptions.Fixed, EMAIL)] [ProtectedPersonalData]      public          string               Email       { get; set; } = EMPTY;

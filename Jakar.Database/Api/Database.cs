@@ -22,7 +22,7 @@ public abstract partial class Database : Randoms, IConnectableDbRoot, IHealthChe
     public readonly    DbTable<RoleRecord>              Roles;
     public readonly    DbTable<UserLoginProviderRecord> UserLoginProviders;
     public readonly    DbTable<UserRecord>              Users;
-    protected readonly FusionCache                      _cache;
+    protected readonly IFusionCache                     _cache;
     public readonly    IConfiguration                   Configuration;
     public readonly    ThreadLocal<UserRecord?>         LoggedInUser = new();
     protected          ActivitySource?                  _activitySource;
@@ -61,7 +61,7 @@ public abstract partial class Database : Randoms, IConnectableDbRoot, IHealthChe
         RecordID<UserRecord>.RegisterDapperTypeHandlers();
         RecordID<UserLoginProviderRecord>.RegisterDapperTypeHandlers();
     }
-    protected Database( IConfiguration configuration, IOptions<DbOptions> options, FusionCache cache ) : base()
+    protected Database( IConfiguration configuration, IOptions<DbOptions> options, IFusionCache cache ) : base()
     {
         _cache             = cache;
         Configuration      = configuration;

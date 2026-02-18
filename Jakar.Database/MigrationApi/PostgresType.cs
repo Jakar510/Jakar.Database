@@ -737,11 +737,10 @@ public static class PostgresTypes
                                      0;
 
 
-        public string GetPostgresDataType( out PostgresType dbType, out NpgsqlDbType postgresDbType, out bool isNullable, out SizeInfo size )
+        public string GetPostgresDataType( out PostgresType dbType, out NpgsqlDbType postgresDbType, out bool isNullable )
         {
             dbType         = self.PropertyType.GetPostgresType(in self, out isNullable, out int length);
             postgresDbType = dbType.ToNpgsqlDbType();
-            size           = length;
 
 
             return dbType switch
@@ -873,7 +872,8 @@ public static class PostgresTypes
         }
 
 
-        public PostgresType GetPostgresType( out bool isNullable, out bool isEnum, ref SizeInfo length )
+        /*
+        public PostgresType GetPostgresType( out bool isNullable, out bool isEnum, ref DbSizeAttribute length )
         {
             isEnum     = self.IsEnum           || ( TryGetUnderlyingType(self, out Type? underlyingType) && underlyingType.IsEnum );
             isNullable = self.IsNullableType() || self.IsBuiltInNullableType();
@@ -896,9 +896,10 @@ public static class PostgresTypes
 
             if ( isEnum )
             {
-                length = Enum.GetNames(self)
-                             .AsValueEnumerable()
-                             .Max(static x => x.Length);
+                length = new DbSizeAttribute(null,
+                                             Enum.GetNames(self)
+                                                 .AsValueEnumerable()
+                                                 .Max(static x => x.Length));
 
                 return PostgresType.String;
             }
@@ -1053,7 +1054,7 @@ public static class PostgresTypes
             throw new ArgumentException($"Unsupported type: {self.Name}");
         }
 
-        public PostgresType GetPostgresType( out bool isEnum, ref SizeInfo length )
+        public PostgresType GetPostgresType( out bool isEnum, ref DbSizeAttribute length )
         {
             isEnum = self.IsEnum || ( TryGetUnderlyingType(self, out Type? underlyingType) && underlyingType.IsEnum );
 
@@ -1106,6 +1107,7 @@ public static class PostgresTypes
 
             throw new ArgumentException($"Unsupported type: {self.Name}");
         }
+        */
 
 
         public PostgresType GetPostgresType( in PropertyInfo property, out bool isNullable, out int length )

@@ -8,11 +8,11 @@ public sealed record RoleRecord : OwnedTableRecord<RoleRecord>, ITableRecord<Rol
     public const string TABLE_NAME = "roles";
 
 
-    public static                                                                     string     TableName        => TABLE_NAME;
-    public                                                                            UserRights Rights           { get; set; }
-    [ColumnInfo(ColumnOptions.Indexed | ColumnOptions.Fixed, NAME)]            public string     NameOfRole       { get; init; }
-    [ColumnInfo(ColumnOptions.Indexed | ColumnOptions.Fixed, NORMALIZED_NAME)] public string     NormalizedName   { get; init; }
-    [ColumnInfo(CONCURRENCY_STAMP)]                                            public string     ConcurrencyStamp { get; init; }
+    public static                            string     TableName        => TABLE_NAME;
+    public                                   UserRights Rights           { get; set; }
+    [Fixed(NAME)] [Unique]            public string     NameOfRole       { get; init; }
+    [Fixed(NORMALIZED_NAME)] [Unique] public string     NormalizedName   { get; init; }
+    [Fixed(CONCURRENCY_STAMP)]        public string     ConcurrencyStamp { get; init; }
 
 
     public RoleRecord( IdentityRole role, RecordID<UserRecord> userID                              = default ) : this(role.Name ?? EMPTY, role.NormalizedName ?? EMPTY, role.ConcurrencyStamp ?? EMPTY, userID) { }

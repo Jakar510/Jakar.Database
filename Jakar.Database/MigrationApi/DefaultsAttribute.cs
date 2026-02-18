@@ -17,8 +17,8 @@ public enum ColumnDefaults
 [AttributeUsage(AttributeTargets.Property)]
 public sealed class DefaultsAttribute( string defaults ) : DatabaseAttribute
 {
-    public readonly string Defaults = defaults;
-    public          bool   IsValid { [MemberNotNullWhen(true, nameof(Defaults))] get => !string.IsNullOrWhiteSpace(Defaults); }
+    public readonly string Value = defaults;
+    public          bool   IsValid { [MemberNotNullWhen(true, nameof(Value))] get => !string.IsNullOrWhiteSpace(Value); }
     public DefaultsAttribute( ColumnDefaults defaults ) : this(defaults switch
                                                                {
                                                                    ColumnDefaults.Guid           => @"gen_random_uuid()",
@@ -29,5 +29,5 @@ public sealed class DefaultsAttribute( string defaults ) : DatabaseAttribute
                                                                }) { }
 
 
-    public override StringBuilder ToStringBuilder() => new(Defaults);
+    public override StringBuilder ToStringBuilder() => new(Value);
 }

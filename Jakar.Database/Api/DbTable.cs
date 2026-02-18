@@ -9,7 +9,7 @@ namespace Jakar.Database;
 public partial class DbTable<TSelf> : IDbTable<TSelf>
     where TSelf : PairRecord<TSelf>, ITableRecord<TSelf>
 {
-    protected readonly FusionCache        _cache;
+    protected readonly IFusionCache       _cache;
     protected readonly IConnectableDbRoot _database;
 
 
@@ -24,7 +24,7 @@ public partial class DbTable<TSelf> : IDbTable<TSelf>
     public string                          TableName                 { [Pure] get => TSelf.TableName; }
 
 
-    public DbTable( IConnectableDbRoot database, FusionCache cache )
+    public DbTable( IConnectableDbRoot database, IFusionCache cache )
     {
         _database = database;
         _cache    = cache;

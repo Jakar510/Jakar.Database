@@ -6,7 +6,7 @@ namespace Jakar.Database;
 
 public static class FusionCacheExtensions
 {
-    public static async ValueTask<ErrorOrResult<TResult>> GetOrCreateAsync<TArg, TResult>( this FusionCache cache, string idKey, TArg arg, Func<TArg, CancellationToken, ValueTask<ErrorOrResult<TResult>>> factory, FusionCacheEntryOptions? options, CancellationToken token )
+    public static async ValueTask<ErrorOrResult<TResult>> GetOrCreateAsync<TArg, TResult>( this IFusionCache cache, string idKey, TArg arg, Func<TArg, CancellationToken, ValueTask<ErrorOrResult<TResult>>> factory, FusionCacheEntryOptions? options, CancellationToken token )
     {
         MaybeValue<TResult> maybeValue = await cache.TryGetAsync<TResult>(idKey, options, token);
         if ( maybeValue.HasValue ) { return maybeValue.Value; }

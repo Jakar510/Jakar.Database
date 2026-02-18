@@ -116,7 +116,7 @@ public abstract record TableRecord<TSelf>( in DateTimeOffset DateCreated ) : IJs
 public abstract record LastModifiedRecord<TSelf> : TableRecord<TSelf>, ILastModified
     where TSelf : LastModifiedRecord<TSelf>, ITableRecord<TSelf>
 {
-    [ColumnInfo(ColumnOptions.Nullable)] public DateTimeOffset? LastModified { get => _lastModified; init => _lastModified = value; }
+    public DateTimeOffset? LastModified { get => _lastModified; init => _lastModified = value; }
 
 
     protected LastModifiedRecord( in DateTimeOffset dateCreated, in DateTimeOffset? lastModified ) : base(in dateCreated)
@@ -225,7 +225,7 @@ public interface IUserRecordID : IDateCreated, IUniqueID, IUserID
 public abstract record OwnedTableRecord<TSelf> : PairRecord<TSelf>, IUserRecordID
     where TSelf : OwnedTableRecord<TSelf>, ITableRecord<TSelf>
 {
-    [ColumnInfo(UserRecord.TABLE_NAME)] public virtual RecordID<UserRecord> UserID { get; init; }
+    [ForeignKey(UserRecord.TABLE_NAME)] public virtual RecordID<UserRecord> UserID { get; init; }
     Guid IUserID.                                                           UserID => UserID.Value;
 
 

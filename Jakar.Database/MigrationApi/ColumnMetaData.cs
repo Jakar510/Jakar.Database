@@ -28,11 +28,15 @@ public sealed class ColumnMetaData
     public readonly NpgsqlDbType         PostgresDbType;
     public readonly DefaultsAttribute?   Defaults;
     public readonly bool                 IsFixed;
-    public readonly SizeInfo             Length;
+    public readonly DbSizeAttribute?     Length;
 
 
-    public int  Index     { get; internal set; } = -1;
-    public bool IsIndexed { [MemberNotNullWhen(true, nameof(Indexed))] get => !string.IsNullOrWhiteSpace(Indexed?.Name); }
+    public int  Index                   { get; internal set; } = -1;
+    public bool IsColumnIndexed         { [MemberNotNullWhen(true, nameof(Indexed))] get => !string.IsNullOrWhiteSpace(Indexed?.Name); }
+    public bool HasForeignKeyConstraint { [MemberNotNullWhen(true, nameof(ForeignKey))] get => !string.IsNullOrWhiteSpace(ForeignKey?.ForeignTableName); }
+    public bool HasDefaultConstraint    { [MemberNotNullWhen(true, nameof(Defaults))] get => !string.IsNullOrWhiteSpace(Defaults?.Value); }
+    public bool HasCheckConstraint      { [MemberNotNullWhen(true, nameof(Checks))] get => Checks?.Constraints.Length is > 0; }
+    public bool HasLengthConstraint     { [MemberNotNullWhen(true, nameof(Length))] get => Length is not null; }
 
 
     public ColumnMetaData( in PropertyInfo property )
@@ -53,7 +57,8 @@ public sealed class ColumnMetaData
             Defaults          = property.GetCustomAttribute<DefaultsAttribute>();
             ForeignKey        = property.GetCustomAttribute<ForeignKeyAttribute>();
             Indexed           = property.GetCustomAttribute<IndexedAttribute>();
-            DataType          = property.GetPostgresDataType(out DbType, out PostgresDbType, out IsNullable, out Length);
+            Length            = property.GetCustomAttribute<DbSizeAttribute>();
+            DataType          = property.GetPostgresDataType(out DbType, out PostgresDbType, out IsNullable);
             PropertyName      = propertyName;
             ColumnName        = columnName;
             KeyValuePair      = $"{columnName} = @{columnName}";
@@ -61,7 +66,7 @@ public sealed class ColumnMetaData
 
             if ( IsPrimaryKey && ForeignKey?.IsValid is true ) { throw new ArgumentException($"Column '{propertyName}' has a PrimaryKey flag but {nameof(ForeignKey)} is invalid.", nameof(ForeignKey)); }
 
-            if ( ForeignKey?.IsValid is true && IsIndexed ) { throw new ArgumentException($"Column '{propertyName}' cannot be both Indexed and a ForeignKey columns are automatically indexed.", nameof(property)); }
+            if ( ForeignKey?.IsValid is true && IsColumnIndexed ) { throw new ArgumentException($"Column '{propertyName}' cannot be both Indexed and a ForeignKey columns are automatically indexed.", nameof(property)); }
         }
         catch ( Exception ex ) { throw new InvalidOperationException($"Failed to create ColumnMetaData for property '{property.DeclaringType?.FullName}.{property.Name}'.", ex); }
     }

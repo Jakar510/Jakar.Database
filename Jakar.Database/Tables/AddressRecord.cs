@@ -10,15 +10,15 @@ public sealed record AddressRecord : OwnedTableRecord<AddressRecord>, IAddress<A
     public const string TABLE_NAME = "addresses";
 
 
-    public static                                                            string  TableName       => TABLE_NAME;
-    [ProtectedPersonalData] [ColumnInfo(ColumnOptions.Indexed, 512)]  public string  Line1           { get;                           init; } = EMPTY;
-    [ProtectedPersonalData] [ColumnInfo(ColumnOptions.Indexed, 512)]  public string  Line2           { get;                           init; } = EMPTY;
-    [ProtectedPersonalData] [ColumnInfo(ColumnOptions.Indexed, 512)]  public string  City            { get;                           init; } = EMPTY;
-    [ProtectedPersonalData] [ColumnInfo(ColumnOptions.Indexed, 512)]  public string  StateOrProvince { get;                           init; } = EMPTY;
-    [ProtectedPersonalData] [ColumnInfo(ColumnOptions.Indexed, 512)]  public string  Country         { get;                           init; } = EMPTY;
-    [ProtectedPersonalData] [ColumnInfo(ColumnOptions.Indexed, 512)]  public string  PostalCode      { get;                           init; } = EMPTY;
-    [ProtectedPersonalData] [ColumnInfo(ColumnOptions.Indexed, 4096)] public string? Address         { get => field ??= GetAddress(); init; }
-    public                                                                   bool    IsPrimary       { get;                           init; }
+    public static                                                                   string  TableName       => TABLE_NAME;
+    [ProtectedPersonalData] [Indexed(nameof(Line1))] [Fixed(          512)]  public string  Line1           { get;                           init; } = EMPTY;
+    [ProtectedPersonalData] [Indexed(nameof(Line2))] [Fixed(          512)]  public string  Line2           { get;                           init; } = EMPTY;
+    [ProtectedPersonalData] [Indexed(nameof(City))] [Fixed(           512)]  public string  City            { get;                           init; } = EMPTY;
+    [ProtectedPersonalData] [Indexed(nameof(StateOrProvince))] [Fixed(512)]  public string  StateOrProvince { get;                           init; } = EMPTY;
+    [ProtectedPersonalData] [Indexed(nameof(Country))] [Fixed(        512)]  public string  Country         { get;                           init; } = EMPTY;
+    [ProtectedPersonalData] [Indexed(nameof(PostalCode))] [Fixed(     512)]  public string  PostalCode      { get;                           init; } = EMPTY;
+    [ProtectedPersonalData] [Indexed(nameof(Address))] [Fixed(        4096)] public string? Address         { get => field ??= GetAddress(); init; }
+    public                                                                          bool    IsPrimary       { get;                           init; }
 
 
     public AddressRecord( in RecordID<UserRecord> userID, in RecordID<AddressRecord> id, in DateTimeOffset dateCreated, in DateTimeOffset? lastModified = null, JObject? additionalData = null ) : base(in userID, in id, in dateCreated, in lastModified, additionalData) { }

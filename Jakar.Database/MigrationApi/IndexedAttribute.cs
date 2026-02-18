@@ -12,9 +12,8 @@ public enum ColumnIndex
 
 
 [AttributeUsage(AttributeTargets.Property)]
-public sealed class IndexedAttribute( string propertyName ) : DatabaseAttribute
+public sealed class IndexedAttribute( string propertyName ) : Attribute
 {
-    public readonly string PropertyName    = propertyName;
     public readonly string Name = propertyName.SqlColumnIndexName();
     public          bool   IsValid { [MemberNotNullWhen(true, nameof(Name))] get => !string.IsNullOrWhiteSpace(Name); }
     public IndexedAttribute( ColumnIndex defaults ) : this(defaults switch
@@ -22,7 +21,4 @@ public sealed class IndexedAttribute( string propertyName ) : DatabaseAttribute
                                                                ColumnIndex.NotSet => "",
                                                                _                  => throw new OutOfRangeException(defaults)
                                                            }) { }
-
-
-    public override StringBuilder ToStringBuilder() => new();
 }

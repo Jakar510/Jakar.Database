@@ -4,7 +4,7 @@
 namespace Jakar.Database;
 
 
-internal sealed class TestDatabase( IConfiguration configuration, IOptions<DbOptions> options, FusionCache cache ) : Database(configuration, options, cache), IAppID
+internal sealed class TestDatabase( IConfiguration configuration, IOptions<DbOptions> options, IFusionCache cache ) : Database(configuration, options, cache), IAppID
 {
     public static          Guid            AppID      { get; } = Guid.NewGuid();
     public static          string          AppName    => nameof(TestDatabase);
@@ -43,7 +43,13 @@ internal sealed class TestDatabase( IConfiguration configuration, IOptions<DbOpt
         WebApplicationBuilder      builder = Create();
         await using WebApplication app     = builder.Build();
 
-        app.UseDefaults();
+        app.UseStaticFiles();
+        app.UseRouting();
+        app.UseAuthentication();
+        app.UseAuthorization();
+        app.UseTelemetry();
+        app.UseHttpMetrics();
+        
 
         app.MapGet("/",     static () => DateTimeOffset.UtcNow);
         app.MapGet("/Ping", static () => DateTimeOffset.UtcNow);

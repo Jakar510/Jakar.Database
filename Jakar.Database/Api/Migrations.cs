@@ -95,8 +95,7 @@ public static class MigrationExtensions
                                                                            DbType.Object                => PostgresType.Json,
                                                                            _                            => throw new OutOfRangeException(type)
                                                                        };
-    public static PostgresType? ToDbPropertyType( this DbType?       type )                     => type?.ToDbPropertyType();
-    public static bool          HasFlagValue( this     ColumnOptions type, ColumnOptions flag ) => ( type & flag ) != 0;
+    public static PostgresType? ToDbPropertyType( this DbType? type ) => type?.ToDbPropertyType();
 }
 
 
@@ -119,7 +118,7 @@ public class MigrationManager
 
     public MigrationManager( Database db )
     {
-        _db = db;
+        _db                               = db;
         __migrationFactories[MigrationID] = MigrationRecord.AddPostgreSqlExtensions;
         if ( CreateDatabase is not null ) { __migrationFactories[MigrationID] = GetCreateDatabase; }
 

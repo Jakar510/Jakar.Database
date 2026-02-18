@@ -32,12 +32,12 @@ public sealed record MigrationRecord : TableRecord<MigrationRecord>, ITableRecor
     internal ulong MigrationIdValue;
 
 
-    public static                                   string         TableName   => TABLE_NAME;
-    public                                          DateTimeOffset AppliedOn   { get;                     init; } = DateTimeOffset.UtcNow;
-    public required                                 string         Description { get;                     init; }
-    [Key] public required                           ulong          MigrationID { get => MigrationIdValue; init => MigrationIdValue = value; }
-    public                                          string         SQL         { get;                     internal init; } = EMPTY;
-    [ColumnInfo(ColumnOptions.Indexed, 256)] public string?        TableID     { get;                     init; }
+    public static                                  string         TableName   => TABLE_NAME;
+    public                                         DateTimeOffset AppliedOn   { get;                     init; } = DateTimeOffset.UtcNow;
+    public required                                string         Description { get;                     init; }
+    [Key] public required                          ulong          MigrationID { get => MigrationIdValue; init => MigrationIdValue = value; }
+    public                                         string         SQL         { get;                     internal init; } = EMPTY;
+    [Indexed(nameof(TableID))] [Fixed(256)] public string?        TableID     { get;                     init; }
 
 
     [SetsRequiredMembers] internal MigrationRecord( ulong migrationID, string description, string? tableID = null ) : base(DateTimeOffset.UtcNow)

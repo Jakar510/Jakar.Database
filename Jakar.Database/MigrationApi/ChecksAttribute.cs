@@ -4,9 +4,9 @@
 [AttributeUsage(AttributeTargets.Property)]
 public sealed class ChecksAttribute( bool and, params string[] checks ) : DatabaseAttribute
 {
-    public readonly bool     And    = and;
-    public readonly string[] Checks = checks;
-    public          bool     IsValid { [MemberNotNullWhen(true, nameof(Checks))] get => Checks?.Length is > 0; }
+    public readonly bool                   And    = and;
+    public readonly ImmutableArray<string> Constraints = [..checks];
+    public          bool                   IsValid { [MemberNotNullWhen(true, nameof(Constraints))] get => Constraints.Length is > 0; }
 
 
     public ChecksAttribute( params string[] checks ) : this(true, checks) { }
@@ -18,14 +18,14 @@ public sealed class ChecksAttribute( bool and, params string[] checks ) : Databa
     public override StringBuilder ToStringBuilder()
     {
         StringBuilder sb = new(5 +
-                               Checks.AsValueEnumerable()
+                               Constraints.AsValueEnumerable()
                                      .Sum(static x => x.Length));
 
-        for ( int i = 0; i < Checks.Length; i++ )
+        for ( int i = 0; i < Constraints.Length; i++ )
         {
-            sb.Append(Checks[i]);
+            sb.Append(Constraints[i]);
 
-            if ( i < Checks.Length - 1 )
+            if ( i < Constraints.Length - 1 )
             {
                 sb.Append(And
                               ? " AND "

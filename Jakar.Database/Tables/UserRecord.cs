@@ -13,45 +13,45 @@ public sealed record UserRecord : PairRecord<UserRecord>, ITableRecord<UserRecor
     public const string TABLE_NAME = "users";
 
 
-    public static string                                                               TableName           => TABLE_NAME;
-    public        RecordID<UserRecord>?                                                EscalateTo          { get; set; }
-    Guid? IEscalateToUser<Guid>.                                                       EscalateTo          => EscalateTo?.Value;
-    Guid? IImageID<Guid>.                                                              ImageID             => ImageID?.Value;
-    [ColumnInfo(FileRecord.TABLE_NAME)] public RecordID<FileRecord>?                   ImageID             { get; set; }
-    public                                     bool                                    IsValid             => !string.IsNullOrWhiteSpace(UserName) && ID.IsValid();
-    public                                     SupportedLanguage                       PreferredLanguage   { get; set; }
-    public                                     DateTimeOffset?                         SubscriptionExpires { get; set; }
-    public                                     Guid?                                   SubscriptionID      { get; set; }
-    public                                     Guid                                    UserID              => ID.Value;
-    RecordID<UserRecord> IUserRecordID.                                                UserID              => ID;
-    [ColumnInfo(ColumnOptions.Fixed, USER_NAME)] [ProtectedPersonalData] public string UserName            { get; init; } = EMPTY;
+    public static string                                             TableName           => TABLE_NAME;
+    public        RecordID<UserRecord>?                              EscalateTo          { get; set; }
+    Guid? IEscalateToUser<Guid>.                                     EscalateTo          => EscalateTo?.Value;
+    Guid? IImageID<Guid>.                                            ImageID             => ImageID?.Value;
+    [ForeignKey(FileRecord.TABLE_NAME)] public RecordID<FileRecord>? ImageID             { get; set; }
+    public                                     bool                  IsValid             => !string.IsNullOrWhiteSpace(UserName) && ID.IsValid();
+    public                                     SupportedLanguage     PreferredLanguage   { get; set; }
+    public                                     DateTimeOffset?       SubscriptionExpires { get; set; }
+    public                                     Guid?                 SubscriptionID      { get; set; }
+    public                                     Guid                  UserID              => ID.Value;
+    RecordID<UserRecord> IUserRecordID.                              UserID              => ID;
+    [Fixed(USER_NAME)] [ProtectedPersonalData] public string         UserName            { get; init; } = EMPTY;
 
 
 
     #region Security
 
-    public                                 UserRights Rights           { get; set; } = new();
-    [ColumnInfo(AUTHENTICATOR_KEY)] public string?    AuthenticatorKey { get; set; } = EMPTY;
-    public                                 int?       BadLogins        { get; set; }
+    public                            UserRights Rights           { get; set; } = new();
+    [Fixed(AUTHENTICATOR_KEY)] public string?    AuthenticatorKey { get; set; } = EMPTY;
+    public                            int?       BadLogins        { get; set; }
 
     /// <summary> A random value that must change whenever a user is persisted to the store </summary>
-    [ColumnInfo(CONCURRENCY_STAMP)] public string? ConcurrencyStamp { get; set; } = EMPTY;
+    [Fixed(CONCURRENCY_STAMP)] public string? ConcurrencyStamp { get; set; } = EMPTY;
 
-    public                                           bool            IsActive               { get; set; }
-    public                                           bool            IsDisabled             { get; set; }
-    public                                           bool            IsEmailConfirmed       { get; set; }
-    public                                           bool            IsLocked               { get; set; }
-    public                                           bool            IsPhoneNumberConfirmed { get; set; }
-    public                                           bool            IsTwoFactorEnabled     { get; set; }
-    public                                           DateTimeOffset? LastBadAttempt         { get; set; }
-    public                                           DateTimeOffset? LastLogin              { get; set; }
-    public                                           DateTimeOffset? LockDate               { get; set; }
-    public                                           DateTimeOffset? LockoutEnd             { get; set; }
-    [ColumnInfo(ENCRYPTED_MAX_PASSWORD_SIZE)] public string?         PasswordHash           { get; set; }
-    [ColumnInfo(REFRESH_TOKEN)]               public string?         RefreshTokenHash       { get; set; }
-    public                                           DateTimeOffset? RefreshTokenExpiryTime { get; set; }
-    [ColumnInfo(SECURITY_STAMP)] public              string?         SecurityStamp          { get; set; }
-    public                                           Guid?           SessionID              { get; set; }
+    public                                      bool            IsActive               { get; set; }
+    public                                      bool            IsDisabled             { get; set; }
+    public                                      bool            IsEmailConfirmed       { get; set; }
+    public                                      bool            IsLocked               { get; set; }
+    public                                      bool            IsPhoneNumberConfirmed { get; set; }
+    public                                      bool            IsTwoFactorEnabled     { get; set; }
+    public                                      DateTimeOffset? LastBadAttempt         { get; set; }
+    public                                      DateTimeOffset? LastLogin              { get; set; }
+    public                                      DateTimeOffset? LockDate               { get; set; }
+    public                                      DateTimeOffset? LockoutEnd             { get; set; }
+    [Fixed(ENCRYPTED_MAX_PASSWORD_SIZE)] public string?         PasswordHash           { get; set; }
+    [Fixed(REFRESH_TOKEN)]               public string?         RefreshTokenHash       { get; set; }
+    public                                      DateTimeOffset? RefreshTokenExpiryTime { get; set; }
+    [Fixed(SECURITY_STAMP)] public              string?         SecurityStamp          { get; set; }
+    public                                      Guid?           SessionID              { get; set; }
 
     #endregion Security
 
@@ -59,19 +59,19 @@ public sealed record UserRecord : PairRecord<UserRecord>, ITableRecord<UserRecor
 
     #region Details
 
-    [ColumnInfo(ColumnOptions.Fixed, COMPANY)] [ProtectedPersonalData] public string?                            Company     { get; set; } = EMPTY;
-    Guid? ICreatedByUser<Guid>.                                                                                  CreatedBy   => EscalateTo?.Value;
-    [ColumnInfo(DEPARTMENT)]                                                                      public string? Department  { get; set; } = EMPTY;
-    [ColumnInfo(DESCRIPTION)]                                                                     public string? Description { get; set; }
-    [ColumnInfo(ColumnOptions.Indexed | ColumnOptions.Fixed, EMAIL)] [ProtectedPersonalData]      public string? Email       { get; set; } = EMPTY;
-    [ColumnInfo(WEBSITE)] [ProtectedPersonalData]                                                 public string? Website     { get; set; } = EMPTY;
-    [ColumnInfo(ColumnOptions.Indexed | ColumnOptions.Fixed, LAST_NAME)] [ProtectedPersonalData]  public string? LastName    { get; set; } = EMPTY;
-    [ColumnInfo(ColumnOptions.Indexed | ColumnOptions.Fixed, PHONE)] [ProtectedPersonalData]      public string? PhoneNumber { get; set; } = EMPTY;
-    [ColumnInfo(PHONE_EXT)] [ProtectedPersonalData]                                               public string? Ext         { get; set; } = EMPTY;
-    [ColumnInfo(TITLE)]                                                                           public string? Title       { get; set; } = EMPTY;
-    [ColumnInfo(ColumnOptions.Indexed | ColumnOptions.Fixed, FIRST_NAME)] [ProtectedPersonalData] public string? FirstName   { get; set; } = EMPTY;
-    [ColumnInfo(ColumnOptions.Indexed | ColumnOptions.Fixed, FULL_NAME)] [ProtectedPersonalData]  public string? FullName    { get; set; } = EMPTY;
-    [ColumnInfo(ColumnOptions.Indexed | ColumnOptions.Fixed, GENDER)] [ProtectedPersonalData]     public string? Gender      { get; set; } = EMPTY;
+    [Fixed(COMPANY)] [ProtectedPersonalData] public string?                                  Company     { get; set; } = EMPTY;
+    Guid? ICreatedByUser<Guid>.                                                              CreatedBy   => EscalateTo?.Value;
+    [Fixed(DEPARTMENT)]                                                       public string? Department  { get; set; } = EMPTY;
+    [Fixed(DESCRIPTION)]                                                      public string? Description { get; set; }
+    [Fixed(EMAIL)] [Indexed(nameof(Email))] [ProtectedPersonalData]           public string? Email       { get; set; } = EMPTY;
+    [Fixed(WEBSITE)] [ProtectedPersonalData]                                  public string? Website     { get; set; } = EMPTY;
+    [Fixed(LAST_NAME)] [Indexed(nameof(LastName))] [ProtectedPersonalData]    public string? LastName    { get; set; } = EMPTY;
+    [Fixed(PHONE)] [Indexed(    nameof(PhoneNumber))] [ProtectedPersonalData] public string? PhoneNumber { get; set; } = EMPTY;
+    [Fixed(PHONE_EXT)] [ProtectedPersonalData]                                public string? Ext         { get; set; } = EMPTY;
+    [Fixed(TITLE)]                                                            public string? Title       { get; set; } = EMPTY;
+    [Fixed(FIRST_NAME)] [Indexed(nameof(FirstName))] [ProtectedPersonalData]  public string? FirstName   { get; set; } = EMPTY;
+    [Fixed(FULL_NAME)] [Indexed( nameof(FullName))] [ProtectedPersonalData]   public string? FullName    { get; set; } = EMPTY;
+    [Fixed(GENDER)] [ProtectedPersonalData]                                   public string? Gender      { get; set; } = EMPTY;
 
     #endregion Details
 

@@ -4,7 +4,7 @@
 namespace SampleApi;
 
 
-internal sealed class SampleDatabase( IConfiguration configuration, IOptions<DbOptions> options, FusionCache cache ) : Database(configuration, options, cache), IAppID
+internal sealed class SampleDatabase( IConfiguration configuration, IOptions<DbOptions> options, IFusionCache cache ) : Database(configuration, options, cache), IAppID
 {
     public static Guid       AppID      { get; } = Guid.NewGuid();
     public static string     AppName    => nameof(SampleDatabase);

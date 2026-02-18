@@ -225,7 +225,7 @@ public class TableMetaData<TSelf> : ITableMetaData
     {
         return properties.OrderBy(static pair => pair.Value.DbType, PostgresTypeComparer.Instance)
                          .ThenBy(static pair => pair.Value.IsFixed,    InvertedBoolComparer.Instance)
-                         .ThenBy(static pair => pair.Value.Length,     Comparer<SizeInfo?>.Default)
+                         .ThenBy(static pair => pair.Value.Length,     Comparer<DbSizeAttribute?>.Default)
                          .ThenBy(static pair => pair.Value.ColumnName, StringComparer.InvariantCultureIgnoreCase);
     }
 
@@ -337,7 +337,7 @@ public class TableMetaData<TSelf> : ITableMetaData
                     query.AppendJoin(column.Checks.And
                                          ? AND
                                          : OR,
-                                     column.Checks.Checks);
+                                     column.Checks.Constraints);
 
                     query.Append(" )");
                 }
@@ -345,7 +345,7 @@ public class TableMetaData<TSelf> : ITableMetaData
                 if ( column.Defaults?.IsValid is true )
                 {
                     query.Append(" DEFAULTS ");
-                    query.Append(column.Defaults.Defaults);
+                    query.Append(column.Defaults.Value);
                 }
             }
 
@@ -362,14 +362,14 @@ public class TableMetaData<TSelf> : ITableMetaData
                 ForeignKeyAttribute foreignKeyName = Validate.ThrowIfNull(column.ForeignKey);
                 query.Append($"    FOREIGN KEY ({column.ColumnName}) REFERENCES {foreignKeyName.ForeignTableName}({nameof(IUniqueID.ID).SqlColumnName()})");
 
-                if ( !foreignKeyName.IsValid )
+                if ( !foreignKeyName.HasModifier )
                 {
                     query.Append(',');
                     continue;
                 }
 
                 query.Append(' ');
-                query.Append(foreignKeyName.OnAction);
+                query.Append(foreignKeyName.Modifier);
                 query.Append(',');
             }
 
@@ -411,7 +411,7 @@ public class TableMetaData<TSelf> : ITableMetaData
 
         foreach ( ColumnMetaData column in Instance )
         {
-            if ( !column.IsIndexed ) { continue; }
+            if ( !column.IsColumnIndexed ) { continue; }
 
             query.Append($"CREATE INDEX IF NOT EXISTS {column.IndexColumnName_Padded(Instance)} ON {tableName}({column.ColumnName});\n");
         }

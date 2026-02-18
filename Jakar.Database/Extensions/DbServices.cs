@@ -192,11 +192,11 @@ public static class DbServices
             where TAuthenticatorTokenProvider : OtpAuthenticatorTokenProvider
         {
             self.Services.AddSingleton(options);
-            self.Services.AddTransient<IOptions<DbOptions>>(static provider => provider.GetRequiredService<DbOptions>());
+            self.Services.AddScoped<IOptions<DbOptions>>(static provider => provider.GetRequiredService<DbOptions>());
 
-            self.AddOpenTelemetry<TestDatabase>(tracerOtlpExporter => { }, meterOtlpExporter => { });
+            self.AddOpenTelemetry<TestDatabase>(options);
 
-            self.AddSerilog(options.LoggerOptions, Validate.ThrowIfNull(options.TelemetrySource), options.SeqConfig, out Logger logger);
+            self.AddSerilog(options, out Logger logger);
             options.Serilogger = logger;
 
             options.ConfigureFusionCache(self.Services.AddFusionCache());

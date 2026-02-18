@@ -187,8 +187,8 @@ public abstract record Mapping<TSelf, TKey, TValue> : TableRecord<TSelf>
                       SELECT * FROM {TValue.TableName} v
                       LEFT JOIN {TSelf.TableName} s
                       WHERE 
-                      v.{ColumnMetaData.ID.ColumnName} != s.{nameof(ValueID).SqlColumnName()} 
-                      AND v.{ColumnMetaData.ID.ColumnName} IN ( {ids} )
+                      v.{nameof(IUniqueID.ID).SqlColumnName()} != s.{nameof(ValueID).SqlColumnName()} 
+                      AND v.{nameof(IUniqueID.ID).SqlColumnName()} IN ( {ids} )
                       AND s.{nameof(ValueID).SqlColumnName()} NOT IN ( {ids} ) 
                       AND s.{nameof(KeyID).SqlColumnName()} = '{key.Value}'
                       """;
@@ -290,7 +290,7 @@ public abstract record Mapping<TSelf, TKey, TValue> : TableRecord<TSelf>
     {
         string sql = $"""
                       SELECT * FROM {TValue.TableName} v
-                      INNER JOIN {TSelf.TableName} s ON s.{nameof(ValueID).SqlColumnName()} = v.{ColumnMetaData.ID.ColumnName} 
+                      INNER JOIN {TSelf.TableName} s ON s.{nameof(ValueID).SqlColumnName()} = v.{nameof(IUniqueID.ID).SqlColumnName()} 
                       WHERE s.{nameof(KeyID).SqlColumnName()} = '{key.Value}'
                       """;
 
@@ -300,7 +300,7 @@ public abstract record Mapping<TSelf, TKey, TValue> : TableRecord<TSelf>
     {
         string sql = $"""
                       SELECT * FROM {TKey.TableName} k
-                      INNER JOIN {TSelf.TableName} s ON s.{nameof(KeyID).SqlColumnName()} = k.{ColumnMetaData.ID.ColumnName} 
+                      INNER JOIN {TSelf.TableName} s ON s.{nameof(KeyID).SqlColumnName()} = k.{nameof(IUniqueID.ID).SqlColumnName()} 
                       WHERE s.{nameof(ValueID).SqlColumnName()} = '{value.Value}'
                       """;
 

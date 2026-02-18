@@ -53,17 +53,6 @@ public static class Telemetry
 
     extension( WebApplication self )
     {
-        public WebApplication UseDefaults() => self.UseDefaults("/_metrics");
-        public WebApplication UseDefaults( OneOf<string, Func<HttpContext, bool>, (MeterProvider meterProvider, Func<HttpContext, bool> predicate, Action<IApplicationBuilder> configureBranchedPipeline, string optionsName, string path)> telemetry )
-        {
-            self.UseStaticFiles();
-            self.UseRouting();
-            self.UseHttpMetrics();
-            self.UseAuthentication();
-            self.UseAuthorization();
-            telemetry.Switch(path => self.UseTelemetry(path), predicate => self.UseTelemetry(predicate), t => self.UseTelemetry(t.meterProvider, t.predicate, t.configureBranchedPipeline, t.optionsName, t.path));
-            return self;
-        }
         public WebApplication UseTelemetry( string path = "/metrics" )
         {
             self.UseOpenTelemetryPrometheusScrapingEndpoint(path);
@@ -85,25 +74,30 @@ public static class Telemetry
 
     extension( WebApplicationBuilder self )
     {
-        public WebApplicationBuilder AddSerilog( AppLoggerOptions options, TelemetrySource source, SeqConfig? seqConfig, out Logger logger )
+        public WebApplicationBuilder AddSerilog( DbOptions dbOptions, out Logger logger )
         {
             LoggerConfiguration config = new();
+
             config.MinimumLevel.Verbose();
             config.MinimumLevel.Override(nameof(Microsoft), LogEventLevel.Warning);
-            config.Enrich.FromLogContext();
 
-            OpenTelemetryActivityEnricher enricher = new(options, source);
-            config.Enrich.With(enricher);
+            config.Enrich.FromLogContext();
+            config.Enrich.With(dbOptions.ActivityEnricher);
+
+        #if DEBUG
+            config.WriteTo.Debug();
+        #endif
 
             config.WriteTo.Console();
 
-            seqConfig?.Configure(config.WriteTo);
+            dbOptions.SeqConfig?.Configure(config.WriteTo);
+            dbOptions.ConfigureLoggerConfiguration?.Invoke(config);
 
             logger     = config.CreateLogger();
             Log.Logger = logger;
             return self;
         }
-        public WebApplicationBuilder AddOpenTelemetry<TApp>( Action<OtlpExporterOptions> tracerOtlpExporter, Action<OtlpExporterOptions> meterOtlpExporter, Action<LoggerProviderBuilder>? configureBuilder = null, Action<OpenTelemetryLoggerOptions>? configureOptions = null )
+        public WebApplicationBuilder AddOpenTelemetry<TApp>( DbOptions options )
             where TApp : IAppID
         {
             KeyValuePair<string, object>[] attributes = [new(ATTRIBUTE_SERVICE_NAME, TApp.AppName), new(ATTRIBUTE_SERVICE_VERSION, TApp.AppVersion.ToString()), new(ATTRIBUTE_SERVICE_INSTANCE, TApp.AppID.ToString()), new(ATTRIBUTE_SERVICE_NAMESPACE, typeof(TApp).Namespace ?? EMPTY)];
@@ -112,14 +106,14 @@ public static class Telemetry
                                                        .AddAttributes(attributes)
                                                        .AddTelemetrySdk()
                                                        .AddEnvironmentVariableDetector()
-                                                       .AddService(TApp.AppName, null, TApp.AppVersion.ToString())
+                                                       .AddService(TApp.AppName, typeof(TApp).Namespace, TApp.AppVersion.ToString())
                                                        .AddService(METER_NAME);
 
 
             self.Services.AddOpenTelemetry()
                 .WithTracing(configureTracing)
                 .WithMetrics(configureMetrics)
-                .WithLogging(configureBuilder, configureOptions);
+                .WithLogging(options.ConfigureLoggerProviderBuilder, options.ConfigureOpenTelemetryLogger);
 
             self.Services.AddOpenApi();
             return self;
@@ -133,8 +127,10 @@ public static class Telemetry
                                     .AddFusionCacheInstrumentation()
                                     .AddMeter(METER_NAME)
                                     .SetResourceBuilder(resources)
-                                    .AddOtlpExporter(meterOtlpExporter)
-                                    .AddConsoleExporter();
+                                    .AddConsoleExporter()
+                                    .AddPrometheusExporter();
+
+                if ( options.ConfigureMeterOtlpExporter is not null ) { meterProviderBuilder.AddOtlpExporter(options.ConfigureMeterOtlpExporter); }
             }
 
             void configureTracing( TracerProviderBuilder tracerProviderBuilder )
@@ -145,8 +141,9 @@ public static class Telemetry
                                      .AddFusionCacheInstrumentation()
                                      .AddSource(METER_NAME)
                                      .SetResourceBuilder(resources)
-                                     .AddOtlpExporter(tracerOtlpExporter)
                                      .AddConsoleExporter();
+
+                if ( options.ConfigureTracerOtlpExporter is not null ) { tracerProviderBuilder.AddOtlpExporter(options.ConfigureTracerOtlpExporter); }
             }
         }
     }

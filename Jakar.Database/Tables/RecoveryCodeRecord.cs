@@ -12,8 +12,8 @@ public sealed record RecoveryCodeRecord : OwnedTableRecord<RecoveryCodeRecord>, 
     private static readonly PasswordHasher<RecoveryCodeRecord> __hasher   = new();
 
 
-    public static                              string TableName => TABLE_NAME;
-    [ColumnInfo(ColumnOptions.Indexed)] public string Code      { get; init; }
+    public static   string TableName => TABLE_NAME;
+    [Unique] public string Code      { get; init; }
 
 
     public RecoveryCodeRecord( string code, UserRecord                   user ) : this(code, RecordID<RecoveryCodeRecord>.New(), user.ID, DateTimeOffset.UtcNow) { }

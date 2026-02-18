@@ -44,6 +44,7 @@ public sealed class DbOptions : IOptions<DbOptions>
     public          Action<OpenTelemetryLoggerOptions>?                     ConfigureOpenTelemetryLogger    { get;                                                  set; }
     public          Action<RedisBackplaneOptions>?                          ConfigureRedisBackplane         { get;                                                  set; }
     public          Action<OtlpExporterOptions>?                            ConfigureTracerOtlpExporter     { get;                                                  set; }
+    public          Action<LoggerConfiguration>?                            ConfigureLoggerConfiguration    { get;                                                  set; }
     public required SecuredStringResolverOptions                            ConnectionStringResolver        { get;                                                  set; } = (Func<IConfiguration, SecuredString>)GetConnectionString;
     public          (LocalFile Pem, SecuredStringResolverOptions Password)? DataProtectorKey                { get;                                                  set; }
     public          Uri                                                     Domain                          { get;                                                  set; } = Local_433;
@@ -58,6 +59,7 @@ public sealed class DbOptions : IOptions<DbOptions>
     public required string                                                  TokenIssuer                     { get;                                                  set; }
     public          string                                                  UserExists                      { get;                                                  set; } = USER_EXISTS;
     DbOptions IOptions<DbOptions>.                                          Value                           => this;
+    public OpenTelemetryActivityEnricher                                    ActivityEnricher                { [Pure] get => new(LoggerOptions, TelemetrySource); }
 
 
     public DbOptions() => ConfigureIdentityOptions = DefaultConfigureIdentityOptions;
