@@ -1,5 +1,4 @@
-﻿using Jakar.Database.Resx;
-using ZXing;
+﻿using ZXing;
 
 
 

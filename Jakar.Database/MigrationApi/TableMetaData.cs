@@ -115,7 +115,7 @@ public class TableMetaData<TSelf> : ITableMetaData
     public TableExtrasAttribute? Extras          { get; init; }
     public int                   ForeignKeyCount { get; }
 
-    public ValueEnumerable<Where<FromImmutableArray<ColumnMetaData>, ColumnMetaData>, ColumnMetaData> ForeignKeys => Columns.Where(static x => x.ForeignKeyName.IsValid);
+    public ValueEnumerable<Where<FromImmutableArray<ColumnMetaData>, ColumnMetaData>, ColumnMetaData> ForeignKeys => Columns.Where(static x => x.ForeignKey?.IsValid is true);
 
     FrozenDictionary<int, string> ITableMetaData.Indexes => Indexes;
     public ref readonly ColumnMetaData this[ string propertyName ] => ref Properties[propertyName];
@@ -148,12 +148,12 @@ public class TableMetaData<TSelf> : ITableMetaData
     {
         Properties                = properties;
         Indexes                   = CreateAndValidateIndexes(in properties);
-        MaxLength_IndexColumnName = properties.Values.Max(static x => x.IndexColumnName?.Length ?? 0);
+        MaxLength_IndexColumnName = properties.Values.Max(static x => x.Indexed?.Name.Length ?? 0);
         MaxLength_KeyValuePair    = properties.Values.Max(static x => x.KeyValuePair.Length);
         MaxLength_Variables       = properties.Values.Max(static x => x.VariableName.Length);
         MaxLength_ColumnName      = properties.Values.Max(static x => x.ColumnName.Length);
         MaxLength_DataType        = properties.Values.Max(static x => x.DataType.Length);
-        ForeignKeyCount           = properties.Values.Count(static x => x.ForeignKeyName.IsValid);
+        ForeignKeyCount           = properties.Values.Count(static x => x.ForeignKey?.IsValid is true);
         Count                     = properties.Count;
     }
 
@@ -334,10 +334,10 @@ public class TableMetaData<TSelf> : ITableMetaData
                 {
                     query.Append(" CHECK ( ");
 
-                    query.AppendJoin(column.Checks.Value.And
+                    query.AppendJoin(column.Checks.And
                                          ? AND
                                          : OR,
-                                     column.Checks.Value.Checks);
+                                     column.Checks.Checks);
 
                     query.Append(" )");
                 }
@@ -345,7 +345,7 @@ public class TableMetaData<TSelf> : ITableMetaData
                 if ( column.Defaults?.IsValid is true )
                 {
                     query.Append(" DEFAULTS ");
-                    query.Append(column.Defaults.Value.Defaults);
+                    query.Append(column.Defaults.Defaults);
                 }
             }
 
@@ -359,17 +359,17 @@ public class TableMetaData<TSelf> : ITableMetaData
             foreach ( ColumnMetaData column in Instance.ForeignKeys )
             {
                 query.Append('\n');
-                ForeignKeyInfo foreignKeyName = column.ForeignKeyName;
-                query.Append($"    FOREIGN KEY ({column.ColumnName}) REFERENCES {foreignKeyName.ForeignTableName}({ColumnMetaData.ID.ColumnName})");
+                ForeignKeyAttribute foreignKeyName = Validate.ThrowIfNull(column.ForeignKey);
+                query.Append($"    FOREIGN KEY ({column.ColumnName}) REFERENCES {foreignKeyName.ForeignTableName}({nameof(IUniqueID.ID).SqlColumnName()})");
 
-                if ( !foreignKeyName.Info.IsValid )
+                if ( !foreignKeyName.IsValid )
                 {
                     query.Append(',');
                     continue;
                 }
 
                 query.Append(' ');
-                query.Append(foreignKeyName.Info.Action);
+                query.Append(foreignKeyName.OnAction);
                 query.Append(',');
             }
 

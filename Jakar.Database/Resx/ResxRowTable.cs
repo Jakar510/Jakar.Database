@@ -1,4 +1,4 @@
-﻿namespace Jakar.Database.Resx;
+﻿namespace Jakar.Database;
 
 
 /// <see cref="ResxString"/>

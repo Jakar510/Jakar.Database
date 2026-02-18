@@ -1,7 +1,7 @@
 ﻿// Jakar.Extensions :: Jakar.Database.Resx
 // 10/07/2022  9:53 PM
 
-namespace Jakar.Database.Resx;
+namespace Jakar.Database;
 
 
 public interface IResxCollection : IReadOnlyCollection<ResxRowRecord>

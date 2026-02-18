@@ -1,4 +1,4 @@
-﻿namespace Jakar.Database.Resx;
+﻿namespace Jakar.Database;
 
 
 public sealed class ResxCollection : IResxCollection

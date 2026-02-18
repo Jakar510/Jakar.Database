@@ -1,6 +1,7 @@
 ﻿namespace Jakar.Database;
 
 
+/*
 [AttributeUsage(AttributeTargets.Property)]
 public sealed class ColumnInfoAttribute : Attribute
 {
@@ -29,3 +30,4 @@ public sealed class ColumnInfoAttribute : Attribute
         Options    = options;
     }
 }
+*/

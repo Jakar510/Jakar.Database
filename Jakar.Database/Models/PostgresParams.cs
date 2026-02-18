@@ -6,6 +6,7 @@ namespace Jakar.Database;
 
 public static class PostgresParams
 {
+    private static readonly ConcurrentDictionary<string, string> __paddedCache             = new(StringComparer.InvariantCultureIgnoreCase);
     private static readonly ConcurrentDictionary<string, string> __indexNameSnakeCaseCache = new(StringComparer.InvariantCultureIgnoreCase);
     private static readonly ConcurrentDictionary<string, string> __nameSnakeCaseCache = new(StringComparer.InvariantCultureIgnoreCase)
                                                                                         {
@@ -30,10 +31,11 @@ public static class PostgresParams
 
     extension( string name )
     {
-        public string SqlColumnName()      => __nameSnakeCaseCache.GetOrAdd(name, Strings.ToSnakeCase);
-        public string SqlColumnIndexName() => __indexNameSnakeCaseCache.GetOrAdd(name, static x => $"{x.SqlColumnName()}_index");
-        public string? SqlColumnIndexName( in ColumnOptions options ) => options.HasFlagValue(ColumnOptions.Indexed)
-                                                                             ? name.SqlColumnIndexName()
-                                                                             : null;
+        public string GetPadded( int maxLength ) => __paddedCache.GetOrAdd(name, static ( x, maxLength ) => x.PadRight(maxLength), maxLength);
+        public string SqlColumnName()            => __nameSnakeCaseCache.GetOrAdd(name, Strings.ToSnakeCase);
+        public string SqlColumnIndexName()       => __indexNameSnakeCaseCache.GetOrAdd(name, static x => $"{x.SqlColumnName()}_index");
+        public string? SqlColumnIndexName( bool isIndexed ) => isIndexed
+                                                                   ? name.SqlColumnIndexName()
+                                                                   : null;
     }
 }

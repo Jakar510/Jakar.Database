@@ -125,15 +125,7 @@ public static partial class DbExtensions
             if ( passed ) { await transaction.CommitAsync(token); }
             else { await transaction.RollbackAsync(token); }
         }
-        public async IAsyncEnumerable<ErrorOrResult<TResult>> TryCall<TArg1, TArg2, TArg3, TArg4, TArg5, TArg6, TResult>( Func<NpgsqlConnection, NpgsqlTransaction, TArg1, TArg2, TArg3, TArg4, TArg5, TArg6, CancellationToken, IAsyncEnumerable<ErrorOrResult<TResult>>> func,
-                                                                                                                          TArg1                                                                                                                                            arg1,
-                                                                                                                          TArg2                                                                                                                                            arg2,
-                                                                                                                          TArg3                                                                                                                                            arg3,
-                                                                                                                          TArg4                                                                                                                                            arg4,
-                                                                                                                          TArg5                                                                                                                                            arg5,
-                                                                                                                          TArg6                                                                                                                                            arg6,
-                                                                                                                          [EnumeratorCancellation] CancellationToken                                                                                                       token
-        )
+        public async IAsyncEnumerable<ErrorOrResult<TResult>> TryCall<TArg1, TArg2, TArg3, TArg4, TArg5, TArg6, TResult>( Func<NpgsqlConnection, NpgsqlTransaction, TArg1, TArg2, TArg3, TArg4, TArg5, TArg6, CancellationToken, IAsyncEnumerable<ErrorOrResult<TResult>>> func, TArg1 arg1, TArg2 arg2, TArg3 arg3, TArg4 arg4, TArg5 arg5, TArg6 arg6, [EnumeratorCancellation] CancellationToken token )
         {
             await using NpgsqlConnection             connection  = await self.ConnectAsync(token);
             await using NpgsqlTransaction            transaction = await connection.BeginTransactionAsync(self.TransactionIsolationLevel, token);
@@ -352,16 +344,7 @@ public static partial class DbExtensions
                 throw;
             }
         }
-        public async ValueTask<ErrorOrResult<TResult>> TryCall<TArg1, TArg2, TArg3, TArg4, TArg5, TArg6, TArg7, TResult>( Func<NpgsqlConnection, NpgsqlTransaction, TArg1, TArg2, TArg3, TArg4, TArg5, TArg6, TArg7, CancellationToken, ValueTask<ErrorOrResult<TResult>>> func,
-                                                                                                                          TArg1                                                                                                                                            arg1,
-                                                                                                                          TArg2                                                                                                                                            arg2,
-                                                                                                                          TArg3                                                                                                                                            arg3,
-                                                                                                                          TArg4                                                                                                                                            arg4,
-                                                                                                                          TArg5                                                                                                                                            arg5,
-                                                                                                                          TArg6                                                                                                                                            arg6,
-                                                                                                                          TArg7                                                                                                                                            arg7,
-                                                                                                                          CancellationToken                                                                                                                                token
-        )
+        public async ValueTask<ErrorOrResult<TResult>> TryCall<TArg1, TArg2, TArg3, TArg4, TArg5, TArg6, TArg7, TResult>( Func<NpgsqlConnection, NpgsqlTransaction, TArg1, TArg2, TArg3, TArg4, TArg5, TArg6, TArg7, CancellationToken, ValueTask<ErrorOrResult<TResult>>> func, TArg1 arg1, TArg2 arg2, TArg3 arg3, TArg4 arg4, TArg5 arg5, TArg6 arg6, TArg7 arg7, CancellationToken token )
         {
             await using NpgsqlConnection  connection  = await self.ConnectAsync(token);
             await using NpgsqlTransaction transaction = await connection.BeginTransactionAsync(self.TransactionIsolationLevel, token);

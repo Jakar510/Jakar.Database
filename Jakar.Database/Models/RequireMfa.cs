@@ -6,5 +6,5 @@ namespace Jakar.Database;
 
 public sealed class RequireMfa : IAuthorizationRequirement
 {
-    public static RequireMfa Instance { get; } = new();
+    public static readonly RequireMfa Instance = new();
 }

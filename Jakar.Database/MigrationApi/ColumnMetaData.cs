@@ -1,0 +1,129 @@
+﻿using System;
+using System.Data;
+using System.Data.SqlTypes;
+using Org.BouncyCastle.Asn1.Cms;
+
+
+
+namespace Jakar.Database;
+
+
+[SuppressMessage("ReSharper", "InconsistentNaming")]
+public sealed class ColumnMetaData
+{
+    public readonly bool                 IsNullable;
+    public readonly bool                 IsPrimaryKey;
+    public readonly bool                 IsUnique;
+    public readonly bool                 IsAlwaysIdentity;
+    public readonly bool                 IsDefaultIdentity;
+    public readonly ChecksAttribute?     Checks;
+    public readonly PostgresType         DbType;
+    public readonly string               ColumnName;
+    public readonly string               KeyValuePair;
+    public readonly string               PropertyName;
+    public readonly string               VariableName;
+    public readonly ForeignKeyAttribute? ForeignKey;
+    public readonly IndexedAttribute?    Indexed;
+    public readonly string               DataType;
+    public readonly NpgsqlDbType         PostgresDbType;
+    public readonly DefaultsAttribute?   Defaults;
+    public readonly bool                 IsFixed;
+    public readonly SizeInfo             Length;
+
+
+    public int  Index     { get; internal set; } = -1;
+    public bool IsIndexed { [MemberNotNullWhen(true, nameof(Indexed))] get => !string.IsNullOrWhiteSpace(Indexed?.Name); }
+
+
+    public ColumnMetaData( in PropertyInfo property )
+    {
+        try
+        {
+            ArgumentNullException.ThrowIfNull(property);
+            string propertyName = property.Name;
+            ArgumentException.ThrowIfNullOrWhiteSpace(propertyName);
+            string columnName = Validate.ThrowIfNull(propertyName.SqlColumnName());
+
+            IsPrimaryKey      = IsDbKey(property);
+            IsFixed           = property.GetCustomAttribute<FixedAttribute>() is not null;
+            IsDefaultIdentity = property.GetCustomAttribute<DefaultIdentityAttribute>() is not null;
+            IsAlwaysIdentity  = property.GetCustomAttribute<AlwaysIdentityAttribute>() is not null;
+            IsUnique          = property.GetCustomAttribute<UniqueAttribute>() is not null;
+            Checks            = property.GetCustomAttribute<ChecksAttribute>();
+            Defaults          = property.GetCustomAttribute<DefaultsAttribute>();
+            ForeignKey        = property.GetCustomAttribute<ForeignKeyAttribute>();
+            Indexed           = property.GetCustomAttribute<IndexedAttribute>();
+            DataType          = property.GetPostgresDataType(out DbType, out PostgresDbType, out IsNullable, out Length);
+            PropertyName      = propertyName;
+            ColumnName        = columnName;
+            KeyValuePair      = $"{columnName} = @{columnName}";
+            VariableName      = $"@{columnName}";
+
+            if ( IsPrimaryKey && ForeignKey?.IsValid is true ) { throw new ArgumentException($"Column '{propertyName}' has a PrimaryKey flag but {nameof(ForeignKey)} is invalid.", nameof(ForeignKey)); }
+
+            if ( ForeignKey?.IsValid is true && IsIndexed ) { throw new ArgumentException($"Column '{propertyName}' cannot be both Indexed and a ForeignKey columns are automatically indexed.", nameof(property)); }
+        }
+        catch ( Exception ex ) { throw new InvalidOperationException($"Failed to create ColumnMetaData for property '{property.DeclaringType?.FullName}.{property.Name}'.", ex); }
+    }
+    public static ColumnMetaData Create( in PropertyInfo property ) => new(in property);
+
+
+    internal      string ColumnName_Padded( ITableMetaData      table )    => ColumnName.GetPadded(table.MaxLength_ColumnName);
+    internal      string KeyValuePair_Padded( ITableMetaData    table )    => KeyValuePair.GetPadded(table.MaxLength_KeyValuePair);
+    internal      string VariableName_Padded( ITableMetaData    table )    => VariableName.GetPadded(table.MaxLength_Variables);
+    internal      string IndexColumnName_Padded( ITableMetaData table )    => Indexed?.Name.GetPadded(table.MaxLength_IndexColumnName) ?? EMPTY;
+    internal      string DataType_Padded( ITableMetaData        table )    => DataType.GetPadded(table.MaxLength_DataType);
+    public static string GetColumnName( ColumnMetaData          column )   => column.ColumnName;
+    public static string GetVariableName( ColumnMetaData        column )   => column.VariableName;
+    public static string GetKeyValuePair( ColumnMetaData        column )   => column.KeyValuePair;
+    public static bool   IsDbKey( MemberInfo                    property ) => property.GetCustomAttribute<KeyAttribute>() is not null || property.GetCustomAttribute<System.ComponentModel.DataAnnotations.KeyAttribute>() is not null;
+
+
+    public NpgsqlParameter ToParameter<T>( T value, [CallerArgumentExpression(nameof(value))] string parameterName = EMPTY, ParameterDirection direction = ParameterDirection.Input, DataRowVersion sourceVersion = DataRowVersion.Default )
+    {
+        NpgsqlParameter parameter = new(parameterName.SqlColumnName(), PostgresDbType, 0, ColumnName)
+                                    {
+                                        IsNullable    = IsNullable,
+                                        SourceVersion = sourceVersion,
+                                        Direction     = direction,
+                                        Value         = value
+                                    };
+
+        return parameter;
+    }
+
+
+    public static Func<TSelf, object?> GetTablePropertyValueAccessor<TSelf>( string propertyName ) => GetTablePropertyValueAccessor<TSelf>(typeof(TSelf).GetProperty(propertyName) ?? throw new InvalidOperationException($"Property '{propertyName}' not found on type '{typeof(TSelf).FullName}'"));
+
+    private static Func<TSelf, object?> GetTablePropertyValueAccessor<TSelf>( PropertyInfo property )
+    {
+        // Validate getter and declaring type once
+        MethodInfo? getter = property.GetMethod;
+        if ( getter is null ) { throw new InvalidOperationException($"Property '{property.Name}' does not have a getter."); }
+
+        Type? declaringType = getter.DeclaringType;
+        if ( declaringType is null ) { throw new InvalidOperationException($"Getter for property '{property.Name}' has no declaring type."); }
+
+        // Clear, per-property name helps when inspecting emitted methods
+        string methodName = string.Concat(declaringType.FullName, ".__get_", property.Name);
+
+        // Create Emit for the delegate type we want: Func<TSelf, object?>
+        Emit<Func<TSelf, object?>> emit = Emit<Func<TSelf, object?>>.NewDynamicMethod(declaringType, methodName);
+
+        // Load the instance argument
+        emit.LoadArgument(0);
+
+        // Only cast when the getter's declaring type differs from TSelf
+        if ( declaringType != typeof(TSelf) ) { emit.CastClass(declaringType); }
+
+        // Call the getter
+        emit.Call(getter);
+
+        // Box value types (reference types require no boxing)
+        if ( property.PropertyType.IsValueType ) { emit.Box(property.PropertyType); }
+
+        // Return and create delegate
+        emit.Return();
+        return emit.CreateDelegate();
+    }
+}

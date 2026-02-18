@@ -4,7 +4,6 @@
 global using System.Collections.Immutable;
 global using System.Runtime.CompilerServices;
 global using Jakar.Database;
-global using Jakar.Database.Resx;
 global using Jakar.Extensions;
 global using JetBrains.Annotations;
 global using Microsoft.AspNetCore.Mvc;
