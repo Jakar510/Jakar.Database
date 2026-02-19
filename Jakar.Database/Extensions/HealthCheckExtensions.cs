@@ -26,32 +26,23 @@ public static class HealthChecks
 
 
     public static HealthCheckRegistration Create<TValue>()
-        where TValue : IHealthCheck =>
-        Create<TValue>(HealthStatus.Unhealthy);
+        where TValue : IHealthCheck => Create<TValue>(HealthStatus.Unhealthy);
     public static HealthCheckRegistration Create<TValue>( HealthStatus? failureStatus )
-        where TValue : IHealthCheck =>
-        Create<TValue>(failureStatus, GetHealthCheckTags<TValue>());
+        where TValue : IHealthCheck => Create<TValue>(failureStatus, GetHealthCheckTags<TValue>());
     public static HealthCheckRegistration Create<TValue>( HealthStatus? failureStatus, IEnumerable<string> tags )
-        where TValue : IHealthCheck
-    {
-        return new HealthCheckRegistration(typeof(TValue).Name, provider => provider.GetRequiredService<TValue>(), failureStatus, tags);
-    }
+        where TValue : IHealthCheck => new(typeof(TValue).Name, static provider => provider.GetRequiredService<TValue>(), failureStatus, tags);
     public static HealthCheckRegistration Create<TValue>( params string[] tags )
-        where TValue : IHealthCheck =>
-        Create<TValue>(HealthStatus.Unhealthy, tags);
+        where TValue : IHealthCheck => Create<TValue>(HealthStatus.Unhealthy, tags);
     public static HealthCheckRegistration Create<TValue>( HealthStatus? failureStatus, params string[] tags )
-        where TValue : IHealthCheck
-    {
-        return new HealthCheckRegistration(typeof(TValue).Name, provider => provider.GetRequiredService<TValue>(), failureStatus, tags);
-    }
+        where TValue : IHealthCheck => new(typeof(TValue).Name, static provider => provider.GetRequiredService<TValue>(), failureStatus, tags);
 
 
-    extension( WebApplicationBuilder self )
+
+    extension( IServiceCollection self )
     {
-        public IHealthChecksBuilder AddHealthChecks() => self.Services.AddHealthChecks();
-        public IHealthChecksBuilder AddHealthChecks( HealthCheckRegistration registration ) => self.AddHealthChecks()
-                                                                                                      .Add(registration);
-        public IHealthChecksBuilder AddHealthChecks( params HealthCheckRegistration[] registrations )
+        public IHealthChecksBuilder AddHealthCheck<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)] TValue>()
+            where TValue : IHealthCheck => self.AddHealthCheck(Create<TValue>());
+        public IHealthChecksBuilder AddHealthCheck( params ReadOnlySpan<HealthCheckRegistration> registrations )
         {
             IHealthChecksBuilder checks = self.AddHealthChecks();
             foreach ( HealthCheckRegistration registration in registrations ) { checks.Add(registration); }

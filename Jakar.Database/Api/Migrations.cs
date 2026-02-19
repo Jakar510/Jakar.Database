@@ -1,8 +1,4 @@
-﻿using ZXing;
-
-
-
-namespace Jakar.Database;
+﻿namespace Jakar.Database;
 
 
 public static class MigrationExtensions

@@ -1,6 +1,7 @@
 ﻿// Jakar.Extensions :: Jakar.Database
 // 10/16/2022  5:46 PM
 
+using Prometheus.HttpMetrics;
 using ZiggyCreatures.Caching.Fusion.Backplane.Memory;
 using ZiggyCreatures.Caching.Fusion.Backplane.StackExchangeRedis;
 
@@ -10,22 +11,25 @@ namespace Jakar.Database;
 
 
 [SuppressMessage("ReSharper", "MemberCanBeMadeStatic.Global")]
-public sealed class DbOptions : IOptions<DbOptions>
+public sealed class DbOptions
 {
-    public const           string AUTHENTICATION_TYPE = JwtBearerDefaults.AuthenticationScheme;
-    public const           int    COMMAND_TIMEOUT     = 300;
-    public const           string JWT_ALGORITHM       = SecurityAlgorithms.HmacSha512Signature;
-    public const           string JWT_KEY             = "JWT";
-    public const           string USER_EXISTS         = "User Exists";
-    public static readonly Uri    Local_433           = new("https://localhost:443");
-    public static readonly Uri    Local_80            = new("http://localhost:80");
+    public const           string AUTHENTICATION_SCHEME              = JwtBearerDefaults.AuthenticationScheme;
+    public const           string AUTHENTICATION_SCHEME_DISPLAY_NAME = $"Jwt.{AUTHENTICATION_SCHEME}";
+    public const           string OTEL_EXPORTER_OTLP_ENDPOINT        = nameof(OTEL_EXPORTER_OTLP_ENDPOINT);
+    public const           string AUTHENTICATION_TYPE                = JwtBearerDefaults.AuthenticationScheme;
+    public const           int    COMMAND_TIMEOUT                    = 300;
+    public const           string JWT_ALGORITHM                      = SecurityAlgorithms.HmacSha512Signature;
+    public const           string JWT_KEY                            = "JWT";
+    public const           string USER_EXISTS                        = "User Exists";
+    public static readonly Uri    Local_433                          = new("https://localhost:443");
+    public static readonly Uri    Local_80                           = new("http://localhost:80");
 
 
     public static   int                                                     ConcurrencyLevel                { get;                                 set; } = Environment.ProcessorCount;
     public static   PasswordRequirements                                    PasswordRequirements            { get => PasswordRequirements.Current; set => PasswordRequirements.Current = value; }
     public          AppInformation                                          AppInformation                  => TelemetrySource.Info;
-    public          string                                                  AuthenticationScheme            { get;                                                  set; } = DbServices.AUTHENTICATION_SCHEME;
-    public          string                                                  AuthenticationSchemeDisplayName { get;                                                  set; } = DbServices.AUTHENTICATION_SCHEME_DISPLAY_NAME;
+    public          string                                                  AuthenticationScheme            { get;                                                  set; } = AUTHENTICATION_SCHEME;
+    public          string                                                  AuthenticationSchemeDisplayName { get;                                                  set; } = AUTHENTICATION_SCHEME_DISPLAY_NAME;
     public          string                                                  AuthenticationType              { get;                                                  set; } = AUTHENTICATION_TYPE;
     public          TimeSpan                                                ClockSkew                       { get;                                                  set; } = TimeSpan.FromMinutes(1);
     public required int?                                                    CommandTimeout                  { get;                                                  set; } = COMMAND_TIMEOUT;
@@ -51,15 +55,16 @@ public sealed class DbOptions : IOptions<DbOptions>
     public          FusionCacheEntryOptionsWrapper                          FusionCacheEntryOptions         { get;                                                  set; } = new() { Duration = TimeSpan.FromMinutes(2) };
     public          string                                                  JWTAlgorithm                    { get;                                                  set; } = JWT_ALGORITHM;
     public          string                                                  JWTKey                          { get;                                                  set; } = JWT_KEY;
-    public          AppLoggerOptions                                        LoggerOptions                   { get;                                                  set; } = new();
     public          SeqConfig?                                              SeqConfig                       { get;                                                  set; }
     public          Logger?                                                 Serilogger                      { get;                                                  set; }
-    public required TelemetrySource                                         TelemetrySource                 { get => Validate.ThrowIfNull(TelemetrySource.Current); set => TelemetrySource.Current = value; }
-    public required string                                                  TokenAudience                   { get;                                                  set; }
-    public required string                                                  TokenIssuer                     { get;                                                  set; }
+    public required TelemetrySource                                         TelemetrySource                 { get => Validate.ThrowIfNull(TelemetrySource.Current); init => TelemetrySource.Current = value; }
+    public required string                                                  TokenAudience                   { get;                                                  init; }
+    public required string                                                  TokenIssuer                     { get;                                                  init; }
     public          string                                                  UserExists                      { get;                                                  set; } = USER_EXISTS;
-    DbOptions IOptions<DbOptions>.                                          Value                           => this;
-    public OpenTelemetryActivityEnricher                                    ActivityEnricher                { [Pure] get => new(LoggerOptions, TelemetrySource); }
+    public required AppLoggerOptions                                        LoggerOptions                   { get;                                                  init; }
+    public          OpenTelemetryActivityEnricher                           ActivityEnricher                { [Pure] get => new(LoggerOptions, TelemetrySource); }
+    public          HttpMiddlewareExporterOptions?                          HttpExporterOptions             { get; set; }
+    internal        IOptions<DbOptions>                                     Wrapper                         => field ??= Options.Create(this);
 
 
     public DbOptions() => ConfigureIdentityOptions = DefaultConfigureIdentityOptions;

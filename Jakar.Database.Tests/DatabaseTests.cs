@@ -9,6 +9,7 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.VisualStudio.TestPlatform.TestHost;
 using Npgsql;
+using Serilog.Core;
 using Testcontainers.PostgreSql;
 
 
@@ -46,7 +47,8 @@ public sealed class DatabaseTests : Assert
                                 ConnectionStringResolver = connectionString,
                                 CommandTimeout           = 30,
                                 TokenIssuer              = TestDatabase.AppName,
-                                TokenAudience            = TestDatabase.AppName
+                                TokenAudience            = TestDatabase.AppName,
+                                LoggerOptions            = new AppLoggerOptions()
                             };
 
         builder.AddDatabase<TestDatabase>(options);

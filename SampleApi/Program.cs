@@ -14,7 +14,8 @@ DbOptions options = new()
                         ConnectionStringResolver = connectionString,
                         CommandTimeout           = 30,
                         TokenIssuer              = SampleDatabase.AppName,
-                        TokenAudience            = SampleDatabase.AppName
+                        TokenAudience            = SampleDatabase.AppName,
+                        LoggerOptions            = new AppLoggerOptions()
                     };
 
 builder.AddDatabase<SampleDatabase>(options);
@@ -31,7 +32,11 @@ app.UseAuthorization();
 
 // app.MapControllers();
 
-app.UseDefaults();
+app.UseStaticFiles();
+app.UseRouting();
+app.UseAuthentication();
+app.UseAuthorization();
+app.UseTelemetry();
 
 app.MapGet("/",     static () => DateTimeOffset.UtcNow);
 app.MapGet("/Ping", static () => DateTimeOffset.UtcNow);

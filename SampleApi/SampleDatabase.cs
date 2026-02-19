@@ -25,7 +25,8 @@ internal sealed class SampleDatabase( IConfiguration configuration, IOptions<DbO
                                 ConnectionStringResolver = connectionString,
                                 CommandTimeout           = 30,
                                 TokenIssuer              = AppName,
-                                TokenAudience            = AppName
+                                TokenAudience            = AppName,
+                                LoggerOptions            = new AppLoggerOptions()
                             };
 
         builder.AddDatabase<SampleDatabase>(options);

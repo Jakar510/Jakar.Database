@@ -4,6 +4,7 @@
 using System.Security.Cryptography.X509Certificates;
 using OpenTelemetry;
 using OpenTelemetry.Resources;
+using Prometheus.HttpMetrics;
 
 
 
@@ -53,19 +54,22 @@ public static class Telemetry
 
     extension( WebApplication self )
     {
-        public WebApplication UseTelemetry( string path = "/metrics" )
+        public WebApplication UseTelemetry( HttpMiddlewareExporterOptions? options = null, string path = "/_metrics" )
         {
             self.UseOpenTelemetryPrometheusScrapingEndpoint(path);
+            self.UseHttpMetrics(options);
             return self;
         }
-        public WebApplication UseTelemetry( Func<HttpContext, bool> predicate )
+        public WebApplication UseTelemetry( Func<HttpContext, bool> predicate, HttpMiddlewareExporterOptions? options = null )
         {
             self.UseOpenTelemetryPrometheusScrapingEndpoint(predicate);
+            self.UseHttpMetrics(options);
             return self;
         }
-        public WebApplication UseTelemetry( MeterProvider meterProvider, Func<HttpContext, bool> predicate, Action<IApplicationBuilder> configureBranchedPipeline, string optionsName, string path = "/metrics" )
+        public WebApplication UseTelemetry( MeterProvider meterProvider, Func<HttpContext, bool> predicate, Action<IApplicationBuilder> configureBranchedPipeline, string optionsName, string path = "/_metrics", HttpMiddlewareExporterOptions? options = null )
         {
             self.UseOpenTelemetryPrometheusScrapingEndpoint(meterProvider, predicate, path, configureBranchedPipeline, optionsName);
+            self.UseHttpMetrics(options);
             return self;
         }
     }
@@ -120,28 +124,29 @@ public static class Telemetry
 
             void configureMetrics( MeterProviderBuilder meterProviderBuilder )
             {
-                meterProviderBuilder.AddAspNetCoreInstrumentation()
+                meterProviderBuilder.SetResourceBuilder(resources)
+                                    .AddAspNetCoreInstrumentation()
                                     .AddRuntimeInstrumentation()
                                     .AddHttpClientInstrumentation()
                                     .AddNpgsqlInstrumentation() // PostgreSQL metrics for Dselfer
                                     .AddFusionCacheInstrumentation()
-                                    .AddMeter(METER_NAME)
-                                    .SetResourceBuilder(resources)
                                     .AddConsoleExporter()
-                                    .AddPrometheusExporter();
+                                    .AddPrometheusExporter()
+                                    .AddMeter(METER_NAME)
+                                    .AddMeter("Microsoft.AspNetCore.Hosting", "Microsoft.AspNetCore.Server.Kestrel", "System.Net.Http");
 
                 if ( options.ConfigureMeterOtlpExporter is not null ) { meterProviderBuilder.AddOtlpExporter(options.ConfigureMeterOtlpExporter); }
             }
 
             void configureTracing( TracerProviderBuilder tracerProviderBuilder )
             {
-                tracerProviderBuilder.AddAspNetCoreInstrumentation()
+                tracerProviderBuilder.SetResourceBuilder(resources)
+                                     .AddAspNetCoreInstrumentation()
                                      .AddHttpClientInstrumentation()
                                      .AddNpgsql() // PostgreSQL tracing for Dselfer
                                      .AddFusionCacheInstrumentation()
-                                     .AddSource(METER_NAME)
-                                     .SetResourceBuilder(resources)
-                                     .AddConsoleExporter();
+                                     .AddConsoleExporter()
+                                     .AddSource(METER_NAME);
 
                 if ( options.ConfigureTracerOtlpExporter is not null ) { tracerProviderBuilder.AddOtlpExporter(options.ConfigureTracerOtlpExporter); }
             }

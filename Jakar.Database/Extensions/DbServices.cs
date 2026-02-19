@@ -8,12 +8,6 @@ namespace Jakar.Database;
 [SuppressMessage("ReSharper", "UnusedMethodReturnValue.Global")]
 public static class DbServices
 {
-    public const string AUTHENTICATION_SCHEME              = JwtBearerDefaults.AuthenticationScheme;
-    public const string AUTHENTICATION_SCHEME_DISPLAY_NAME = $"Jwt.{AUTHENTICATION_SCHEME}";
-    public const string OTEL_EXPORTER_OTLP_ENDPOINT        = nameof(OTEL_EXPORTER_OTLP_ENDPOINT);
-
-
-
     extension<TSelf>( TSelf self )
         where TSelf : PairRecord<TSelf>, ITableRecord<TSelf>
     {
@@ -41,7 +35,7 @@ public static class DbServices
                 .WithMetrics(static x =>
                              {
                                  x.AddRuntimeInstrumentation()
-                                  .AddMeter("Microsoft.AspNetCore.Hosting", "Microsoft.AspNetCore.Server.Kestrel", "System.Net.Http", "WeatherApp.Api");
+                                  .AddMeter("Microsoft.AspNetCore.Hosting", "Microsoft.AspNetCore.Server.Kestrel", "System.Net.Http");
                              })
                 .WithTracing(x =>
                              {
@@ -56,7 +50,7 @@ public static class DbServices
         }
         public IHostApplicationBuilder AddOpenTelemetryExporters()
         {
-            bool useOtlpExporter = !string.IsNullOrWhiteSpace(self.Configuration[OTEL_EXPORTER_OTLP_ENDPOINT]);
+            bool useOtlpExporter = !string.IsNullOrWhiteSpace(self.Configuration[DbOptions.OTEL_EXPORTER_OTLP_ENDPOINT]);
 
             if ( useOtlpExporter )
             {
@@ -142,18 +136,6 @@ public static class DbServices
     }
 
 
-
-    extension( IServiceCollection self )
-    {
-        public IHealthChecksBuilder AddHealthCheck<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)] TValue>()
-            where TValue : IHealthCheck => self.AddHealthCheck(HealthChecks.Create<TValue>());
-
-        public IHealthChecksBuilder AddHealthCheck( HealthCheckRegistration registration ) => self.AddHealthChecks()
-                                                                                                  .Add(registration);
-    }
-
-
-
     public static Assembly[] GetAssemblies<TApp>( params ReadOnlySpan<Assembly> assemblies )
         where TApp : IAppName
     {
@@ -192,7 +174,9 @@ public static class DbServices
             where TAuthenticatorTokenProvider : OtpAuthenticatorTokenProvider
         {
             self.Services.AddSingleton(options);
-            self.Services.AddScoped<IOptions<DbOptions>>(static provider => provider.GetRequiredService<DbOptions>());
+
+            self.Services.AddScoped<IOptions<DbOptions>>(static provider => provider.GetRequiredService<DbOptions>()
+                                                                                    .Wrapper);
 
             self.AddOpenTelemetry<TestDatabase>(options);
 
@@ -234,7 +218,7 @@ public static class DbServices
         /// <summary>
         ///     <see href="https://stackoverflow.com/a/46775832/9530917"> Using ASP.NET Identity in an ASP.NET Core MVC application without Entity Framework and Migrations </see>
         ///     <para>
-        ///         <see cref="AUTHENTICATION_SCHEME"/>
+        ///         <see cref="DbOptions.AUTHENTICATION_SCHEME"/>
         ///     </para>
         /// </summary>
         public IdentityBuilder AddIdentityServices<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)] TUserStore, [DynamicallyAccessedMembers(                 DynamicallyAccessedMemberTypes.PublicConstructors)] TUserManager, [DynamicallyAccessedMembers(       DynamicallyAccessedMemberTypes.PublicConstructors)] TRoleStore,

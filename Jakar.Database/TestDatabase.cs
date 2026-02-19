@@ -27,7 +27,8 @@ internal sealed class TestDatabase( IConfiguration configuration, IOptions<DbOpt
                                 ConnectionStringResolver = connectionString,
                                 CommandTimeout           = 30,
                                 TokenIssuer              = AppName,
-                                TokenAudience            = AppName
+                                TokenAudience            = AppName,
+                                LoggerOptions            = new AppLoggerOptions()
                             };
 
         builder.AddDatabase<TestDatabase>(options);
@@ -50,9 +51,7 @@ internal sealed class TestDatabase( IConfiguration configuration, IOptions<DbOpt
         app.UseAuthentication();
         app.UseAuthorization();
         app.UseTelemetry();
-        app.UseHttpMetrics();
-
-
+        
         app.MapGet("/",     static () => DateTimeOffset.UtcNow);
         app.MapGet("/Ping", static () => DateTimeOffset.UtcNow);
 
