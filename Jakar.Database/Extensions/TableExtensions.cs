@@ -49,7 +49,7 @@ public static class TableExtensions
         missing.ExceptWith(array.Array);
 
         string message = $"""
-                          {typeof(TSelf).Name}: {nameof(self.ToDynamicParameters)}.Length ({length}) != {nameof(TSelf.ClassProperties)}.Length ({TSelf.PropertyCount})
+                          '{typeof(TSelf).Name}': {nameof(self.ToDynamicParameters)}.Length ({length}) != {nameof(TSelf.ClassProperties)}.Length ({TSelf.PropertyCount})
                           {missing.ToJson()}
                           """;
 

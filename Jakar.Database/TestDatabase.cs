@@ -6,8 +6,10 @@ namespace Jakar.Database;
 
 internal sealed class TestDatabase( IConfiguration configuration, IOptions<DbOptions> options, IFusionCache cache ) : Database(configuration, options, cache), IAppID
 {
-    public static          Guid            AppID      { get; } = Guid.NewGuid();
-    public static          string          AppName    => nameof(TestDatabase);
+    public static Guid AppID { get; } = Guid.NewGuid();
+
+    public static string AppName => nameof(TestDatabase);
+
     public static          AppVersion      AppVersion { get; } = new(1, 0, 0, 1);
     public static readonly TelemetrySource Source = new(AppVersion, AppID, AppName, "Jakar.Database");
 
@@ -17,7 +19,7 @@ internal sealed class TestDatabase( IConfiguration configuration, IOptions<DbOpt
     public static WebApplicationBuilder Create()
     {
         WebApplicationBuilder        builder          = WebApplication.CreateBuilder();
-        SecuredStringResolverOptions connectionString = $"User ID=dev;Password=dev;Host=localhost;Port=5432;Database={AppName}";
+        SecuredStringResolverOptions connectionString = "User ID=dev;Password=dev;Host=localhost;Port=5432;Database=jakar_database_sample";
 
         DbOptions options = new()
                             {
@@ -49,7 +51,7 @@ internal sealed class TestDatabase( IConfiguration configuration, IOptions<DbOpt
         app.UseAuthorization();
         app.UseTelemetry();
         app.UseHttpMetrics();
-        
+
 
         app.MapGet("/",     static () => DateTimeOffset.UtcNow);
         app.MapGet("/Ping", static () => DateTimeOffset.UtcNow);

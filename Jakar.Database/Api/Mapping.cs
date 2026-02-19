@@ -1,8 +1,4 @@
-﻿using Microsoft.AspNetCore.DataProtection.KeyManagement;
-
-
-
-namespace Jakar.Database;
+﻿namespace Jakar.Database;
 
 
 public interface ICreateMapping<TSelf, TKey, TValue> : ITableRecord<TSelf>
@@ -10,8 +6,9 @@ public interface ICreateMapping<TSelf, TKey, TValue> : ITableRecord<TSelf>
     where TKey : PairRecord<TKey>, ITableRecord<TKey>
     where TSelf : TableRecord<TSelf>, ITableRecord<TSelf>, ICreateMapping<TSelf, TKey, TValue>
 {
-    public RecordID<TKey>   KeyID   { get; init; }
-    public RecordID<TValue> ValueID { get; init; }
+    public                  RecordID<TKey>         KeyID   { get; init; }
+    public                  RecordID<TValue>       ValueID { get; init; }
+    [Key] [DbIgnore] public RecordID<TKey, TValue> ID      { get; }
 
 
     [Pure]                                  public abstract static TSelf                 Create( TKey           key, TValue                                value );

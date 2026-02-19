@@ -15,7 +15,7 @@ public readonly struct PostgresParameters : IEquatable<PostgresParameters>
 
 
     internal List<NpgsqlParameter> Params => Groups[0];
-    public   int                   Count  => Groups.Count;
+    public   int                   Count  => Groups.Sum(static x => x.Value.Count);
 
     public ValueEnumerable<SelectMany<FromDictionary<int, List<NpgsqlParameter>>, KeyValuePair<int, List<NpgsqlParameter>>, NpgsqlParameter>, NpgsqlParameter> Parameters => Groups.AsValueEnumerable()
                                                                                                                                                                                    .SelectMany(static x => x.Value);

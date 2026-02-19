@@ -841,7 +841,7 @@ public static class PostgresTypes
                        PostgresType.TimestampMultirange      => @"tsmultirange",
                        PostgresType.DateTimeOffsetMultirange => @"tstzmultirange",
                        PostgresType.DateMultirange           => @"datemultirange",
-                       PostgresType.NotSet                   => throw new InvalidOperationException($"{self.DeclaringType?.Name}.{self.Name}"),
+                       PostgresType.NotSet                   => EMPTY,
                        _                                     => throw new OutOfRangeException(self)
                    };
         }

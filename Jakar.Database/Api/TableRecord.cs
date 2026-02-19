@@ -25,10 +25,10 @@ public interface ILastModified : IDateCreated
 public interface ITableRecord<TSelf>
     where TSelf : TableRecord<TSelf>, ITableRecord<TSelf>
 {
-    public abstract static ValueEnumerable<FromArray<PropertyInfo>, PropertyInfo> ClassProperties  { [Pure] get; }
-    public abstract static int                                                    PropertyCount    { get; }
-    public abstract static TableMetaData<TSelf>                                   PropertyMetaData { [Pure] get; }
-    public abstract static string                                                 TableName        { [Pure] get; }
+    public abstract static ref readonly ImmutableArray<PropertyInfo> ClassProperties  { [Pure] get; }
+    public abstract static              int                          PropertyCount    { get; }
+    public abstract static              TableMetaData<TSelf>         PropertyMetaData { [Pure] get; }
+    public abstract static              string                       TableName        { [Pure] get; }
 
     [Pure] public abstract static TSelf           Create( NpgsqlDataReader reader );
     [Pure] public abstract static MigrationRecord CreateTable( ulong       migrationID );
@@ -40,13 +40,17 @@ public interface ITableRecord<TSelf>
 public abstract record TableRecord<TSelf>( in DateTimeOffset DateCreated ) : IJsonModel<TSelf>, IDateCreated
     where TSelf : TableRecord<TSelf>, ITableRecord<TSelf>
 {
-    protected internal static readonly PropertyInfo[]  Properties = typeof(TSelf).GetProperties(BindingFlags.Instance | BindingFlags.Public);
-    protected                          DateTimeOffset? _lastModified;
+    protected internal static readonly ImmutableArray<PropertyInfo> Properties = typeof(TSelf).GetProperties(TableMetaData<TSelf>.ATTRIBUTES)
+                                                                                              .AsValueEnumerable()
+                                                                                              .Where(static x => !x.HasAttribute<DbIgnoreAttribute>())
+                                                                                              .ToImmutableArray();
+
+    protected DateTimeOffset? _lastModified;
 
 
-    public static TableMetaData<TSelf>                                   PropertyMetaData => TableMetaData<TSelf>.Instance;
-    public static ValueEnumerable<FromArray<PropertyInfo>, PropertyInfo> ClassProperties  { [Pure] get => Properties.AsValueEnumerable(); }
-    public static int                                                    PropertyCount    => Properties.Length;
+    public static              TableMetaData<TSelf>         PropertyMetaData => TableMetaData<TSelf>.Instance;
+    public static ref readonly ImmutableArray<PropertyInfo> ClassProperties  { [Pure] get => ref Properties; }
+    public static              int                          PropertyCount    => Properties.Length;
 
 
     protected internal TableRecord( NpgsqlDataReader reader ) : this(reader.DateCreated<TSelf>()) { }

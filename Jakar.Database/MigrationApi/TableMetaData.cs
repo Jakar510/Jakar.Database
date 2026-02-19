@@ -99,7 +99,8 @@ public sealed class TableExtrasAttribute : Attribute
 public class TableMetaData<TSelf> : ITableMetaData
     where TSelf : TableRecord<TSelf>, ITableRecord<TSelf>
 {
-    public static readonly TableMetaData<TSelf> Instance = Create();
+    public const           BindingFlags         ATTRIBUTES = BindingFlags.Instance | BindingFlags.Public | BindingFlags.SetProperty | BindingFlags.GetProperty;
+    public static readonly TableMetaData<TSelf> Instance   = Create();
 
     // ReSharper disable once StaticMemberInGenericType
     protected static string?                                  _createTableSql;
@@ -434,16 +435,16 @@ public class TableMetaData<TSelf> : ITableMetaData
 
     public static TableMetaData<TSelf> Create()
     {
-        const BindingFlags ATTRIBUTES = BindingFlags.Instance | BindingFlags.Public | BindingFlags.SetProperty | BindingFlags.GetProperty;
-
-        ImmutableArray<PropertyInfo> properties = typeof(TSelf).GetProperties(ATTRIBUTES)
-                                                               .AsValueEnumerable()
-                                                               .Where(static x => !x.HasAttribute<DbIgnoreAttribute>())
-                                                               .ToImmutableArray();
+        ref readonly ImmutableArray<PropertyInfo> properties = ref TSelf.ClassProperties;
 
         if ( properties.Length <= 0 ) { throw new InvalidOperationException($"Type '{typeof(TSelf)}' does not have any public instance properties that are not marked with the '{nameof(DbIgnoreAttribute)}' attribute."); }
 
-        if ( properties.Count(ColumnMetaData.IsDbKey) != 1 ) { throw new InvalidOperationException($"Type '{typeof(TSelf)}' should only have one property with the '{typeof(System.ComponentModel.DataAnnotations.KeyAttribute).FullName}' or '{typeof(KeyAttribute).FullName}' attribute."); }
+        string[] keys = properties.AsValueEnumerable()
+                                  .Where(ColumnMetaData.IsDbKey)
+                                  .Select(static x => x.Name)
+                                  .ToArray();
+
+        if ( keys.Length != 1 ) { throw new InvalidOperationException($"Type '{typeof(TSelf)}' should only have one property with the '{typeof(System.ComponentModel.DataAnnotations.KeyAttribute).FullName}' or '{typeof(KeyAttribute).FullName}' attribute. \n\n{keys.ToJson()}"); }
 
 
         SortedDictionary<string, ColumnMetaData> dictionary = new(StringComparer.InvariantCultureIgnoreCase);

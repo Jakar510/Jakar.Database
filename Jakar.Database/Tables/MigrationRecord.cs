@@ -11,8 +11,21 @@ namespace Jakar.Database;
 [Serializable]
 public sealed record MigrationRecord : TableRecord<MigrationRecord>, ITableRecord<MigrationRecord>
 {
-    public const           string TABLE_NAME = "migrations";
-    public static readonly string SelectSql  = $"SELECT * FROM {TABLE_NAME} ORDER BY {nameof(MigrationID).SqlColumnName()}";
+    public const string TABLE_NAME = "migrations";
+    public static readonly string SelectSql = $"""
+                                               DO $$
+                                               BEGIN
+                                                   IF EXISTS (
+                                                       SELECT 1
+                                                       FROM information_schema.tables
+                                                       WHERE table_schema = 'public'
+                                                       AND table_name = '{TABLE_NAME}'
+                                                   ) 
+                                                   THEN
+                                                        PERFORM * FROM {TABLE_NAME} ORDER BY {nameof(MigrationID).SqlColumnName()};
+                                                   END IF;
+                                               END $$; 
+                                               """;
     public static readonly string ApplySql = $"""
                                               INSERT INTO {TABLE_NAME} 
                                               (
@@ -32,12 +45,12 @@ public sealed record MigrationRecord : TableRecord<MigrationRecord>, ITableRecor
     internal ulong MigrationIdValue;
 
 
-    public static                                  string         TableName   => TABLE_NAME;
-    public                                         DateTimeOffset AppliedOn   { get;                     init; } = DateTimeOffset.UtcNow;
-    public required                                string         Description { get;                     init; }
-    [Key] public required                          ulong          MigrationID { get => MigrationIdValue; init => MigrationIdValue = value; }
-    public                                         string         SQL         { get;                     internal init; } = EMPTY;
-    [Indexed(nameof(TableID))] [Fixed(256)] public string?        TableID     { get;                     init; }
+    public static                                           string         TableName   => TABLE_NAME;
+    public                                                  DateTimeOffset AppliedOn   { get;                     init; } = DateTimeOffset.UtcNow;
+    public required                                         string         Description { get;                     init; }
+    [Key]                                   public required ulong          MigrationID { get => MigrationIdValue; init => MigrationIdValue = value; }
+    [DbIgnore]                              public          string         SQL         { get;                     internal init; } = EMPTY;
+    [Indexed(nameof(TableID))] [Fixed(256)] public          string?        TableID     { get;                     init; }
 
 
     [SetsRequiredMembers] internal MigrationRecord( ulong migrationID, string description, string? tableID = null ) : base(DateTimeOffset.UtcNow)

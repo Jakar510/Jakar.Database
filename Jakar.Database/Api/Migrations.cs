@@ -9,7 +9,7 @@ public static class MigrationExtensions
 {
     extension( WebApplication self )
     {
-        public void InitializeLogging( bool parameterLoggingEnabled = false )
+        public void InitializeLogging( bool parameterLoggingEnabled = true )
         {
             ILoggerFactory factory = self.Services.GetRequiredService<ILoggerFactory>();
             NpgsqlLoggingConfiguration.InitializeLogging(factory, parameterLoggingEnabled);
@@ -175,48 +175,58 @@ public class MigrationManager
     }
     public virtual async ValueTask<ImmutableArray<MigrationRecord>> AllMigrations( NpgsqlConnection connection, NpgsqlTransaction? transaction, CancellationToken token )
     {
-        SqlCommand<MigrationRecord>     command = MigrationRecord.SelectSql;
-        await using NpgsqlCommand       cmd     = command.ToCommand(connection, transaction);
-        await using NpgsqlDataReader    reader  = await cmd.ExecuteReaderAsync(token);
-        ImmutableArray<MigrationRecord> records = await reader.CreateAsync<MigrationRecord>(__migrationFactories.Count, token);
+        SqlCommand<MigrationRecord> command = MigrationRecord.SelectSql;
+
+        ImmutableArray<MigrationRecord> records = await command.ExecuteAsync(connection, transaction, token)
+                                                               .ToImmutableArray(__migrationFactories.Count, token);
+
         return records;
     }
 
 
     public async ValueTask ApplyMigrations( CancellationToken token = default )
     {
-        await using NpgsqlConnection    connection  = await _db.ConnectAsync(token);
-        await using NpgsqlTransaction   transaction = await connection.BeginTransactionAsync(token);
-        ImmutableArray<MigrationRecord> applied     = await AllMigrations(connection, transaction, token);
-        HashSet<MigrationRecord>        pending     = Records;
-        pending.ExceptWith(applied);
+        await using NpgsqlConnection  connection  = await _db.ConnectAsync(token);
+        await using NpgsqlTransaction transaction = await connection.BeginTransactionAsync(token);
 
         try
         {
-            List<Task> tasks = new(pending.Count);
+            ImmutableArray<MigrationRecord> applied = await AllMigrations(connection, transaction, token);
+            HashSet<MigrationRecord>        pending = Records;
+            pending.ExceptWith(applied);
 
             // ReSharper disable once LoopCanBeConvertedToQuery
-            foreach ( MigrationRecord record in pending.OrderBy(static x => x.MigrationID) ) { tasks.Add(Apply(connection, transaction, record, token)); }
+            foreach ( MigrationRecord record in pending.OrderBy(static x => x.MigrationID) ) { await Apply(connection, transaction, record, token); }
 
-            await Task.WhenAll(tasks.AsSpan());
             await transaction.CommitAsync(token);
         }
-        catch ( Exception e )
+        catch ( Exception )
         {
             await transaction.RollbackAsync(token);
-            throw new InvalidOperationException("Failed to apply Records", e);
+            throw;
         }
     }
     public virtual async Task Apply( NpgsqlConnection connection, NpgsqlTransaction transaction, MigrationRecord self, CancellationToken token )
     {
-        PostgresParameters parameters = PostgresParameters.Create<MigrationRecord>();
-        parameters.Add(nameof(MigrationRecord.MigrationID), self.MigrationID);
-        parameters.Add(nameof(MigrationRecord.Description), self.Description);
-        parameters.Add(nameof(MigrationRecord.TableID),     self.TableID);
-        parameters.Add(nameof(MigrationRecord.AppliedOn),   self.AppliedOn);
+        try
+        {
+            SqlCommand<MigrationRecord> command = self.SQL;
+            await command.ExecuteNonQueryAsync(connection, transaction, token);
+        }
+        catch ( Exception e ) { throw new InvalidOperationException($"SQL ERROR: \n{self.SQL}", e); }
 
-        SqlCommand<MigrationRecord> command = new(MigrationRecord.ApplySql, parameters);
-        await command.ExecuteNonQueryAsync(connection, transaction, token);
+        try
+        {
+            PostgresParameters parameters = PostgresParameters.Create<MigrationRecord>();
+            parameters.Add(nameof(MigrationRecord.MigrationID), self.MigrationID);
+            parameters.Add(nameof(MigrationRecord.Description), self.Description);
+            parameters.Add(nameof(MigrationRecord.TableID),     self.TableID);
+            parameters.Add(nameof(MigrationRecord.AppliedOn),   self.AppliedOn);
+
+            SqlCommand<MigrationRecord> migrationRecord = new(MigrationRecord.ApplySql, parameters);
+            await migrationRecord.ExecuteNonQueryAsync(connection, transaction, token);
+        }
+        catch ( Exception e ) { throw new InvalidOperationException($"SQL ERROR: \n{MigrationRecord.ApplySql}", e); }
     }
 
 
