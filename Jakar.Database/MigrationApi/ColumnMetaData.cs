@@ -1,11 +1,4 @@
-﻿using System;
-using System.Data;
-using System.Data.SqlTypes;
-using Org.BouncyCastle.Asn1.Cms;
-
-
-
-namespace Jakar.Database;
+﻿namespace Jakar.Database;
 
 
 [SuppressMessage("ReSharper", "InconsistentNaming")]
@@ -32,10 +25,10 @@ public sealed class ColumnMetaData
 
 
     public int  Index                   { get; internal set; } = -1;
-    public bool IsColumnIndexed         { [MemberNotNullWhen(true, nameof(Indexed))] get => !string.IsNullOrWhiteSpace(Indexed?.Name); }
-    public bool HasForeignKeyConstraint { [MemberNotNullWhen(true, nameof(ForeignKey))] get => !string.IsNullOrWhiteSpace(ForeignKey?.ForeignTableName); }
-    public bool HasDefaultConstraint    { [MemberNotNullWhen(true, nameof(Defaults))] get => !string.IsNullOrWhiteSpace(Defaults?.Value); }
-    public bool HasCheckConstraint      { [MemberNotNullWhen(true, nameof(Checks))] get => Checks?.Constraints.Length is > 0; }
+    public bool IsColumnIndexed         { [MemberNotNullWhen(true, nameof(Indexed))] get => Indexed?.IsValid is true || HasForeignKeyConstraint; }
+    public bool HasForeignKeyConstraint { [MemberNotNullWhen(true, nameof(ForeignKey))] get => ForeignKey?.IsValid is true; }
+    public bool HasDefaultConstraint    { [MemberNotNullWhen(true, nameof(Defaults))] get => Defaults?.IsValid is true; }
+    public bool HasCheckConstraint      { [MemberNotNullWhen(true, nameof(Checks))] get => Checks?.IsValid is true; }
     public bool HasLengthConstraint     { [MemberNotNullWhen(true, nameof(Length))] get => Length is not null; }
 
 
@@ -65,8 +58,6 @@ public sealed class ColumnMetaData
             VariableName      = $"@{columnName}";
 
             if ( IsPrimaryKey && ForeignKey?.IsValid is true ) { throw new ArgumentException($"Column '{propertyName}' has a PrimaryKey flag but {nameof(ForeignKey)} is invalid.", nameof(ForeignKey)); }
-
-            if ( ForeignKey?.IsValid is true && IsColumnIndexed ) { throw new ArgumentException($"Column '{propertyName}' cannot be both Indexed and a ForeignKey columns are automatically indexed.", nameof(property)); }
         }
         catch ( Exception ex ) { throw new InvalidOperationException($"Failed to create ColumnMetaData for property '{property.DeclaringType?.FullName}.{property.Name}'.", ex); }
     }
@@ -76,7 +67,7 @@ public sealed class ColumnMetaData
     internal      string ColumnName_Padded( ITableMetaData      table )    => ColumnName.GetPadded(table.MaxLength_ColumnName);
     internal      string KeyValuePair_Padded( ITableMetaData    table )    => KeyValuePair.GetPadded(table.MaxLength_KeyValuePair);
     internal      string VariableName_Padded( ITableMetaData    table )    => VariableName.GetPadded(table.MaxLength_Variables);
-    internal      string IndexColumnName_Padded( ITableMetaData table )    => Indexed?.Name.GetPadded(table.MaxLength_IndexColumnName) ?? EMPTY;
+    internal      string IndexColumnName_Padded( ITableMetaData table )    => Indexed?.Name.GetPadded(table.MaxLength_IndexColumnName) ?? ForeignKey?.Index(ColumnName, table.MaxLength_IndexColumnName) ?? EMPTY;
     internal      string DataType_Padded( ITableMetaData        table )    => DataType.GetPadded(table.MaxLength_DataType);
     public static string GetColumnName( ColumnMetaData          column )   => column.ColumnName;
     public static string GetVariableName( ColumnMetaData        column )   => column.VariableName;

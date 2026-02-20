@@ -4,7 +4,7 @@
 [AttributeUsage(AttributeTargets.Property)]
 public sealed class ChecksAttribute( bool and, params string[] checks ) : DatabaseAttribute
 {
-    public readonly bool                   And    = and;
+    public readonly bool                   And         = and;
     public readonly ImmutableArray<string> Constraints = [..checks];
     public          bool                   IsValid { [MemberNotNullWhen(true, nameof(Constraints))] get => Constraints.Length is > 0; }
 
@@ -19,7 +19,7 @@ public sealed class ChecksAttribute( bool and, params string[] checks ) : Databa
     {
         StringBuilder sb = new(5 +
                                Constraints.AsValueEnumerable()
-                                     .Sum(static x => x.Length));
+                                          .Sum(static x => x.Length));
 
         for ( int i = 0; i < Constraints.Length; i++ )
         {

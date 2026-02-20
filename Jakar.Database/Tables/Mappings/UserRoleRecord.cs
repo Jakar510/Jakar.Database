@@ -12,8 +12,8 @@ public sealed record UserRoleRecord : Mapping<UserRoleRecord, UserRecord, RoleRe
     public static string TableName => TABLE_NAME;
 
 
-    [ForeignKey(UserRecord.TABLE_NAME)] public override RecordID<UserRecord> KeyID   { get; init; }
-    [ForeignKey(RoleRecord.TABLE_NAME)] public override RecordID<RoleRecord> ValueID { get; init; }
+    [ForeignKey<UserRoleRecord, UserRecord>] public override RecordID<UserRecord> KeyID   { get; init; }
+    [ForeignKey<UserRoleRecord, RoleRecord>] public override RecordID<RoleRecord> ValueID { get; init; }
 
 
     public UserRoleRecord( RecordID<UserRecord>  key, RecordID<RoleRecord> value ) : base(key, value) { }

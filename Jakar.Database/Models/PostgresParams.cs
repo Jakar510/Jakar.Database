@@ -29,13 +29,11 @@ public static class PostgresParams
 
 
 
-    extension( string name )
+    extension( string propertyName )
     {
-        public string GetPadded( int maxLength ) => __paddedCache.GetOrAdd(( name, maxLength ), static pair => pair.Original.PadRight(pair.MaxLength));
-        public string SqlColumnName()            => __nameSnakeCaseCache.GetOrAdd(Validate.ThrowIfNull(name), Strings.ToSnakeCase);
-        public string SqlColumnIndexName()       => __indexNameSnakeCaseCache.GetOrAdd(Validate.ThrowIfNull(name), static x => $"{x.SqlColumnName()}_index");
-        public string? SqlColumnIndexName( bool isIndexed ) => isIndexed
-                                                                   ? name.SqlColumnIndexName()
-                                                                   : null;
+        public  string GetPadded( int maxLength )             => __paddedCache.GetOrAdd(( propertyName, maxLength ), static pair => pair.Original.PadRight(pair.MaxLength));
+        public  string SqlColumnName()                        => __nameSnakeCaseCache.GetOrAdd(Validate.ThrowIfNull(propertyName), Strings.ToSnakeCase);
+        public  string SqlColumnIndexName( string tableName ) => __indexNameSnakeCaseCache.GetOrAdd(Validate.ThrowIfNull(propertyName), GetColumnIndexName, Validate.ThrowIfNull(tableName));
+        private string GetColumnIndexName( string tableName ) => $"idx_{tableName}_{propertyName.SqlColumnName()}";
     }
 }

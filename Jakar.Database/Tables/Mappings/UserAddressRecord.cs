@@ -13,8 +13,8 @@ public sealed record UserAddressRecord : Mapping<UserAddressRecord, UserRecord, 
     public static string TableName => TABLE_NAME;
 
 
-    [ForeignKey(UserRecord.TABLE_NAME)]    public override RecordID<UserRecord>    KeyID   { get; init; }
-    [ForeignKey(AddressRecord.TABLE_NAME)] public override RecordID<AddressRecord> ValueID { get; init; }
+    [ForeignKey<UserAddressRecord, UserRecord>]    public override RecordID<UserRecord>    KeyID   { get; init; }
+    [ForeignKey<UserAddressRecord, AddressRecord>] public override RecordID<AddressRecord> ValueID { get; init; }
 
 
     public UserAddressRecord( UserRecord            key, AddressRecord           value ) : base(key, value) { }

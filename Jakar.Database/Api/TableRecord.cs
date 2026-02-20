@@ -229,8 +229,8 @@ public interface IUserRecordID : IDateCreated, IUniqueID, IUserID
 public abstract record OwnedTableRecord<TSelf> : PairRecord<TSelf>, IUserRecordID
     where TSelf : OwnedTableRecord<TSelf>, ITableRecord<TSelf>
 {
-    [ForeignKey(UserRecord.TABLE_NAME)] public virtual RecordID<UserRecord> UserID { get; init; }
-    Guid IUserID.                                                           UserID => UserID.Value;
+    public abstract RecordID<UserRecord> UserID { get; init; }
+    Guid IUserID.                        UserID => UserID.Value;
 
 
     protected OwnedTableRecord( in RecordID<UserRecord>   userID, in RecordID<TSelf> id, in DateTimeOffset dateCreated, in DateTimeOffset? lastModified, JObject? additionalData = null ) : base(in id, in dateCreated, additionalData, in lastModified) => UserID = userID;

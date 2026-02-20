@@ -13,18 +13,18 @@ public sealed record UserRecord : PairRecord<UserRecord>, ITableRecord<UserRecor
     public const string TABLE_NAME = "users";
 
 
-    public static string                                             TableName           => TABLE_NAME;
-    public        RecordID<UserRecord>?                              EscalateTo          { get; set; }
-    Guid? IEscalateToUser<Guid>.                                     EscalateTo          => EscalateTo?.Value;
-    Guid? IImageID<Guid>.                                            ImageID             => ImageID?.Value;
-    [ForeignKey(FileRecord.TABLE_NAME)] public RecordID<FileRecord>? ImageID             { get; set; }
-    public                                     bool                  IsValid             => !string.IsNullOrWhiteSpace(UserName) && ID.IsValid();
-    public                                     SupportedLanguage     PreferredLanguage   { get; set; }
-    public                                     DateTimeOffset?       SubscriptionExpires { get; set; }
-    public                                     Guid?                 SubscriptionID      { get; set; }
-    public                                     Guid                  UserID              => ID.Value;
-    RecordID<UserRecord> IUserRecordID.                              UserID              => ID;
-    [Fixed(USER_NAME)] [ProtectedPersonalData] public string         UserName            { get; init; } = EMPTY;
+    public static string                                                TableName           => TABLE_NAME;
+    public        RecordID<UserRecord>?                                 EscalateTo          { get; set; }
+    Guid? IEscalateToUser<Guid>.                                        EscalateTo          => EscalateTo?.Value;
+    Guid? IImageID<Guid>.                                               ImageID             => ImageID?.Value;
+    [ForeignKey<UserRecord, FileRecord>()] public RecordID<FileRecord>? ImageID             { get; set; }
+    public                                        bool                  IsValid             => !string.IsNullOrWhiteSpace(UserName) && ID.IsValid();
+    public                                        SupportedLanguage     PreferredLanguage   { get; set; }
+    public                                        DateTimeOffset?       SubscriptionExpires { get; set; }
+    public                                        Guid?                 SubscriptionID      { get; set; }
+    public                                        Guid                  UserID              => ID.Value;
+    RecordID<UserRecord> IUserRecordID.                                 UserID              => ID;
+    [Fixed(USER_NAME)] [ProtectedPersonalData] public string            UserName            { get; init; } = EMPTY;
 
 
 
@@ -59,19 +59,19 @@ public sealed record UserRecord : PairRecord<UserRecord>, ITableRecord<UserRecor
 
     #region Details
 
-    [Fixed(COMPANY)] [ProtectedPersonalData] public string?                                  Company     { get; set; } = EMPTY;
-    Guid? ICreatedByUser<Guid>.                                                              CreatedBy   => EscalateTo?.Value;
-    [Fixed(DEPARTMENT)]                                                       public string? Department  { get; set; } = EMPTY;
-    [Fixed(DESCRIPTION)]                                                      public string? Description { get; set; }
-    [Fixed(EMAIL)] [Indexed(nameof(Email))] [ProtectedPersonalData]           public string? Email       { get; set; } = EMPTY;
-    [Fixed(WEBSITE)] [ProtectedPersonalData]                                  public string? Website     { get; set; } = EMPTY;
-    [Fixed(LAST_NAME)] [Indexed(nameof(LastName))] [ProtectedPersonalData]    public string? LastName    { get; set; } = EMPTY;
-    [Fixed(PHONE)] [Indexed(    nameof(PhoneNumber))] [ProtectedPersonalData] public string? PhoneNumber { get; set; } = EMPTY;
-    [Fixed(PHONE_EXT)] [ProtectedPersonalData]                                public string? Ext         { get; set; } = EMPTY;
-    [Fixed(TITLE)]                                                            public string? Title       { get; set; } = EMPTY;
-    [Fixed(FIRST_NAME)] [Indexed(nameof(FirstName))] [ProtectedPersonalData]  public string? FirstName   { get; set; } = EMPTY;
-    [Fixed(FULL_NAME)] [Indexed( nameof(FullName))] [ProtectedPersonalData]   public string? FullName    { get; set; } = EMPTY;
-    [Fixed(GENDER)] [ProtectedPersonalData]                                   public string? Gender      { get; set; } = EMPTY;
+    [Fixed(COMPANY)] [ProtectedPersonalData] public string?                                              Company     { get; set; } = EMPTY;
+    Guid? ICreatedByUser<Guid>.                                                                          CreatedBy   => EscalateTo?.Value;
+    [Fixed(DEPARTMENT)]                                                                   public string? Department  { get; set; } = EMPTY;
+    [Fixed(DESCRIPTION)]                                                                  public string? Description { get; set; }
+    [Fixed(EMAIL)] [Indexed<UserRecord>(nameof(Email))] [ProtectedPersonalData]           public string? Email       { get; set; } = EMPTY;
+    [Fixed(WEBSITE)] [ProtectedPersonalData]                                              public string? Website     { get; set; } = EMPTY;
+    [Fixed(LAST_NAME)] [Indexed<UserRecord>(nameof(LastName))] [ProtectedPersonalData]    public string? LastName    { get; set; } = EMPTY;
+    [Fixed(PHONE)] [Indexed<UserRecord>(    nameof(PhoneNumber))] [ProtectedPersonalData] public string? PhoneNumber { get; set; } = EMPTY;
+    [Fixed(PHONE_EXT)] [ProtectedPersonalData]                                            public string? Ext         { get; set; } = EMPTY;
+    [Fixed(TITLE)]                                                                        public string? Title       { get; set; } = EMPTY;
+    [Fixed(FIRST_NAME)] [Indexed<UserRecord>(nameof(FirstName))] [ProtectedPersonalData]  public string? FirstName   { get; set; } = EMPTY;
+    [Fixed(FULL_NAME)] [Indexed<UserRecord>( nameof(FullName))] [ProtectedPersonalData]   public string? FullName    { get; set; } = EMPTY;
+    [Fixed(GENDER)] [ProtectedPersonalData]                                               public string? Gender      { get; set; } = EMPTY;
 
     #endregion Details
 

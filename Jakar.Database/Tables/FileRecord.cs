@@ -12,15 +12,15 @@ public sealed record FileRecord : PairRecord<FileRecord>, ITableRecord<FileRecor
     public const string TABLE_NAME = "files";
 
 
-    public static                      string    TableName       => TABLE_NAME;
-    [Fixed(256)]  public               string?   FileName        { get; set; }
-    [Fixed(1024)] public               string?   FileDescription { get; set; }
-    [Fixed(256)]  public               string?   FileType        { get; set; }
-    public                             long      FileSize        { get; set; }
-    public                             string    Hash            { get; set; } = EMPTY;
-    [Indexed(nameof(MimeType))] public MimeType? MimeType        { get; set; }
-    public                             string    Payload         { get; set; } = EMPTY;
-    [Unique] public                    string?   FullPath        { get; init; }
+    public static        string    TableName       => TABLE_NAME;
+    [Fixed(256)]  public string?   FileName        { get; set; }
+    [Fixed(1024)] public string?   FileDescription { get; set; }
+    [Fixed(256)]  public string?   FileType        { get; set; }
+    public               long      FileSize        { get; set; }
+    public               string    Hash            { get; set; } = EMPTY;
+    public               MimeType? MimeType        { get; set; }
+    public               string    Payload         { get; set; } = EMPTY;
+    [Unique] public      string?   FullPath        { get; init; }
 
 
     public FileRecord( in RecordID<FileRecord>       id,   in DateTimeOffset dateCreated, in DateTimeOffset? lastModified = null, JObject? additionalData = null ) : base(in id, in dateCreated, additionalData, in lastModified) { }

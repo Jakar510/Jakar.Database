@@ -12,11 +12,12 @@ public sealed record UserLoginProviderRecord : OwnedTableRecord<UserLoginProvide
     public const string TABLE_NAME = "user_login_providers";
 
 
-    public static                                                 string  TableName           => TABLE_NAME;
-    [Indexed(nameof(LoginProvider))] public                       string  LoginProvider       { get; init; }
-    public                                                        string? ProviderDisplayName { get; init; }
-    [Indexed(nameof(ProviderKey))] [ProtectedPersonalData] public string  ProviderKey         { get; init; }
-    [Indexed(nameof(Value))] [ProtectedPersonalData]       public string? Value               { get; init; }
+    public static                                                                          string               TableName           => TABLE_NAME;
+    [ForeignKey<UserLoginProviderRecord, UserRecord>]         public override              RecordID<UserRecord> UserID              { get; init; }
+    [Indexed<UserLoginProviderRecord>(nameof(LoginProvider))] public                       string               LoginProvider       { get; init; }
+    public                                                                                 string?              ProviderDisplayName { get; init; }
+    [Indexed<UserLoginProviderRecord>(nameof(ProviderKey))] [ProtectedPersonalData] public string               ProviderKey         { get; init; }
+    [Indexed<UserLoginProviderRecord>(nameof(Value))] [ProtectedPersonalData]       public string?              Value               { get; init; }
 
 
     public UserLoginProviderRecord( UserRecord user, UserLoginInfo info ) : this(user, info.LoginProvider, info.ProviderKey, info.ProviderDisplayName) { }

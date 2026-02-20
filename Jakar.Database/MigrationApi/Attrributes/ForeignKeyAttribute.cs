@@ -20,12 +20,18 @@ public enum OnAction
 
 
 [AttributeUsage(AttributeTargets.Property)]
-public sealed class ForeignKeyAttribute( string foreignTableName, OnAction onAction = OnAction.NotSet ) : Attribute
+public sealed class ForeignKeyAttribute<TSelf, TOtherTable>( OnAction onAction = OnAction.NotSet ) : ForeignKeyAttribute(TSelf.TableName, TOtherTable.TableName, onAction)
+    where TSelf : TableRecord<TSelf>, ITableRecord<TSelf>
+    where TOtherTable : TableRecord<TOtherTable>, ITableRecord<TOtherTable>;
+
+
+
+[AttributeUsage(AttributeTargets.Property)]
+public class ForeignKeyAttribute( string tableName, string foreignTableName, OnAction onAction = OnAction.NotSet ) : Attribute
 {
-    public readonly string ForeignTableName = Validate.ThrowIfNull(foreignTableName)
-                                                      .SqlColumnName();
-    public readonly OnAction Action = onAction;
-    public          bool     IsValid     { [Pure] [MemberNotNullWhen(true, nameof(ForeignTableName))] get => !string.IsNullOrWhiteSpace(ForeignTableName); }
+    public readonly string   TableName = foreignTableName.SqlColumnName();
+    public readonly OnAction Action    = onAction;
+    public          bool     IsValid     { [Pure] [MemberNotNullWhen(true, nameof(TableName))] get => !string.IsNullOrWhiteSpace(TableName); }
     public          bool     HasModifier { [Pure] get => Action is not OnAction.NotSet; }
 
     public string? Modifier => Action switch
@@ -41,4 +47,7 @@ public sealed class ForeignKeyAttribute( string foreignTableName, OnAction onAct
                                    OnAction.UpdateNoAction   => "ON UPDATE NO ACTION",
                                    _                         => throw new OutOfRangeException(Action)
                                };
+
+    public string Index( string columnName ) => columnName.SqlColumnIndexName(tableName);
+    public string Index( string columnName, int maxLength ) => Index(columnName).GetPadded(maxLength);
 }
