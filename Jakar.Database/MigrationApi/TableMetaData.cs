@@ -5,83 +5,6 @@
 namespace Jakar.Database;
 
 
-[SuppressMessage("ReSharper", "InconsistentNaming")]
-public interface ITableMetaData
-{
-    public abstract static ITableMetaData                                                      Default     { get; }
-    public                 ValueEnumerable<FromImmutableArray<ColumnMetaData>, ColumnMetaData> Columns     { get; }
-    public                 int                                                                 Count       { get; }
-    public                 PooledArray<ColumnMetaData>                                         ForeignKeys { get; }
-    public                 FrozenDictionary<int, string>                                       Indexes     { get; }
-    public ref readonly ColumnMetaData this[ string propertyName ] { get; }
-    public PropertyColumn this[ int                 index ] { get; }
-    public int                                      MaxLength_ColumnName      { get; }
-    public int                                      MaxLength_DataType        { get; }
-    public int                                      MaxLength_IndexColumnName { get; }
-    public int                                      MaxLength_KeyValuePair    { get; }
-    public int                                      MaxLength_Variables       { get; }
-    public FrozenDictionary<string, ColumnMetaData> Properties                { get; }
-    public PooledArray<ColumnMetaData>              SortedColumns             { get; }
-    public string                                   TableName                 { [Pure] get; }
-
-
-    public StringBuilder ColumnNames( int   indentLevel );
-    public StringBuilder VariableNames( int indentLevel );
-    public StringBuilder KeyValuePairs( int indentLevel );
-
-
-    public string                  CreateTable();
-    public TableMetaDataEnumerator GetEnumerator();
-    public bool                    ContainsKey( string propertyName );
-    public bool                    TryGetValue( string propertyName, [MaybeNullWhen(false)] out ColumnMetaData value );
-}
-
-
-
-public ref struct TableMetaDataEnumerator
-{
-    private readonly ITableMetaData __table;
-    private          int            __index;
-
-
-    internal TableMetaDataEnumerator( ITableMetaData table )
-    {
-        __table = table;
-        __index = -1;
-    }
-
-    public readonly PropertyColumn Current => __table[__index];
-
-    public bool MoveNext()
-    {
-        __index++;
-        if ( (uint)__index < (uint)__table.Properties.Count ) { return true; }
-
-        __index = __table.Properties.Count;
-        return false;
-    }
-
-    public TableMetaDataEnumerator GetEnumerator() => this;
-    public void                    Reset()         => __index = -1;
-    public void                    Dispose()       { }
-}
-
-
-
-public readonly ref struct PropertyColumn( ref readonly string propertyName, ref readonly ColumnMetaData column )
-{
-    public readonly ref readonly    string         PropertyName = ref propertyName;
-    public readonly ref readonly    ColumnMetaData Column       = ref column;
-    public static implicit operator ColumnMetaData( PropertyColumn value ) => value.Column;
-    public void Deconstruct( out string propertyName, out ColumnMetaData column )
-    {
-        column       = Column;
-        propertyName = PropertyName;
-    }
-}
-
-
-
 [AttributeUsage(AttributeTargets.Class)]
 public sealed class TableExtrasAttribute : Attribute
 {
@@ -100,8 +23,7 @@ public sealed class TableExtrasAttribute : Attribute
 public class TableMetaData<TSelf> : ITableMetaData
     where TSelf : TableRecord<TSelf>, ITableRecord<TSelf>
 {
-    public const           BindingFlags         ATTRIBUTES = BindingFlags.Instance | BindingFlags.Public | BindingFlags.SetProperty | BindingFlags.GetProperty;
-    public static readonly TableMetaData<TSelf> Instance   = Create();
+    public static readonly TableMetaData<TSelf> Instance = Create();
 
     // ReSharper disable once StaticMemberInGenericType
     protected static string?                                  _createTableSql;
@@ -109,32 +31,33 @@ public class TableMetaData<TSelf> : ITableMetaData
     public readonly  FrozenDictionary<string, ColumnMetaData> Properties;
 
 
-    public static ITableMetaData                                                      Default         => Instance;
-    public        ValueEnumerable<FromImmutableArray<ColumnMetaData>, ColumnMetaData> Columns         => Properties.Values.AsValueEnumerable();
-    public        int                                                                 Count           { get; }
-    public        TableExtrasAttribute?                                               Extras          { get; init; }
-    public        int                                                                 ForeignKeyCount { get; }
-    public        PooledArray<ColumnMetaData>                                         ForeignKeys     { [Pure] [MustDisposeResource] get { return Columns.Where(static x => x.HasForeignKeyConstraint).ToArrayPool(); } }
-    FrozenDictionary<int, string> ITableMetaData.                                     Indexes         => Indexes;
+    public static ITableMetaData                                                                                   Default         => Instance;
+    public        ValueEnumerable<TableMetaDataEnumerator, PropertyColumn>                                         Values          => AsValueEnumerable();
+    public        ValueEnumerable<Select<TableMetaDataEnumerator, PropertyColumn, ColumnMetaData>, ColumnMetaData> Columns         => Values.Select(static x => x.Column);
+    public        int                                                                                              Count           { get; }
+    public        TableExtrasAttribute?                                                                            Extras          { get; init; }
+    public        int                                                                                              ForeignKeyCount { get; }
+    public        PooledArray<ColumnMetaData>                                                                      ForeignKeys     { [Pure] [MustDisposeResource] get => Columns.Where(static x => x.HasForeignKeyConstraint).ToArrayPool(); }
+    FrozenDictionary<int, string> ITableMetaData.                                                                  Indexes         => Indexes;
     public ref readonly ColumnMetaData this[ string propertyName ] => ref Properties[propertyName];
     public PropertyColumn this[ int index ]
     {
         get
         {
             Guard.IsLessThan((uint)index, (uint)Properties.Keys.Length);
-            ref readonly string         propertyName = ref Indexes[index];
-            ref readonly ColumnMetaData column       = ref Properties[propertyName];
-            return new PropertyColumn(in propertyName, in column);
+            ref readonly string propertyName = ref Indexes[index];
+            return new PropertyColumn(propertyName, Properties[propertyName]);
         }
     }
-    public int                                              MaxLength_ColumnName      { get; }
-    public int                                              MaxLength_DataType        { get; }
-    public int                                              MaxLength_IndexColumnName { get; }
-    public int                                              MaxLength_KeyValuePair    { get; }
-    public int                                              MaxLength_Variables       { get; }
-    FrozenDictionary<string, ColumnMetaData> ITableMetaData.Properties                => Properties;
-    public PooledArray<ColumnMetaData>                      SortedColumns             { [MustUseReturnValue] [MustDisposeResource] get => Columns.OrderBy(static x => x.Index).ToArrayPool(); }
-    public string                                           TableName                 { [Pure] get => TSelf.TableName; }
+    public int                                                                                                   MaxLength_ColumnName      { get; }
+    public int                                                                                                   MaxLength_DataType        { get; }
+    public int                                                                                                   MaxLength_IndexColumnName { get; }
+    public int                                                                                                   MaxLength_KeyValuePair    { get; }
+    public int                                                                                                   MaxLength_Variables       { get; }
+    FrozenDictionary<string, ColumnMetaData> ITableMetaData.                                                     Properties                => Properties;
+    public ValueEnumerable<SelectWhere<TableMetaDataEnumerator, PropertyColumn, ColumnMetaData>, ColumnMetaData> IndexedColumns            => Columns.Where(static x => x.IsColumnIndexed);
+    public PooledArray<ColumnMetaData>                                                                           SortedColumns             { [MustUseReturnValue] [MustDisposeResource] get => Columns.OrderBy(static x => x.Index).ToArrayPool(); }
+    public string                                                                                                TableName                 { [Pure] get => TSelf.TableName; }
 
 
     protected internal TableMetaData( FrozenDictionary<string, ColumnMetaData> properties )
@@ -270,10 +193,12 @@ public class TableMetaData<TSelf> : ITableMetaData
 
         return sb;
     }
+    public string IndexName( string propertyName ) => Properties[propertyName].IndexColumnName_Padded(this);
 
 
-    public TableMetaDataEnumerator GetEnumerator() => new(this);
-    string ITableMetaData.         CreateTable()   => CreateTable();
+    public ValueEnumerable<TableMetaDataEnumerator, PropertyColumn> AsValueEnumerable() => new(GetEnumerator());
+    public TableMetaDataEnumerator                                  GetEnumerator()     => new(Properties);
+    string ITableMetaData.                                          CreateTable()       => CreateTable();
     public static string CreateTable()
     {
         if ( !string.IsNullOrWhiteSpace(_createTableSql) ) { return _createTableSql; }
@@ -287,9 +212,9 @@ public class TableMetaData<TSelf> : ITableMetaData
 
         for ( int index = 0; index < Instance.Count; index++ )
         {
-            ref readonly ColumnMetaData column     = ref Instance[index].Column;
-            string                      columnName = column.ColumnName_Padded(Instance);
-            string                      dataType   = column.DataType_Padded(Instance);
+            ColumnMetaData column     = Instance[index].Column;
+            string         columnName = column.ColumnName_Padded(Instance);
+            string         dataType   = column.DataType_Padded(Instance);
             query.Append($"    {columnName} {dataType}");
 
             if ( column.IsPrimaryKey ) { query.Append(" PRIMARY KEY DEFAULT gen_random_uuid()"); }
@@ -332,19 +257,16 @@ public class TableMetaData<TSelf> : ITableMetaData
 
         if ( Instance.ForeignKeyCount > 0 )
         {
-            using PooledArray<ColumnMetaData> foreignKeys = Instance.ForeignKeys;
+            using PooledArray<ColumnMetaData> foreignKeys                   = Instance.ForeignKeys;
+            int                               maxForeignKeyColumnNameLength = foreignKeys.Span.AsValueEnumerable().Max(static x => x.ColumnName.Length);
 
             foreach ( ColumnMetaData column in foreignKeys.Span )
             {
                 query.Append('\n');
                 ForeignKeyAttribute foreignKey = Validate.ThrowIfNull(column.ForeignKey);
-
-                if ( foreignKeys.Span.Length > 1 )
-                {
-                    string paddedColumnName = $"({column.ColumnName})".PadRight(Instance.MaxLength_ColumnName);
-                    query.Append($"    FOREIGN KEY {paddedColumnName} REFERENCES {foreignKey.TableName}({nameof(IUniqueID.ID).SqlColumnName()})");
-                }
-                else { query.Append($"    FOREIGN KEY {column.ColumnName} REFERENCES {foreignKey.TableName}({nameof(IUniqueID.ID).SqlColumnName()})"); }
+                StringBuilder       padding    = new(maxForeignKeyColumnNameLength);
+                padding.Append(' ', maxForeignKeyColumnNameLength - column.ColumnName.Length);
+                query.Append($"    FOREIGN KEY ({column.ColumnName}){padding} REFERENCES {foreignKey.TableName}({nameof(IUniqueID.ID).SqlColumnName()})");
 
                 if ( !foreignKey.HasModifier )
                 {
@@ -366,9 +288,8 @@ public class TableMetaData<TSelf> : ITableMetaData
         {
             if ( extras.PrimaryKeyPropertiesOverride.HasValue )
             {
-                (string First, string Second) keyOverride = extras.PrimaryKeyPropertiesOverride.Value;
-
-                query.Append($",\n    PRIMARY KEY ({keyOverride.First.SqlColumnName()}, {keyOverride.Second.SqlColumnName()})");
+                ( string first, string second ) = extras.PrimaryKeyPropertiesOverride.Value;
+                query.Append($",\n    PRIMARY KEY ({first.SqlColumnName()}, {second.SqlColumnName()})");
             }
 
             if ( extras.UniquePropertyPairs?.Length is not > 0 ) { query.Append('\n'); }
@@ -393,10 +314,9 @@ public class TableMetaData<TSelf> : ITableMetaData
         query.Append('\n');
         query.Append('\n');
 
-        foreach ( ColumnMetaData column in Instance )
+        foreach ( ColumnMetaData column in Instance.IndexedColumns )
         {
-            if ( !column.IsColumnIndexed ) { continue; }
-
+            Debug.Assert(column.IsColumnIndexed);
             query.Append($"CREATE INDEX IF NOT EXISTS {column.IndexColumnName_Padded(Instance)} ON {tableName}({column.ColumnName});\n");
         }
 

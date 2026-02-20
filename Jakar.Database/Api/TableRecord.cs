@@ -1,10 +1,6 @@
 ﻿// Jakar.Extensions :: Jakar.Database
 // 08/14/2022  8:38 PM
 
-using ZLinq.Linq;
-
-
-
 namespace Jakar.Database;
 
 
@@ -40,7 +36,7 @@ public interface ITableRecord<TSelf>
 public abstract record TableRecord<TSelf>( in DateTimeOffset DateCreated ) : IJsonModel<TSelf>, IDateCreated
     where TSelf : TableRecord<TSelf>, ITableRecord<TSelf>
 {
-    protected internal static readonly ImmutableArray<PropertyInfo> Properties = typeof(TSelf).GetProperties(TableMetaData<TSelf>.ATTRIBUTES)
+    protected internal static readonly ImmutableArray<PropertyInfo> Properties = typeof(TSelf).GetProperties(ITableMetaData.ATTRIBUTES)
                                                                                               .AsValueEnumerable()
                                                                                               .Where(static x => !x.HasAttribute<DbIgnoreAttribute>())
                                                                                               .ToImmutableArray();

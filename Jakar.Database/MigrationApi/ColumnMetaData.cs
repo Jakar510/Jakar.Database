@@ -42,10 +42,10 @@ public sealed class ColumnMetaData
             string columnName = Validate.ThrowIfNull(propertyName.SqlColumnName());
 
             IsPrimaryKey      = IsDbKey(property);
-            IsFixed           = property.GetCustomAttribute<FixedAttribute>() is not null;
-            IsDefaultIdentity = property.GetCustomAttribute<DefaultIdentityAttribute>() is not null;
-            IsAlwaysIdentity  = property.GetCustomAttribute<AlwaysIdentityAttribute>() is not null;
-            IsUnique          = property.GetCustomAttribute<UniqueAttribute>() is not null;
+            IsFixed           = property.HasAttribute<FixedAttribute>();
+            IsDefaultIdentity = property.HasAttribute<DefaultIdentityAttribute>();
+            IsAlwaysIdentity  = property.HasAttribute<AlwaysIdentityAttribute>();
+            IsUnique          = property.HasAttribute<UniqueAttribute>();
             Checks            = property.GetCustomAttribute<ChecksAttribute>();
             Defaults          = property.GetCustomAttribute<DefaultsAttribute>();
             ForeignKey        = property.GetCustomAttribute<ForeignKeyAttribute>();

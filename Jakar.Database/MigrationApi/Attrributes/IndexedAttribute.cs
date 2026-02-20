@@ -22,6 +22,7 @@ public class IndexedAttribute( string propertyName, string tableName ) : Attribu
 {
     public readonly string Name = propertyName.SqlColumnIndexName(tableName);
     public          bool   IsValid { [MemberNotNullWhen(true, nameof(Name))] get => !string.IsNullOrWhiteSpace(Name); }
+
     public IndexedAttribute( ColumnIndex defaults, string tableName ) : this(defaults switch
                                                                              {
                                                                                  ColumnIndex.NotSet => "",
