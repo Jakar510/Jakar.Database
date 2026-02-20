@@ -250,13 +250,16 @@ public class TableMetaData<TSelf> : ITableMetaData
                 }
             }
 
-            if ( index < Instance.Count ) { query.Append(','); }
-
+            query.Append(',');
             query.Append('\n');
         }
 
+        query.Length -= 2; // Remove the last \n and comma
+
         if ( Instance.ForeignKeyCount > 0 )
         {
+            query.Append(',');
+            query.Append('\n');
             using PooledArray<ColumnMetaData> foreignKeys                   = Instance.ForeignKeys;
             int                               maxForeignKeyColumnNameLength = foreignKeys.Span.AsValueEnumerable().Max(static x => x.ColumnName.Length);
 
