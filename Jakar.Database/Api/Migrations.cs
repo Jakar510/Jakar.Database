@@ -34,17 +34,11 @@ public static class MigrationExtensions
                     await beforeRunHandler(scope.ServiceProvider, token);
                 }
 
-                await self.StartAsync(token)
-                          .ConfigureAwait(false);
+                await self.StartAsync(token).ConfigureAwait(false);
 
-                await self.WaitForShutdownAsync(token)
-                          .ConfigureAwait(false);
+                await self.WaitForShutdownAsync(token).ConfigureAwait(false);
             }
-            finally
-            {
-                await self.DisposeAsync()
-                          .ConfigureAwait(false);
-            }
+            finally { await self.DisposeAsync().ConfigureAwait(false); }
         }
 
         public void TryUseMigrationsEndPoint( string endpoint = MigrationManager.MIGRATIONS )
@@ -103,21 +97,17 @@ public class MigrationManager
     private readonly   SortedDictionary<ulong, Func<ulong, MigrationRecord>> __migrationFactories = new(Comparer<ulong>.Default);
     protected readonly Database                                              _db;
     protected          HashSet<MigrationRecord>?                             _records;
-    internal static    ulong                                                 MigrationID    => ++field;
-    public static      MigrationRecord?                                      CreateDatabase { get; set; }
+    internal static    ulong                                                 MigrationID => Interlocked.Add(ref field, 1);
 
 
-    public HashSet<MigrationRecord> Records => _records ??= __migrationFactories.AsValueEnumerable()
-                                                                                .Select(static pair => pair.Value(pair.Key))
-                                                                                .ToHashSet();
+    public HashSet<MigrationRecord> Records => _records ??= __migrationFactories.AsValueEnumerable().Select(static pair => pair.Value(pair.Key)).ToHashSet();
 
 
     public MigrationManager( Database db )
     {
-        _db                               = db;
-        __migrationFactories[MigrationID] = MigrationRecord.AddPostgreSqlExtensions;
-        if ( CreateDatabase is not null ) { __migrationFactories[MigrationID] = GetCreateDatabase; }
+        _db = db;
 
+        // __migrationFactories[MigrationID] = MigrationRecord.AddPostgreSqlExtensions;
         __migrationFactories[MigrationID] = MigrationRecord.CreateTable;
         __migrationFactories[MigrationID] = MigrationRecord.SetLastModified;
         __migrationFactories[MigrationID] = MigrationRecord.FromEnum<MimeType>;
@@ -140,12 +130,6 @@ public class MigrationManager
         __migrationFactories[MigrationID] = UserGroupRecord.CreateTable;
         __migrationFactories[MigrationID] = AddressRecord.CreateTable;
         __migrationFactories[MigrationID] = UserAddressRecord.CreateTable;
-    }
-    public static MigrationRecord GetCreateDatabase( ulong migrationID )
-    {
-        MigrationRecord record = Validate.ThrowIfNull(CreateDatabase);
-        record.MigrationIdValue = migrationID;
-        return record;
     }
 
 
@@ -173,8 +157,7 @@ public class MigrationManager
     {
         SqlCommand<MigrationRecord> command = MigrationRecord.SelectSql;
 
-        ImmutableArray<MigrationRecord> records = await command.ExecuteAsync(connection, transaction, token)
-                                                               .ToImmutableArray(__migrationFactories.Count, token);
+        ImmutableArray<MigrationRecord> records = await command.ExecuteAsync(connection, transaction, token).ToImmutableArray(__migrationFactories.Count, token);
 
         return records;
     }

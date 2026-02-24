@@ -15,7 +15,7 @@ public readonly struct RecordPair<TSelf>( RecordID<TSelf> id, DateTimeOffset dat
 
 
     public static ReadOnlyMemory<PropertyInfo> ClassProperties  { get; } = typeof(RecordPair<TSelf>).GetProperties();
-    public static TableMetaData<TSelf>         PropertyMetaData => TSelf.PropertyMetaData;
+    public static TableMetaData<TSelf>         MetaData => TSelf.MetaData;
     public static string                       TableName        => TSelf.TableName;
 
 

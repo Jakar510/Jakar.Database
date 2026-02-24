@@ -13,13 +13,13 @@ public partial class DbTable<TSelf> : IDbTable<TSelf>
     protected readonly IConnectableDbRoot _database;
 
 
-    public static TableMetaData<TSelf>     PropertyMetaData          { [Pure] get => TSelf.PropertyMetaData; }
+    public static TableMetaData<TSelf>     MetaData          { [Pure] get => TSelf.MetaData; }
     public static TSelf[]                  Empty                     => [];
     public static ImmutableArray<TSelf>    EmptyArray                => [];
     public static FrozenSet<TSelf>         Set                       => FrozenSet<TSelf>.Empty;
     public        FusionCacheEntryOptions? Options                   { get; set; }
     public        RecordGenerator<TSelf>   Records                   => new(this);
-    ITableMetaData IDbTable.               PropertyMetaData          { [Pure] get => PropertyMetaData; }
+    ITableMetaData IDbTable.               MetaData          { [Pure] get => MetaData; }
     public IsolationLevel                  TransactionIsolationLevel => _database.TransactionIsolationLevel;
     public string                          TableName                 { [Pure] get => TSelf.TableName; }
 

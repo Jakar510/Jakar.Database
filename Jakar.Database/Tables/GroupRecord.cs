@@ -83,7 +83,7 @@ public sealed record GroupRecord : OwnedTableRecord<GroupRecord>, ITableRecord<G
     public override ValueTask Export( NpgsqlBinaryExporter exporter, CancellationToken token ) => default;
     public override async ValueTask Import( NpgsqlBinaryImporter importer, CancellationToken token )
     {
-        using PooledArray<ColumnMetaData> buffer = PropertyMetaData.SortedColumns;
+        using PooledArray<ColumnMetaData> buffer = MetaData.SortedColumns;
 
         foreach ( ColumnMetaData column in buffer.Array )
         {

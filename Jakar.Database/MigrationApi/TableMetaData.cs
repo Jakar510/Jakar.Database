@@ -26,19 +26,20 @@ public class TableMetaData<TSelf> : ITableMetaData
     public static readonly TableMetaData<TSelf> Instance = Create();
 
     // ReSharper disable once StaticMemberInGenericType
-    protected static string?                                  _createTableSql;
+    protected static MigrationRecord?                         _createTableSql;
     public readonly  FrozenDictionary<int, string>            Indexes;
     public readonly  FrozenDictionary<string, ColumnMetaData> Properties;
 
 
-    public static ITableMetaData                                                                                   Default         => Instance;
-    public        ValueEnumerable<TableMetaDataEnumerator, PropertyColumn>                                         Values          => AsValueEnumerable();
-    public        ValueEnumerable<Select<TableMetaDataEnumerator, PropertyColumn, ColumnMetaData>, ColumnMetaData> Columns         => Values.Select(static x => x.Column);
-    public        int                                                                                              Count           { get; }
-    public        TableExtrasAttribute?                                                                            Extras          { get; init; }
-    public        int                                                                                              ForeignKeyCount { get; }
-    public        PooledArray<ColumnMetaData>                                                                      ForeignKeys     { [Pure] [MustDisposeResource] get => Columns.Where(static x => x.HasForeignKeyConstraint).ToArrayPool(); }
-    FrozenDictionary<int, string> ITableMetaData.                                                                  Indexes         => Indexes;
+    public static ITableMetaData                                                                                   Default                     => Instance;
+    public        ValueEnumerable<TableMetaDataEnumerator, PropertyColumn>                                         Values                      => AsValueEnumerable();
+    public        ValueEnumerable<Select<TableMetaDataEnumerator, PropertyColumn, ColumnMetaData>, ColumnMetaData> Columns                     => Values.Select(static x => x.Column);
+    public        int                                                                                              Count                       { get; }
+    public        TableExtrasAttribute?                                                                            Extras                      { get; init; }
+    public        int                                                                                              ForeignKeyCount             { get; }
+    public        PooledArray<ColumnMetaData>                                                                      ForeignKeys                 { [Pure] [MustDisposeResource] get => Columns.Where(static x => x.HasForeignKeyConstraint).ToArrayPool(); }
+    FrozenDictionary<int, string> ITableMetaData.                                                                  Indexes                     => Indexes;
+    public string                                                                                                  SetLastModifiedFunctionName => field ??= $"{TSelf.TableName}_{nameof(MigrationRecord.SetLastModified).SqlColumnName()}";
     public ref readonly ColumnMetaData this[ string propertyName ] => ref Properties[propertyName];
     public PropertyColumn this[ int index ]
     {
@@ -49,15 +50,14 @@ public class TableMetaData<TSelf> : ITableMetaData
             return new PropertyColumn(propertyName, Properties[propertyName]);
         }
     }
-    public int                                                                                                   MaxLength_ColumnName      { get; }
-    public int                                                                                                   MaxLength_DataType        { get; }
-    public int                                                                                                   MaxLength_IndexColumnName { get; }
-    public int                                                                                                   MaxLength_KeyValuePair    { get; }
-    public int                                                                                                   MaxLength_Variables       { get; }
-    FrozenDictionary<string, ColumnMetaData> ITableMetaData.                                                     Properties                => Properties;
-    public ValueEnumerable<SelectWhere<TableMetaDataEnumerator, PropertyColumn, ColumnMetaData>, ColumnMetaData> IndexedColumns            => Columns.Where(static x => x.IsColumnIndexed);
-    public PooledArray<ColumnMetaData>                                                                           SortedColumns             { [MustUseReturnValue] [MustDisposeResource] get => Columns.OrderBy(static x => x.Index).ToArrayPool(); }
-    public string                                                                                                TableName                 { [Pure] get => TSelf.TableName; }
+    public int                                              MaxLength_ColumnName      { get; }
+    public int                                              MaxLength_DataType        { get; }
+    public int                                              MaxLength_IndexColumnName { get; }
+    public int                                              MaxLength_KeyValuePair    { get; }
+    public int                                              MaxLength_Variables       { get; }
+    FrozenDictionary<string, ColumnMetaData> ITableMetaData.Properties                => Properties;
+    public PooledArray<ColumnMetaData>                      SortedColumns             { [MustUseReturnValue] [MustDisposeResource] get => Columns.OrderBy(static x => x.Index).ToArrayPool(); }
+    public string                                           TableName                 { [Pure] get => TSelf.TableName; }
 
 
     protected internal TableMetaData( FrozenDictionary<string, ColumnMetaData> properties )
@@ -198,16 +198,27 @@ public class TableMetaData<TSelf> : ITableMetaData
 
     public ValueEnumerable<TableMetaDataEnumerator, PropertyColumn> AsValueEnumerable() => new(GetEnumerator());
     public TableMetaDataEnumerator                                  GetEnumerator()     => new(Properties);
-    string ITableMetaData.                                          CreateTable()       => CreateTable();
-    public static string CreateTable()
+
+
+    public ValueEnumerable<Select<SelectWhere<TableMetaDataEnumerator, PropertyColumn, ColumnMetaData>, ColumnMetaData, MigrationRecord>, MigrationRecord> IndexedColumnSql { [Pure] get => Columns.Where(static x => x.IsColumnIndexed).Select(CreateIndex); }
+
+
+    private static MigrationRecord CreateIndex( ColumnMetaData column ) => CreateIndex(MigrationManager.MigrationID, column);
+    private static MigrationRecord CreateIndex( ulong migrationID, ColumnMetaData column )
     {
-        if ( !string.IsNullOrWhiteSpace(_createTableSql) ) { return _createTableSql; }
+        Debug.Assert(column.IsColumnIndexed);
+        return MigrationRecord.Create<TSelf>(migrationID, $"Create Index for {column.PropertyName} on table {TSelf.TableName}", $"CREATE INDEX {column.IndexColumnName_Padded(Instance)} ON {TSelf.TableName}({column.ColumnName});");
+    }
 
-        StringBuilder query     = new(10240);
-        string        tableName = TSelf.TableName;
 
-        query.Append("CREATE TABLE IF NOT EXISTS ");
-        query.Append(tableName);
+    public MigrationRecord CreateTable( ulong migrationID )
+    {
+        if ( _createTableSql is not null ) { return _createTableSql; }
+
+        StringBuilder query = new(10240);
+
+        query.Append("CREATE TABLE ");
+        query.Append(TSelf.TableName);
         query.Append(" (\n");
 
         for ( int index = 0; index < Instance.Count; index++ )
@@ -312,27 +323,20 @@ public class TableMetaData<TSelf> : ITableMetaData
             }
         }
 
+        query.Append(';');
         query.Append('\n');
         query.Append(')');
-        query.Append('\n');
-        query.Append('\n');
-
-        foreach ( ColumnMetaData column in Instance.IndexedColumns )
-        {
-            Debug.Assert(column.IsColumnIndexed);
-            query.Append($"CREATE INDEX IF NOT EXISTS {column.IndexColumnName_Padded(Instance)} ON {tableName}({column.ColumnName});\n");
-        }
-
-        query.Append($"""
-
-                      CREATE TRIGGER IF NOT EXISTS {tableName}_{nameof(MigrationRecord.SetLastModified).SqlColumnName()}
-                      BEFORE INSERT OR UPDATE ON {tableName}
-                      FOR EACH ROW
-                      EXECUTE FUNCTION {nameof(MigrationRecord.SetLastModified).SqlColumnName()}();
-                      """);
-
-        return _createTableSql = query.ToString();
+        return _createTableSql = new MigrationRecord(migrationID, $"Create {TableName} table", TableName) { SQL = query.ToString() };
     }
+
+    public MigrationRecord SetLastModifiedFunction( ulong migrationID ) => MigrationRecord.Create<TSelf>(migrationID,
+                                                                                                         "Create SetLastModifiedFunctionName function",
+                                                                                                         $"""
+                                                                                                          CREATE TRIGGER IF NOT EXISTS {SetLastModifiedFunctionName}
+                                                                                                          BEFORE INSERT OR UPDATE ON {TSelf.TableName}
+                                                                                                          FOR EACH ROW
+                                                                                                          EXECUTE FUNCTION {nameof(MigrationRecord.SetLastModified).SqlColumnName()}();
+                                                                                                          """);
 
 
     public bool ContainsKey( string propertyName )                                                  => Properties.ContainsKey(propertyName);

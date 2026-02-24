@@ -21,7 +21,7 @@ public readonly ref struct SqlTable<TSelf> : IDisposable
 
     public static string CreateTable()
     {
-        TableMetaData<TSelf> columns   = TSelf.PropertyMetaData;
+        TableMetaData<TSelf> columns   = TSelf.MetaData;
         StringBuilder        query     = new(10240);
         string               tableName = TSelf.TableName;
 

@@ -68,8 +68,7 @@ public sealed record MigrationRecord : TableRecord<MigrationRecord>, ITableRecor
     }
     public static MigrationRecord SetLastModified( ulong migrationID )
     {
-        string name = nameof(SetLastModified)
-           .SqlColumnName();
+        string name = nameof(SetLastModified).SqlColumnName();
 
         return new MigrationRecord(migrationID, $"create {name} function")
                {
@@ -101,11 +100,12 @@ public sealed record MigrationRecord : TableRecord<MigrationRecord>, ITableRecor
 
                                 // ReSharper disable StringLiteralTypo
                                 """
+
+                                CREATE EXTENSION pg_crypto;
+                                CREATE EXTENSION postgis;
+                                CREATE EXTENSION pgaudit;
                                 CREATE EXTENSION pg_textsearch;
                                 CREATE EXTENSION uint128;
-                                CREATE EXTENSION pg_crypto;
-                                CREATE EXTENSION pgaudit;
-                                CREATE EXTENSION postgis;
                                 """
 
                                 // ReSharper restore StringLiteralTypo
@@ -131,16 +131,13 @@ public sealed record MigrationRecord : TableRecord<MigrationRecord>, ITableRecor
 
         return new MigrationRecord(migrationID, $"Create database {databaseName}", databaseName) { SQL = sql };
     }
-    public static MigrationRecord CreateTable( ulong migrationID ) => CreateTable<MigrationRecord>(migrationID);
-    public static MigrationRecord CreateTable<TSelf>( ulong migrationID )
-        where TSelf : TableRecord<TSelf>, ITableRecord<TSelf> => Create<TSelf>(migrationID, $"Create '{TSelf.TableName}' Table", TableMetaData<TSelf>.CreateTable());
+    public static MigrationRecord CreateTable( ulong migrationID ) => MetaData.CreateTable(migrationID);
 
 
     public static MigrationRecord FromEnum<TEnum>( ulong migrationID )
         where TEnum : unmanaged, Enum
     {
-        ValueEnumerable<FromArray<string>, string> enumerable = Enum.GetNames(typeof(TEnum))
-                                                                    .AsValueEnumerable();
+        ValueEnumerable<FromArray<string>, string> enumerable = Enum.GetNames(typeof(TEnum)).AsValueEnumerable();
 
         string tableName = typeof(TEnum).Name.SqlColumnName();
         int    length    = enumerable.Max(static x => x.Length);
@@ -176,8 +173,7 @@ public sealed record MigrationRecord : TableRecord<MigrationRecord>, ITableRecor
         {
             StringBuilder values = new();
 
-            using PooledArray<string> array = enumerable.Select(static ( v, i ) => $"    ({i}, '{v}')")
-                                                        .ToArrayPool();
+            using PooledArray<string> array = enumerable.Select(static ( v, i ) => $"    ({i}, '{v}')").ToArrayPool();
 
             values.AppendJoin(",\n", array.Span);
             return values;
@@ -207,7 +203,7 @@ public sealed record MigrationRecord : TableRecord<MigrationRecord>, ITableRecor
 
     public override async ValueTask Import( NpgsqlBinaryImporter importer, CancellationToken token )
     {
-        using PooledArray<ColumnMetaData> buffer = PropertyMetaData.SortedColumns;
+        using PooledArray<ColumnMetaData> buffer = MetaData.SortedColumns;
 
         foreach ( ColumnMetaData column in buffer.Array )
         {

@@ -7,7 +7,7 @@ namespace Jakar.Database;
 public interface IDbTable : IConnectableDb
 {
     FusionCacheEntryOptions? Options          { get; set; }
-    public ITableMetaData    PropertyMetaData { [Pure] get; }
+    public ITableMetaData    MetaData { [Pure] get; }
     public string            TableName        { [Pure] get; }
 }
 

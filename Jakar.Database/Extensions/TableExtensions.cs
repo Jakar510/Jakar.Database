@@ -70,7 +70,7 @@ public static class TableExtensions
         public JObject? GetAdditionalData<TRecord>()
             where TRecord : TableRecord<TRecord>, ITableRecord<TRecord>
         {
-            int ordinal = TRecord.PropertyMetaData[nameof(IJsonModel.AdditionalData)].Index;
+            int ordinal = TRecord.MetaData[nameof(IJsonModel.AdditionalData)].Index;
 
             return self.IsDBNull(ordinal)
                        ? null
@@ -80,7 +80,7 @@ public static class TableExtensions
         public TValue GetFieldValue<TRecord, TValue>( string propertyName )
             where TRecord : TableRecord<TRecord>, ITableRecord<TRecord>
         {
-            int ordinal = TRecord.PropertyMetaData[propertyName].Index;
+            int ordinal = TRecord.MetaData[propertyName].Index;
 
             return self.IsDBNull(ordinal)
                        ? default!
@@ -90,7 +90,7 @@ public static class TableExtensions
             where TRecord : TableRecord<TRecord>, ITableRecord<TRecord>
             where TValue : IParsable<TValue>
         {
-            int ordinal = TRecord.PropertyMetaData[propertyName].Index;
+            int ordinal = TRecord.MetaData[propertyName].Index;
 
             return self.IsDBNull(ordinal)
                        ? defaultValue
@@ -102,7 +102,7 @@ public static class TableExtensions
             where TRecord : TableRecord<TRecord>, ITableRecord<TRecord>
             where TValue : unmanaged, Enum
         {
-            int ordinal = TRecord.PropertyMetaData[propertyName].Index;
+            int ordinal = TRecord.MetaData[propertyName].Index;
 
             return self.IsDBNull(ordinal)
                        ? defaultValue

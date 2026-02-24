@@ -21,10 +21,10 @@ public interface ILastModified : IDateCreated
 public interface ITableRecord<TSelf>
     where TSelf : TableRecord<TSelf>, ITableRecord<TSelf>
 {
-    public abstract static ref readonly ImmutableArray<PropertyInfo> ClassProperties  { [Pure] get; }
-    public abstract static              int                          PropertyCount    { get; }
-    public abstract static              TableMetaData<TSelf>         PropertyMetaData { [Pure] get; }
-    public abstract static              string                       TableName        { [Pure] get; }
+    public abstract static ref readonly ImmutableArray<PropertyInfo> ClassProperties { [Pure] get; }
+    public abstract static              int                          PropertyCount   { get; }
+    public abstract static              TableMetaData<TSelf>         MetaData        { [Pure] get; }
+    public abstract static              string                       TableName       { [Pure] get; }
 
     [Pure] public abstract static TSelf           Create( NpgsqlDataReader reader );
     [Pure] public abstract static MigrationRecord CreateTable( ulong       migrationID );
@@ -36,15 +36,12 @@ public interface ITableRecord<TSelf>
 public abstract record TableRecord<TSelf>( in DateTimeOffset DateCreated ) : IJsonModel<TSelf>, IDateCreated
     where TSelf : TableRecord<TSelf>, ITableRecord<TSelf>
 {
-    protected internal static readonly ImmutableArray<PropertyInfo> Properties = typeof(TSelf).GetProperties(ITableMetaData.ATTRIBUTES)
-                                                                                              .AsValueEnumerable()
-                                                                                              .Where(static x => !x.HasAttribute<DbIgnoreAttribute>())
-                                                                                              .ToImmutableArray();
+    protected internal static readonly ImmutableArray<PropertyInfo> Properties = typeof(TSelf).GetProperties(ITableMetaData.ATTRIBUTES).AsValueEnumerable().Where(static x => !x.HasAttribute<DbIgnoreAttribute>()).ToImmutableArray();
 
     protected DateTimeOffset? _lastModified;
 
 
-    public static              TableMetaData<TSelf>         PropertyMetaData => TableMetaData<TSelf>.Instance;
+    public static              TableMetaData<TSelf>         MetaData => TableMetaData<TSelf>.Instance;
     public static ref readonly ImmutableArray<PropertyInfo> ClassProperties  { [Pure] get => ref Properties; }
     public static              int                          PropertyCount    => Properties.Length;
 

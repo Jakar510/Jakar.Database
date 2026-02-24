@@ -11,11 +11,11 @@ try
 
     // Jakar.Database.Activities.Tags.Print();
 
-    MigrationManager.CreateDatabase = MigrationRecord.CreateDatabase(0, nameof(TestDatabase), "dev");
+    // MigrationManager.CreateDatabase = MigrationRecord.CreateDatabase(0, nameof(TestDatabase), "dev");
 
-    TestDatabase.PrintCreateTables();
+    // TestDatabase.PrintCreateTables();
 
-    // await TestDatabase.TestAsync();
+    await TestDatabase.TestAsync();
 }
 catch ( Exception e ) { e.WriteToConsole(); }
 finally { "Bye".WriteToConsole(); }

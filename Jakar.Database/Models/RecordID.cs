@@ -32,8 +32,8 @@ public readonly struct RecordID<TSelf>( Guid id ) : IEquatable<RecordID<TSelf>>,
     [Pure] public static RecordID<TSelf>  Parse( params ReadOnlySpan<char> value )                       => Create(Guid.Parse(value));
     [Pure] public static RecordID<TSelf>  ID( NpgsqlDataReader             reader )                      => Create(reader, nameof(IUniqueID.ID));
     [Pure] public static RecordID<TSelf>  UserID( NpgsqlDataReader         reader )                      => Create(reader, nameof(IUserRecordID.UserID));
-    [Pure] public static RecordID<TSelf>? TryCreate( NpgsqlDataReader      reader, string propertyName ) => TryCreate(reader.GetFieldValue<Guid?>(TSelf.PropertyMetaData[propertyName].Index));
-    [Pure] public static RecordID<TSelf>  Create( NpgsqlDataReader         reader, string propertyName ) => Create(reader.GetFieldValue<Guid>(TSelf.PropertyMetaData[propertyName].Index));
+    [Pure] public static RecordID<TSelf>? TryCreate( NpgsqlDataReader      reader, string propertyName ) => TryCreate(reader.GetFieldValue<Guid?>(TSelf.MetaData[propertyName].Index));
+    [Pure] public static RecordID<TSelf>  Create( NpgsqlDataReader         reader, string propertyName ) => Create(reader.GetFieldValue<Guid>(TSelf.MetaData[propertyName].Index));
     [Pure] public static RecordID<TSelf>  Create( Guid                     id ) => new(id);
     [Pure] public static RecordID<TSelf> Create( [NotNullIfNotNull(nameof(id))] Guid? id ) => id.HasValue
                                                                                                   ? new RecordID<TSelf>(id.Value)

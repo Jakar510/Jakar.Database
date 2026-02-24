@@ -79,10 +79,10 @@ public sealed class TableRecordGenerator : IIncrementalGenerator
         if ( props.Count == 0 ) { return null; }
 
         // Build property metadata – this is where the mapping to PostgreSQL types is performed.
-        List<PropertyMetaData> meta = new();
-        foreach ( IPropertySymbol prop in props ) { meta.Add(BuildPropertyMetaData(prop)); }
+        List<MetaData> meta = new();
+        foreach ( IPropertySymbol prop in props ) { meta.Add(BuildMetaData(prop)); }
 
-        // Sort alphabetically by the property name so that PropertyMetaData is deterministic.
+        // Sort alphabetically by the property name so that MetaData is deterministic.
         meta.Sort(( x, y ) => string.CompareOrdinal(x.PropertyName, y.PropertyName));
 
         return new RecordCandidate
@@ -98,7 +98,7 @@ public sealed class TableRecordGenerator : IIncrementalGenerator
     }
 
     /// <summary> Builds the metadata for a single property. </summary>
-    private static PropertyMetaData BuildPropertyMetaData( IPropertySymbol prop )
+    private static MetaData BuildMetaData( IPropertySymbol prop )
     {
         // Column name = snake_case of the property name
         string columnName = ToSnakeCase(prop.Name);
@@ -128,7 +128,7 @@ public sealed class TableRecordGenerator : IIncrementalGenerator
             length = new LengthInfo(len);
         }
 
-        return new PropertyMetaData
+        return new MetaData
                {
                    PropertyName = prop.Name,
                    PropertyType = prop.Type,
@@ -260,12 +260,12 @@ public sealed class TableRecordGenerator : IIncrementalGenerator
 
 
 
-        #region Static readonly PropertyMetaData (alphabetised)
+        #region Static readonly MetaData (alphabetised)
 
-        sb.AppendLine("    public static readonly FrozenDictionary<string, ColumnMetaData> PropertyMetaData = new FrozenDictionary<string, ColumnMetaData>(new SortedDictionary<string, ColumnMetaData>(StringComparer.InvariantCultureIgnoreCase)");
+        sb.AppendLine("    public static readonly FrozenDictionary<string, ColumnMetaData> MetaData = new FrozenDictionary<string, ColumnMetaData>(new SortedDictionary<string, ColumnMetaData>(StringComparer.InvariantCultureIgnoreCase)");
         sb.AppendLine("    {");
 
-        foreach ( PropertyMetaData p in rec.PropertyMetas )
+        foreach ( MetaData p in rec.PropertyMetas )
         {
             // Build options string
             string optsStr = p.Options == ColumnOptions.None
@@ -287,7 +287,7 @@ public sealed class TableRecordGenerator : IIncrementalGenerator
         sb.AppendLine("    {");
         sb.AppendLine("        var sb = new StringBuilder();");
         sb.AppendLine("        sb.AppendLine($\"CREATE TABLE {TableName} (\\n      \");");
-        sb.AppendLine("        foreach (var kvp in PropertyMetaData)");
+        sb.AppendLine("        foreach (var kvp in MetaData)");
         sb.AppendLine("        {");
         sb.AppendLine("            var meta = kvp.Value;");
         sb.AppendLine("            sb.Append(\"    \");");
@@ -298,7 +298,7 @@ public sealed class TableRecordGenerator : IIncrementalGenerator
         sb.AppendLine("            if (!meta.IsNullable) sb.Append(\" NOT NULL\"); else sb.Append(\" NULL\");");
         sb.AppendLine("            sb.AppendLine(\",\\n      \");");
         sb.AppendLine("        }");
-        sb.AppendLine("        if (PropertyMetaData.Count > 0)");
+        sb.AppendLine("        if (MetaData.Count > 0)");
         sb.AppendLine("        {");
         sb.AppendLine("            sb.Length -= 6; // strip the final comma and indentation");
         sb.AppendLine("        }");
@@ -324,7 +324,7 @@ public sealed class TableRecordGenerator : IIncrementalGenerator
         sb.AppendLine("    {");
         sb.AppendLine("        var instance = new " + rec.TypeName + "();");
 
-        foreach ( PropertyMetaData p in rec.PropertyMetas )
+        foreach ( MetaData p in rec.PropertyMetas )
         {
             string propTypeStr = p.PropertyType.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat);
             sb.AppendLine($"        instance.{p.PropertyName} = reader.GetFieldValue<{propTypeStr}>(reader.GetOrdinal(\"{p.ColumnName}\"));");
@@ -344,7 +344,7 @@ public sealed class TableRecordGenerator : IIncrementalGenerator
         sb.AppendLine($"        var newInstance = new {rec.TypeName}");
         sb.AppendLine("        {");
         sb.AppendLine("            ID = id,");
-        foreach ( PropertyMetaData p in rec.PropertyMetas.Where(p => p.PropertyName != "ID") ) { sb.AppendLine($"            {p.PropertyName} = this.{p.PropertyName},"); }
+        foreach ( MetaData p in rec.PropertyMetas.Where(p => p.PropertyName != "ID") ) { sb.AppendLine($"            {p.PropertyName} = this.{p.PropertyName},"); }
 
         sb.AppendLine("        };");
         sb.AppendLine("        return newInstance;");
@@ -376,7 +376,7 @@ public sealed class TableRecordGenerator : IIncrementalGenerator
     private sealed class RecordCandidate
     {
         public required string?                Namespace      { get; init; }
-        public          List<PropertyMetaData> PropertyMetas  { get; init; } = [];
+        public          List<MetaData> PropertyMetas  { get; init; } = [];
         public required IFieldSymbol           TableNameField { get; init; }
         public required string                 TypeName       { get; init; }
         public required INamedTypeSymbol       TypeSymbol     { get; init; }
@@ -384,7 +384,7 @@ public sealed class TableRecordGenerator : IIncrementalGenerator
 
 
 
-    private sealed class PropertyMetaData
+    private sealed class MetaData
     {
         public required string        ColumnName   { get; init; }
         public required SizeInfo      Length       { get; init; } // currently unused in the generated code but kept for future extension

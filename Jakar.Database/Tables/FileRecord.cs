@@ -25,7 +25,7 @@ public sealed record FileRecord : PairRecord<FileRecord>, ITableRecord<FileRecor
 
     public FileRecord( in RecordID<FileRecord>       id,   in DateTimeOffset dateCreated, in DateTimeOffset? lastModified = null, JObject? additionalData = null ) : base(in id, in dateCreated, additionalData, in lastModified) { }
     public FileRecord( IFileData<Guid, FileMetaData> data, LocalFile?        file = null ) : this(data, data.MetaData, file) { }
-    private FileRecord( IFileData<Guid> data, IFileMetaData metaData, LocalFile? file = null ) : base(RecordID<FileRecord>.New(), DateTimeOffset.UtcNow, null)
+    private FileRecord( IFileData<Guid> data, IFileMetaData metaData, LocalFile? file = null ) : base(RecordID<FileRecord>.New(), DateTimeOffset.UtcNow)
     {
         FileName        = metaData.FileName;
         FileDescription = metaData.FileDescription;
@@ -127,7 +127,7 @@ public sealed record FileRecord : PairRecord<FileRecord>, ITableRecord<FileRecor
     public override ValueTask Export( NpgsqlBinaryExporter exporter, CancellationToken token ) => default;
     public override async ValueTask Import( NpgsqlBinaryImporter importer, CancellationToken token )
     {
-        using PooledArray<ColumnMetaData> buffer = PropertyMetaData.SortedColumns;
+        using PooledArray<ColumnMetaData> buffer = MetaData.SortedColumns;
 
         foreach ( ColumnMetaData column in buffer.Array )
         {

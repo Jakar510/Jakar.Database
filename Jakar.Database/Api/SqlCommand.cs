@@ -72,15 +72,15 @@ public readonly struct SqlCommand<TSelf>( string sql, in PostgresParameters para
     public const string ID           = "id";
 
 
-    public static IEnumerable<string> GetColumnNames   => TSelf.PropertyMetaData.Properties.Values.Select(ColumnMetaData.GetColumnName);
-    public static IEnumerable<string> GetKeyValuePairs => TSelf.PropertyMetaData.Properties.Values.Select(ColumnMetaData.GetKeyValuePair);
+    public static IEnumerable<string> GetColumnNames   => TSelf.MetaData.Properties.Values.Select(ColumnMetaData.GetColumnName);
+    public static IEnumerable<string> GetKeyValuePairs => TSelf.MetaData.Properties.Values.Select(ColumnMetaData.GetKeyValuePair);
 
 
     public static StringBuilder ColumnNames
     {
         get
         {
-            TableMetaData<TSelf> data = TSelf.PropertyMetaData;
+            TableMetaData<TSelf> data = TSelf.MetaData;
 
             int length = data.Properties.Values.AsValueEnumerable()
                              .Sum(static x => x.ColumnName.Length) +
@@ -108,7 +108,7 @@ public readonly struct SqlCommand<TSelf>( string sql, in PostgresParameters para
     {
         get
         {
-            TableMetaData<TSelf> data = TSelf.PropertyMetaData;
+            TableMetaData<TSelf> data = TSelf.MetaData;
 
             int length = data.Properties.Values.AsValueEnumerable()
                              .Sum(static x => x.ColumnName.Length) +
@@ -360,7 +360,7 @@ public readonly struct SqlCommand<TSelf>( string sql, in PostgresParameters para
         string sql = $"""
                       INSERT INTO {TSelf.TableName} 
                       (
-                      {TSelf.PropertyMetaData.ColumnNames(1)}
+                      {TSelf.MetaData.ColumnNames(1)}
                       )
                       VALUES
                       (
@@ -378,7 +378,7 @@ public readonly struct SqlCommand<TSelf>( string sql, in PostgresParameters para
         string sql = $"""
                       INSERT INTO {TSelf.TableName} 
                       (
-                      {TSelf.PropertyMetaData.ColumnNames(1)}
+                      {TSelf.MetaData.ColumnNames(1)}
                       )
                       VALUES
                       (
@@ -396,7 +396,7 @@ public readonly struct SqlCommand<TSelf>( string sql, in PostgresParameters para
         string sql = $"""
                       INSERT INTO {TSelf.TableName} 
                       (
-                      {TSelf.PropertyMetaData.ColumnNames(1)}
+                      {TSelf.MetaData.ColumnNames(1)}
                       )
                       VALUES
                       (
@@ -430,7 +430,7 @@ public readonly struct SqlCommand<TSelf>( string sql, in PostgresParameters para
                       BEGIN
                       INSERT INTO {TSelf.TableName}
                       (
-                      {TSelf.PropertyMetaData.ColumnNames(1)}
+                      {TSelf.MetaData.ColumnNames(1)}
                       )
                       VALUES
                       (
@@ -461,7 +461,7 @@ public readonly struct SqlCommand<TSelf>( string sql, in PostgresParameters para
                       BEGIN
                       INSERT INTO {TSelf.TableName}
                       (
-                      {TSelf.PropertyMetaData.ColumnNames(1)}
+                      {TSelf.MetaData.ColumnNames(1)}
                       ) 
                       VALUES 
                       (
