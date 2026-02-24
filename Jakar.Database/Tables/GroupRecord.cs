@@ -49,9 +49,6 @@ public sealed record GroupRecord : OwnedTableRecord<GroupRecord>, ITableRecord<G
         where TGroupModel : class, IGroupModel<TGroupModel, Guid> => TGroupModel.Create(this);
 
 
-    public static MigrationRecord CreateTable( ulong migrationID ) => MigrationRecord.CreateTable<RoleRecord>(migrationID);
-
-
     public override int CompareTo( GroupRecord? other )
     {
         if ( ReferenceEquals(this, other) ) { return 0; }

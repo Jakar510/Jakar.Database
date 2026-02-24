@@ -13,12 +13,12 @@ public interface ITableMetaData
 {
     public const BindingFlags ATTRIBUTES = BindingFlags.Instance | BindingFlags.Public | BindingFlags.SetProperty | BindingFlags.GetProperty;
 
-    public abstract static ITableMetaData                                                                                                                                  Default          { get; }
-    public                 ValueEnumerable<Select<TableMetaDataEnumerator, PropertyColumn, ColumnMetaData>, ColumnMetaData>                                                Columns          { get; }
-    public                 int                                                                                                                                             Count            { get; }
-    public                 PooledArray<ColumnMetaData>                                                                                                                     ForeignKeys      { get; }
-    public                 ValueEnumerable<Select<SelectWhere<TableMetaDataEnumerator, PropertyColumn, ColumnMetaData>, ColumnMetaData, MigrationRecord>, MigrationRecord> IndexedColumnSql { get; }
-    public                 FrozenDictionary<int, string>                                                                                                                   Indexes          { get; }
+    public abstract static ITableMetaData                                                                                                                                                            Default        { get; }
+    public                 ValueEnumerable<Select<TableMetaDataEnumerator, PropertyColumn, ColumnMetaData>, ColumnMetaData>                                                                          Columns        { get; }
+    public                 int                                                                                                                                                                       Count          { get; }
+    public                 PooledArray<ColumnMetaData>                                                                                                                                               ForeignKeys    { get; }
+    public                 ValueEnumerable<Select<SelectWhere<TableMetaDataEnumerator, PropertyColumn, ColumnMetaData>, ColumnMetaData, Func<ulong, MigrationRecord>>, Func<ulong, MigrationRecord>> IndexedColumns { get; }
+    public                 FrozenDictionary<int, string>                                                                                                                                             Indexes        { get; }
     public ref readonly ColumnMetaData this[ string propertyName ] { get; }
     public PropertyColumn this[ int                 index ] { get; }
     public int                                      MaxLength_ColumnName        { get; }

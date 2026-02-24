@@ -78,8 +78,7 @@ public abstract record Mapping<TSelf, TKey, TValue> : TableRecord<TSelf>
     }
 
 
-    public        bool            IsValid()                        => KeyID.IsValid() && ValueID.IsValid();
-    public static MigrationRecord CreateTable( ulong migrationID ) => MigrationRecord.CreateTable<TSelf>(migrationID);
+    public bool IsValid() => KeyID.IsValid() && ValueID.IsValid();
 
 
     public override ValueTask Export( NpgsqlBinaryExporter exporter, CancellationToken token ) => default;
@@ -132,23 +131,21 @@ public abstract record Mapping<TSelf, TKey, TValue> : TableRecord<TSelf>
     public override int GetHashCode() => HashCode.Combine(KeyID, ValueID);
 
 
-    public async ValueTask<TKey?> Get( NpgsqlConnection connection, NpgsqlTransaction transaction, DbTable<TKey> table, CancellationToken token )
+    public async ValueTask<TKey?> Get( NpgsqlConnection connection, NpgsqlTransaction? transaction, DbTable<TKey> table, CancellationToken token )
     {
         if ( __owner is not null && __owner.TryGetTarget(out TKey? value) ) { return value; }
 
-        TKey? record = await table.Get(connection, transaction, KeyID, token)
-                                  .ConfigureAwait(false);
+        TKey? record = await table.Get(connection, transaction, KeyID, token).ConfigureAwait(false);
 
         if ( record is not null ) { __owner = new WeakReference<TKey>(record); }
 
         return record;
     }
-    public async ValueTask<TValue?> Get( NpgsqlConnection connection, NpgsqlTransaction transaction, DbTable<TValue> table, CancellationToken token )
+    public async ValueTask<TValue?> Get( NpgsqlConnection connection, NpgsqlTransaction? transaction, DbTable<TValue> table, CancellationToken token )
     {
         if ( __value is not null && __value.TryGetTarget(out TValue? value) ) { return value; }
 
-        ErrorOrResult<TValue> record = await table.Get(connection, transaction, ValueID, token)
-                                                  .ConfigureAwait(false);
+        ErrorOrResult<TValue> record = await table.Get(connection, transaction, ValueID, token).ConfigureAwait(false);
 
         if ( record.TryGetValue(out value) ) { __value = new WeakReference<TValue>(value); }
 
@@ -156,7 +153,7 @@ public abstract record Mapping<TSelf, TKey, TValue> : TableRecord<TSelf>
     }
 
 
-    public static async ValueTask<bool> TryAdd( NpgsqlConnection connection, NpgsqlTransaction transaction, RecordID<TKey> key, RecordID<TValue> value, CancellationToken token )
+    public static async ValueTask<bool> TryAdd( NpgsqlConnection connection, NpgsqlTransaction? transaction, RecordID<TKey> key, RecordID<TValue> value, CancellationToken token )
     {
         if ( await Exists(connection, transaction, key, value, token) ) { return false; }
 
@@ -166,7 +163,7 @@ public abstract record Mapping<TSelf, TKey, TValue> : TableRecord<TSelf>
 
         return record.IsValid();
     }
-    public static async ValueTask<bool> TryAdd( NpgsqlConnection connection, NpgsqlTransaction transaction, TSelf self, CancellationToken token )
+    public static async ValueTask<bool> TryAdd( NpgsqlConnection connection, NpgsqlTransaction? transaction, TSelf self, CancellationToken token )
     {
         if ( await Exists(connection, transaction, self, token) ) { return false; }
 
@@ -174,7 +171,7 @@ public abstract record Mapping<TSelf, TKey, TValue> : TableRecord<TSelf>
         await command.ExecuteNonQueryAsync(connection, transaction, token);
         return self.IsValid();
     }
-    public static async ValueTask TryAdd( NpgsqlConnection connection, NpgsqlTransaction transaction, DbTable<TValue> valueTable, RecordID<TKey> key, IEnumerable<RecordID<TValue>> values, CancellationToken token )
+    public static async ValueTask TryAdd( NpgsqlConnection connection, NpgsqlTransaction? transaction, DbTable<TValue> valueTable, RecordID<TKey> key, IEnumerable<RecordID<TValue>> values, CancellationToken token )
     {
         PostgresParameters parameters = GetDynamicParameters(key);
         StringBuilder      ids        = new();
@@ -190,8 +187,7 @@ public abstract record Mapping<TSelf, TKey, TValue> : TableRecord<TSelf>
                       AND s.{nameof(KeyID).SqlColumnName()} = '{key.Value}'
                       """;
 
-        ImmutableArray<RecordID<TValue>> missingValueIDs = await valueTable.WhereID(connection, transaction, sql, parameters, token)
-                                                                           .ToImmutableArray(token: token);
+        ImmutableArray<RecordID<TValue>> missingValueIDs = await valueTable.WhereID(connection, transaction, sql, parameters, token).ToImmutableArray(token: token);
 
 
         List<TSelf> list = new(DEFAULT_CAPACITY);
@@ -206,7 +202,7 @@ public abstract record Mapping<TSelf, TKey, TValue> : TableRecord<TSelf>
         SqlCommand<TSelf> command = SqlCommand<TSelf>.GetInsert(list);
         await command.ExecuteNonQueryAsync(connection, transaction, token);
     }
-    public static async ValueTask TryAdd( NpgsqlConnection connection, NpgsqlTransaction transaction, ImmutableArray<TSelf> records, CancellationToken token )
+    public static async ValueTask TryAdd( NpgsqlConnection connection, NpgsqlTransaction? transaction, ImmutableArray<TSelf> records, CancellationToken token )
     {
         PostgresParameters parameters = PostgresParameters.Create<TSelf>();
         StringBuilder      sb         = new();
@@ -264,9 +260,9 @@ public abstract record Mapping<TSelf, TKey, TValue> : TableRecord<TSelf>
     */
 
 
-    public static ValueTask<bool> Exists( NpgsqlConnection connection, NpgsqlTransaction transaction, TSelf self, CancellationToken token )                          => Exists(connection, transaction, self.KeyID, self.ValueID, token);
-    public static ValueTask<bool> Exists( NpgsqlConnection connection, NpgsqlTransaction transaction, TKey  key,  TValue            value, CancellationToken token ) => Exists(connection, transaction, key.ID,     value.ID,     token);
-    public static async ValueTask<bool> Exists( NpgsqlConnection connection, NpgsqlTransaction transaction, RecordID<TKey> key, RecordID<TValue> value, CancellationToken token )
+    public static ValueTask<bool> Exists( NpgsqlConnection connection, NpgsqlTransaction? transaction, TSelf self, CancellationToken token )                          => Exists(connection, transaction, self.KeyID, self.ValueID, token);
+    public static ValueTask<bool> Exists( NpgsqlConnection connection, NpgsqlTransaction? transaction, TKey  key,  TValue            value, CancellationToken token ) => Exists(connection, transaction, key.ID,     value.ID,     token);
+    public static async ValueTask<bool> Exists( NpgsqlConnection connection, NpgsqlTransaction? transaction, RecordID<TKey> key, RecordID<TValue> value, CancellationToken token )
     {
         string sql = $"""
                       SELECT * FROM {TSelf.TableName} 
@@ -278,8 +274,7 @@ public abstract record Mapping<TSelf, TKey, TValue> : TableRecord<TSelf>
 
         SqlCommand<TSelf> command = sql;
 
-        return await command.ExecuteAsync(connection, transaction, token)
-                            .AnyAsync(token);
+        return await command.ExecuteAsync(connection, transaction, token).AnyAsync(token);
     }
 
 
@@ -305,7 +300,7 @@ public abstract record Mapping<TSelf, TKey, TValue> : TableRecord<TSelf>
     }
 
 
-    public static async ValueTask Replace( NpgsqlConnection connection, NpgsqlTransaction transaction, RecordID<TKey> key, IEnumerable<RecordID<TValue>> values, CancellationToken token )
+    public static async ValueTask Replace( NpgsqlConnection connection, NpgsqlTransaction? transaction, RecordID<TKey> key, IEnumerable<RecordID<TValue>> values, CancellationToken token )
     {
         await Delete(connection, transaction, key, token);
         List<TSelf> list = new(DEFAULT_CAPACITY);
@@ -322,7 +317,7 @@ public abstract record Mapping<TSelf, TKey, TValue> : TableRecord<TSelf>
     }
 
 
-    public static async ValueTask Delete( NpgsqlConnection connection, NpgsqlTransaction transaction, TSelf self, CancellationToken token )
+    public static async ValueTask Delete( NpgsqlConnection connection, NpgsqlTransaction? transaction, TSelf self, CancellationToken token )
     {
         string sql = $"""
                       DELETE FROM {TSelf.TableName} 
@@ -335,7 +330,7 @@ public abstract record Mapping<TSelf, TKey, TValue> : TableRecord<TSelf>
         SqlCommand<TSelf> command = sql;
         await command.ExecuteNonQueryAsync(connection, transaction, token);
     }
-    public static async ValueTask Delete( NpgsqlConnection connection, NpgsqlTransaction transaction, RecordID<TKey> key, CancellationToken token )
+    public static async ValueTask Delete( NpgsqlConnection connection, NpgsqlTransaction? transaction, RecordID<TKey> key, CancellationToken token )
     {
         string sql = $"""
                       DELETE FROM {TSelf.TableName} 
@@ -345,7 +340,7 @@ public abstract record Mapping<TSelf, TKey, TValue> : TableRecord<TSelf>
         SqlCommand<TSelf> command = new(sql, GetDynamicParameters(key));
         await command.ExecuteNonQueryAsync(connection, transaction, token);
     }
-    public static async ValueTask Delete( NpgsqlConnection connection, NpgsqlTransaction transaction, RecordID<TKey> key, IEnumerable<RecordID<TValue>> values, CancellationToken token )
+    public static async ValueTask Delete( NpgsqlConnection connection, NpgsqlTransaction? transaction, RecordID<TKey> key, IEnumerable<RecordID<TValue>> values, CancellationToken token )
     {
         string sql = $"""
                       DELETE FROM {TSelf.TableName} 
@@ -358,7 +353,7 @@ public abstract record Mapping<TSelf, TKey, TValue> : TableRecord<TSelf>
         SqlCommand<TSelf> command = new(sql, GetDynamicParameters(key));
         await command.ExecuteNonQueryAsync(connection, transaction, token);
     }
-    public static async ValueTask Delete( NpgsqlConnection connection, NpgsqlTransaction transaction, RecordID<TKey> key, RecordID<TValue> value, CancellationToken token )
+    public static async ValueTask Delete( NpgsqlConnection connection, NpgsqlTransaction? transaction, RecordID<TKey> key, RecordID<TValue> value, CancellationToken token )
     {
         string sql = $"""
                       DELETE FROM {TSelf.TableName} 

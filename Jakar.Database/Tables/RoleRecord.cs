@@ -105,7 +105,6 @@ public sealed record RoleRecord : OwnedTableRecord<RoleRecord>, ITableRecord<Rol
     [Pure] public static RoleRecord Create<TEnum>( string name, [HandlesResourceDisposal] Permissions<TEnum> rights, string? normalizedName = null, RecordID<UserRecord> userID = default, string? concurrencyStamp = null )
         where TEnum : unmanaged, Enum => new(name, normalizedName ?? name, concurrencyStamp ?? name.GetHash(), rights.ToStringAndDispose(), userID);
     [Pure] public static RoleRecord      Create( NpgsqlDataReader reader )      => new RoleRecord(reader).Validate();
-    public static        MigrationRecord CreateTable( ulong       migrationID ) => MigrationRecord.CreateTable<RoleRecord>(migrationID);
 
 
     [Pure] public IAsyncEnumerable<UserRecord> GetUsers( NpgsqlConnection connection, NpgsqlTransaction? transaction, Database db, CancellationToken token ) => UserRoleRecord.Where(connection, transaction, db.Users, this, token);

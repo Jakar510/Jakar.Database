@@ -26,7 +26,7 @@ public partial class DbTable<TSelf>
     }
 
 
-    public virtual async ValueTask<bool> Exists( NpgsqlConnection connection, NpgsqlTransaction transaction, bool matchAll, PostgresParameters parameters, CancellationToken token )
+    public virtual async ValueTask<bool> Exists( NpgsqlConnection connection, NpgsqlTransaction? transaction, bool matchAll, PostgresParameters parameters, CancellationToken token )
     {
         SqlCommand<TSelf> sql = SqlCommand<TSelf>.GetExists(matchAll, parameters);
 

@@ -147,7 +147,6 @@ public sealed record AddressRecord : OwnedTableRecord<AddressRecord>, IAddress<A
 
 
     [Pure] public static AddressRecord   Create( NpgsqlDataReader reader )                                                                                                         => new AddressRecord(reader).Validate();
-    public static        MigrationRecord CreateTable( ulong       migrationID )                                                                                                    => MigrationRecord.CreateTable<AddressRecord>(migrationID);
     [Pure] public static AddressRecord   Create( Match            match )                                                                                                          => new(match);
     [Pure] public static AddressRecord   Create( IAddress<Guid>   address )                                                                                                        => new(address);
     public static        AddressRecord   Create( string           line1, string line2, string city, string stateOrProvince, string postalCode, string country, Guid id = default ) => Create(line1, line2, city, stateOrProvince, postalCode, country, id, RecordID<UserRecord>.Empty);
@@ -163,7 +162,7 @@ public sealed record AddressRecord : OwnedTableRecord<AddressRecord>, IAddress<A
         };
 
 
-    [Pure] public static async ValueTask<AddressRecord?> TryFromClaims( NpgsqlConnection connection, NpgsqlTransaction transaction, Database db, Claim[] claims, ClaimType types, CancellationToken token )
+    [Pure] public static async ValueTask<AddressRecord?> TryFromClaims( NpgsqlConnection connection, NpgsqlTransaction? transaction, Database db, Claim[] claims, ClaimType types, CancellationToken token )
     {
         PostgresParameters  parameters = PostgresParameters.Create<AddressRecord>();
         ReadOnlySpan<Claim> span       = claims;
@@ -208,7 +207,7 @@ public sealed record AddressRecord : OwnedTableRecord<AddressRecord>, IAddress<A
 
         static bool hasFlag( ClaimType value, ClaimType flag ) => ( value & flag ) != 0;
     }
-    [Pure] public static async IAsyncEnumerable<AddressRecord> TryFromClaims( NpgsqlConnection connection, NpgsqlTransaction transaction, Database db, Claim claim, [EnumeratorCancellation] CancellationToken token )
+    [Pure] public static async IAsyncEnumerable<AddressRecord> TryFromClaims( NpgsqlConnection connection, NpgsqlTransaction? transaction, Database db, Claim claim, [EnumeratorCancellation] CancellationToken token )
     {
         PostgresParameters parameters = PostgresParameters.Create<AddressRecord>();
 

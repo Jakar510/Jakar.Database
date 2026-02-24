@@ -48,7 +48,6 @@ public sealed record FileRecord : PairRecord<FileRecord>, ITableRecord<FileRecor
         FullPath        = reader.GetFieldValue<FileRecord, string?>(nameof(FullPath));
     }
     [Pure] public static FileRecord      Create( NpgsqlDataReader              reader )                       => new FileRecord(reader).Validate();
-    public static        MigrationRecord CreateTable( ulong                    migrationID )                  => MigrationRecord.CreateTable<FileRecord>(migrationID);
     public static        FileRecord      Create( IFileData<Guid, FileMetaData> data, LocalFile? file = null ) => new(data, file);
     public static FileRecord Create<TFileMetaData>( IFileData<Guid, TFileMetaData> data, LocalFile? file = null )
         where TFileMetaData : class, IFileMetaData<TFileMetaData> => new(data, data.MetaData, file);

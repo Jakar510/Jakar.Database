@@ -51,7 +51,7 @@ public partial class DbTable<TSelf> : IDbTable<TSelf>
 
 
     public ValueTask<TResult> Call<TResult>( string sql, PostgresParameters parameters, Func<SqlMapper.GridReader, CancellationToken, ValueTask<TResult>> func, CancellationToken token = default ) => this.TryCall(Call, sql, parameters, func, token);
-    public virtual async ValueTask<TResult> Call<TResult>( NpgsqlConnection connection, NpgsqlTransaction transaction, string sql, PostgresParameters parameters, Func<SqlMapper.GridReader, CancellationToken, ValueTask<TResult>> func, CancellationToken token = default )
+    public virtual async ValueTask<TResult> Call<TResult>( NpgsqlConnection connection, NpgsqlTransaction? transaction, string sql, PostgresParameters parameters, Func<SqlMapper.GridReader, CancellationToken, ValueTask<TResult>> func, CancellationToken token = default )
     {
         try
         {
@@ -63,7 +63,7 @@ public partial class DbTable<TSelf> : IDbTable<TSelf>
 
 
     public ValueTask<TResult> Call<TResult>( SqlCommand<TSelf> sql, Func<NpgsqlDataReader, CancellationToken, ValueTask<TResult>> func, CancellationToken token = default ) => this.TryCall(Call, sql, func, token);
-    public virtual async ValueTask<TResult> Call<TResult>( NpgsqlConnection connection, NpgsqlTransaction transaction, SqlCommand<TSelf> command, Func<NpgsqlDataReader, CancellationToken, ValueTask<TResult>> func, CancellationToken token = default )
+    public virtual async ValueTask<TResult> Call<TResult>( NpgsqlConnection connection, NpgsqlTransaction? transaction, SqlCommand<TSelf> command, Func<NpgsqlDataReader, CancellationToken, ValueTask<TResult>> func, CancellationToken token = default )
     {
         try
         {
@@ -154,7 +154,7 @@ public partial class DbTable<TSelf> : IDbTable<TSelf>
     }
 
 
-    public async ValueTask<int> Execute( NpgsqlConnection connection, NpgsqlTransaction transaction, string sql, PostgresParameters parameters, CancellationToken token )
+    public async ValueTask<int> Execute( NpgsqlConnection connection, NpgsqlTransaction? transaction, string sql, PostgresParameters parameters, CancellationToken token )
     {
         SqlCommand<TSelf>         command = new(sql, parameters);
         await using NpgsqlCommand cmd     = command.ToCommand(connection, transaction);

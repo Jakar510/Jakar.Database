@@ -51,7 +51,7 @@ internal sealed class TestDatabase( IConfiguration configuration, IOptions<DbOpt
         app.UseAuthentication();
         app.UseAuthorization();
         app.UseTelemetry();
-        
+
         app.MapGet("/",     static () => DateTimeOffset.UtcNow);
         app.MapGet("/Ping", static () => DateTimeOffset.UtcNow);
 
@@ -59,40 +59,9 @@ internal sealed class TestDatabase( IConfiguration configuration, IOptions<DbOpt
 
         await TestAll(app, token);
 
-        await app.RunWithMigrationsAsync(["localhost:8081"], token: token)
-                 .ConfigureAwait(false);
+        await app.RunWithMigrationsAsync(["localhost:8081"], token: token).ConfigureAwait(false);
     }
 
-
-    public static void PrintCreateTables()
-    {
-        printSql(TableMetaData<UserRecord>.CreateTable());
-        printSql(TableMetaData<AddressRecord>.CreateTable());
-        printSql(TableMetaData<UserAddressRecord>.CreateTable());
-        printSql(TableMetaData<GroupRecord>.CreateTable());
-        printSql(TableMetaData<UserGroupRecord>.CreateTable());
-        printSql(TableMetaData<RoleRecord>.CreateTable());
-        printSql(TableMetaData<UserRoleRecord>.CreateTable());
-        printSql(TableMetaData<RecoveryCodeRecord>.CreateTable());
-        printSql(TableMetaData<UserRecoveryCodeRecord>.CreateTable());
-        printSql(TableMetaData<FileRecord>.CreateTable());
-        printSql(TableMetaData<UserLoginProviderRecord>.CreateTable());
-        printSql(TableMetaData<ResxRowRecord>.CreateTable());
-
-        return;
-
-        static void printSql( string sql, [CallerArgumentExpression(nameof(sql))] string variableName = EMPTY )
-        {
-            const string BOUNDARY = "================================";
-            Console.WriteLine(BOUNDARY);
-            Console.WriteLine();
-            Console.WriteLine(variableName);
-            Console.WriteLine();
-            Console.WriteLine(sql);
-            Console.WriteLine();
-            Console.WriteLine(BOUNDARY);
-        }
-    }
 
     private static async ValueTask TestAll( WebApplication app, CancellationToken token = default )
     {

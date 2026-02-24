@@ -70,7 +70,7 @@ public abstract partial class Database
     public virtual ValueTask<ErrorOrResult<SubscriptionInfo>> ValidateSubscription( NpgsqlConnection connection, NpgsqlTransaction? transaction, UserRecord record, CancellationToken token = default ) => new(new SubscriptionInfo(SubscriptionState.NotSet, SubscriptionStatus.NotSet, null));
 
 
-    protected virtual async ValueTask<ErrorOrResult<UserRecord>> VerifyLogin( NpgsqlConnection connection, NpgsqlTransaction transaction, ILoginRequest request, CancellationToken token = default )
+    protected virtual async ValueTask<ErrorOrResult<UserRecord>> VerifyLogin( NpgsqlConnection connection, NpgsqlTransaction? transaction, ILoginRequest request, CancellationToken token = default )
     {
         UserRecord? record = await Users.Get(connection, transaction, true, UserRecord.GetDynamicParameters(request), token);
         if ( record is null ) { return Error.NotFound(); }
@@ -119,7 +119,7 @@ public abstract partial class Database
     }
 
 
-    public virtual async ValueTask<ErrorOrResult<TValue>> Verify<TValue>( NpgsqlConnection connection, NpgsqlTransaction transaction, ILoginRequest request, Func<NpgsqlConnection, NpgsqlTransaction, UserRecord, ErrorOrResult<TValue>> func, CancellationToken token = default )
+    public virtual async ValueTask<ErrorOrResult<TValue>> Verify<TValue>( NpgsqlConnection connection, NpgsqlTransaction? transaction, ILoginRequest request, Func<NpgsqlConnection, NpgsqlTransaction?, UserRecord, ErrorOrResult<TValue>> func, CancellationToken token = default )
     {
         ErrorOrResult<UserRecord> loginResult = await VerifyLogin(connection, transaction, request, token);
 
@@ -128,7 +128,7 @@ public abstract partial class Database
                    : errors;
     }
 
-    public virtual async ValueTask<ErrorOrResult<TValue>> Verify<TValue>( NpgsqlConnection connection, NpgsqlTransaction transaction, ILoginRequest request, Func<NpgsqlConnection, NpgsqlTransaction, UserRecord, CancellationToken, ValueTask<ErrorOrResult<TValue>>> func, CancellationToken token = default )
+    public virtual async ValueTask<ErrorOrResult<TValue>> Verify<TValue>( NpgsqlConnection connection, NpgsqlTransaction? transaction, ILoginRequest request, Func<NpgsqlConnection, NpgsqlTransaction?, UserRecord, CancellationToken, ValueTask<ErrorOrResult<TValue>>> func, CancellationToken token = default )
     {
         ErrorOrResult<UserRecord> loginResult = await VerifyLogin(connection, transaction, request, token);
 
@@ -137,7 +137,7 @@ public abstract partial class Database
                    : errors;
     }
 
-    public virtual async ValueTask<ErrorOrResult<TValue>> Verify<TValue>( NpgsqlConnection connection, NpgsqlTransaction transaction, ILoginRequest request, Func<NpgsqlConnection, NpgsqlTransaction, UserRecord, CancellationToken, Task<ErrorOrResult<TValue>>> func, CancellationToken token = default )
+    public virtual async ValueTask<ErrorOrResult<TValue>> Verify<TValue>( NpgsqlConnection connection, NpgsqlTransaction? transaction, ILoginRequest request, Func<NpgsqlConnection, NpgsqlTransaction?, UserRecord, CancellationToken, Task<ErrorOrResult<TValue>>> func, CancellationToken token = default )
     {
         ErrorOrResult<UserRecord> loginResult = await VerifyLogin(connection, transaction, request, token);
 
@@ -146,7 +146,7 @@ public abstract partial class Database
                    : errors;
     }
 
-    public virtual async ValueTask<ErrorOrResult<SessionToken>> Verify( NpgsqlConnection connection, NpgsqlTransaction transaction, ILoginRequest request, ClaimType types, CancellationToken token = default )
+    public virtual async ValueTask<ErrorOrResult<SessionToken>> Verify( NpgsqlConnection connection, NpgsqlTransaction? transaction, ILoginRequest request, ClaimType types, CancellationToken token = default )
     {
         ErrorOrResult<UserRecord> loginResult = await VerifyLogin(connection, transaction, request, token);
 
@@ -157,7 +157,7 @@ public abstract partial class Database
 
 
     public ValueTask<ErrorOrResult<UserRecord>> VerifyLogin( string jsonToken, ClaimType types = DEFAULT_CLAIM_TYPES, CancellationToken token = default ) => this.TryCall(VerifyLogin, jsonToken, types, token);
-    protected virtual async ValueTask<ErrorOrResult<UserRecord>> VerifyLogin( NpgsqlConnection connection, NpgsqlTransaction transaction, string jsonToken, ClaimType types = DEFAULT_CLAIM_TYPES, CancellationToken token = default )
+    protected virtual async ValueTask<ErrorOrResult<UserRecord>> VerifyLogin( NpgsqlConnection connection, NpgsqlTransaction? transaction, string jsonToken, ClaimType types = DEFAULT_CLAIM_TYPES, CancellationToken token = default )
     {
         JwtSecurityTokenHandler   handler              = new();
         TokenValidationParameters validationParameters = await GetTokenValidationParameters(token);
@@ -183,7 +183,7 @@ public abstract partial class Database
     }
 
 
-    public virtual async ValueTask<Permissions<TEnum>> GetRights<TEnum>( NpgsqlConnection connection, NpgsqlTransaction transaction, RecordID<UserRecord> userID, CancellationToken token )
+    public virtual async ValueTask<Permissions<TEnum>> GetRights<TEnum>( NpgsqlConnection connection, NpgsqlTransaction? transaction, RecordID<UserRecord> userID, CancellationToken token )
         where TEnum : unmanaged, Enum
     {
         string rights = nameof(UserRecord.Rights)
@@ -228,7 +228,7 @@ public abstract partial class Database
     }
 
 
-    public virtual async ValueTask<ErrorOrResult<SessionToken>> Register<TUser>( NpgsqlConnection connection, NpgsqlTransaction transaction, ILoginRequest<TUser> request, CancellationToken token = default )
+    public virtual async ValueTask<ErrorOrResult<SessionToken>> Register<TUser>( NpgsqlConnection connection, NpgsqlTransaction? transaction, ILoginRequest<TUser> request, CancellationToken token = default )
         where TUser : class, IUserData<Guid>, IUserDetails
     {
         UserRecord? record = await Users.Get(connection, transaction, true, UserRecord.GetDynamicParameters(request), token);
@@ -244,7 +244,7 @@ public abstract partial class Database
 
     public ValueTask<ErrorOrResult<SessionToken>> Register<TUser>( ILoginRequest<TUser> request, CancellationToken token = default )
         where TUser : class, IUserData<Guid>, IUserDetails => this.TryCall(Register, request, token);
-    public ValueTask<ErrorOrResult<TValue>> Verify<TValue>( ILoginRequest request, Func<NpgsqlConnection, NpgsqlTransaction, UserRecord, ErrorOrResult<TValue>>                               func, CancellationToken token = default ) => this.TryCall(Verify, request, func, token);
-    public ValueTask<ErrorOrResult<TValue>> Verify<TValue>( ILoginRequest request, Func<NpgsqlConnection, NpgsqlTransaction, UserRecord, CancellationToken, ValueTask<ErrorOrResult<TValue>>> func, CancellationToken token = default ) => this.TryCall(Verify, request, func, token);
-    public ValueTask<ErrorOrResult<TValue>> Verify<TValue>( ILoginRequest request, Func<NpgsqlConnection, NpgsqlTransaction, UserRecord, CancellationToken, Task<ErrorOrResult<TValue>>>      func, CancellationToken token = default ) => this.TryCall(Verify, request, func, token);
+    public ValueTask<ErrorOrResult<TValue>> Verify<TValue>( ILoginRequest request, Func<NpgsqlConnection, NpgsqlTransaction?, UserRecord, ErrorOrResult<TValue>>                               func, CancellationToken token = default ) => this.TryCall(Verify, request, func, token);
+    public ValueTask<ErrorOrResult<TValue>> Verify<TValue>( ILoginRequest request, Func<NpgsqlConnection, NpgsqlTransaction?, UserRecord, CancellationToken, ValueTask<ErrorOrResult<TValue>>> func, CancellationToken token = default ) => this.TryCall(Verify, request, func, token);
+    public ValueTask<ErrorOrResult<TValue>> Verify<TValue>( ILoginRequest request, Func<NpgsqlConnection, NpgsqlTransaction?, UserRecord, CancellationToken, Task<ErrorOrResult<TValue>>>      func, CancellationToken token = default ) => this.TryCall(Verify, request, func, token);
 }

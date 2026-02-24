@@ -36,36 +36,6 @@ internal sealed class SampleDatabase( IConfiguration configuration, IOptions<DbO
     }
 
 
-    public static void PrintCreateTables()
-    {
-        printSql(TableMetaData<UserRecord>.CreateTable());
-        printSql(TableMetaData<AddressRecord>.CreateTable());
-        printSql(TableMetaData<UserAddressRecord>.CreateTable());
-        printSql(TableMetaData<GroupRecord>.CreateTable());
-        printSql(TableMetaData<UserGroupRecord>.CreateTable());
-        printSql(TableMetaData<RoleRecord>.CreateTable());
-        printSql(TableMetaData<UserRoleRecord>.CreateTable());
-        printSql(TableMetaData<RecoveryCodeRecord>.CreateTable());
-        printSql(TableMetaData<UserRecoveryCodeRecord>.CreateTable());
-        printSql(TableMetaData<FileRecord>.CreateTable());
-        printSql(TableMetaData<UserLoginProviderRecord>.CreateTable());
-        printSql(TableMetaData<ResxRowRecord>.CreateTable());
-
-        return;
-
-        static void printSql( string sql, [CallerArgumentExpression(nameof(sql))] string variableName = EMPTY )
-        {
-            const string BOUNDARY = "================================";
-            Console.WriteLine(BOUNDARY);
-            Console.WriteLine();
-            Console.WriteLine(variableName);
-            Console.WriteLine();
-            Console.WriteLine(sql);
-            Console.WriteLine();
-            Console.WriteLine(BOUNDARY);
-        }
-    }
-
     public static async ValueTask TestAll( WebApplication app, CancellationToken token = default )
     {
         await using AsyncServiceScope scope = app.Services.CreateAsyncScope();
@@ -90,7 +60,7 @@ internal sealed class SampleDatabase( IConfiguration configuration, IOptions<DbO
     {
         UserRecord admin = UserRecord.Create("Admin", "Admin", Permissions<TestRight>.SA());
         UserRecord user  = UserRecord.Create("User",  "User",  Permissions<TestRight>.Create(TestRight.Read));
-
+        a
         admin = await db.Users.Insert(admin, token);
         user  = await db.Users.Insert(user,  token);
 

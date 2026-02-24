@@ -75,9 +75,6 @@ public sealed record RecoveryCodeRecord : OwnedTableRecord<RecoveryCodeRecord>, 
     }
 
 
-    public static MigrationRecord CreateTable( ulong migrationID ) => MigrationRecord.CreateTable<UserRecord>(migrationID);
-
-
     [Pure] public static Codes Create( UserRecord user, IEnumerable<string> recoveryCodes )
     {
         Codes codes = new();

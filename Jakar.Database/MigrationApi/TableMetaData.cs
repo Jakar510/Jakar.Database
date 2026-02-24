@@ -200,14 +200,14 @@ public class TableMetaData<TSelf> : ITableMetaData
     public TableMetaDataEnumerator                                  GetEnumerator()     => new(Properties);
 
 
-    public ValueEnumerable<Select<SelectWhere<TableMetaDataEnumerator, PropertyColumn, ColumnMetaData>, ColumnMetaData, MigrationRecord>, MigrationRecord> IndexedColumnSql { [Pure] get => Columns.Where(static x => x.IsColumnIndexed).Select(CreateIndex); }
+    public ValueEnumerable<Select<SelectWhere<TableMetaDataEnumerator, PropertyColumn, ColumnMetaData>, ColumnMetaData, Func<ulong, MigrationRecord>>, Func<ulong, MigrationRecord>> IndexedColumns { [Pure] get => Columns.Where(static x => x.IsColumnIndexed).Select(CreateIndex); }
 
 
-    private static MigrationRecord CreateIndex( ColumnMetaData column ) => CreateIndex(MigrationManager.MigrationID, column);
+    private static Func<ulong, MigrationRecord> CreateIndex( ColumnMetaData column ) => migrationID => CreateIndex(migrationID, column);
     private static MigrationRecord CreateIndex( ulong migrationID, ColumnMetaData column )
     {
         Debug.Assert(column.IsColumnIndexed);
-        return MigrationRecord.Create<TSelf>(migrationID, $"Create Index for {column.PropertyName} on table {TSelf.TableName}", $"CREATE INDEX {column.IndexColumnName_Padded(Instance)} ON {TSelf.TableName}({column.ColumnName});");
+        return MigrationRecord.Create<TSelf>(migrationID, $"Create Index for {column.PropertyName} on table {TSelf.TableName}", column.CreateIndex(Instance));
     }
 
 
@@ -328,6 +328,7 @@ public class TableMetaData<TSelf> : ITableMetaData
         query.Append(')');
         return _createTableSql = new MigrationRecord(migrationID, $"Create {TableName} table", TableName) { SQL = query.ToString() };
     }
+
 
     public MigrationRecord SetLastModifiedFunction( ulong migrationID ) => MigrationRecord.Create<TSelf>(migrationID,
                                                                                                          "Create SetLastModifiedFunctionName function",

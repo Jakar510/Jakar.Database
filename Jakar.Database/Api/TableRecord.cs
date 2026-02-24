@@ -26,8 +26,7 @@ public interface ITableRecord<TSelf>
     public abstract static              TableMetaData<TSelf>         MetaData        { [Pure] get; }
     public abstract static              string                       TableName       { [Pure] get; }
 
-    [Pure] public abstract static TSelf           Create( NpgsqlDataReader reader );
-    [Pure] public abstract static MigrationRecord CreateTable( ulong       migrationID );
+    [Pure] public abstract static TSelf Create( NpgsqlDataReader reader );
 }
 
 
@@ -41,9 +40,9 @@ public abstract record TableRecord<TSelf>( in DateTimeOffset DateCreated ) : IJs
     protected DateTimeOffset? _lastModified;
 
 
-    public static              TableMetaData<TSelf>         MetaData => TableMetaData<TSelf>.Instance;
-    public static ref readonly ImmutableArray<PropertyInfo> ClassProperties  { [Pure] get => ref Properties; }
-    public static              int                          PropertyCount    => Properties.Length;
+    public static              TableMetaData<TSelf>         MetaData        => TableMetaData<TSelf>.Instance;
+    public static ref readonly ImmutableArray<PropertyInfo> ClassProperties { [Pure] get => ref Properties; }
+    public static              int                          PropertyCount   => Properties.Length;
 
 
     protected internal TableRecord( NpgsqlDataReader reader ) : this(reader.DateCreated<TSelf>()) { }
@@ -167,7 +166,8 @@ public abstract record PairRecord<TSelf> : LastModifiedRecord<TSelf>, IUniqueID
         __id = id;
         return (TSelf)this;
     }
-    [Pure] public RecordPair<TSelf> ToPair() => new(ID, DateCreated);
+    [Pure] public   RecordPair<TSelf> ToPair()      => new(ID, DateCreated);
+    public override int               GetHashCode() => ID.GetHashCode();
 
 
     public TSelf WithAdditionalData( IJsonModel value ) => WithAdditionalData(value.AdditionalData);

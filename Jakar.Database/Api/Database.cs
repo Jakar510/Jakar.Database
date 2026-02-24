@@ -195,7 +195,7 @@ public abstract partial class Database : Randoms, IConnectableDbRoot, IHealthChe
 
     public ValueTask<ErrorOrResult<SessionToken>> Register<TRequest>( TRequest request, string rights, ClaimType types = default, CancellationToken token = default )
         where TRequest : ILoginRequest<UserModel> => this.TryCall(Register, request, rights, types, token);
-    public virtual async ValueTask<ErrorOrResult<SessionToken>> Register<TRequest>( NpgsqlConnection connection, NpgsqlTransaction transaction, TRequest request, string rights, ClaimType types = default, CancellationToken token = default )
+    public virtual async ValueTask<ErrorOrResult<SessionToken>> Register<TRequest>( NpgsqlConnection connection, NpgsqlTransaction? transaction, TRequest request, string rights, ClaimType types = default, CancellationToken token = default )
         where TRequest : ILoginRequest<UserModel>
     {
         UserRecord? record = await Users.Get(connection, transaction, true, UserRecord.GetDynamicParameters(request), token);

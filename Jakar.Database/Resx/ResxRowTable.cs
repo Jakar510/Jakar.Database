@@ -58,7 +58,6 @@ public sealed record ResxRowRecord : TableRecord<ResxRowRecord>, ITableRecord<Re
     }
 
 
-    public static        MigrationRecord CreateTable( ulong       migrationID ) => MigrationRecord.CreateTable<ResxRowRecord>(migrationID);
     [Pure] public static ResxRowRecord   Create( NpgsqlDataReader reader )      => new ResxRowRecord(reader).Validate();
     [Pure] public static async IAsyncEnumerable<ResxRowRecord> CreateAsync( NpgsqlDataReader reader, [EnumeratorCancellation] CancellationToken token = default )
     {

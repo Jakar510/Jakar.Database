@@ -10,6 +10,6 @@ public interface IResxCollection : IReadOnlyCollection<ResxRowRecord>
 
 
     public ValueTask          Init( IConnectableDb        db,         IResxProvider     provider,    CancellationToken token                             = default );
-    public ValueTask          Init( NpgsqlConnection      connection, NpgsqlTransaction transaction, IResxProvider     provider, CancellationToken token = default );
+    public ValueTask          Init( NpgsqlConnection      connection, NpgsqlTransaction? transaction, IResxProvider     provider, CancellationToken token = default );
     public ValueTask<ResxSet> GetSetAsync( IConnectableDb db,         IResxProvider     provider,    SupportedLanguage language, CancellationToken token = default );
 }

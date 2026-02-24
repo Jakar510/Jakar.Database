@@ -97,7 +97,6 @@ public sealed record UserLoginProviderRecord : OwnedTableRecord<UserLoginProvide
     }
 
 
-    public static        MigrationRecord         CreateTable( ulong       migrationID ) => MigrationRecord.CreateTable<UserLoginProviderRecord>(migrationID);
     [Pure] public static UserLoginProviderRecord Create( NpgsqlDataReader reader )      => new UserLoginProviderRecord(reader).Validate();
 
 

@@ -16,19 +16,19 @@ public partial class DbTable<TSelf>
     public ValueTask Delete( bool                              matchAll, PostgresParameters parameters, CancellationToken token = default ) => this.TryCall(Delete, matchAll, parameters, token);
 
 
-    public virtual ValueTask Delete( NpgsqlConnection connection, NpgsqlTransaction transaction, TSelf              record,  CancellationToken token = default ) => Delete(connection, transaction, record.ID,                        token);
-    public virtual ValueTask Delete( NpgsqlConnection connection, NpgsqlTransaction transaction, IEnumerable<TSelf> records, CancellationToken token = default ) => Delete(connection, transaction, records.Select(static x => x.ID), token);
-    public async ValueTask Delete( NpgsqlConnection connection, NpgsqlTransaction transaction, IAsyncEnumerable<TSelf> records, CancellationToken token = default )
+    public virtual ValueTask Delete( NpgsqlConnection connection, NpgsqlTransaction? transaction, TSelf              record,  CancellationToken token = default ) => Delete(connection, transaction, record.ID,                        token);
+    public virtual ValueTask Delete( NpgsqlConnection connection, NpgsqlTransaction? transaction, IEnumerable<TSelf> records, CancellationToken token = default ) => Delete(connection, transaction, records.Select(static x => x.ID), token);
+    public async ValueTask Delete( NpgsqlConnection connection, NpgsqlTransaction? transaction, IAsyncEnumerable<TSelf> records, CancellationToken token = default )
     {
         HashSet<TSelf> ids = await records.ToHashSet(token);
         await Delete(connection, transaction, ids, token);
     }
-    public virtual async ValueTask Delete( NpgsqlConnection connection, NpgsqlTransaction transaction, IAsyncEnumerable<RecordID<TSelf>> ids, CancellationToken token = default )
+    public virtual async ValueTask Delete( NpgsqlConnection connection, NpgsqlTransaction? transaction, IAsyncEnumerable<RecordID<TSelf>> ids, CancellationToken token = default )
     {
         HashSet<RecordID<TSelf>> records = await ids.ToHashSet(token);
         await Delete(connection, transaction, records, token);
     }
-    public virtual async ValueTask Delete( NpgsqlConnection connection, NpgsqlTransaction transaction, RecordID<TSelf> id, CancellationToken token = default )
+    public virtual async ValueTask Delete( NpgsqlConnection connection, NpgsqlTransaction? transaction, RecordID<TSelf> id, CancellationToken token = default )
     {
         SqlCommand<TSelf>         command = SqlCommand<TSelf>.GetDeleteID(in id);
         await using NpgsqlCommand cmd     = command.ToCommand(connection, transaction);
@@ -36,7 +36,7 @@ public partial class DbTable<TSelf>
     }
 
 
-    public virtual async ValueTask Delete( NpgsqlConnection connection, NpgsqlTransaction transaction, IEnumerable<RecordID<TSelf>> ids, CancellationToken token = default )
+    public virtual async ValueTask Delete( NpgsqlConnection connection, NpgsqlTransaction? transaction, IEnumerable<RecordID<TSelf>> ids, CancellationToken token = default )
     {
         SqlCommand<TSelf> command = SqlCommand<TSelf>.GetDelete(ids);
 
@@ -47,7 +47,7 @@ public partial class DbTable<TSelf>
         }
         catch ( Exception e ) { throw new SqlException<TSelf>(command, e); }
     }
-    public async ValueTask Delete( NpgsqlConnection connection, NpgsqlTransaction transaction, bool matchAll, PostgresParameters parameters, CancellationToken token )
+    public async ValueTask Delete( NpgsqlConnection connection, NpgsqlTransaction? transaction, bool matchAll, PostgresParameters parameters, CancellationToken token )
     {
         SqlCommand<TSelf>         command = SqlCommand<TSelf>.GetDelete(matchAll, parameters);
         await using NpgsqlCommand cmd     = command.ToCommand(connection, transaction);

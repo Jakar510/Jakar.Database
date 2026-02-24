@@ -67,6 +67,7 @@ public sealed class ColumnMetaData
     internal      string ColumnName_Padded( ITableMetaData      table )    => ColumnName.GetPadded(table.MaxLength_ColumnName);
     internal      string KeyValuePair_Padded( ITableMetaData    table )    => KeyValuePair.GetPadded(table.MaxLength_KeyValuePair);
     internal      string VariableName_Padded( ITableMetaData    table )    => VariableName.GetPadded(table.MaxLength_Variables);
+    internal      string CreateIndex( ITableMetaData            table )    => $"CREATE INDEX {IndexColumnName_Padded(table)} ON {table.TableName}({ColumnName});";
     internal      string IndexColumnName_Padded( ITableMetaData table )    => Indexed?.Name.GetPadded(table.MaxLength_IndexColumnName) ?? ForeignKey?.Index(ColumnName, table.MaxLength_IndexColumnName) ?? EMPTY;
     internal      string DataType_Padded( ITableMetaData        table )    => DataType.GetPadded(table.MaxLength_DataType);
     public static string GetColumnName( ColumnMetaData          column )   => column.ColumnName;
