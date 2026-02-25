@@ -28,9 +28,7 @@ public class MigrationManager
     public MigrationManager( Database db )
     {
         _db                               = db;
-        __migrationFactories[MigrationID] = MigrationRecord.CreateTable;
         __migrationFactories[MigrationID] = MigrationRecord.SetLastModified;
-
         __migrationFactories[MigrationID] = MigrationRecord.FromEnum<MimeType>;
         __migrationFactories[MigrationID] = MigrationRecord.FromEnum<SupportedLanguage>;
         __migrationFactories[MigrationID] = MigrationRecord.FromEnum<SubscriptionStatus>;
@@ -131,13 +129,17 @@ public class MigrationManager
 
     public async ValueTask ApplyMigrations( CancellationToken token = default )
     {
-        await using NpgsqlConnection  connection  = await _db.ConnectAsync(token);
+        await using NpgsqlConnection connection = await _db.ConnectAsync(token);
+
+        SqlCommand<MigrationRecord> command = MigrationRecord.TryCreateSql;
+        await command.ExecuteNonQueryAsync(connection, null, token);
+
         await using NpgsqlTransaction transaction = await connection.BeginTransactionAsync(token);
 
         try
         {
             ImmutableArray<MigrationRecord> applied = await AllMigrations(connection, transaction, token);
-            HashSet<MigrationRecord>        pending = [..Records];
+            HashSet<MigrationRecord>        pending = new(Records);
             pending.ExceptWith(applied);
 
             // ReSharper disable once LoopCanBeConvertedToQuery
@@ -145,13 +147,19 @@ public class MigrationManager
 
             await transaction.CommitAsync(token);
         }
+
+        // catch ( DbSqlException e ) when ( !string.IsNullOrWhiteSpace(e.RollbackID) )
+        // {
+        //     await transaction.RollbackAsync(e.RollbackID, token);
+        //     throw;
+        // }
         catch ( Exception )
         {
             await transaction.RollbackAsync(token);
             throw;
         }
     }
-    public virtual async Task Apply( NpgsqlConnection connection, NpgsqlTransaction? transaction, MigrationRecord self, CancellationToken token )
+    public virtual async Task Apply( NpgsqlConnection connection, NpgsqlTransaction transaction, MigrationRecord self, CancellationToken token )
     {
         try
         {
@@ -159,7 +167,7 @@ public class MigrationManager
             await command.ExecuteNonQueryAsync(connection, transaction, token);
             self.AppliedOn = DateTimeOffset.UtcNow;
         }
-        catch ( Exception e ) { throw new InvalidOperationException($"SQL ERROR: \n{self.SQL}", e); }
+        catch ( Exception e ) { throw new DbSqlException(self.SQL, e); }
 
         try
         {
@@ -171,8 +179,9 @@ public class MigrationManager
 
             SqlCommand<MigrationRecord> migrationRecord = new(MigrationRecord.ApplySql, parameters);
             await migrationRecord.ExecuteNonQueryAsync(connection, transaction, token);
+            await transaction.SaveAsync(self.RollbackID, token);
         }
-        catch ( Exception e ) { throw new InvalidOperationException($"SQL ERROR: \n{MigrationRecord.ApplySql}", e); }
+        catch ( Exception e ) { throw new DbSqlException(MigrationRecord.ApplySql, e) { RollbackID = self.RollbackID }; }
     }
 
 

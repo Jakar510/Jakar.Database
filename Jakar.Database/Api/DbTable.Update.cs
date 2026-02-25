@@ -38,6 +38,6 @@ public partial class DbTable<TSelf>
             await using NpgsqlCommand cmd = command.ToCommand(connection, transaction);
             await cmd.ExecuteNonQueryAsync(token);
         }
-        catch ( Exception e ) { throw new SqlException<TSelf>(command, e); }
+        catch ( Exception e ) { throw new DbSqlException(command.SQL, e, command.Parameters); }
     }
 }

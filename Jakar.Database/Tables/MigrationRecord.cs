@@ -11,7 +11,8 @@ namespace Jakar.Database;
 [Serializable]
 public sealed record MigrationRecord : TableRecord<MigrationRecord>, ITableRecord<MigrationRecord>
 {
-    public const string TABLE_NAME = "migrations";
+    public const string CREATE_SAVE_POINT = "MigrationRecord.CreateSql";
+    public const string TABLE_NAME        = "migrations";
     public static readonly string SelectSql = $"""
                                                DO $$
                                                BEGIN
@@ -29,28 +30,42 @@ public sealed record MigrationRecord : TableRecord<MigrationRecord>, ITableRecor
     public static readonly string ApplySql = $"""
                                               INSERT INTO {TABLE_NAME} 
                                               (
-                                              {nameof(MigrationID).SqlColumnName()},
-                                              {nameof(TableID).SqlColumnName()},
-                                              {nameof(Description).SqlColumnName()},
-                                              {nameof(AppliedOn).SqlColumnName()}
+                                                  {nameof(MigrationID).SqlColumnName()},
+                                                  {nameof(AppliedOn).SqlColumnName()},
+                                                  {nameof(Description).SqlColumnName()},
+                                                  {nameof(TableID).SqlColumnName()}
                                               ) 
                                               VALUES 
                                               (
-                                              @{nameof(MigrationID).SqlColumnName()},
-                                              @{nameof(TableID).SqlColumnName()},
-                                              @{nameof(Description).SqlColumnName()},
-                                              @{nameof(AppliedOn).SqlColumnName()}
+                                                  @{nameof(MigrationID).SqlColumnName()},
+                                                  @{nameof(AppliedOn).SqlColumnName()},
+                                                  @{nameof(Description).SqlColumnName()},
+                                                  @{nameof(TableID).SqlColumnName()}
                                               )
                                               """;
-    internal long MigrationIdValue;
+    public static readonly string TryCreateSql = $"""
+                                                  CREATE TABLE IF NOT EXISTS {TABLE_NAME} (
+                                                      {nameof(MigrationID).SqlColumnName()} bigint      PRIMARY KEY,
+                                                      {nameof(AppliedOn).SqlColumnName()}   timestamptz NULL,
+                                                      {nameof(Description).SqlColumnName()} text        NOT NULL,
+                                                      {nameof(TableID).SqlColumnName()}     text        NULL
+                                                  );
+
+                                                  CREATE INDEX IF NOT EXISTS idx_{TABLE_NAME}_{nameof(TableID).SqlColumnName()}
+                                                  ON migrations({nameof(TableID).SqlColumnName()});
+                                                  """;
+
+    internal               long   MigrationIdValue;
+    public static readonly string SetLastModifiedName = nameof(SetLastModified).SqlColumnName();
+    internal readonly      string RollbackID          = Randoms.RandomString(10);
 
 
-    public static                                               string          TableName   => TABLE_NAME;
-    public                                                      DateTimeOffset? AppliedOn   { get;                     set; }
-    public required                                             string          Description { get;                     init; }
-    [Key]                                       public required long            MigrationID { get => MigrationIdValue; init => MigrationIdValue = value; }
-    [DbIgnore]                                  public          string          SQL         { get;                     internal init; } = EMPTY;
-    [Indexed<MigrationRecord>(nameof(TableID))] public          string?         TableID     { get;                     init; }
+    public static              string          TableName   => TABLE_NAME;
+    public                     DateTimeOffset? AppliedOn   { get;                     set; }
+    public required            string          Description { get;                     init; }
+    [Key]      public required long            MigrationID { get => MigrationIdValue; init => MigrationIdValue = value; }
+    [DbIgnore] public          string          SQL         { get;                     internal init; } = EMPTY;
+    public                     string?         TableID     { get;                     init; }
 
 
     public MigrationRecord() : base(DateTimeOffset.UtcNow) { }
@@ -61,25 +76,20 @@ public sealed record MigrationRecord : TableRecord<MigrationRecord>, ITableRecor
         AppliedOn   = reader.GetFieldValue<MigrationRecord, DateTimeOffset?>(nameof(AppliedOn));
         MigrationID = reader.GetFieldValue<MigrationRecord, long>(nameof(MigrationID));
     }
-    public static MigrationRecord SetLastModified( long migrationID )
-    {
-        string name = nameof(SetLastModified).SqlColumnName();
-
-        return new MigrationRecord
-               {
-                   MigrationID = migrationID,
-                   Description = $"create {name} function",
-                   SQL = $"""
-                          CREATE OR REPLACE FUNCTION {name}()
-                          RETURNS TRIGGER AS $$
-                          BEGIN
-                              NEW.{nameof(ILastModified.LastModified).SqlColumnName()} = now();
-                              RETURN NEW;
-                          END;
-                          $$ LANGUAGE plpgsql;
-                          """
-               };
-    }
+    public static MigrationRecord SetLastModified( long migrationID ) => new()
+                                                                         {
+                                                                             MigrationID = migrationID,
+                                                                             Description = $"create {SetLastModifiedName} function",
+                                                                             SQL = $"""
+                                                                                    CREATE OR REPLACE FUNCTION {SetLastModifiedName}()
+                                                                                    RETURNS TRIGGER AS $$
+                                                                                    BEGIN
+                                                                                        NEW.{nameof(ILastModified.LastModified).SqlColumnName()} = now();
+                                                                                        RETURN NEW;
+                                                                                    END;
+                                                                                    $$ LANGUAGE plpgsql;
+                                                                                    """
+                                                                         };
 
 
     /// <summary>
@@ -109,31 +119,6 @@ public sealed record MigrationRecord : TableRecord<MigrationRecord>, ITableRecor
                                );
 
 
-    public static MigrationRecord CreateDatabase( long migrationID, string databaseName, string? ownerName = null )
-    {
-        ArgumentException.ThrowIfNullOrWhiteSpace(databaseName);
-
-        string sql = string.IsNullOrWhiteSpace(ownerName)
-                         ? $"""
-                            create database {databaseName.SqlColumnName()}
-                                  WITH 
-                                      ENCODING = 'Unicode'
-                            """
-                         : $"""
-                            create database {databaseName.SqlColumnName()}
-                                  WITH 
-                                      ENCODING = 'Unicode'
-                                      OWNER = {ownerName}
-                            """;
-
-        return new MigrationRecord
-               {
-                   TableID     = databaseName,
-                   MigrationID = migrationID,
-                   Description = $"Create database {databaseName}",
-                   SQL         = sql
-               };
-    }
     public static MigrationRecord CreateTable( long migrationID ) => MetaData.CreateTable(migrationID);
 
 
@@ -156,13 +141,6 @@ public sealed record MigrationRecord : TableRecord<MigrationRecord>, ITableRecor
                                             id   bigint            PRIMARY KEY,
                                             name varchar({length}) UNIQUE NOT NULL,
                                             );
-
-
-                                            CREATE TRIGGER {nameof(SetLastModified).SqlColumnName()}
-                                            BEFORE INSERT OR UPDATE ON {tableName}
-                                            FOR EACH ROW
-                                            EXECUTE FUNCTION {nameof(SetLastModified).SqlColumnName()}();
-
 
                                             -- Insert values if they do not exist with explicit ids (enum order)
                                             INSERT INTO {tableName} (id, name)

@@ -20,7 +20,7 @@ public partial class DbTable<TSelf>
             await using NpgsqlDataReader reader = await cmd.ExecuteReaderAsync(token);
             return await reader.LastAsync<TSelf>(token);
         }
-        catch ( Exception e ) { throw new SqlException<TSelf>(command, e); }
+        catch ( Exception e ) { throw new DbSqlException(command.SQL, e, command.Parameters); }
     }
 
 
@@ -37,6 +37,6 @@ public partial class DbTable<TSelf>
             await using NpgsqlDataReader reader = await cmd.ExecuteReaderAsync(token);
             return await reader.LastOrDefaultAsync<TSelf>(token);
         }
-        catch ( Exception e ) { throw new SqlException<TSelf>(command, e); }
+        catch ( Exception e ) { throw new DbSqlException(command.SQL, e, command.Parameters); }
     }
 }

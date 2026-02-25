@@ -146,14 +146,14 @@ public static partial class DbExtensions
             else { await transaction.RollbackAsync(token); }
         }
         public async IAsyncEnumerable<ErrorOrResult<TResult>> TryCall<TArg1, TArg2, TArg3, TArg4, TArg5, TArg6, TArg7, TResult>( Func<NpgsqlConnection, NpgsqlTransaction?, TArg1, TArg2, TArg3, TArg4, TArg5, TArg6, TArg7, CancellationToken, IAsyncEnumerable<ErrorOrResult<TResult>>> func,
-                                                                                                                                 TArg1                                                                                                                                                   arg1,
-                                                                                                                                 TArg2                                                                                                                                                   arg2,
-                                                                                                                                 TArg3                                                                                                                                                   arg3,
-                                                                                                                                 TArg4                                                                                                                                                   arg4,
-                                                                                                                                 TArg5                                                                                                                                                   arg5,
-                                                                                                                                 TArg6                                                                                                                                                   arg6,
-                                                                                                                                 TArg7                                                                                                                                                   arg7,
-                                                                                                                                 [EnumeratorCancellation] CancellationToken                                                                                                              token
+                                                                                                                                 TArg1                                                                                                                                                    arg1,
+                                                                                                                                 TArg2                                                                                                                                                    arg2,
+                                                                                                                                 TArg3                                                                                                                                                    arg3,
+                                                                                                                                 TArg4                                                                                                                                                    arg4,
+                                                                                                                                 TArg5                                                                                                                                                    arg5,
+                                                                                                                                 TArg6                                                                                                                                                    arg6,
+                                                                                                                                 TArg7                                                                                                                                                    arg7,
+                                                                                                                                 [EnumeratorCancellation] CancellationToken                                                                                                               token
         )
         {
             await using NpgsqlConnection  connection  = await self.ConnectAsync(token);
@@ -177,15 +177,15 @@ public static partial class DbExtensions
             else { await transaction.RollbackAsync(token); }
         }
         public async IAsyncEnumerable<ErrorOrResult<TResult>> TryCall<TArg1, TArg2, TArg3, TArg4, TArg5, TArg6, TArg7, TArg8, TResult>( Func<NpgsqlConnection, NpgsqlTransaction?, TArg1, TArg2, TArg3, TArg4, TArg5, TArg6, TArg7, TArg8, CancellationToken, IAsyncEnumerable<ErrorOrResult<TResult>>> func,
-                                                                                                                                        TArg1                                                                                                                                                          arg1,
-                                                                                                                                        TArg2                                                                                                                                                          arg2,
-                                                                                                                                        TArg3                                                                                                                                                          arg3,
-                                                                                                                                        TArg4                                                                                                                                                          arg4,
-                                                                                                                                        TArg5                                                                                                                                                          arg5,
-                                                                                                                                        TArg6                                                                                                                                                          arg6,
-                                                                                                                                        TArg7                                                                                                                                                          arg7,
-                                                                                                                                        TArg8                                                                                                                                                          arg8,
-                                                                                                                                        [EnumeratorCancellation] CancellationToken                                                                                                                     token
+                                                                                                                                        TArg1                                                                                                                                                           arg1,
+                                                                                                                                        TArg2                                                                                                                                                           arg2,
+                                                                                                                                        TArg3                                                                                                                                                           arg3,
+                                                                                                                                        TArg4                                                                                                                                                           arg4,
+                                                                                                                                        TArg5                                                                                                                                                           arg5,
+                                                                                                                                        TArg6                                                                                                                                                           arg6,
+                                                                                                                                        TArg7                                                                                                                                                           arg7,
+                                                                                                                                        TArg8                                                                                                                                                           arg8,
+                                                                                                                                        [EnumeratorCancellation] CancellationToken                                                                                                                      token
         )
         {
             await using NpgsqlConnection  connection  = await self.ConnectAsync(token);
@@ -218,6 +218,8 @@ public static partial class DbExtensions
             if ( passed ) { await transaction.CommitAsync(token); }
             else { await transaction.RollbackAsync(token); }
         }
+
+
         public async ValueTask<ErrorOrResult<TResult>> TryCall<TResult>( Func<NpgsqlConnection, NpgsqlTransaction?, CancellationToken, ValueTask<ErrorOrResult<TResult>>> func, CancellationToken token = default )
         {
             await using NpgsqlConnection  connection  = await self.ConnectAsync(token);
@@ -229,6 +231,11 @@ public static partial class DbExtensions
                 if ( result.HasValue ) { await transaction.CommitAsync(token); }
 
                 return result;
+            }
+            catch ( DbSqlException e ) when ( !string.IsNullOrWhiteSpace(e.RollbackID) )
+            {
+                await transaction.RollbackAsync(e.RollbackID, token);
+                throw;
             }
             catch ( Exception )
             {
@@ -248,6 +255,11 @@ public static partial class DbExtensions
 
                 return result;
             }
+            catch ( DbSqlException e ) when ( !string.IsNullOrWhiteSpace(e.RollbackID) )
+            {
+                await transaction.RollbackAsync(e.RollbackID, token);
+                throw;
+            }
             catch ( Exception )
             {
                 await transaction.RollbackAsync(token);
@@ -265,6 +277,11 @@ public static partial class DbExtensions
                 if ( result.HasValue ) { await transaction.CommitAsync(token); }
 
                 return result;
+            }
+            catch ( DbSqlException e ) when ( !string.IsNullOrWhiteSpace(e.RollbackID) )
+            {
+                await transaction.RollbackAsync(e.RollbackID, token);
+                throw;
             }
             catch ( Exception )
             {
@@ -284,6 +301,11 @@ public static partial class DbExtensions
 
                 return result;
             }
+            catch ( DbSqlException e ) when ( !string.IsNullOrWhiteSpace(e.RollbackID) )
+            {
+                await transaction.RollbackAsync(e.RollbackID, token);
+                throw;
+            }
             catch ( Exception )
             {
                 await transaction.RollbackAsync(token);
@@ -301,6 +323,11 @@ public static partial class DbExtensions
                 if ( result.HasValue ) { await transaction.CommitAsync(token); }
 
                 return result;
+            }
+            catch ( DbSqlException e ) when ( !string.IsNullOrWhiteSpace(e.RollbackID) )
+            {
+                await transaction.RollbackAsync(e.RollbackID, token);
+                throw;
             }
             catch ( Exception )
             {
@@ -320,6 +347,11 @@ public static partial class DbExtensions
 
                 return result;
             }
+            catch ( DbSqlException e ) when ( !string.IsNullOrWhiteSpace(e.RollbackID) )
+            {
+                await transaction.RollbackAsync(e.RollbackID, token);
+                throw;
+            }
             catch ( Exception )
             {
                 await transaction.RollbackAsync(token);
@@ -337,6 +369,11 @@ public static partial class DbExtensions
                 if ( result.HasValue ) { await transaction.CommitAsync(token); }
 
                 return result;
+            }
+            catch ( DbSqlException e ) when ( !string.IsNullOrWhiteSpace(e.RollbackID) )
+            {
+                await transaction.RollbackAsync(e.RollbackID, token);
+                throw;
             }
             catch ( Exception )
             {
@@ -357,6 +394,11 @@ public static partial class DbExtensions
 
                 return result;
             }
+            catch ( DbSqlException e ) when ( !string.IsNullOrWhiteSpace(e.RollbackID) )
+            {
+                await transaction.RollbackAsync(e.RollbackID, token);
+                throw;
+            }
             catch ( Exception )
             {
                 await transaction.RollbackAsync(token);
@@ -364,15 +406,15 @@ public static partial class DbExtensions
             }
         }
         public async ValueTask<ErrorOrResult<TResult>> TryCall<TArg1, TArg2, TArg3, TArg4, TArg5, TArg6, TArg7, TArg8, TResult>( Func<NpgsqlConnection, NpgsqlTransaction?, TArg1, TArg2, TArg3, TArg4, TArg5, TArg6, TArg7, TArg8, CancellationToken, ValueTask<ErrorOrResult<TResult>>> func,
-                                                                                                                                 TArg1                                                                                                                                                   arg1,
-                                                                                                                                 TArg2                                                                                                                                                   arg2,
-                                                                                                                                 TArg3                                                                                                                                                   arg3,
-                                                                                                                                 TArg4                                                                                                                                                   arg4,
-                                                                                                                                 TArg5                                                                                                                                                   arg5,
-                                                                                                                                 TArg6                                                                                                                                                   arg6,
-                                                                                                                                 TArg7                                                                                                                                                   arg7,
-                                                                                                                                 TArg8                                                                                                                                                   arg8,
-                                                                                                                                 CancellationToken                                                                                                                                       token
+                                                                                                                                 TArg1                                                                                                                                                    arg1,
+                                                                                                                                 TArg2                                                                                                                                                    arg2,
+                                                                                                                                 TArg3                                                                                                                                                    arg3,
+                                                                                                                                 TArg4                                                                                                                                                    arg4,
+                                                                                                                                 TArg5                                                                                                                                                    arg5,
+                                                                                                                                 TArg6                                                                                                                                                    arg6,
+                                                                                                                                 TArg7                                                                                                                                                    arg7,
+                                                                                                                                 TArg8                                                                                                                                                    arg8,
+                                                                                                                                 CancellationToken                                                                                                                                        token
         )
         {
             await using NpgsqlConnection  connection  = await self.ConnectAsync(token);
@@ -395,6 +437,11 @@ public static partial class DbExtensions
                 if ( result.HasValue ) { await transaction.CommitAsync(token); }
 
                 return result;
+            }
+            catch ( DbSqlException e ) when ( !string.IsNullOrWhiteSpace(e.RollbackID) )
+            {
+                await transaction.RollbackAsync(e.RollbackID, token);
+                throw;
             }
             catch ( Exception )
             {

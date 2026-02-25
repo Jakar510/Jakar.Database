@@ -17,21 +17,16 @@ public readonly struct PostgresParameters : IEquatable<PostgresParameters>
     internal List<NpgsqlParameter> Params => Groups[0];
     public   int                   Count  => Groups.Sum(static x => x.Value.Count);
 
-    public ValueEnumerable<SelectMany<FromDictionary<int, List<NpgsqlParameter>>, KeyValuePair<int, List<NpgsqlParameter>>, NpgsqlParameter>, NpgsqlParameter> Parameters => Groups.AsValueEnumerable()
-                                                                                                                                                                                   .SelectMany(static x => x.Value);
+    public ValueEnumerable<SelectMany<FromDictionary<int, List<NpgsqlParameter>>, KeyValuePair<int, List<NpgsqlParameter>>, NpgsqlParameter>, NpgsqlParameter> Parameters => Groups.AsValueEnumerable().SelectMany(static x => x.Value);
 
-    public int  ParameterCount => Parameters.Count();
-    public int  Capacity       => Groups.Capacity;
-    public bool IsGrouped      => Groups.Count > 1;
-    public PooledArray<string> ParameterNameArray
-    {
-        [Pure] [MustDisposeResource] get => Parameters.Select(x => x.ParameterName)
-                                                      .ToArrayPool();
-    }
-    public ValueEnumerable<FromList<NpgsqlParameter>, NpgsqlParameter>                                      Values           { [Pure] get => Params.AsValueEnumerable(); }
-    public ValueEnumerable<ListSelect<NpgsqlParameter, string>, string>                                     ParameterNames   { [Pure] get => Values.Select(static x => x.ParameterName); }
-    public ValueEnumerable<DistinctBy<FromList<NpgsqlParameter>, NpgsqlParameter, string>, NpgsqlParameter> SourceProperties { [Pure] get => Values.DistinctBy(static x => x.SourceColumn); }
-    public int                                                                                              SpacerCount      => Math.Max(Params.Count, Table.Count) - 1;
+    public int                                                                                              ParameterCount     => Parameters.Count();
+    public int                                                                                              Capacity           => Groups.Capacity;
+    public bool                                                                                             IsGrouped          => Groups.Count > 1;
+    public PooledArray<string>                                                                              ParameterNameArray { [Pure] [MustDisposeResource] get => Parameters.Select(x => x.ParameterName).ToArrayPool(); }
+    public ValueEnumerable<FromList<NpgsqlParameter>, NpgsqlParameter>                                      Values             { [Pure] get => Params.AsValueEnumerable(); }
+    public ValueEnumerable<ListSelect<NpgsqlParameter, string>, string>                                     ParameterNames     { [Pure] get => Values.Select(static x => x.ParameterName); }
+    public ValueEnumerable<DistinctBy<FromList<NpgsqlParameter>, NpgsqlParameter, string>, NpgsqlParameter> SourceProperties   { [Pure] get => Values.DistinctBy(static x => x.SourceColumn); }
+    public int                                                                                              SpacerCount        => Math.Max(Params.Count, Table.Count) - 1;
 
 
     public ReadOnlySpan<NpgsqlParameter> Span => Params.AsSpan();
@@ -80,11 +75,10 @@ public readonly struct PostgresParameters : IEquatable<PostgresParameters>
 
 
     public PostgresParameters Add<T>( string propertyName, T? value, [CallerArgumentExpression(nameof(value))] string parameterName = EMPTY, ParameterDirection direction = ParameterDirection.Input, DataRowVersion sourceVersion = DataRowVersion.Default )
-        where T : struct, Enum => Add(Table[propertyName]
-                                         .ToParameter(value, parameterName, direction, sourceVersion));
-    public PostgresParameters Add<T>( string propertyName, T value, [CallerArgumentExpression(nameof(value))] string parameterName = EMPTY, ParameterDirection direction = ParameterDirection.Input, DataRowVersion sourceVersion = DataRowVersion.Default ) =>
-        Add(Table[propertyName]
-               .ToParameter(value, parameterName, direction, sourceVersion));
+        where T : struct, Enum => Add(Table[propertyName].ToParameter(value, parameterName, direction, sourceVersion));
+    public PostgresParameters Add( string propertyName, object? value, [CallerArgumentExpression(nameof(value))] string parameterName = EMPTY, ParameterDirection direction = ParameterDirection.Input, DataRowVersion sourceVersion = DataRowVersion.Default ) =>
+        Add(Table[propertyName].ToParameter(value, parameterName, direction, sourceVersion));
+
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)] public PostgresParameters Add( NpgsqlParameter parameter )
     {
@@ -103,9 +97,7 @@ public readonly struct PostgresParameters : IEquatable<PostgresParameters>
 
         foreach ( NpgsqlParameter parameter in SourceProperties )
         {
-            sb.Append($" {parameter.SourceColumn} = @{parameter.ParameterName} ")
-              .Append(",\n")
-              .Append(' ', indentLevel * 4);
+            sb.Append($" {parameter.SourceColumn} = @{parameter.ParameterName} ").Append(",\n").Append(' ', indentLevel * 4);
 
             ;
             if ( index++ < count - 1 ) { sb.Append(match); }
@@ -122,14 +114,9 @@ public readonly struct PostgresParameters : IEquatable<PostgresParameters>
 
         foreach ( string value in ParameterNames )
         {
-            sb.Append('@')
-              .Append(value);
+            sb.Append('@').Append(value);
 
-            if ( index++ < count - 1 )
-            {
-                sb.Append(",\n")
-                  .Append(' ', indentLevel * 4);
-            }
+            if ( index++ < count - 1 ) { sb.Append(",\n").Append(' ', indentLevel * 4); }
         }
 
         return sb;
@@ -147,37 +134,21 @@ public readonly struct PostgresParameters : IEquatable<PostgresParameters>
             {
                 foreach ( NpgsqlParameter column in Groups[i] )
                 {
-                    sb.Append('@')
-                      .Append(column.ParameterName)
-                      .Append('_')
-                      .Append(i);
+                    sb.Append('@').Append(column.ParameterName).Append('_').Append(i);
 
-                    if ( index++ < count - 1 )
-                    {
-                        sb.Append(",\n")
-                          .Append(' ', indentLevel * 4);
-                    }
+                    if ( index++ < count - 1 ) { sb.Append(",\n").Append(' ', indentLevel * 4); }
                 }
 
-                if ( i < Groups.Count )
-                {
-                    sb.Append(',')
-                      .Append('\n');
-                }
+                if ( i < Groups.Count ) { sb.Append(',').Append('\n'); }
             }
         }
         else
         {
             foreach ( NpgsqlParameter column in Values )
             {
-                sb.Append('@')
-                  .Append(column.ParameterName);
+                sb.Append('@').Append(column.ParameterName);
 
-                if ( index++ < count - 1 )
-                {
-                    sb.Append(",\n")
-                      .Append(' ', indentLevel * 4);
-                }
+                if ( index++ < count - 1 ) { sb.Append(",\n").Append(' ', indentLevel * 4); }
             }
         }
 

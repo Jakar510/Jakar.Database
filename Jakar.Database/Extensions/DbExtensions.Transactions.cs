@@ -17,6 +17,11 @@ public static partial class DbExtensions
 
                 await transaction.CommitAsync(token);
             }
+            catch ( DbSqlException e ) when ( !string.IsNullOrWhiteSpace(e.RollbackID) )
+            {
+                await transaction.RollbackAsync(e.RollbackID, token);
+                throw;
+            }
             catch ( Exception )
             {
                 await transaction.RollbackAsync(token);
@@ -36,6 +41,11 @@ public static partial class DbExtensions
                 result = func(conn, transaction, arg1, token);
 
                 await transaction.CommitAsync(token);
+            }
+            catch ( DbSqlException e ) when ( !string.IsNullOrWhiteSpace(e.RollbackID) )
+            {
+                await transaction.RollbackAsync(e.RollbackID, token);
+                throw;
             }
             catch ( Exception )
             {
@@ -57,6 +67,11 @@ public static partial class DbExtensions
 
                 await transaction.CommitAsync(token);
             }
+            catch ( DbSqlException e ) when ( !string.IsNullOrWhiteSpace(e.RollbackID) )
+            {
+                await transaction.RollbackAsync(e.RollbackID, token);
+                throw;
+            }
             catch ( Exception )
             {
                 await transaction.RollbackAsync(token);
@@ -76,6 +91,11 @@ public static partial class DbExtensions
                 result = func(conn, transaction, arg1, arg2, arg3, token);
 
                 await transaction.CommitAsync(token);
+            }
+            catch ( DbSqlException e ) when ( !string.IsNullOrWhiteSpace(e.RollbackID) )
+            {
+                await transaction.RollbackAsync(e.RollbackID, token);
+                throw;
             }
             catch ( Exception )
             {
@@ -97,6 +117,11 @@ public static partial class DbExtensions
 
                 await transaction.CommitAsync(token);
             }
+            catch ( DbSqlException e ) when ( !string.IsNullOrWhiteSpace(e.RollbackID) )
+            {
+                await transaction.RollbackAsync(e.RollbackID, token);
+                throw;
+            }
             catch ( Exception )
             {
                 await transaction.RollbackAsync(token);
@@ -117,6 +142,11 @@ public static partial class DbExtensions
 
                 await transaction.CommitAsync(token);
             }
+            catch ( DbSqlException e ) when ( !string.IsNullOrWhiteSpace(e.RollbackID) )
+            {
+                await transaction.RollbackAsync(e.RollbackID, token);
+                throw;
+            }
             catch ( Exception )
             {
                 await transaction.RollbackAsync(token);
@@ -136,6 +166,11 @@ public static partial class DbExtensions
                 result = func(conn, transaction, arg1, arg2, arg3, arg4, arg5, arg6, token);
 
                 await transaction.CommitAsync(token);
+            }
+            catch ( DbSqlException e ) when ( !string.IsNullOrWhiteSpace(e.RollbackID) )
+            {
+                await transaction.RollbackAsync(e.RollbackID, token);
+                throw;
             }
             catch ( Exception )
             {
@@ -165,6 +200,11 @@ public static partial class DbExtensions
                 result = func(conn, transaction, arg1, arg2, arg3, arg4, arg5, arg6, arg7, token);
 
                 await transaction.CommitAsync(token);
+            }
+            catch ( DbSqlException e ) when ( !string.IsNullOrWhiteSpace(e.RollbackID) )
+            {
+                await transaction.RollbackAsync(e.RollbackID, token);
+                throw;
             }
             catch ( Exception )
             {
@@ -206,6 +246,11 @@ public static partial class DbExtensions
 
                 await transaction.CommitAsync(token);
             }
+            catch ( DbSqlException e ) when ( !string.IsNullOrWhiteSpace(e.RollbackID) )
+            {
+                await transaction.RollbackAsync(e.RollbackID, token);
+                throw;
+            }
             catch ( Exception )
             {
                 await transaction.RollbackAsync(token);
@@ -224,6 +269,11 @@ public static partial class DbExtensions
                 await func(conn, transaction, token);
                 await transaction.CommitAsync(token);
             }
+            catch ( DbSqlException e ) when ( !string.IsNullOrWhiteSpace(e.RollbackID) )
+            {
+                await transaction.RollbackAsync(e.RollbackID, token);
+                throw;
+            }
             catch ( Exception )
             {
                 await transaction.RollbackAsync(token);
@@ -239,6 +289,11 @@ public static partial class DbExtensions
             {
                 await func(conn, transaction, arg1, token);
                 await transaction.CommitAsync(token);
+            }
+            catch ( DbSqlException e ) when ( !string.IsNullOrWhiteSpace(e.RollbackID) )
+            {
+                await transaction.RollbackAsync(e.RollbackID, token);
+                throw;
             }
             catch ( Exception )
             {
@@ -256,6 +311,11 @@ public static partial class DbExtensions
                 await func(conn, transaction, arg1, arg2, token);
                 await transaction.CommitAsync(token);
             }
+            catch ( DbSqlException e ) when ( !string.IsNullOrWhiteSpace(e.RollbackID) )
+            {
+                await transaction.RollbackAsync(e.RollbackID, token);
+                throw;
+            }
             catch ( Exception )
             {
                 await transaction.RollbackAsync(token);
@@ -271,6 +331,11 @@ public static partial class DbExtensions
             {
                 await func(conn, transaction, arg1, arg2, arg3, token);
                 await transaction.CommitAsync(token);
+            }
+            catch ( DbSqlException e ) when ( !string.IsNullOrWhiteSpace(e.RollbackID) )
+            {
+                await transaction.RollbackAsync(e.RollbackID, token);
+                throw;
             }
             catch ( Exception )
             {
@@ -288,6 +353,11 @@ public static partial class DbExtensions
                 await func(conn, transaction, arg1, arg2, arg3, arg4, token);
                 await transaction.CommitAsync(token);
             }
+            catch ( DbSqlException e ) when ( !string.IsNullOrWhiteSpace(e.RollbackID) )
+            {
+                await transaction.RollbackAsync(e.RollbackID, token);
+                throw;
+            }
             catch ( Exception )
             {
                 await transaction.RollbackAsync(token);
@@ -303,6 +373,11 @@ public static partial class DbExtensions
             {
                 await func(conn, transaction, arg1, arg2, arg3, arg4, arg5, token);
                 await transaction.CommitAsync(token);
+            }
+            catch ( DbSqlException e ) when ( !string.IsNullOrWhiteSpace(e.RollbackID) )
+            {
+                await transaction.RollbackAsync(e.RollbackID, token);
+                throw;
             }
             catch ( Exception )
             {
@@ -320,6 +395,11 @@ public static partial class DbExtensions
                 await func(conn, transaction, arg1, arg2, arg3, arg4, arg5, arg6, token);
                 await transaction.CommitAsync(token);
             }
+            catch ( DbSqlException e ) when ( !string.IsNullOrWhiteSpace(e.RollbackID) )
+            {
+                await transaction.RollbackAsync(e.RollbackID, token);
+                throw;
+            }
             catch ( Exception )
             {
                 await transaction.RollbackAsync(token);
@@ -336,6 +416,11 @@ public static partial class DbExtensions
                 await func(conn, transaction, arg1, arg2, arg3, arg4, arg5, arg6, arg7, token);
 
                 await transaction.CommitAsync(token);
+            }
+            catch ( DbSqlException e ) when ( !string.IsNullOrWhiteSpace(e.RollbackID) )
+            {
+                await transaction.RollbackAsync(e.RollbackID, token);
+                throw;
             }
             catch ( Exception )
             {
@@ -374,6 +459,11 @@ public static partial class DbExtensions
 
                 await transaction.CommitAsync(token);
             }
+            catch ( DbSqlException e ) when ( !string.IsNullOrWhiteSpace(e.RollbackID) )
+            {
+                await transaction.RollbackAsync(e.RollbackID, token);
+                throw;
+            }
             catch ( Exception )
             {
                 await transaction.RollbackAsync(token);
@@ -390,6 +480,11 @@ public static partial class DbExtensions
                 TResult result = await func(conn, transaction, token);
                 await transaction.CommitAsync(token);
                 return result;
+            }
+            catch ( DbSqlException e ) when ( !string.IsNullOrWhiteSpace(e.RollbackID) )
+            {
+                await transaction.RollbackAsync(e.RollbackID, token);
+                throw;
             }
             catch ( Exception )
             {
@@ -408,6 +503,11 @@ public static partial class DbExtensions
                 await transaction.CommitAsync(token);
                 return result;
             }
+            catch ( DbSqlException e ) when ( !string.IsNullOrWhiteSpace(e.RollbackID) )
+            {
+                await transaction.RollbackAsync(e.RollbackID, token);
+                throw;
+            }
             catch ( Exception )
             {
                 await transaction.RollbackAsync(token);
@@ -424,6 +524,11 @@ public static partial class DbExtensions
                 TResult result = await func(conn, transaction, arg1, arg2, token);
                 await transaction.CommitAsync(token);
                 return result;
+            }
+            catch ( DbSqlException e ) when ( !string.IsNullOrWhiteSpace(e.RollbackID) )
+            {
+                await transaction.RollbackAsync(e.RollbackID, token);
+                throw;
             }
             catch ( Exception )
             {
@@ -442,6 +547,11 @@ public static partial class DbExtensions
                 await transaction.CommitAsync(token);
                 return result;
             }
+            catch ( DbSqlException e ) when ( !string.IsNullOrWhiteSpace(e.RollbackID) )
+            {
+                await transaction.RollbackAsync(e.RollbackID, token);
+                throw;
+            }
             catch ( Exception )
             {
                 await transaction.RollbackAsync(token);
@@ -458,6 +568,11 @@ public static partial class DbExtensions
                 TResult result = await func(conn, transaction, arg1, arg2, arg3, arg4, token);
                 await transaction.CommitAsync(token);
                 return result;
+            }
+            catch ( DbSqlException e ) when ( !string.IsNullOrWhiteSpace(e.RollbackID) )
+            {
+                await transaction.RollbackAsync(e.RollbackID, token);
+                throw;
             }
             catch ( Exception )
             {
@@ -476,6 +591,11 @@ public static partial class DbExtensions
                 await transaction.CommitAsync(token);
                 return result;
             }
+            catch ( DbSqlException e ) when ( !string.IsNullOrWhiteSpace(e.RollbackID) )
+            {
+                await transaction.RollbackAsync(e.RollbackID, token);
+                throw;
+            }
             catch ( Exception )
             {
                 await transaction.RollbackAsync(token);
@@ -492,6 +612,11 @@ public static partial class DbExtensions
                 TResult result = await func(conn, transaction, arg1, arg2, arg3, arg4, arg5, arg6, token);
                 await transaction.CommitAsync(token);
                 return result;
+            }
+            catch ( DbSqlException e ) when ( !string.IsNullOrWhiteSpace(e.RollbackID) )
+            {
+                await transaction.RollbackAsync(e.RollbackID, token);
+                throw;
             }
             catch ( Exception )
             {
@@ -510,6 +635,11 @@ public static partial class DbExtensions
 
                 await transaction.CommitAsync(token);
                 return result;
+            }
+            catch ( DbSqlException e ) when ( !string.IsNullOrWhiteSpace(e.RollbackID) )
+            {
+                await transaction.RollbackAsync(e.RollbackID, token);
+                throw;
             }
             catch ( Exception )
             {
@@ -548,6 +678,11 @@ public static partial class DbExtensions
 
                 await transaction.CommitAsync(token);
                 return result;
+            }
+            catch ( DbSqlException e ) when ( !string.IsNullOrWhiteSpace(e.RollbackID) )
+            {
+                await transaction.RollbackAsync(e.RollbackID, token);
+                throw;
             }
             catch ( Exception )
             {

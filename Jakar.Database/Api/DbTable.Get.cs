@@ -19,10 +19,10 @@ public partial class DbTable<TSelf>
 
     public virtual async ValueTask<long> Count( NpgsqlConnection connection, NpgsqlTransaction? transaction, CancellationToken token = default )
     {
-        SqlCommand<TSelf> sql = SqlCommand<TSelf>.GetCount();
+        SqlCommand<TSelf> command = SqlCommand<TSelf>.GetCount();
 
-        try { return await connection.QueryFirstAsync<long>(sql.SQL, sql.Parameters, transaction); }
-        catch ( Exception e ) { throw new SqlException<TSelf>(sql, e); }
+        try { return await connection.QueryFirstAsync<long>(command.SQL, command.Parameters, transaction); }
+        catch ( Exception e ) { throw new DbSqlException(command.SQL, e, command.Parameters); }
     }
 
 
@@ -36,7 +36,7 @@ public partial class DbTable<TSelf>
             IEnumerable<string> results = await connection.QueryAsync<string>(command);
             return results.Any();
         }
-        catch ( Exception e ) { throw new SqlException<TSelf>(sql.SQL, parameters, e); }
+        catch ( Exception e ) { throw new DbSqlException(sql.SQL, e, sql.Parameters); }
     }
 
 
@@ -81,18 +81,13 @@ public partial class DbTable<TSelf>
                            ? Error.NotFound(command.SQL)
                            : result;
             }
-            catch ( Exception e ) { throw new SqlException<TSelf>(command.SQL, command.Parameters, EMPTY, e); }
+            catch ( Exception e ) { throw new DbSqlException(command.SQL, e, command.Parameters); }
         }
     }
 
 
     public virtual async ValueTask<ErrorOrResult<TSelf>> Get<T>( NpgsqlConnection connection, NpgsqlTransaction? transaction, string columnName, T? value, CancellationToken token = default ) =>
-        await Get(connection,
-                  transaction,
-                  true,
-                  PostgresParameters.Create<TSelf>()
-                                    .Add(columnName, value),
-                  token);
+        await Get(connection, transaction, true, PostgresParameters.Create<TSelf>().Add(columnName, value), token);
 
 
     public virtual async ValueTask<ErrorOrResult<TSelf>> Get( NpgsqlConnection connection, NpgsqlTransaction? transaction, bool matchAll, PostgresParameters parameters, CancellationToken token = default )
@@ -114,6 +109,6 @@ public partial class DbTable<TSelf>
                        ? Error.NotFound(command.SQL)
                        : result;
         }
-        catch ( Exception e ) { throw new SqlException<TSelf>(command, e); }
+        catch ( Exception e ) { throw new DbSqlException(command.SQL, e, command.Parameters); }
     }
 }

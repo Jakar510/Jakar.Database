@@ -82,22 +82,15 @@ public readonly struct SqlCommand<TSelf>( string sql, in PostgresParameters para
         {
             TableMetaData<TSelf> data = TSelf.MetaData;
 
-            int length = data.Properties.Values.AsValueEnumerable()
-                             .Sum(static x => x.ColumnName.Length) +
-                         ( data.Count - 1 ) * SPACER.Length;
+            int length = data.Properties.Values.AsValueEnumerable().Sum(static x => x.ColumnName.Length) + ( data.Count - 1 ) * SPACER.Length;
 
             StringBuilder sb    = new(length);
             int           count = data.Count;
             int           index = 0;
 
-            foreach ( string pair in data.Properties.Values.AsValueEnumerable()
-                                         .Select(ColumnMetaData.GetColumnName) )
+            foreach ( string pair in data.Properties.Values.AsValueEnumerable().Select(ColumnMetaData.GetColumnName) )
             {
-                if ( index++ < count - 1 )
-                {
-                    sb.Append(pair)
-                      .Append(SPACER);
-                }
+                if ( index++ < count - 1 ) { sb.Append(pair).Append(SPACER); }
                 else { sb.Append(pair); }
             }
 
@@ -110,22 +103,15 @@ public readonly struct SqlCommand<TSelf>( string sql, in PostgresParameters para
         {
             TableMetaData<TSelf> data = TSelf.MetaData;
 
-            int length = data.Properties.Values.AsValueEnumerable()
-                             .Sum(static x => x.ColumnName.Length) +
-                         ( data.Count - 1 ) * SPACER.Length;
+            int length = data.Properties.Values.AsValueEnumerable().Sum(static x => x.ColumnName.Length) + ( data.Count - 1 ) * SPACER.Length;
 
             StringBuilder sb    = new(length);
             int           count = data.Count;
             int           index = 0;
 
-            foreach ( string pair in data.Properties.Values.AsValueEnumerable()
-                                         .Select(ColumnMetaData.GetKeyValuePair) )
+            foreach ( string pair in data.Properties.Values.AsValueEnumerable().Select(ColumnMetaData.GetKeyValuePair) )
             {
-                if ( index++ < count - 1 )
-                {
-                    sb.Append(pair)
-                      .Append(SPACER);
-                }
+                if ( index++ < count - 1 ) { sb.Append(pair).Append(SPACER); }
                 else { sb.Append(pair); }
             }
 
@@ -244,16 +230,16 @@ public readonly struct SqlCommand<TSelf>( string sql, in PostgresParameters para
         return new SqlCommand<TSelf>(sql, in parameters);
     }
     public static SqlCommand<TSelf> GetAll() => $"SELECT * FROM {TSelf.TableName};";
-    public static SqlCommand<TSelf> GetFirst() => $"""
-                                                   SELECT * FROM {TSelf.TableName}
-                                                   ORDER BY {DATE_CREATED} ASC 
-                                                   LIMIT 1;
-                                                   """;
-    public static SqlCommand<TSelf> GetLast() => $"""
-                                                  SELECT * FROM {TSelf.TableName}
-                                                  ORDER BY {DATE_CREATED} DESC 
-                                                  LIMIT 1
-                                                  """;
+    public static SqlCommand<TSelf> GetFirst( int count = 1 ) => $"""
+                                                                  SELECT * FROM {TSelf.TableName}
+                                                                  ORDER BY {DATE_CREATED} ASC 
+                                                                  LIMIT {count};
+                                                                  """;
+    public static SqlCommand<TSelf> GetLast( int count = 1 ) => $"""
+                                                                 SELECT * FROM {TSelf.TableName}
+                                                                 ORDER BY {DATE_CREATED} DESC 
+                                                                 LIMIT {count}
+                                                                 """;
 
 
     public static SqlCommand<TSelf> GetCount() => $"SELECT COUNT(*) FROM {TSelf.TableName};";
@@ -417,8 +403,7 @@ public readonly struct SqlCommand<TSelf>( string sql, in PostgresParameters para
                                                                      record.ToDynamicParameters());
     public static SqlCommand<TSelf> GetTryInsert( TSelf record, bool matchAll, in PostgresParameters parameters )
     {
-        PostgresParameters param = record.ToDynamicParameters()
-                                         .With(in parameters);
+        PostgresParameters param = record.ToDynamicParameters().With(in parameters);
 
         string sql = $"""
                       IF NOT EXISTS (
@@ -449,8 +434,7 @@ public readonly struct SqlCommand<TSelf>( string sql, in PostgresParameters para
     }
     public static SqlCommand<TSelf> InsertOrUpdate( TSelf record, bool matchAll, in PostgresParameters parameters )
     {
-        PostgresParameters param = record.ToDynamicParameters()
-                                         .With(parameters);
+        PostgresParameters param = record.ToDynamicParameters().With(parameters);
 
         string sql = $"""
                       IF NOT EXISTS (

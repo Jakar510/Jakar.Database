@@ -13,13 +13,13 @@ public partial class DbTable<TSelf> : IDbTable<TSelf>
     protected readonly IConnectableDbRoot _database;
 
 
-    public static TableMetaData<TSelf>     MetaData          { [Pure] get => TSelf.MetaData; }
+    public static TableMetaData<TSelf>     MetaData                  { [Pure] get => TSelf.MetaData; }
     public static TSelf[]                  Empty                     => [];
     public static ImmutableArray<TSelf>    EmptyArray                => [];
     public static FrozenSet<TSelf>         Set                       => FrozenSet<TSelf>.Empty;
     public        FusionCacheEntryOptions? Options                   { get; set; }
     public        RecordGenerator<TSelf>   Records                   => new(this);
-    ITableMetaData IDbTable.               MetaData          { [Pure] get => MetaData; }
+    ITableMetaData IDbTable.               MetaData                  { [Pure] get => MetaData; }
     public IsolationLevel                  TransactionIsolationLevel => _database.TransactionIsolationLevel;
     public string                          TableName                 { [Pure] get => TSelf.TableName; }
 
@@ -58,7 +58,7 @@ public partial class DbTable<TSelf> : IDbTable<TSelf>
             await using SqlMapper.GridReader reader = await connection.QueryMultipleAsync(sql, parameters, transaction);
             return await func(reader, token);
         }
-        catch ( Exception e ) { throw new SqlException<TSelf>(sql, parameters, e); }
+        catch ( Exception e ) { throw new DbSqlException(sql, e, parameters); }
     }
 
 
@@ -71,7 +71,7 @@ public partial class DbTable<TSelf> : IDbTable<TSelf>
             await using NpgsqlDataReader reader = await cmd.ExecuteReaderAsync(token);
             return await func(reader, token);
         }
-        catch ( Exception e ) { throw new SqlException<TSelf>(command.SQL, command.Parameters, e); }
+        catch ( Exception e ) { throw new DbSqlException(command.SQL, e, command.Parameters); }
     }
 
 

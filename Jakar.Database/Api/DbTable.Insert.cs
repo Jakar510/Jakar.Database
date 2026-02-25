@@ -102,7 +102,7 @@ public partial class DbTable<TSelf>
 
             return record.NewID(id);
         }
-        catch ( Exception e ) { throw new SqlException<TSelf>(command, e); }
+        catch ( Exception e ) { throw new DbSqlException(command.SQL, e, command.Parameters); }
     }
 
     public virtual async ValueTask<ErrorOrResult<TSelf>> TryInsert( NpgsqlConnection connection, NpgsqlTransaction? transaction, TSelf record, bool matchAll, PostgresParameters parameters, CancellationToken token = default )
@@ -120,7 +120,7 @@ public partial class DbTable<TSelf>
 
             return record.NewID(id);
         }
-        catch ( Exception e ) { throw new SqlException<TSelf>(command, e); }
+        catch ( Exception e ) { throw new DbSqlException(command.SQL, e, command.Parameters); }
     }
 
 
@@ -139,6 +139,6 @@ public partial class DbTable<TSelf>
 
             return record.NewID(id);
         }
-        catch ( Exception e ) { throw new SqlException<TSelf>(command, e); }
+        catch ( Exception e ) { throw new DbSqlException(command.SQL, e, command.Parameters); }
     }
 }

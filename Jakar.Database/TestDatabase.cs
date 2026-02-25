@@ -19,7 +19,7 @@ internal sealed class TestDatabase( IConfiguration configuration, IOptions<DbOpt
     public static WebApplicationBuilder Create()
     {
         WebApplicationBuilder        builder          = WebApplication.CreateBuilder();
-        SecuredStringResolverOptions connectionString = "User ID=dev;Password=dev;Host=localhost;Port=5432;Database=jakar_database_sample";
+        SecuredStringResolverOptions connectionString = "User ID=dev;Password=dev;Host=localhost;Port=5432;Database=jakar_database_sample;Include Error Detail=true;";
 
         DbOptions options = new()
                             {

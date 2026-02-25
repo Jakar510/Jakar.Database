@@ -39,7 +39,7 @@ public class TableMetaData<TSelf> : ITableMetaData
     public        int                                                                                              ForeignKeyCount             { get; }
     public        PooledArray<ColumnMetaData>                                                                      ForeignKeys                 { [Pure] [MustDisposeResource] get => Columns.Where(static x => x.HasForeignKeyConstraint).ToArrayPool(); }
     FrozenDictionary<int, string> ITableMetaData.                                                                  Indexes                     => Indexes;
-    public string                                                                                                  SetLastModifiedFunctionName => field ??= $"{TSelf.TableName}_{nameof(MigrationRecord.SetLastModified).SqlColumnName()}";
+    public string                                                                                                  SetLastModifiedFunctionName => field ??= $"{TSelf.TableName}_{MigrationRecord.SetLastModifiedName}";
     public ref readonly ColumnMetaData this[ string propertyName ] => ref Properties[propertyName];
     public PropertyColumn this[ int index ]
     {
@@ -209,10 +209,8 @@ public class TableMetaData<TSelf> : ITableMetaData
     }
 
 
-    public MigrationRecord CreateTable( long migrationID )
+    [Pure] public string CreateTableSql()
     {
-        if ( _createTableSql is not null ) { return _createTableSql; }
-
         StringBuilder query = new(10240);
 
         query.Append("CREATE TABLE ");
@@ -237,13 +235,7 @@ public class TableMetaData<TSelf> : ITableMetaData
         query.Append(')');
         query.Append(';');
 
-        return _createTableSql = new MigrationRecord
-                                 {
-                                     MigrationID = migrationID,
-                                     Description = $"Create {TableName} table",
-                                     TableID     = TableName,
-                                     SQL         = query.ToString()
-                                 };
+        return query.ToString();
 
         static void tryAddExtras( StringBuilder query )
         {
@@ -304,6 +296,13 @@ public class TableMetaData<TSelf> : ITableMetaData
             query.Length--; // Remove the last comma
         }
     }
+    public MigrationRecord CreateTable( long migrationID ) => _createTableSql ??= new MigrationRecord
+                                                                                  {
+                                                                                      MigrationID = migrationID,
+                                                                                      Description = $"Create {TableName} table",
+                                                                                      TableID     = TableName,
+                                                                                      SQL         = CreateTableSql()
+                                                                                  };
 
 
     public MigrationRecord SetLastModifiedFunction( long migrationID ) => MigrationRecord.Create<TSelf>(migrationID,
@@ -312,7 +311,7 @@ public class TableMetaData<TSelf> : ITableMetaData
                                                                                                          CREATE TRIGGER IF NOT EXISTS {SetLastModifiedFunctionName}
                                                                                                          BEFORE INSERT OR UPDATE ON {TSelf.TableName}
                                                                                                          FOR EACH ROW
-                                                                                                         EXECUTE FUNCTION {nameof(MigrationRecord.SetLastModified).SqlColumnName()}();
+                                                                                                         EXECUTE FUNCTION {MigrationRecord.SetLastModifiedName}();
                                                                                                          """);
 
 

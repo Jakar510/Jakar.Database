@@ -22,7 +22,7 @@ public partial class DbTable<TSelf>
             await using NpgsqlDataReader reader = await cmd.ExecuteReaderAsync(token);
             return await reader.FirstAsync<TSelf>(token);
         }
-        catch ( Exception e ) { throw new SqlException<TSelf>(command, e); }
+        catch ( Exception e ) { throw new DbSqlException(command.SQL, e, command.Parameters); }
     }
 
 
