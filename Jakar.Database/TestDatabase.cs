@@ -52,8 +52,7 @@ internal sealed class TestDatabase( IConfiguration configuration, IOptions<DbOpt
         app.UseAuthorization();
         app.UseTelemetry();
 
-        app.MapGet("/",     static () => DateTimeOffset.UtcNow);
-        app.MapGet("/Ping", static () => DateTimeOffset.UtcNow);
+        app.MapGet("/", static () => DateTimeOffset.UtcNow);
 
         await app.ApplyMigrations(token);
 

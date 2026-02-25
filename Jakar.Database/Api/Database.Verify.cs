@@ -31,27 +31,27 @@ public enum SubscriptionStatus
     /// This can be useful as a default or error state in scenarios where a specific value cannot be provided.
     /// This should not be used to represent a valid or meaningful state, but rather to indicate the absence of information, and should override all other flags.
     /// </remarks>
-    Unknown = -1,
+    Unknown = 1 << 1,
     /// <summary> Temporarily suspended, resumable </summary>
-    Paused = 1 << 1,
+    Paused = 1 << 2,
     /// <summary> Disabled due to policy, billing, or abuse </summary>
-    Suspended = 1 << 2,
+    Suspended = 1 << 3,
     /// <summary> Payment failed, grace period begins </summary>
-    PastDue = 1 << 3,
+    PastDue = 1 << 4,
     /// <summary> No valid payment method </summary>
-    PaymentRequired = 1 << 4,
+    PaymentRequired = 1 << 5,
     /// <summary> Payment reversed </summary>
-    Chargeback = 1 << 5,
+    Chargeback = 1 << 6,
     /// <summary> Subscription refunded </summary>
-    Refunded = 1 << 6,
+    Refunded = 1 << 7,
     /// <summary> Trial period is active </summary>
-    TrialActive = 1 << 7,
+    TrialActive = 1 << 8,
     /// <summary> Trial period is expired </summary>
-    TrialExpired = 1 << 8,
+    TrialExpired = 1 << 9,
     /// <summary> After expiration but still usable </summary>
-    GracePeriod = 1 << 9,
+    GracePeriod = 1 << 10,
     /// <summary>  Provider temporarily blocked it </summary>
-    OnHold = 1 << 10,
+    OnHold = 1 << 11,
 
     PaymentIssueMask = PastDue | PaymentRequired | Chargeback,
 }
@@ -65,9 +65,10 @@ public readonly record struct SubscriptionInfo( SubscriptionState State, Subscri
 public abstract partial class Database
 {
     public virtual ValueTask<ErrorOrResult<TSelf>> TryGetSubscription<TSelf>( NpgsqlConnection connection, NpgsqlTransaction? transaction, UserRecord record, CancellationToken token = default )
-        where TSelf : UserSubscription<TSelf>, ITableRecord<TSelf> => default;
+        where TSelf : UserSubscription<TSelf>, ITableRecord<TSelf> => new(Error.NoContent());
 
-    public virtual ValueTask<ErrorOrResult<SubscriptionInfo>> ValidateSubscription( NpgsqlConnection connection, NpgsqlTransaction? transaction, UserRecord record, CancellationToken token = default ) => new(new SubscriptionInfo(SubscriptionState.NotSet, SubscriptionStatus.NotSet, null));
+
+    public virtual ValueTask<ErrorOrResult<SubscriptionInfo>> ValidateSubscription( NpgsqlConnection connection, NpgsqlTransaction? transaction, UserRecord record, CancellationToken token = default ) => new(new SubscriptionInfo(SubscriptionState.NotSet, SubscriptionStatus.NotSet, record.SubscriptionExpires));
 
 
     protected virtual async ValueTask<ErrorOrResult<UserRecord>> VerifyLogin( NpgsqlConnection connection, NpgsqlTransaction? transaction, ILoginRequest request, CancellationToken token = default )
@@ -167,8 +168,7 @@ public abstract partial class Database
         {
             Exception e = validationResult.Exception;
 
-            string typeName = e.GetType()
-                               .Name;
+            string typeName = e.GetType().Name;
 
             return Error.Create(Status.InternalServerError, e.Message, e.Source, e.MethodName(), type: typeName);
         }
@@ -186,11 +186,9 @@ public abstract partial class Database
     public virtual async ValueTask<Permissions<TEnum>> GetRights<TEnum>( NpgsqlConnection connection, NpgsqlTransaction? transaction, RecordID<UserRecord> userID, CancellationToken token )
         where TEnum : unmanaged, Enum
     {
-        string rights = nameof(UserRecord.Rights)
-           .SqlColumnName();
+        string rights = nameof(UserRecord.Rights).SqlColumnName();
 
-        string id = nameof(UserRecord.ID)
-           .SqlColumnName();
+        string id = nameof(UserRecord.ID).SqlColumnName();
 
         string sql = $"""
                       SELECT u.{rights}

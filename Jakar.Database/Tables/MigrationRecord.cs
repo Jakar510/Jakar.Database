@@ -32,46 +32,43 @@ public sealed record MigrationRecord : TableRecord<MigrationRecord>, ITableRecor
                                               {nameof(MigrationID).SqlColumnName()},
                                               {nameof(TableID).SqlColumnName()},
                                               {nameof(Description).SqlColumnName()},
-                                              {nameof(AppliedOn).SqlColumnName()},
+                                              {nameof(AppliedOn).SqlColumnName()}
                                               ) 
                                               VALUES 
                                               (
                                               @{nameof(MigrationID).SqlColumnName()},
                                               @{nameof(TableID).SqlColumnName()},
                                               @{nameof(Description).SqlColumnName()},
-                                              @{nameof(AppliedOn).SqlColumnName()},
+                                              @{nameof(AppliedOn).SqlColumnName()}
                                               )
                                               """;
-    internal ulong MigrationIdValue;
+    internal long MigrationIdValue;
 
 
-    public static                                                            string         TableName   => TABLE_NAME;
-    public                                                                   DateTimeOffset AppliedOn   { get;                     init; } = DateTimeOffset.UtcNow;
-    public required                                                          string         Description { get;                     init; }
-    [Key]                                                    public required ulong          MigrationID { get => MigrationIdValue; init => MigrationIdValue = value; }
-    [DbIgnore]                                               public          string         SQL         { get;                     internal init; } = EMPTY;
-    [Indexed<MigrationRecord>(nameof(TableID))] [Fixed(256)] public          string?        TableID     { get;                     init; }
+    public static                                               string          TableName   => TABLE_NAME;
+    public                                                      DateTimeOffset? AppliedOn   { get;                     set; }
+    public required                                             string          Description { get;                     init; }
+    [Key]                                       public required long            MigrationID { get => MigrationIdValue; init => MigrationIdValue = value; }
+    [DbIgnore]                                  public          string          SQL         { get;                     internal init; } = EMPTY;
+    [Indexed<MigrationRecord>(nameof(TableID))] public          string?         TableID     { get;                     init; }
 
 
-    [SetsRequiredMembers] internal MigrationRecord( ulong migrationID, string description, string? tableID = null ) : base(DateTimeOffset.UtcNow)
-    {
-        MigrationID = migrationID;
-        Description = description;
-        TableID     = tableID;
-    }
+    public MigrationRecord() : base(DateTimeOffset.UtcNow) { }
     [SetsRequiredMembers] public MigrationRecord( NpgsqlDataReader reader ) : base(reader)
     {
         Description = reader.GetFieldValue<MigrationRecord, string>(nameof(Description));
         TableID     = reader.GetFieldValue<MigrationRecord, string?>(nameof(TableID));
-        AppliedOn   = reader.GetFieldValue<MigrationRecord, DateTimeOffset>(nameof(AppliedOn));
-        MigrationID = reader.GetFieldValue<MigrationRecord, ulong>(nameof(MigrationID));
+        AppliedOn   = reader.GetFieldValue<MigrationRecord, DateTimeOffset?>(nameof(AppliedOn));
+        MigrationID = reader.GetFieldValue<MigrationRecord, long>(nameof(MigrationID));
     }
-    public static MigrationRecord SetLastModified( ulong migrationID )
+    public static MigrationRecord SetLastModified( long migrationID )
     {
         string name = nameof(SetLastModified).SqlColumnName();
 
-        return new MigrationRecord(migrationID, $"create {name} function")
+        return new MigrationRecord
                {
+                   MigrationID = migrationID,
+                   Description = $"create {name} function",
                    SQL = $"""
                           CREATE OR REPLACE FUNCTION {name}()
                           RETURNS TRIGGER AS $$
@@ -94,7 +91,7 @@ public sealed record MigrationRecord : TableRecord<MigrationRecord>, ITableRecor
     /// </summary>
     /// <param name="migrationID"></param>
     /// <returns></returns>
-    public static MigrationRecord AddPostgreSqlExtensions( ulong migrationID ) =>
+    public static MigrationRecord AddPostgreSqlExtensions( long migrationID ) =>
         Create<MigrationRecord>(migrationID,
                                 "Add PostgreSql extensions",
 
@@ -112,7 +109,7 @@ public sealed record MigrationRecord : TableRecord<MigrationRecord>, ITableRecor
                                );
 
 
-    public static MigrationRecord CreateDatabase( ulong migrationID, string databaseName, string? ownerName = null )
+    public static MigrationRecord CreateDatabase( long migrationID, string databaseName, string? ownerName = null )
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(databaseName);
 
@@ -129,12 +126,18 @@ public sealed record MigrationRecord : TableRecord<MigrationRecord>, ITableRecor
                                       OWNER = {ownerName}
                             """;
 
-        return new MigrationRecord(migrationID, $"Create database {databaseName}", databaseName) { SQL = sql };
+        return new MigrationRecord
+               {
+                   TableID     = databaseName,
+                   MigrationID = migrationID,
+                   Description = $"Create database {databaseName}",
+                   SQL         = sql
+               };
     }
-    public static MigrationRecord CreateTable( ulong migrationID ) => MetaData.CreateTable(migrationID);
+    public static MigrationRecord CreateTable( long migrationID ) => MetaData.CreateTable(migrationID);
 
 
-    public static MigrationRecord FromEnum<TEnum>( ulong migrationID )
+    public static MigrationRecord FromEnum<TEnum>( long migrationID )
         where TEnum : unmanaged, Enum
     {
         ValueEnumerable<FromArray<string>, string> enumerable = Enum.GetNames(typeof(TEnum)).AsValueEnumerable();
@@ -142,9 +145,11 @@ public sealed record MigrationRecord : TableRecord<MigrationRecord>, ITableRecor
         string tableName = typeof(TEnum).Name.SqlColumnName();
         int    length    = enumerable.Max(static x => x.Length);
 
-        MigrationRecord record = new(migrationID, $"create {tableName} table")
+        MigrationRecord record = new()
                                  {
-                                     TableID = tableName,
+                                     MigrationID = migrationID,
+                                     Description = $"create {tableName} table",
+                                     TableID     = tableName,
                                      SQL = $"""
                                             CREATE TABLE IF NOT EXISTS {tableName}
                                             (
@@ -181,13 +186,15 @@ public sealed record MigrationRecord : TableRecord<MigrationRecord>, ITableRecor
     }
 
 
-    public static MigrationRecord Create<TSelf>( ulong migrationID, string description, string sql )
+    public static MigrationRecord Create<TSelf>( long migrationID, string description, string sql )
         where TSelf : TableRecord<TSelf>, ITableRecord<TSelf>
     {
-        MigrationRecord record = new(migrationID, description)
+        MigrationRecord record = new()
                                  {
-                                     TableID = TSelf.TableName,
-                                     SQL     = sql
+                                     MigrationID = migrationID,
+                                     Description = description,
+                                     TableID     = TSelf.TableName,
+                                     SQL         = sql
                                  };
 
         return record.Validate();

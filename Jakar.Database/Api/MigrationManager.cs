@@ -4,11 +4,11 @@
 [SuppressMessage("ReSharper", "ClassWithVirtualMembersNeverInherited.Global")]
 public class MigrationManager
 {
-    public const       string                                                MIGRATIONS           = "/_migrations";
-    private readonly   SortedDictionary<ulong, Func<ulong, MigrationRecord>> __migrationFactories = new(Comparer<ulong>.Default);
-    protected readonly Database                                              _db;
-    protected          FrozenSet<MigrationRecord>?                           _records;
-    internal static    ulong                                                 MigrationID => Interlocked.Add(ref field, 1);
+    public const       string                                              MIGRATIONS           = "/_migrations";
+    private readonly   SortedDictionary<long, Func<long, MigrationRecord>> __migrationFactories = new(Comparer<long>.Default);
+    protected readonly Database                                            _db;
+    protected          FrozenSet<MigrationRecord>?                         _records;
+    internal static    long                                                MigrationID => Interlocked.Add(ref field, 1);
 
 
     public FrozenSet<MigrationRecord> Records
@@ -41,45 +41,58 @@ public class MigrationManager
         __migrationFactories[MigrationID] = MigrationRecord.FromEnum<ProgrammingLanguage>;
         __migrationFactories[MigrationID] = MigrationRecord.FromEnum<Status>;
 
-        Add(ResxRowRecord.MetaData);
-        Add(FileRecord.MetaData);
-        Add(UserRecord.MetaData);
-        Add(RecoveryCodeRecord.MetaData);
-        Add(UserRecoveryCodeRecord.MetaData);
-        Add(RoleRecord.MetaData);
-        Add(UserRoleRecord.MetaData);
-        Add(GroupRecord.MetaData);
-        Add(UserGroupRecord.MetaData);
-        Add(AddressRecord.MetaData);
-        Add(UserAddressRecord.MetaData);
+        Add<ResxRowRecord>();
+        Add<FileRecord>();
+        Add<UserRecord>();
+        Add<RecoveryCodeRecord>();
+        Add<UserRecoveryCodeRecord>();
+        Add<RoleRecord>();
+        Add<UserRoleRecord>();
+        Add<GroupRecord>();
+        Add<UserGroupRecord>();
+        Add<AddressRecord>();
+        Add<UserAddressRecord>();
     }
 
 
-    public void Add<T>( params ReadOnlySpan<T> span )
-        where T : ITableMetaData
+    public MigrationManager Add<TSelf>()
+        where TSelf : TableRecord<TSelf>, ITableRecord<TSelf> => Add(TSelf.MetaData);
+    public MigrationManager Add( ITableMetaData data ) => Add(data.CreateTable).Add(data.IndexedColumns);
+    public MigrationManager Add( [HandlesResourceDisposal] in PooledArray<Func<long, MigrationRecord>> funcs )
     {
-        foreach ( T data in span )
-        {
-            Add(data.CreateTable);
-            Add(data.IndexedColumns);
-        }
+        using ( funcs ) { Add(funcs.Span); }
+
+        return this;
     }
-    public void Add( ITableMetaData data )
-    {
-        Add(data.CreateTable);
-        Add(data.IndexedColumns);
-    }
-    public void Add( Func<ulong, MigrationRecord> func )
+    public MigrationManager Add( params ReadOnlySpan<Func<long, MigrationRecord>> span )
     {
         Interlocked.Exchange(ref _records, null);
+        foreach ( Func<long, MigrationRecord> func in span ) { AddInternal(func); }
+
+        return this;
+    }
+    public MigrationManager Add( Func<long, MigrationRecord> func )
+    {
+        Interlocked.Exchange(ref _records, null);
+        return AddInternal(func);
+    }
+    public MigrationManager Add<TEnumerator>( ValueEnumerable<TEnumerator, Func<long, MigrationRecord>> enumerable )
+        where TEnumerator : struct, IValueEnumerator<Func<long, MigrationRecord>>, allows ref struct
+    {
+        Interlocked.Exchange(ref _records, null);
+        foreach ( Func<long, MigrationRecord> func in enumerable ) { AddInternal(func); }
+
+        return this;
+    }
+
+
+    protected MigrationManager AddInternal( Func<long, MigrationRecord> func )
+    {
         __migrationFactories.Add(MigrationID, func);
+        return this;
     }
-    public void Add<TEnumerator>( ValueEnumerable<TEnumerator, Func<ulong, MigrationRecord>> enumerable )
-        where TEnumerator : struct, IValueEnumerator<Func<ulong, MigrationRecord>>, allows ref struct
-    {
-        Interlocked.Exchange(ref _records, null);
-        foreach ( Func<ulong, MigrationRecord> func in enumerable ) { __migrationFactories.Add(MigrationID, func); }
-    }
+
+
     [Conditional("DEBUG")] public static void PrintSql( string sql, [CallerArgumentExpression(nameof(sql))] string variableName = EMPTY )
     {
         const string BOUNDARY = "================================";
@@ -144,6 +157,7 @@ public class MigrationManager
         {
             SqlCommand<MigrationRecord> command = self.SQL;
             await command.ExecuteNonQueryAsync(connection, transaction, token);
+            self.AppliedOn = DateTimeOffset.UtcNow;
         }
         catch ( Exception e ) { throw new InvalidOperationException($"SQL ERROR: \n{self.SQL}", e); }
 
@@ -208,7 +222,7 @@ public class MigrationManager
             self.Write("</td><td>");
             HtmlEncode(self, migration.Description);
             self.Write("</td><td>");
-            self.Write(migration.AppliedOn.ToString("u"));
+            self.Write(migration.AppliedOn?.ToString("u"));
             self.WriteLine("</td></tr>");
         }
 

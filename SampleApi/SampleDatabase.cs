@@ -60,7 +60,7 @@ internal sealed class SampleDatabase( IConfiguration configuration, IOptions<DbO
     {
         UserRecord admin = UserRecord.Create("Admin", "Admin", Permissions<TestRight>.SA());
         UserRecord user  = UserRecord.Create("User",  "User",  Permissions<TestRight>.Create(TestRight.Read));
-        a
+
         admin = await db.Users.Insert(admin, token);
         user  = await db.Users.Insert(user,  token);
 
