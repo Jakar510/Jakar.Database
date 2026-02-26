@@ -86,6 +86,8 @@ public class MigrationManager
 
     protected MigrationManager AddInternal( Func<long, MigrationRecord> func )
     {
+        if ( __migrationFactories.Values.Contains(func) ) { throw new InvalidOperationException("migration factory method has already been added"); }
+
         __migrationFactories.Add(MigrationID, func);
         return this;
     }
@@ -169,19 +171,19 @@ public class MigrationManager
         }
         catch ( Exception e ) { throw new DbSqlException(self.SQL, e); }
 
+        PostgresParameters parameters = PostgresParameters.Create<MigrationRecord>();
+        parameters.Add(nameof(MigrationRecord.MigrationID), self.MigrationID);
+        parameters.Add(nameof(MigrationRecord.Description), self.Description);
+        parameters.Add(nameof(MigrationRecord.ReferenceID), self.ReferenceID);
+        parameters.Add(nameof(MigrationRecord.AppliedOn),   self.AppliedOn);
+
         try
         {
-            PostgresParameters parameters = PostgresParameters.Create<MigrationRecord>();
-            parameters.Add(nameof(MigrationRecord.MigrationID), self.MigrationID);
-            parameters.Add(nameof(MigrationRecord.Description), self.Description);
-            parameters.Add(nameof(MigrationRecord.TableID),     self.TableID);
-            parameters.Add(nameof(MigrationRecord.AppliedOn),   self.AppliedOn);
-
             SqlCommand<MigrationRecord> migrationRecord = new(MigrationRecord.ApplySql, parameters);
             await migrationRecord.ExecuteNonQueryAsync(connection, transaction, token);
             await transaction.SaveAsync(self.RollbackID, token);
         }
-        catch ( Exception e ) { throw new DbSqlException(MigrationRecord.ApplySql, e) { RollbackID = self.RollbackID }; }
+        catch ( Exception e ) { throw new DbSqlException(MigrationRecord.ApplySql, e, parameters) { RollbackID = self.RollbackID }; }
     }
 
 
@@ -227,7 +229,7 @@ public class MigrationManager
             self.Write("<td>");
             self.Write(migration.MigrationID);
             self.Write("</td><td>");
-            HtmlEncode(self, migration.TableID);
+            HtmlEncode(self, migration.ReferenceID);
             self.Write("</td><td>");
             HtmlEncode(self, migration.Description);
             self.Write("</td><td>");

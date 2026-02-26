@@ -11,48 +11,32 @@ namespace Jakar.Database;
 [Serializable]
 public sealed record MigrationRecord : TableRecord<MigrationRecord>, ITableRecord<MigrationRecord>
 {
-    public const string CREATE_SAVE_POINT = "MigrationRecord.CreateSql";
-    public const string TABLE_NAME        = "migrations";
-    public static readonly string SelectSql = $"""
-                                               DO $$
-                                               BEGIN
-                                                   IF EXISTS (
-                                                       SELECT 1
-                                                       FROM information_schema.tables
-                                                       WHERE table_schema = 'public'
-                                                       AND table_name = '{TABLE_NAME}'
-                                                   ) 
-                                                   THEN
-                                                        PERFORM * FROM {TABLE_NAME} ORDER BY {nameof(MigrationID).SqlColumnName()};
-                                                   END IF;
-                                               END $$; 
-                                               """;
+    public const           string CREATE_SAVE_POINT = "MigrationRecord.CreateSql";
+    public const           string TABLE_NAME        = "migrations";
+    public static readonly string SelectSql         = $"SELECT * FROM {TABLE_NAME} ORDER BY {nameof(MigrationID).SqlColumnName()};";
     public static readonly string ApplySql = $"""
                                               INSERT INTO {TABLE_NAME} 
                                               (
                                                   {nameof(MigrationID).SqlColumnName()},
                                                   {nameof(AppliedOn).SqlColumnName()},
                                                   {nameof(Description).SqlColumnName()},
-                                                  {nameof(TableID).SqlColumnName()}
+                                                  {nameof(ReferenceID).SqlColumnName()}
                                               ) 
                                               VALUES 
                                               (
                                                   @{nameof(MigrationID).SqlColumnName()},
                                                   @{nameof(AppliedOn).SqlColumnName()},
                                                   @{nameof(Description).SqlColumnName()},
-                                                  @{nameof(TableID).SqlColumnName()}
-                                              )
+                                                  @{nameof(ReferenceID).SqlColumnName()}
+                                              );
                                               """;
     public static readonly string TryCreateSql = $"""
                                                   CREATE TABLE IF NOT EXISTS {TABLE_NAME} (
                                                       {nameof(MigrationID).SqlColumnName()} bigint      PRIMARY KEY,
                                                       {nameof(AppliedOn).SqlColumnName()}   timestamptz NULL,
                                                       {nameof(Description).SqlColumnName()} text        NOT NULL,
-                                                      {nameof(TableID).SqlColumnName()}     text        NULL
-                                                  );
-
-                                                  CREATE INDEX IF NOT EXISTS idx_{TABLE_NAME}_{nameof(TableID).SqlColumnName()}
-                                                  ON migrations({nameof(TableID).SqlColumnName()});
+                                                      {nameof(ReferenceID).SqlColumnName()}     text        NULL
+                                                  ); 
                                                   """;
 
     internal               long   MigrationIdValue;
@@ -65,14 +49,14 @@ public sealed record MigrationRecord : TableRecord<MigrationRecord>, ITableRecor
     public required            string          Description { get;                     init; }
     [Key]      public required long            MigrationID { get => MigrationIdValue; init => MigrationIdValue = value; }
     [DbIgnore] public          string          SQL         { get;                     internal init; } = EMPTY;
-    public                     string?         TableID     { get;                     init; }
+    public                     string?         ReferenceID { get;                     init; }
 
 
     public MigrationRecord() : base(DateTimeOffset.UtcNow) { }
     [SetsRequiredMembers] public MigrationRecord( NpgsqlDataReader reader ) : base(reader)
     {
         Description = reader.GetFieldValue<MigrationRecord, string>(nameof(Description));
-        TableID     = reader.GetFieldValue<MigrationRecord, string?>(nameof(TableID));
+        ReferenceID = reader.GetFieldValue<MigrationRecord, string?>(nameof(ReferenceID));
         AppliedOn   = reader.GetFieldValue<MigrationRecord, DateTimeOffset?>(nameof(AppliedOn));
         MigrationID = reader.GetFieldValue<MigrationRecord, long>(nameof(MigrationID));
     }
@@ -128,37 +112,21 @@ public sealed record MigrationRecord : TableRecord<MigrationRecord>, ITableRecor
         ValueEnumerable<FromArray<string>, string> enumerable = Enum.GetNames(typeof(TEnum)).AsValueEnumerable();
 
         string tableName = typeof(TEnum).Name.SqlColumnName();
-        int    length    = enumerable.Max(static x => x.Length);
 
         MigrationRecord record = new()
                                  {
                                      MigrationID = migrationID,
                                      Description = $"create {tableName} table",
-                                     TableID     = tableName,
-                                     SQL = $"""
-                                            CREATE TABLE IF NOT EXISTS {tableName}
-                                            (
-                                            id   bigint            PRIMARY KEY,
-                                            name varchar({length}) UNIQUE NOT NULL,
-                                            );
-
-                                            -- Insert values if they do not exist with explicit ids (enum order)
-                                            INSERT INTO {tableName} (id, name)
-                                            SELECT v.id, v.name
-                                            FROM ( VALUES {getValues(enumerable)} ) AS v(id, name)
-                                            WHERE NOT EXISTS ( SELECT 1 FROM mime_types m WHERE m.id = v.id OR m.name = v.name );
-                                            """
+                                     ReferenceID = tableName,
+                                     SQL         = $"CREATE TYPE {tableName} AS ENUM ({getValues()})"
                                  };
 
         return record.Validate();
 
-        static StringBuilder getValues( ValueEnumerable<FromArray<string>, string> enumerable )
+        static StringBuilder getValues()
         {
             StringBuilder values = new();
-
-            using PooledArray<string> array = enumerable.Select(static ( v, i ) => $"    ({i}, '{v}')").ToArrayPool();
-
-            values.AppendJoin(",\n", array.Span);
+            values.AppendJoin(",\n", Enum.GetNames(typeof(TEnum)).Select(x => $"'{x}'"));
             return values;
         }
     }
@@ -171,7 +139,7 @@ public sealed record MigrationRecord : TableRecord<MigrationRecord>, ITableRecor
                                  {
                                      MigrationID = migrationID,
                                      Description = description,
-                                     TableID     = TSelf.TableName,
+                                     ReferenceID = TSelf.TableName,
                                      SQL         = sql
                                  };
 
@@ -202,8 +170,8 @@ public sealed record MigrationRecord : TableRecord<MigrationRecord>, ITableRecor
                     await importer.WriteAsync(AppliedOn, NpgsqlDbType.TimestampTz, token);
                     break;
 
-                case nameof(TableID):
-                    await importer.WriteAsync(TableID, NpgsqlDbType.Bigint, token);
+                case nameof(ReferenceID):
+                    await importer.WriteAsync(ReferenceID, NpgsqlDbType.Bigint, token);
                     break;
 
                 case nameof(Description):
@@ -220,7 +188,7 @@ public sealed record MigrationRecord : TableRecord<MigrationRecord>, ITableRecor
     {
         PostgresParameters parameters = base.ToDynamicParameters();
         parameters.Add(nameof(MigrationID), MigrationID);
-        parameters.Add(nameof(TableID),     TableID);
+        parameters.Add(nameof(ReferenceID), ReferenceID);
         parameters.Add(nameof(AppliedOn),   AppliedOn);
         parameters.Add(nameof(Description), Description);
         return parameters;
@@ -229,7 +197,7 @@ public sealed record MigrationRecord : TableRecord<MigrationRecord>, ITableRecor
 
     public override bool Equals( MigrationRecord?    other ) => ReferenceEquals(this, other) || Nullable.Equals(MigrationID, other?.MigrationID) || string.Equals(Description, other?.Description);
     public override int  CompareTo( MigrationRecord? other ) => Nullable.Compare(AppliedOn, other?.AppliedOn);
-    public override int  GetHashCode()                       => HashCode.Combine(TableID, Description);
+    public override int  GetHashCode()                       => HashCode.Combine(ReferenceID, Description);
 
 
     public static bool operator >( MigrationRecord  left, MigrationRecord right ) => Comparer<MigrationRecord>.Default.Compare(left, right) > 0;

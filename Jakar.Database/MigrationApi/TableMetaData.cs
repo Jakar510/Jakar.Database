@@ -300,7 +300,7 @@ public class TableMetaData<TSelf> : ITableMetaData
                                                                                   {
                                                                                       MigrationID = migrationID,
                                                                                       Description = $"Create {TableName} table",
-                                                                                      TableID     = TableName,
+                                                                                      ReferenceID     = TableName,
                                                                                       SQL         = CreateTableSql()
                                                                                   };
 

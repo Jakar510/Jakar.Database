@@ -15,6 +15,14 @@ try
 
     // TestDatabase.PrintCreateTables();
 
+    Console.WriteLine();
+    Console.WriteLine(MigrationRecord.TryCreateSql);
+    Console.WriteLine();
+    Console.WriteLine(MigrationRecord.ApplySql);
+    Console.WriteLine();
+    Console.WriteLine(MigrationRecord.SelectSql);
+    Console.WriteLine();
+
     await TestDatabase.TestAsync();
 }
 catch ( Exception e ) { e.WriteToConsole(); }

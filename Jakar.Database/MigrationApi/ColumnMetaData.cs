@@ -4,24 +4,25 @@
 [SuppressMessage("ReSharper", "InconsistentNaming")]
 public sealed class ColumnMetaData
 {
-    public readonly bool                 IsNullable;
-    public readonly bool                 IsPrimaryKey;
-    public readonly bool                 IsUnique;
-    public readonly bool                 IsAlwaysIdentity;
-    public readonly bool                 IsDefaultIdentity;
-    public readonly ChecksAttribute?     Checks;
-    public readonly PostgresType         DbType;
-    public readonly string               ColumnName;
-    public readonly string               KeyValuePair;
-    public readonly string               PropertyName;
-    public readonly string               VariableName;
-    public readonly ForeignKeyAttribute? ForeignKey;
-    public readonly IndexedAttribute?    Indexed;
-    public readonly string               DataType;
-    public readonly NpgsqlDbType         PostgresDbType;
-    public readonly DefaultsAttribute?   Defaults;
-    public readonly bool                 IsFixed;
-    public readonly DbSizeAttribute?     Length;
+    private static readonly ConcurrentDictionary<string, string> parameterNameCache = new(Environment.ProcessorCount, DEFAULT_CAPACITY, StringComparer.InvariantCulture);
+    public readonly         bool                                 IsNullable;
+    public readonly         bool                                 IsPrimaryKey;
+    public readonly         bool                                 IsUnique;
+    public readonly         bool                                 IsAlwaysIdentity;
+    public readonly         bool                                 IsDefaultIdentity;
+    public readonly         ChecksAttribute?                     Checks;
+    public readonly         PostgresType                         DbType;
+    public readonly         string                               ColumnName;
+    public readonly         string                               KeyValuePair;
+    public readonly         string                               PropertyName;
+    public readonly         string                               VariableName;
+    public readonly         ForeignKeyAttribute?                 ForeignKey;
+    public readonly         IndexedAttribute?                    Indexed;
+    public readonly         string                               DataType;
+    public readonly         NpgsqlDbType                         PostgresDbType;
+    public readonly         DefaultsAttribute?                   Defaults;
+    public readonly         bool                                 IsFixed;
+    public readonly         DbSizeAttribute?                     Length;
 
 
     public int  Index                   { get; internal set; } = -1;
@@ -77,9 +78,9 @@ public sealed class ColumnMetaData
             // ReSharper disable once SwitchStatementHandlesSomeKnownEnumValuesWithDefault
             query.Append(DbType switch
                          {
-                             PostgresType.Guid                                                         => " PRIMARY KEY DEFAULT gen_random_uuid()",
-                             PostgresType.SmallSerial or PostgresType.Serial or PostgresType.BigSerial => " PRIMARY KEY GENERATED ALWAYS AS IDENTITY",
-                             _                                                                         => " PRIMARY KEY"
+                             PostgresType.Guid                                           => " PRIMARY KEY DEFAULT gen_random_uuid()",
+                             PostgresType.Long or PostgresType.Int or PostgresType.Short => " PRIMARY KEY GENERATED ALWAYS AS IDENTITY",
+                             _                                                           => " PRIMARY KEY"
                          });
 
             return;
@@ -125,9 +126,10 @@ public sealed class ColumnMetaData
     public static string GetKeyValuePair( ColumnMetaData        column )   => column.KeyValuePair;
     public static bool   IsDbKey( MemberInfo                    property ) => property.GetCustomAttribute<KeyAttribute>() is not null || property.GetCustomAttribute<System.ComponentModel.DataAnnotations.KeyAttribute>() is not null;
 
-
     public NpgsqlParameter ToParameter( object? value, [CallerArgumentExpression(nameof(value))] string parameterName = EMPTY, ParameterDirection direction = ParameterDirection.Input, DataRowVersion sourceVersion = DataRowVersion.Default )
     {
+        if ( parameterName.Contains('.') ) { parameterName = parameterNameCache.GetOrAdd(parameterName, x => x.Split('.')[^1]); }
+
         NpgsqlParameter parameter = new(parameterName.SqlColumnName(), PostgresDbType, 0, ColumnName)
                                     {
                                         IsNullable    = IsNullable,

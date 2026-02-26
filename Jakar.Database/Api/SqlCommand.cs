@@ -7,12 +7,19 @@ namespace Jakar.Database;
 public readonly struct SqlCommand<TSelf>( string sql, in PostgresParameters parameters, CommandType? commandType = null, CommandFlags flags = CommandFlags.None ) : IEquatable<SqlCommand<TSelf>>
     where TSelf : TableRecord<TSelf>, ITableRecord<TSelf>
 {
-    public readonly                 string             SQL         = sql;
-    public readonly                 PostgresParameters Parameters  = parameters;
-    public readonly                 CommandType?       CommandType = commandType;
-    public readonly                 CommandFlags       Flags       = flags;
+    public const                    string             SPACER       = ",\n      ";
+    public const                    string             CREATED_BY   = "created_by";
+    public const                    string             DATE_CREATED = "date_created";
+    public const                    string             ID           = "id";
+    public readonly                 string             SQL          = sql;
+    public readonly                 PostgresParameters Parameters   = parameters;
+    public readonly                 CommandType?       CommandType  = commandType;
+    public readonly                 CommandFlags       Flags        = flags;
     public static implicit operator SqlCommand<TSelf>( string sql ) => new(sql, PostgresParameters.Create<TSelf>());
 
+    public static                   IEnumerable<string> GetColumnNames   => TSelf.MetaData.Properties.Values.Select(ColumnMetaData.GetColumnName);
+    public static                   IEnumerable<string> GetKeyValuePairs => TSelf.MetaData.Properties.Values.Select(ColumnMetaData.GetKeyValuePair);
+    public static implicit operator string( SqlCommand<TSelf> sql )      => sql.SQL;
 
     [Pure] [MustDisposeResource] public NpgsqlCommand ToCommand( NpgsqlConnection connection, NpgsqlTransaction? transaction = null )
     {
@@ -44,36 +51,6 @@ public readonly struct SqlCommand<TSelf>( string sql, in PostgresParameters para
         await using NpgsqlDataReader reader  = await command.ExecuteReaderAsync(token);
         while ( await reader.ReadAsync(token) ) { yield return TSelf.Create(reader); }
     }
-
-
-    public          bool Equals( SqlCommand<TSelf> other ) => string.Equals(SQL, other.SQL, StringComparison.InvariantCultureIgnoreCase) && Parameters.Equals(other.Parameters) && CommandType == other.CommandType && Flags == other.Flags;
-    public override bool Equals( object?           obj )   => obj is SqlCommand<TSelf> other                                             && Equals(other);
-    public override int GetHashCode()
-    {
-        HashCode hashCode = new();
-        hashCode.Add(SQL, StringComparer.InvariantCultureIgnoreCase);
-        hashCode.Add(Parameters);
-        hashCode.Add(CommandType);
-        hashCode.Add((int)Flags);
-        return hashCode.ToHashCode();
-    }
-
-
-    public static bool operator ==( SqlCommand<TSelf> left, SqlCommand<TSelf> right ) => left.Equals(right);
-    public static bool operator !=( SqlCommand<TSelf> left, SqlCommand<TSelf> right ) => !left.Equals(right);
-
-
-    public static implicit operator string( SqlCommand<TSelf> sql ) => sql.SQL;
-
-
-    public const string SPACER       = ",\n      ";
-    public const string CREATED_BY   = "created_by";
-    public const string DATE_CREATED = "date_created";
-    public const string ID           = "id";
-
-
-    public static IEnumerable<string> GetColumnNames   => TSelf.MetaData.Properties.Values.Select(ColumnMetaData.GetColumnName);
-    public static IEnumerable<string> GetKeyValuePairs => TSelf.MetaData.Properties.Values.Select(ColumnMetaData.GetKeyValuePair);
 
 
     public static StringBuilder ColumnNames
@@ -469,4 +446,21 @@ public readonly struct SqlCommand<TSelf>( string sql, in PostgresParameters para
 
     private static Guid GetValue<TRecord>( RecordID<TRecord> id )
         where TRecord : PairRecord<TRecord>, ITableRecord<TRecord> => id.Value;
+
+
+    public          bool Equals( SqlCommand<TSelf> other ) => string.Equals(SQL, other.SQL, StringComparison.InvariantCultureIgnoreCase) && Parameters.Equals(other.Parameters) && CommandType == other.CommandType && Flags == other.Flags;
+    public override bool Equals( object?           obj )   => obj is SqlCommand<TSelf> other                                             && Equals(other);
+    public override int GetHashCode()
+    {
+        HashCode hashCode = new();
+        hashCode.Add(SQL, StringComparer.InvariantCultureIgnoreCase);
+        hashCode.Add(Parameters);
+        hashCode.Add(CommandType);
+        hashCode.Add((int)Flags);
+        return hashCode.ToHashCode();
+    }
+
+
+    public static bool operator ==( SqlCommand<TSelf> left, SqlCommand<TSelf> right ) => left.Equals(right);
+    public static bool operator !=( SqlCommand<TSelf> left, SqlCommand<TSelf> right ) => !left.Equals(right);
 }
