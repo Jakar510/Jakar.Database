@@ -181,10 +181,10 @@ public abstract record Mapping<TSelf, TKey, TValue> : TableRecord<TSelf>
                       SELECT * FROM {TValue.TableName} v
                       LEFT JOIN {TSelf.TableName} s
                       WHERE 
-                      v.{nameof(IUniqueID.ID).SqlColumnName()} != s.{nameof(ValueID).SqlColumnName()} 
-                      AND v.{nameof(IUniqueID.ID).SqlColumnName()} IN ( {ids} )
-                      AND s.{nameof(ValueID).SqlColumnName()} NOT IN ( {ids} ) 
-                      AND s.{nameof(KeyID).SqlColumnName()} = '{key.Value}'
+                      v.{nameof(IUniqueID.ID).SqlName()} != s.{nameof(ValueID).SqlName()} 
+                      AND v.{nameof(IUniqueID.ID).SqlName()} IN ( {ids} )
+                      AND s.{nameof(ValueID).SqlName()} NOT IN ( {ids} ) 
+                      AND s.{nameof(KeyID).SqlName()} = '{key.Value}'
                       """;
 
         ImmutableArray<RecordID<TValue>> missingValueIDs = await valueTable.WhereID(connection, transaction, sql, parameters, token).ToImmutableArray(token: token);
@@ -217,12 +217,12 @@ public abstract record Mapping<TSelf, TKey, TValue> : TableRecord<TSelf>
         }
 
         string sql = $"""
-                      INSERT INTO mapping_table ({nameof(KeyID).SqlColumnName()}, {nameof(ValueID).SqlColumnName()}, {nameof(DateCreated).SqlColumnName()})
+                      INSERT INTO mapping_table ({nameof(KeyID).SqlName()}, {nameof(ValueID).SqlName()}, {nameof(DateCreated).SqlName()})
                       SELECT v.KeyID, v.ValueID, NOW()
                       FROM (VALUES
                       {sb}
                       ) AS v(KeyID, ValueID)
-                      ON CONFLICT ({nameof(KeyID).SqlColumnName()}, {nameof(ValueID).SqlColumnName()}) DO NOTHING;
+                      ON CONFLICT ({nameof(KeyID).SqlName()}, {nameof(ValueID).SqlName()}) DO NOTHING;
                       """;
 
         SqlCommand<TSelf> command = new(sql, parameters);
@@ -267,9 +267,9 @@ public abstract record Mapping<TSelf, TKey, TValue> : TableRecord<TSelf>
         string sql = $"""
                       SELECT * FROM {TSelf.TableName} 
                       WHERE 
-                             {nameof(KeyID).SqlColumnName()} = '{key.Value}'
+                             {nameof(KeyID).SqlName()} = '{key.Value}'
                           AND 
-                             {nameof(ValueID).SqlColumnName()} = '{value.Value}'
+                             {nameof(ValueID).SqlName()} = '{value.Value}'
                       """;
 
         SqlCommand<TSelf> command = sql;
@@ -282,8 +282,8 @@ public abstract record Mapping<TSelf, TKey, TValue> : TableRecord<TSelf>
     {
         string sql = $"""
                       SELECT * FROM {TValue.TableName} v
-                      INNER JOIN {TSelf.TableName} s ON s.{nameof(ValueID).SqlColumnName()} = v.{nameof(IUniqueID.ID).SqlColumnName()} 
-                      WHERE s.{nameof(KeyID).SqlColumnName()} = '{key.Value}'
+                      INNER JOIN {TSelf.TableName} s ON s.{nameof(ValueID).SqlName()} = v.{nameof(IUniqueID.ID).SqlName()} 
+                      WHERE s.{nameof(KeyID).SqlName()} = '{key.Value}'
                       """;
 
         return valueTable.Where(connection, transaction, sql, GetDynamicParameters(key), token);
@@ -292,8 +292,8 @@ public abstract record Mapping<TSelf, TKey, TValue> : TableRecord<TSelf>
     {
         string sql = $"""
                       SELECT * FROM {TKey.TableName} k
-                      INNER JOIN {TSelf.TableName} s ON s.{nameof(KeyID).SqlColumnName()} = k.{nameof(IUniqueID.ID).SqlColumnName()} 
-                      WHERE s.{nameof(ValueID).SqlColumnName()} = '{value.Value}'
+                      INNER JOIN {TSelf.TableName} s ON s.{nameof(KeyID).SqlName()} = k.{nameof(IUniqueID.ID).SqlName()} 
+                      WHERE s.{nameof(ValueID).SqlName()} = '{value.Value}'
                       """;
 
         return keyTable.Where(connection, transaction, sql, GetDynamicParameters(value), token);
@@ -322,9 +322,9 @@ public abstract record Mapping<TSelf, TKey, TValue> : TableRecord<TSelf>
         string sql = $"""
                       DELETE FROM {TSelf.TableName} 
                       WHERE 
-                             {nameof(KeyID).SqlColumnName()} = '{self.KeyID.Value}'
+                             {nameof(KeyID).SqlName()} = '{self.KeyID.Value}'
                           AND 
-                             {nameof(ValueID).SqlColumnName()} = '{self.ValueID.Value}'
+                             {nameof(ValueID).SqlName()} = '{self.ValueID.Value}'
                       """;
 
         SqlCommand<TSelf> command = sql;
@@ -334,7 +334,7 @@ public abstract record Mapping<TSelf, TKey, TValue> : TableRecord<TSelf>
     {
         string sql = $"""
                       DELETE FROM {TSelf.TableName} 
-                      WHERE {nameof(KeyID).SqlColumnName()} = '{key.Value}'
+                      WHERE {nameof(KeyID).SqlName()} = '{key.Value}'
                       """;
 
         SqlCommand<TSelf> command = new(sql, GetDynamicParameters(key));
@@ -345,9 +345,9 @@ public abstract record Mapping<TSelf, TKey, TValue> : TableRecord<TSelf>
         string sql = $"""
                       DELETE FROM {TSelf.TableName} 
                       WHERE
-                              {nameof(ValueID).SqlColumnName()} IN ( {values.Ids()} ) 
+                              {nameof(ValueID).SqlName()} IN ( {values.Ids()} ) 
                            AND 
-                              {nameof(KeyID).SqlColumnName()} = '{key.Value}'
+                              {nameof(KeyID).SqlName()} = '{key.Value}'
                       """;
 
         SqlCommand<TSelf> command = new(sql, GetDynamicParameters(key));
@@ -358,9 +358,9 @@ public abstract record Mapping<TSelf, TKey, TValue> : TableRecord<TSelf>
         string sql = $"""
                       DELETE FROM {TSelf.TableName} 
                       WHERE 
-                            {nameof(ValueID).SqlColumnName()} = '{value.Value}'
+                            {nameof(ValueID).SqlName()} = '{value.Value}'
                          AND 
-                            {nameof(KeyID).SqlColumnName()} = '{key.Value}'
+                            {nameof(KeyID).SqlName()} = '{key.Value}'
                       """;
 
         SqlCommand<TSelf> command = new(sql, GetDynamicParameters(key, value));

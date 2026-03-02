@@ -161,7 +161,7 @@ public abstract record PairRecord<TSelf> : LastModifiedRecord<TSelf>, IUniqueID
     public static implicit operator RecordID<TSelf>( PairRecord<TSelf>? record ) => record?.ID ?? RecordID<TSelf>.Empty;
 
 
-    public TSelf NewID( RecordID<TSelf> id )
+    public TSelf With( RecordID<TSelf> id )
     {
         __id = id;
         return (TSelf)this;

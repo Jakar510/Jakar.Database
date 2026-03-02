@@ -37,7 +37,7 @@ public class RecordCollection<TSelf>( int capacity = DEFAULT_CAPACITY ) : IReadO
         }
 
 
-        __records.Add(value.NewID(RecordID<TSelf>.New()));
+        __records.Add(value.With(RecordID<TSelf>.New()));
 
         return this;
     }

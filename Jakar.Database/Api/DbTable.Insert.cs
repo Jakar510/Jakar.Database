@@ -1,14 +1,17 @@
 ﻿// Jakar.Extensions :: Jakar.Database
 // 03/12/2023  1:09 PM
 
+using ZLinq.Linq;
+
+
+
 namespace Jakar.Database;
 
 
 [SuppressMessage("ReSharper", "ClassWithVirtualMembersNeverInherited.Global")]
 public partial class DbTable<TSelf>
 {
-    protected static readonly string _copySQL = SqlCommand<TSelf>.GetCopy()
-                                                                 .SQL;
+    protected static readonly string _copySQL = SqlCommand<TSelf>.GetCopy().SQL;
 
 
     public ValueTask<ImmutableArray<TSelf>> Import( ReadOnlyMemory<TSelf> records, CancellationToken token = default ) => this.TryCall(Import, records, token);
@@ -16,33 +19,21 @@ public partial class DbTable<TSelf>
     public ValueTask<ImmutableArray<TSelf>> Import( IEnumerable<TSelf>    records, CancellationToken token = default ) => this.TryCall(Import, records, token);
     public virtual async ValueTask<ImmutableArray<TSelf>> Import( NpgsqlConnection connection, NpgsqlTransaction? transaction, IEnumerable<TSelf> records, [EnumeratorCancellation] CancellationToken token = default )
     {
-        await using NpgsqlBinaryImporter import = await connection.BeginBinaryImportAsync(_copySQL, token);
-        ImmutableArray<TSelf>            array  = [..records];
-        foreach ( TSelf record in array ) { await record.Import(import, token); }
-
-        await import.CompleteAsync(token);
-        return array;
+        using ArrayBuffer<TSelf> array = [..records];
+        return await Import(connection, transaction, array, token);
     }
     public virtual async ValueTask<ImmutableArray<TSelf>> Import( NpgsqlConnection connection, NpgsqlTransaction? transaction, ReadOnlyMemory<TSelf> records, [EnumeratorCancellation] CancellationToken token = default )
     {
+        using ArrayBuffer<TSelf> array = [..records];
+        return await Import(connection, transaction, array, token);
+    }
+    public virtual async ValueTask<ImmutableArray<TSelf>> Import( NpgsqlConnection connection, NpgsqlTransaction? transaction, ArrayBuffer<TSelf> records, [EnumeratorCancellation] CancellationToken token = default )
+    {
         await using NpgsqlBinaryImporter import = await connection.BeginBinaryImportAsync(_copySQL, token);
-
-        for ( int i = 0; i < records.Length; i++ )
-        {
-            TSelf record = records.Span[i];
-            await record.Import(import, token);
-        }
+        foreach ( TSelf record in records.Array ) { await record.Import(import, token); }
 
         await import.CompleteAsync(token);
         return [..records.Span];
-    }
-    public virtual async ValueTask<ImmutableArray<TSelf>> Import( NpgsqlConnection connection, NpgsqlTransaction? transaction, ImmutableArray<TSelf> records, [EnumeratorCancellation] CancellationToken token = default )
-    {
-        await using NpgsqlBinaryImporter import = await connection.BeginBinaryImportAsync(_copySQL, token);
-        foreach ( TSelf record in records ) { await record.Import(import, token); }
-
-        await import.CompleteAsync(token);
-        return records;
     }
 
 
@@ -53,33 +44,19 @@ public partial class DbTable<TSelf>
     public ValueTask<TSelf>                 Insert( TSelf                   record,  CancellationToken token = default ) => this.TryCall(Insert, record,  token);
     public virtual async ValueTask<ImmutableArray<TSelf>> Insert( NpgsqlConnection connection, NpgsqlTransaction? transaction, IEnumerable<TSelf> records, [EnumeratorCancellation] CancellationToken token = default )
     {
-        await using NpgsqlBinaryImporter import = await connection.BeginBinaryImportAsync(_copySQL, token);
-        ImmutableArray<TSelf>            array  = [..records];
-        foreach ( TSelf record in array ) { await record.Import(import, token); }
-
-        await import.CompleteAsync(token);
-        return array;
+        ReadOnlySpan<TSelf> array   = [..records];
+        SqlCommand<TSelf>   command = SqlCommand<TSelf>.GetInsert(array);
+        return await command.ExecuteAsync(connection, transaction, token).ToImmutableArray(array.Length, token);
     }
     public virtual async ValueTask<ImmutableArray<TSelf>> Insert( NpgsqlConnection connection, NpgsqlTransaction? transaction, ReadOnlyMemory<TSelf> records, [EnumeratorCancellation] CancellationToken token = default )
     {
-        await using NpgsqlBinaryImporter import = await connection.BeginBinaryImportAsync(_copySQL, token);
-
-        for ( int i = 0; i < records.Length; i++ )
-        {
-            TSelf record = records.Span[i];
-            await record.Import(import, token);
-        }
-
-        await import.CompleteAsync(token);
-        return [..records.Span];
+        SqlCommand<TSelf> command = SqlCommand<TSelf>.GetInsert(records.Span);
+        return await command.ExecuteAsync(connection, transaction, token).ToImmutableArray(records.Length, token);
     }
     public virtual async ValueTask<ImmutableArray<TSelf>> Insert( NpgsqlConnection connection, NpgsqlTransaction? transaction, ImmutableArray<TSelf> records, [EnumeratorCancellation] CancellationToken token = default )
     {
         SqlCommand<TSelf> command = SqlCommand<TSelf>.GetInsert(records);
-        TSelf[]           results = GC.AllocateUninitializedArray<TSelf>(records.Length);
-        for ( int i = 0; i < records.Length; i++ ) { results[i] = await Insert(connection, transaction, records[i], token); }
-
-        return records;
+        return await command.ExecuteAsync(connection, transaction, token).ToImmutableArray(records.Length, token);
     }
     public virtual async IAsyncEnumerable<TSelf> Insert( NpgsqlConnection connection, NpgsqlTransaction? transaction, IAsyncEnumerable<TSelf> records, [EnumeratorCancellation] CancellationToken token = default )
     {
@@ -100,7 +77,7 @@ public partial class DbTable<TSelf>
             if ( await reader.ReadAsync(token) ) { id = RecordID<TSelf>.Create(reader.GetGuid(0)); }
             else { throw new InvalidOperationException($"Insert command did not return the new ID for type {typeof(TSelf).FullName}"); }
 
-            return record.NewID(id);
+            return record.With(id);
         }
         catch ( Exception e ) { throw new DbSqlException(command.SQL, e, command.Parameters); }
     }
@@ -118,7 +95,7 @@ public partial class DbTable<TSelf>
             if ( await reader.ReadAsync(token) ) { id = RecordID<TSelf>.Create(reader.GetGuid(0)); }
             else { throw new InvalidOperationException($"Insert command did not return the new ID for type {typeof(TSelf).FullName}"); }
 
-            return record.NewID(id);
+            return record.With(id);
         }
         catch ( Exception e ) { throw new DbSqlException(command.SQL, e, command.Parameters); }
     }
@@ -137,7 +114,7 @@ public partial class DbTable<TSelf>
             if ( await reader.ReadAsync(token) ) { id = RecordID<TSelf>.Create(reader.GetGuid(0)); }
             else { throw new InvalidOperationException($"Insert command did not return the new ID for type {typeof(TSelf).FullName}"); }
 
-            return record.NewID(id);
+            return record.With(id);
         }
         catch ( Exception e ) { throw new DbSqlException(command.SQL, e, command.Parameters); }
     }

@@ -28,12 +28,22 @@ public static class PostgresParams
                                                                                         };
 
 
+    public static string AddSqlName<TSelf>()
+        where TSelf : TableRecord<TSelf>, ITableRecord<TSelf> => AddSqlName<TSelf>(TSelf.TableName);
+    public static  string AddSqlName<TSelf>( string  sqlName )              => AddSqlName(typeof(TSelf).Name, sqlName);
+    public static  string AddSqlName( string         name, string sqlName ) => __nameSnakeCaseCache.AddOrUpdate(name, sqlName, UpdateValueFactory);
+    private static string UpdateValueFactory( string key,  string value )   => value;
+
+
+    public static string SqlName( this Type type ) => __nameSnakeCaseCache.GetOrAdd(type.Name, Strings.ToSnakeCase);
+
+
 
     extension( string propertyName )
     {
-        public  string GetPadded( int maxLength )             => __paddedCache.GetOrAdd(( propertyName, maxLength ), static pair => pair.Original.PadRight(pair.MaxLength));
-        public  string SqlColumnName()                        => __nameSnakeCaseCache.GetOrAdd(Validate.ThrowIfNull(propertyName), Strings.ToSnakeCase);
-        public  string SqlColumnIndexName( string tableName ) => __indexNameSnakeCaseCache.GetOrAdd(Validate.ThrowIfNull(propertyName), GetColumnIndexName, Validate.ThrowIfNull(tableName));
-        private string GetColumnIndexName( string tableName ) => $"idx_{tableName}_{propertyName.SqlColumnName()}";
+        public  string GetPadded( int maxLength )       => __paddedCache.GetOrAdd(( propertyName, maxLength ), static pair => pair.Original.PadRight(pair.MaxLength));
+        public  string SqlName()                        => __nameSnakeCaseCache.GetOrAdd(Validate.ThrowIfNull(propertyName), Strings.ToSnakeCase);
+        public  string SqlIndexName( string tableName ) => __indexNameSnakeCaseCache.GetOrAdd(Validate.ThrowIfNull(propertyName), GetIndexName, Validate.ThrowIfNull(tableName));
+        private string GetIndexName( string tableName ) => $"idx_{tableName}_{propertyName.SqlName()}";
     }
 }

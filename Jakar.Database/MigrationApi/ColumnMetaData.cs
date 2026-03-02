@@ -40,7 +40,7 @@ public sealed class ColumnMetaData
             ArgumentNullException.ThrowIfNull(property);
             string propertyName = property.Name;
             ArgumentException.ThrowIfNullOrWhiteSpace(propertyName);
-            string columnName = Validate.ThrowIfNull(propertyName.SqlColumnName());
+            string columnName = Validate.ThrowIfNull(propertyName.SqlName());
 
             IsPrimaryKey      = IsDbKey(property);
             IsFixed           = property.HasAttribute<FixedAttribute>();
@@ -126,11 +126,12 @@ public sealed class ColumnMetaData
     public static string GetKeyValuePair( ColumnMetaData        column )   => column.KeyValuePair;
     public static bool   IsDbKey( MemberInfo                    property ) => property.GetCustomAttribute<KeyAttribute>() is not null || property.GetCustomAttribute<System.ComponentModel.DataAnnotations.KeyAttribute>() is not null;
 
+
     public NpgsqlParameter ToParameter( object? value, [CallerArgumentExpression(nameof(value))] string parameterName = EMPTY, ParameterDirection direction = ParameterDirection.Input, DataRowVersion sourceVersion = DataRowVersion.Default )
     {
         if ( parameterName.Contains('.') ) { parameterName = parameterNameCache.GetOrAdd(parameterName, x => x.Split('.')[^1]); }
 
-        NpgsqlParameter parameter = new(parameterName.SqlColumnName(), PostgresDbType, 0, ColumnName)
+        NpgsqlParameter parameter = new(parameterName.SqlName(), PostgresDbType, 0, ColumnName)
                                     {
                                         IsNullable    = IsNullable,
                                         SourceVersion = sourceVersion,

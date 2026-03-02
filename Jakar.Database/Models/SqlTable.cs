@@ -86,10 +86,10 @@ public readonly ref struct SqlTable<TSelf> : IDisposable
 
         query.Append($"""
 
-                      CREATE TRIGGER {nameof(MigrationRecord.SetLastModified).SqlColumnName()}
+                      CREATE TRIGGER {nameof(MigrationRecord.SetLastModified).SqlName()}
                       BEFORE INSERT OR UPDATE ON {tableName}
                       FOR EACH ROW
-                      EXECUTE FUNCTION {nameof(MigrationRecord.SetLastModified).SqlColumnName()}();
+                      EXECUTE FUNCTION {nameof(MigrationRecord.SetLastModified).SqlName()}();
                       """);
 
         return query.ToString();

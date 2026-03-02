@@ -151,11 +151,10 @@ public class TableMetaData<TSelf> : ITableMetaData
         StringBuilder sb     = new(length);
         int           index  = 0;
 
-        foreach ( string columnName in Columns.Select(x => x.ColumnName) )
+        foreach ( string columnName in Columns.Select(static x => x.ColumnName) )
         {
-            sb.Append(columnName);
-
-            if ( index++ < Count - 1 ) { sb.Append(',').Append('\n').Append(' ', indentLevel * 4); }
+            sb.Append(' ', indentLevel * 4).Append(columnName);
+            if ( index++ < Count - 1 ) { sb.Append(',').Append('\n'); }
         }
 
         return sb;
@@ -164,15 +163,14 @@ public class TableMetaData<TSelf> : ITableMetaData
 
     public StringBuilder VariableNames( int indentLevel )
     {
-        int           length = Columns.Sum(static x => x.VariableName.Length + 2) + Properties.Count * indentLevel * 4;
+        int           length = Columns.Sum(static x => x.VariableName.Length + 2) + Properties.Count * 4 * indentLevel;
         StringBuilder sb     = new(length);
         int           index  = 0;
 
         foreach ( string columnName in Columns.Select(x => x.VariableName) )
         {
-            sb.Append(columnName);
-
-            if ( index++ < Count - 1 ) { sb.Append(',').Append('\n').Append(' ', indentLevel * 4); }
+            sb.Append(' ', indentLevel * 4).Append(columnName);
+            if ( index++ < Count - 1 ) { sb.Append(',').Append('\n'); }
         }
 
         return sb;
@@ -181,19 +179,20 @@ public class TableMetaData<TSelf> : ITableMetaData
 
     public StringBuilder KeyValuePairs( int indentLevel )
     {
-        int           length = Columns.Sum(static x => x.KeyValuePair.Length + 2) + Properties.Count * indentLevel * 4;
+        int           length = Columns.Sum(static x => x.KeyValuePair.Length + 2) + Properties.Count * 4 * indentLevel;
         StringBuilder sb     = new(length);
         int           index  = 0;
-
-        foreach ( string columnName in Columns.Select(x => x.KeyValuePair) )
+        
+        foreach ( string columnName in Columns.Select(static x => x.KeyValuePair) )
         {
-            sb.Append(columnName);
-
-            if ( index++ < Count - 1 ) { sb.Append(',').Append('\n').Append(' ', indentLevel * 4); }
+            sb.Append(' ', indentLevel * 4).Append(columnName);
+            if ( index++ < Count - 1 ) { sb.Append(',').Append('\n'); }
         }
 
         return sb;
     }
+
+
     public string IndexName( string propertyName ) => Properties[propertyName].IndexColumnName_Padded(this);
 
 
@@ -245,7 +244,7 @@ public class TableMetaData<TSelf> : ITableMetaData
             if ( extras.PrimaryKeyPropertiesOverride.HasValue )
             {
                 ( string first, string second ) = extras.PrimaryKeyPropertiesOverride.Value;
-                query.Append($",\n    PRIMARY KEY ({first.SqlColumnName()}, {second.SqlColumnName()})");
+                query.Append($",\n    PRIMARY KEY ({first.SqlName()}, {second.SqlName()})");
             }
 
             if ( extras.UniquePropertyPairs?.Length is not > 0 ) { query.Append('\n'); }
@@ -257,7 +256,7 @@ public class TableMetaData<TSelf> : ITableMetaData
                 for ( int index = 0; index < extras.UniquePropertyPairs.Length; index++ )
                 {
                     ( string left, string right ) = extras.UniquePropertyPairs[index];
-                    query.Append($"UNIQUE ({left.SqlColumnName()}, {right.SqlColumnName()})");
+                    query.Append($"UNIQUE ({left.SqlName()}, {right.SqlName()})");
                     if ( index < extras.UniquePropertyPairs.Length - 1 ) { query.Append(','); }
 
                     query.Append('\n');
@@ -280,7 +279,7 @@ public class TableMetaData<TSelf> : ITableMetaData
                 ForeignKeyAttribute foreignKey = Validate.ThrowIfNull(column.ForeignKey);
                 StringBuilder       padding    = new(maxForeignKeyColumnNameLength);
                 padding.Append(' ', maxForeignKeyColumnNameLength - column.ColumnName.Length);
-                query.Append($"    FOREIGN KEY ({column.ColumnName}){padding} REFERENCES {foreignKey.TableName}({nameof(IUniqueID.ID).SqlColumnName()})");
+                query.Append($"    FOREIGN KEY ({column.ColumnName}){padding} REFERENCES {foreignKey.TableName}({nameof(IUniqueID.ID).SqlName()})");
 
                 if ( !foreignKey.HasModifier )
                 {
@@ -300,7 +299,7 @@ public class TableMetaData<TSelf> : ITableMetaData
                                                                                   {
                                                                                       MigrationID = migrationID,
                                                                                       Description = $"Create {TableName} table",
-                                                                                      ReferenceID     = TableName,
+                                                                                      ReferenceID = TableName,
                                                                                       SQL         = CreateTableSql()
                                                                                   };
 
@@ -322,12 +321,10 @@ public class TableMetaData<TSelf> : ITableMetaData
     public static TableMetaData<TSelf> Create()
     {
         ref readonly ImmutableArray<PropertyInfo> properties = ref TSelf.ClassProperties;
-
         if ( properties.Length <= 0 ) { throw new InvalidOperationException($"Type '{typeof(TSelf)}' does not have any public instance properties that are not marked with the '{nameof(DbIgnoreAttribute)}' attribute."); }
 
-        string[] keys = properties.AsValueEnumerable().Where(ColumnMetaData.IsDbKey).Select(static x => x.Name).ToArray();
-
-        if ( keys.Length != 1 ) { throw new InvalidOperationException($"Type '{typeof(TSelf)}' should only have one property with the '{typeof(System.ComponentModel.DataAnnotations.KeyAttribute).FullName}' or '{typeof(KeyAttribute).FullName}' attribute. \n\n{keys.ToJson()}"); }
+        using PooledArray<string> keys = properties.AsValueEnumerable().Where(ColumnMetaData.IsDbKey).Select(static x => x.Name).ToArrayPool();
+        if ( keys.Size != 1 ) { throw new InvalidOperationException($"Type '{typeof(TSelf)}' should only have one property with the '{typeof(System.ComponentModel.DataAnnotations.KeyAttribute).FullName}' or '{typeof(KeyAttribute).FullName}' attribute. \n\n{keys.Array.ToJson()}"); }
 
 
         SortedDictionary<string, ColumnMetaData> dictionary = new(StringComparer.InvariantCultureIgnoreCase);

@@ -29,7 +29,7 @@ public sealed class ForeignKeyAttribute<TSelf, TOtherTable>( OnAction onAction =
 [AttributeUsage(AttributeTargets.Property)]
 public class ForeignKeyAttribute( string tableName, string foreignTableName, OnAction onAction = OnAction.NotSet ) : Attribute
 {
-    public readonly string   TableName = foreignTableName.SqlColumnName();
+    public readonly string   TableName = foreignTableName.SqlName();
     public readonly OnAction Action    = onAction;
     public          bool     IsValid     { [Pure] [MemberNotNullWhen(true, nameof(TableName))] get => !string.IsNullOrWhiteSpace(TableName); }
     public          bool     HasModifier { [Pure] get => Action is not OnAction.NotSet; }
@@ -48,6 +48,6 @@ public class ForeignKeyAttribute( string tableName, string foreignTableName, OnA
                                    _                         => throw new OutOfRangeException(Action)
                                };
 
-    public string Index( string columnName ) => columnName.SqlColumnIndexName(tableName);
+    public string Index( string columnName ) => columnName.SqlIndexName(tableName);
     public string Index( string columnName, int maxLength ) => Index(columnName).GetPadded(maxLength);
 }

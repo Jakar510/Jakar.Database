@@ -186,9 +186,9 @@ public abstract partial class Database
     public virtual async ValueTask<Permissions<TEnum>> GetRights<TEnum>( NpgsqlConnection connection, NpgsqlTransaction? transaction, RecordID<UserRecord> userID, CancellationToken token )
         where TEnum : unmanaged, Enum
     {
-        string rights = nameof(UserRecord.Rights).SqlColumnName();
+        string rights = nameof(UserRecord.Rights).SqlName();
 
-        string id = nameof(UserRecord.ID).SqlColumnName();
+        string id = nameof(UserRecord.ID).SqlName();
 
         string sql = $"""
                       SELECT u.{rights}

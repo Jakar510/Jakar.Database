@@ -11,36 +11,35 @@ namespace Jakar.Database;
 [Serializable]
 public sealed record MigrationRecord : TableRecord<MigrationRecord>, ITableRecord<MigrationRecord>
 {
-    public const           string CREATE_SAVE_POINT = "MigrationRecord.CreateSql";
     public const           string TABLE_NAME        = "migrations";
-    public static readonly string SelectSql         = $"SELECT * FROM {TABLE_NAME} ORDER BY {nameof(MigrationID).SqlColumnName()};";
+    public static readonly string SelectSql         = $"SELECT * FROM {TABLE_NAME} ORDER BY {nameof(MigrationID).SqlName()};";
     public static readonly string ApplySql = $"""
                                               INSERT INTO {TABLE_NAME} 
                                               (
-                                                  {nameof(MigrationID).SqlColumnName()},
-                                                  {nameof(AppliedOn).SqlColumnName()},
-                                                  {nameof(Description).SqlColumnName()},
-                                                  {nameof(ReferenceID).SqlColumnName()}
+                                                  {nameof(MigrationID).SqlName()},
+                                                  {nameof(AppliedOn).SqlName()},
+                                                  {nameof(Description).SqlName()},
+                                                  {nameof(ReferenceID).SqlName()}
                                               ) 
                                               VALUES 
                                               (
-                                                  @{nameof(MigrationID).SqlColumnName()},
-                                                  @{nameof(AppliedOn).SqlColumnName()},
-                                                  @{nameof(Description).SqlColumnName()},
-                                                  @{nameof(ReferenceID).SqlColumnName()}
+                                                  @{nameof(MigrationID).SqlName()},
+                                                  @{nameof(AppliedOn).SqlName()},
+                                                  @{nameof(Description).SqlName()},
+                                                  @{nameof(ReferenceID).SqlName()}
                                               );
                                               """;
     public static readonly string TryCreateSql = $"""
                                                   CREATE TABLE IF NOT EXISTS {TABLE_NAME} (
-                                                      {nameof(MigrationID).SqlColumnName()} bigint      PRIMARY KEY,
-                                                      {nameof(AppliedOn).SqlColumnName()}   timestamptz NULL,
-                                                      {nameof(Description).SqlColumnName()} text        NOT NULL,
-                                                      {nameof(ReferenceID).SqlColumnName()}     text        NULL
+                                                      {nameof(MigrationID).SqlName()} bigint      PRIMARY KEY,
+                                                      {nameof(AppliedOn).SqlName()}   timestamptz NULL,
+                                                      {nameof(Description).SqlName()} text        NOT NULL,
+                                                      {nameof(ReferenceID).SqlName()}     text        NULL
                                                   ); 
                                                   """;
 
     internal               long   MigrationIdValue;
-    public static readonly string SetLastModifiedName = nameof(SetLastModified).SqlColumnName();
+    public static readonly string SetLastModifiedName = nameof(SetLastModified).SqlName();
     internal readonly      string RollbackID          = Randoms.RandomString(10);
 
 
@@ -68,7 +67,7 @@ public sealed record MigrationRecord : TableRecord<MigrationRecord>, ITableRecor
                                                                                     CREATE OR REPLACE FUNCTION {SetLastModifiedName}()
                                                                                     RETURNS TRIGGER AS $$
                                                                                     BEGIN
-                                                                                        NEW.{nameof(ILastModified.LastModified).SqlColumnName()} = now();
+                                                                                        NEW.{nameof(ILastModified.LastModified).SqlName()} = now();
                                                                                         RETURN NEW;
                                                                                     END;
                                                                                     $$ LANGUAGE plpgsql;
@@ -111,7 +110,7 @@ public sealed record MigrationRecord : TableRecord<MigrationRecord>, ITableRecor
     {
         ValueEnumerable<FromArray<string>, string> enumerable = Enum.GetNames(typeof(TEnum)).AsValueEnumerable();
 
-        string tableName = typeof(TEnum).Name.SqlColumnName();
+        string tableName = typeof(TEnum).SqlName();
 
         MigrationRecord record = new()
                                  {
@@ -197,7 +196,7 @@ public sealed record MigrationRecord : TableRecord<MigrationRecord>, ITableRecor
 
     public override bool Equals( MigrationRecord?    other ) => ReferenceEquals(this, other) || Nullable.Equals(MigrationID, other?.MigrationID) || string.Equals(Description, other?.Description);
     public override int  CompareTo( MigrationRecord? other ) => Nullable.Compare(AppliedOn, other?.AppliedOn);
-    public override int  GetHashCode()                       => HashCode.Combine(ReferenceID, Description);
+    public override int  GetHashCode()                       => HashCode.Combine(MigrationID, ReferenceID, Description, SQL);
 
 
     public static bool operator >( MigrationRecord  left, MigrationRecord right ) => Comparer<MigrationRecord>.Default.Compare(left, right) > 0;

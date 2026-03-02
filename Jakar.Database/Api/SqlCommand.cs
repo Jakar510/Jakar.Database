@@ -7,19 +7,17 @@ namespace Jakar.Database;
 public readonly struct SqlCommand<TSelf>( string sql, in PostgresParameters parameters, CommandType? commandType = null, CommandFlags flags = CommandFlags.None ) : IEquatable<SqlCommand<TSelf>>
     where TSelf : TableRecord<TSelf>, ITableRecord<TSelf>
 {
-    public const                    string             SPACER       = ",\n      ";
-    public const                    string             CREATED_BY   = "created_by";
-    public const                    string             DATE_CREATED = "date_created";
-    public const                    string             ID           = "id";
-    public readonly                 string             SQL          = sql;
-    public readonly                 PostgresParameters Parameters   = parameters;
-    public readonly                 CommandType?       CommandType  = commandType;
-    public readonly                 CommandFlags       Flags        = flags;
+    public const                    string             SPACER      = ",\n      ";
+    public readonly                 string             SQL         = sql;
+    public readonly                 PostgresParameters Parameters  = parameters;
+    public readonly                 CommandType?       CommandType = commandType;
+    public readonly                 CommandFlags       Flags       = flags;
     public static implicit operator SqlCommand<TSelf>( string sql ) => new(sql, PostgresParameters.Create<TSelf>());
 
     public static                   IEnumerable<string> GetColumnNames   => TSelf.MetaData.Properties.Values.Select(ColumnMetaData.GetColumnName);
     public static                   IEnumerable<string> GetKeyValuePairs => TSelf.MetaData.Properties.Values.Select(ColumnMetaData.GetKeyValuePair);
     public static implicit operator string( SqlCommand<TSelf> sql )      => sql.SQL;
+
 
     [Pure] [MustDisposeResource] public NpgsqlCommand ToCommand( NpgsqlConnection connection, NpgsqlTransaction? transaction = null )
     {
@@ -53,58 +51,21 @@ public readonly struct SqlCommand<TSelf>( string sql, in PostgresParameters para
     }
 
 
-    public static StringBuilder ColumnNames
+    public static StringBuilder ColumnNames( int indentLevel )
     {
-        get
-        {
-            TableMetaData<TSelf> data = TSelf.MetaData;
+      return TSelf.MetaData.ColumnNames(indentLevel);
 
-            int length = data.Properties.Values.AsValueEnumerable().Sum(static x => x.ColumnName.Length) + ( data.Count - 1 ) * SPACER.Length;
-
-            StringBuilder sb    = new(length);
-            int           count = data.Count;
-            int           index = 0;
-
-            foreach ( string pair in data.Properties.Values.AsValueEnumerable().Select(ColumnMetaData.GetColumnName) )
-            {
-                if ( index++ < count - 1 ) { sb.Append(pair).Append(SPACER); }
-                else { sb.Append(pair); }
-            }
-
-            return sb;
-        }
     }
-    public static StringBuilder KeyValuePairs
+    public static StringBuilder KeyValuePairs( int indentLevel )
     {
-        get
-        {
-            TableMetaData<TSelf> data = TSelf.MetaData;
-
-            int length = data.Properties.Values.AsValueEnumerable().Sum(static x => x.ColumnName.Length) + ( data.Count - 1 ) * SPACER.Length;
-
-            StringBuilder sb    = new(length);
-            int           count = data.Count;
-            int           index = 0;
-
-            foreach ( string pair in data.Properties.Values.AsValueEnumerable().Select(ColumnMetaData.GetKeyValuePair) )
-            {
-                if ( index++ < count - 1 ) { sb.Append(pair).Append(SPACER); }
-                else { sb.Append(pair); }
-            }
-
-            return sb;
-        }
+    return TSelf.MetaData.KeyValuePairs(indentLevel); 
     }
 
 
     public static SqlCommand<TSelf> Create( string sql, in PostgresParameters parameters ) => new(sql, in parameters);
 
 
-    public static SqlCommand<TSelf> GetRandom() => $"""
-                                                    SELECT * FROM {TSelf.TableName} 
-                                                    ORDER BY RANDOM()
-                                                    LIMIT 1;
-                                                    """;
+    public static SqlCommand<TSelf> GetRandom() => GetRandom(1);
     public static SqlCommand<TSelf> GetRandom( int count )
     {
         string sql = $"""
@@ -120,7 +81,7 @@ public readonly struct SqlCommand<TSelf>( string sql, in PostgresParameters para
     {
         string sql = $"""
                       SELECT * FROM {TSelf.TableName} 
-                      WHERE {CREATED_BY} = '{userID.Value}'
+                      WHERE {nameof(IUserID.UserID).SqlName()} = '{userID.Value}'
                       ORDER BY RANDOM() 
                       LIMIT {count};
                       """;
@@ -145,7 +106,7 @@ public readonly struct SqlCommand<TSelf>( string sql, in PostgresParameters para
         string sql = $"""
                       SELECT * FROM {TSelf.TableName}
                       WHERE 
-                          {CREATED_BY} = '{userID.Value}'
+                          {nameof(IUserID.UserID).SqlName()} = '{userID.Value}'
                       OFFSET {start}
                       LIMIT {count};
                       """;
@@ -179,7 +140,7 @@ public readonly struct SqlCommand<TSelf>( string sql, in PostgresParameters para
         string sql = $$"""
                        SELECT * FROM {{TSelf.TableName}}
                        WHERE 
-                           {{ID}} = '{0}';
+                           {{nameof(IUniqueID.ID).SqlName()}} = '{0}';
                        """;
 
         return string.Format(sql, id.Value.ToString());
@@ -189,7 +150,7 @@ public readonly struct SqlCommand<TSelf>( string sql, in PostgresParameters para
     {
         string sql = $"""
                       SELECT * FROM {TSelf.TableName}
-                      WHERE {ID} in (
+                      WHERE {nameof(IUniqueID.ID).SqlName()} in (
                              {string.Join(",\n        ", ids.Select(GetValue))}
                       );
                       """;
@@ -209,20 +170,20 @@ public readonly struct SqlCommand<TSelf>( string sql, in PostgresParameters para
     public static SqlCommand<TSelf> GetAll() => $"SELECT * FROM {TSelf.TableName};";
     public static SqlCommand<TSelf> GetFirst( int count = 1 ) => $"""
                                                                   SELECT * FROM {TSelf.TableName}
-                                                                  ORDER BY {DATE_CREATED} ASC 
+                                                                  ORDER BY {nameof(IDateCreated.DateCreated).SqlName()} ASC 
                                                                   LIMIT {count};
                                                                   """;
     public static SqlCommand<TSelf> GetLast( int count = 1 ) => $"""
                                                                  SELECT * FROM {TSelf.TableName}
-                                                                 ORDER BY {DATE_CREATED} DESC 
+                                                                 ORDER BY {nameof(IDateCreated.DateCreated).SqlName()} DESC 
                                                                  LIMIT {count}
                                                                  """;
 
 
     public static SqlCommand<TSelf> GetCount() => $"SELECT COUNT(*) FROM {TSelf.TableName};";
     public static SqlCommand<TSelf> GetSortedID() => $"""
-                                                      SELECT {ID}, {DATE_CREATED} FROM {TSelf.TableName}
-                                                      ORDER BY {DATE_CREATED} DESC;
+                                                      SELECT {nameof(IUniqueID.ID).SqlName()}, {nameof(IDateCreated.DateCreated).SqlName()} FROM {TSelf.TableName}
+                                                      ORDER BY {nameof(IDateCreated.DateCreated).SqlName()} DESC;
                                                       """;
     public static SqlCommand<TSelf> GetExists( bool matchAll, in PostgresParameters parameters )
     {
@@ -242,7 +203,7 @@ public readonly struct SqlCommand<TSelf>( string sql, in PostgresParameters para
         string sql = $"""
                       DELETE FROM {TSelf.TableName} 
                       WHERE 
-                         {ID} in (
+                         {nameof(IUniqueID.ID).SqlName()} in (
                       {parameters.KeyValuePairs(matchAll, 2)}
                          );
                       """;
@@ -254,7 +215,7 @@ public readonly struct SqlCommand<TSelf>( string sql, in PostgresParameters para
     {
         string sql = $"""
                       DELETE FROM {TSelf.TableName}
-                      WHERE {ID} = '{id.Value}';
+                      WHERE {nameof(IUniqueID.ID).SqlName()} = '{id.Value}';
                       """;
 
         return sql;
@@ -270,7 +231,7 @@ public readonly struct SqlCommand<TSelf>( string sql, in PostgresParameters para
 
         string sql = $"""
                       DELETE FROM {TSelf.TableName} 
-                      WHERE {ID} in ({sb});
+                      WHERE {nameof(IUniqueID.ID).SqlName()} in ({sb});
                       """;
 
         return sql;
@@ -283,7 +244,7 @@ public readonly struct SqlCommand<TSelf>( string sql, in PostgresParameters para
     {
         string sql = $"""
                       SELECT * FROM {TSelf.TableName}
-                      WHERE ( id = IFNULL((SELECT MIN({DATE_CREATED}) FROM {TSelf.TableName} WHERE {DATE_CREATED} > '{pair.DateCreated}' LIMIT 2, 0) );
+                      WHERE ( id = IFNULL((SELECT MIN({nameof(IDateCreated.DateCreated).SqlName()}) FROM {TSelf.TableName} WHERE {nameof(IDateCreated.DateCreated).SqlName()} > '{pair.DateCreated}' LIMIT 2, 0) );
                       """;
 
         return sql;
@@ -292,8 +253,8 @@ public readonly struct SqlCommand<TSelf>( string sql, in PostgresParameters para
         where TRecord : PairRecord<TRecord>, ITableRecord<TRecord>
     {
         string sql = $"""
-                      SELECT {ID} FROM {TSelf.TableName}
-                      WHERE ( id = IFNULL((SELECT MIN({DATE_CREATED}) FROM {TSelf.TableName} WHERE {DATE_CREATED} > '{pair.DateCreated}' LIMIT 2), 0) );
+                      SELECT {nameof(IUniqueID.ID).SqlName()} FROM {TSelf.TableName}
+                      WHERE ( id = IFNULL((SELECT MIN({nameof(IDateCreated.DateCreated).SqlName()}) FROM {TSelf.TableName} WHERE {nameof(IDateCreated.DateCreated).SqlName()} > '{pair.DateCreated}' LIMIT 2), 0) );
                       """;
 
         return sql;
@@ -305,13 +266,15 @@ public readonly struct SqlCommand<TSelf>( string sql, in PostgresParameters para
         string sql = $"""
                       CREATE TEMP TABLE tmp_mytable (LIKE {TSelf.TableName} INCLUDING DEFAULTS);
 
-                      COPY tmp_mytable ({ColumnNames})
+                      COPY tmp_mytable (
+                      {ColumnNames(1)}
+                      )
                       FROM STDIN;
 
                       INSERT INTO {TSelf.TableName}
                       SELECT *
                       FROM tmp_mytable
-                      RETURNING *;
+                      RETURNING {nameof(IUniqueID.ID).SqlName()};      
                       """;
 
         return sql;
@@ -323,13 +286,13 @@ public readonly struct SqlCommand<TSelf>( string sql, in PostgresParameters para
         string sql = $"""
                       INSERT INTO {TSelf.TableName} 
                       (
-                      {TSelf.MetaData.ColumnNames(1)}
+                      {ColumnNames(1)}
                       )
                       VALUES
                       (
                       {parameters.GetVariableNames(1)}
                       )
-                      RETURNING *;
+                      RETURNING {nameof(IUniqueID.ID).SqlName()};
                       """;
 
         return new SqlCommand<TSelf>(sql, in parameters);
@@ -341,13 +304,13 @@ public readonly struct SqlCommand<TSelf>( string sql, in PostgresParameters para
         string sql = $"""
                       INSERT INTO {TSelf.TableName} 
                       (
-                      {TSelf.MetaData.ColumnNames(1)}
+                      {ColumnNames(1)}
                       )
                       VALUES
                       (
                       {parameters.GetVariableNames(1)}
                       )
-                      RETURNING {ID};
+                      RETURNING {nameof(IUniqueID.ID).SqlName()};
                       """;
 
         return new SqlCommand<TSelf>(sql, in parameters);
@@ -359,13 +322,13 @@ public readonly struct SqlCommand<TSelf>( string sql, in PostgresParameters para
         string sql = $"""
                       INSERT INTO {TSelf.TableName} 
                       (
-                      {TSelf.MetaData.ColumnNames(1)}
+                      {ColumnNames(1)}
                       )
                       VALUES
                       (
                       {parameters.GetVariableNames(1)}
                       )
-                      RETURNING {ID};
+                      RETURNING {nameof(IUniqueID.ID).SqlName()};
                       """;
 
         return new SqlCommand<TSelf>(sql, in parameters);
@@ -374,8 +337,9 @@ public readonly struct SqlCommand<TSelf>( string sql, in PostgresParameters para
 
     public static SqlCommand<TSelf> GetUpdate( TSelf record ) => new($"""
                                                                       UPDATE {TSelf.TableName} 
-                                                                      SET {KeyValuePairs} 
-                                                                      WHERE {ID} = @{ID};
+                                                                      SET 
+                                                                      {KeyValuePairs(1)} 
+                                                                      WHERE {nameof(IUniqueID.ID).SqlName()} = @{nameof(IUniqueID.ID).SqlName()};
                                                                       """,
                                                                      record.ToDynamicParameters());
     public static SqlCommand<TSelf> GetTryInsert( TSelf record, bool matchAll, in PostgresParameters parameters )
@@ -392,18 +356,18 @@ public readonly struct SqlCommand<TSelf>( string sql, in PostgresParameters para
                       BEGIN
                       INSERT INTO {TSelf.TableName}
                       (
-                      {TSelf.MetaData.ColumnNames(1)}
+                      {ColumnNames(1)}
                       )
                       VALUES
                       (
                       {parameters.GetVariableNames(1)}
                       ) 
-                      RETURNING {ID};
+                      RETURNING {nameof(IUniqueID.ID).SqlName()};
                       END
 
                       ELSE
                       BEGIN
-                      SELECT {ID} = '{Guid.Empty}';
+                      SELECT {nameof(IUniqueID.ID).SqlName()} = '{Guid.Empty}';
                       END
                       """;
 
@@ -422,21 +386,22 @@ public readonly struct SqlCommand<TSelf>( string sql, in PostgresParameters para
                       BEGIN
                       INSERT INTO {TSelf.TableName}
                       (
-                      {TSelf.MetaData.ColumnNames(1)}
+                      {ColumnNames(1)}
                       ) 
                       VALUES 
                       (
                       {param.GetVariableNames(1)}
                       ) 
-                      RETURNING {ID};
+                      RETURNING {nameof(IUniqueID.ID).SqlName()};
                       END
 
                       ELSE
                       BEGIN
                       UPDATE {TSelf.TableName} 
-                        SET {KeyValuePairs}
-                        WHERE {ID} = @{ID};
-                        SELECT @{ID};
+                        SET 
+                        {KeyValuePairs(2)}
+                        WHERE {nameof(IUniqueID.ID).SqlName()} = @{nameof(IUniqueID.ID).SqlName()};
+                        SELECT @{nameof(IUniqueID.ID).SqlName()};
                       END
                       """;
 

@@ -20,7 +20,7 @@ public sealed class IndexedAttribute<TSelf>( string propertyName ) : IndexedAttr
 [AttributeUsage(AttributeTargets.Property)]
 public class IndexedAttribute( string propertyName, string tableName ) : Attribute
 {
-    public readonly string Name = propertyName.SqlColumnIndexName(tableName);
+    public readonly string Name = propertyName.SqlIndexName(tableName);
     public          bool   IsValid { [MemberNotNullWhen(true, nameof(Name))] get => !string.IsNullOrWhiteSpace(Name); }
 
     public IndexedAttribute( ColumnIndex defaults, string tableName ) : this(defaults switch
