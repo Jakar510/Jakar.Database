@@ -1,10 +1,6 @@
 ﻿// Jakar.Extensions :: Jakar.Database
 // 03/12/2023  1:09 PM
 
-using ZLinq.Linq;
-
-
-
 namespace Jakar.Database;
 
 
@@ -15,7 +11,7 @@ public partial class DbTable<TSelf>
 
 
     public ValueTask<ImmutableArray<TSelf>> Import( ReadOnlyMemory<TSelf> records, CancellationToken token = default ) => this.TryCall(Import, records, token);
-    public ValueTask<ImmutableArray<TSelf>> Import( ImmutableArray<TSelf> records, CancellationToken token = default ) => this.TryCall(Import, records, token);
+    public ValueTask<ImmutableArray<TSelf>> Import( ArrayBuffer<TSelf>    records, CancellationToken token = default ) => this.TryCall(Import, records, token);
     public ValueTask<ImmutableArray<TSelf>> Import( IEnumerable<TSelf>    records, CancellationToken token = default ) => this.TryCall(Import, records, token);
     public virtual async ValueTask<ImmutableArray<TSelf>> Import( NpgsqlConnection connection, NpgsqlTransaction? transaction, IEnumerable<TSelf> records, [EnumeratorCancellation] CancellationToken token = default )
     {
@@ -24,7 +20,7 @@ public partial class DbTable<TSelf>
     }
     public virtual async ValueTask<ImmutableArray<TSelf>> Import( NpgsqlConnection connection, NpgsqlTransaction? transaction, ReadOnlyMemory<TSelf> records, [EnumeratorCancellation] CancellationToken token = default )
     {
-        using ArrayBuffer<TSelf> array = [..records];
+        using ArrayBuffer<TSelf> array = records;
         return await Import(connection, transaction, array, token);
     }
     public virtual async ValueTask<ImmutableArray<TSelf>> Import( NpgsqlConnection connection, NpgsqlTransaction? transaction, ArrayBuffer<TSelf> records, [EnumeratorCancellation] CancellationToken token = default )

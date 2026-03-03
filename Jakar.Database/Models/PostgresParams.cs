@@ -23,7 +23,7 @@ public static class PostgresParams
                                                                                             [nameof(IUniqueID.ID)]               = "id",
                                                                                             [nameof(IDateCreated.DateCreated)]   = "date_created",
                                                                                             [nameof(ILastModified.LastModified)] = "last_modified",
-                                                                                            [nameof(IUserRecordID.UserID)]       = "created_by",
+                                                                                            [nameof(IUserRecordID.UserID)]       = "user_id",
                                                                                             [nameof(IJsonModel.AdditionalData)]  = "additional_data"
                                                                                         };
 
