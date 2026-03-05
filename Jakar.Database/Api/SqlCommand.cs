@@ -7,16 +7,22 @@ namespace Jakar.Database;
 public readonly struct SqlCommand<TSelf>( string sql, in PostgresParameters parameters, CommandType? commandType = null, CommandFlags flags = CommandFlags.None ) : IEquatable<SqlCommand<TSelf>>
     where TSelf : TableRecord<TSelf>, ITableRecord<TSelf>
 {
-    public const                    string             SPACER      = ",\n      ";
-    public readonly                 string             SQL         = sql;
-    public readonly                 PostgresParameters Parameters  = parameters;
-    public readonly                 CommandType?       CommandType = commandType;
-    public readonly                 CommandFlags       Flags       = flags;
-    public static implicit operator SqlCommand<TSelf>( string sql ) => new(sql, PostgresParameters.Create<TSelf>());
+    public const    string             SPACER      = ",\n      ";
+    public readonly string             SQL         = sql;
+    public readonly PostgresParameters Parameters  = parameters;
+    public readonly CommandType?       CommandType = commandType;
+    public readonly CommandFlags       Flags       = flags;
 
-    public static                   IEnumerable<string> GetColumnNames   => TSelf.MetaData.Properties.Values.Select(ColumnMetaData.GetColumnName);
-    public static                   IEnumerable<string> GetKeyValuePairs => TSelf.MetaData.Properties.Values.Select(ColumnMetaData.GetKeyValuePair);
-    public static implicit operator string( SqlCommand<TSelf> sql )      => sql.SQL;
+    public static IEnumerable<string> GetColumnNames   => TSelf.MetaData.Properties.Values.Select(ColumnMetaData.GetColumnName);
+    public static IEnumerable<string> GetKeyValuePairs => TSelf.MetaData.Properties.Values.Select(ColumnMetaData.GetKeyValuePair);
+
+
+    public static implicit operator string( SqlCommand<TSelf>                                                   sql )  => sql.SQL;
+    public static implicit operator SqlCommand<TSelf>( string                                                   sql )  => new(sql, PostgresParameters.Create<TSelf>());
+    public static implicit operator SqlCommand<TSelf>( (string SQL, PostgresParameters Parameters)              pair ) => new(pair.SQL, pair.Parameters);
+    public static implicit operator SqlCommand<TSelf>( (string SQL, NpgsqlParameter[] Parameters)               pair ) => new(pair.SQL, PostgresParameters.Create<TSelf>(pair.Parameters.AsSpan()));
+    public static implicit operator SqlCommand<TSelf>( (string SQL, List<NpgsqlParameter> Parameters)           pair ) => new(pair.SQL, PostgresParameters.Create<TSelf>(pair.Parameters.AsSpan()));
+    public static implicit operator SqlCommand<TSelf>( (string SQL, ImmutableArray<NpgsqlParameter> Parameters) pair ) => new(pair.SQL, PostgresParameters.Create<TSelf>(pair.Parameters.AsSpan()));
 
 
     [Pure] [MustDisposeResource] public NpgsqlCommand ToCommand( NpgsqlConnection connection, NpgsqlTransaction? transaction = null )
@@ -51,18 +57,12 @@ public readonly struct SqlCommand<TSelf>( string sql, in PostgresParameters para
     }
 
 
-    public static StringBuilder ColumnNames( int indentLevel )
-    {
-      return TSelf.MetaData.ColumnNames(indentLevel);
-
-    }
-    public static StringBuilder KeyValuePairs( int indentLevel )
-    {
-    return TSelf.MetaData.KeyValuePairs(indentLevel); 
-    }
+    public static StringBuilder ColumnNames( int   indentLevel ) => TSelf.MetaData.ColumnNames(indentLevel);
+    public static StringBuilder KeyValuePairs( int indentLevel ) => TSelf.MetaData.KeyValuePairs(indentLevel);
 
 
-    public static SqlCommand<TSelf> Create( string sql, in PostgresParameters parameters ) => new(sql, in parameters);
+    public static SqlCommand<TSelf> Create( ref SqlInterpolatedStringHandler<TSelf> handler, CommandType?          commandType = null, CommandFlags flags = CommandFlags.None ) => handler.ToSqlCommand(commandType, flags);
+    public static SqlCommand<TSelf> Create( string                                  sql,     in PostgresParameters parameters ) => new(sql, in parameters);
 
 
     public static SqlCommand<TSelf> GetRandom() => GetRandom(1);
