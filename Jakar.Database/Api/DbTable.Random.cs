@@ -14,7 +14,7 @@ public partial class DbTable<TSelf>
 
     [MethodImpl(MethodImplOptions.AggressiveOptimization)] public virtual async ValueTask<ErrorOrResult<TSelf>> Random( NpgsqlConnection connection, NpgsqlTransaction? transaction, CancellationToken token = default )
     {
-        SqlCommand<TSelf> command = SqlCommand<TSelf>.GetRandom();
+        SqlCommand command = SqlCommand.GetRandom<TSelf>();
 
         try
         {
@@ -28,14 +28,14 @@ public partial class DbTable<TSelf>
 
     [MethodImpl(MethodImplOptions.AggressiveOptimization)] public virtual IAsyncEnumerable<TSelf> Random( NpgsqlConnection connection, NpgsqlTransaction? transaction, UserRecord user, int count, [EnumeratorCancellation] CancellationToken token = default )
     {
-        SqlCommand<TSelf> sql = SqlCommand<TSelf>.GetRandom(user, count);
+        SqlCommand sql = SqlCommand.GetRandom<TSelf>(user, count);
         return Where(connection, transaction, sql, token);
     }
 
 
     [MethodImpl(MethodImplOptions.AggressiveOptimization)] public virtual IAsyncEnumerable<TSelf> Random( NpgsqlConnection connection, NpgsqlTransaction? transaction, int count, [EnumeratorCancellation] CancellationToken token = default )
     {
-        SqlCommand<TSelf> sql = SqlCommand<TSelf>.GetRandom(count);
+        SqlCommand sql = SqlCommand.GetRandom<TSelf>(count);
         return Where(connection, transaction, sql, token);
     }
 }

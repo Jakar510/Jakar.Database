@@ -12,6 +12,9 @@ public class DbSqlException( string sql, Exception? inner = null, PostgresParame
     public override string              Message    => field ??= GetMessage(SQL, Parameters);
 
 
+    public DbSqlException( SqlCommand command, Exception? inner = null ) : this(command.SQL, inner, command.Parameters) { }
+
+
     public string GetMessage( string? sql, in PostgresParameters? dynamicParameters )
     {
         string parameters;

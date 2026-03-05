@@ -8,20 +8,16 @@ using ZLinq.Linq;
 namespace Jakar.Database;
 
 
-public readonly struct SqlKey( bool matchAll, ImmutableArray<string> parameters ) : IEquatable<PostgresParameters>, IEqualityOperators<SqlKey>, IComparisonOperators<SqlKey>, IValueEnumerable<FromImmutableArray<string>, string>
+public readonly struct SqlKey( ImmutableArray<string> parameters ) : IEquatable<PostgresParameters>, IEqualityOperators<SqlKey>, IComparisonOperators<SqlKey>, IValueEnumerable<FromImmutableArray<string>, string>
 {
-    private readonly int                    __hash     = HashCode.Combine(matchAll, parameters);
-    public readonly  bool                   matchAll   = matchAll;
+    private readonly int                    __hash     = HashCode.Combine(parameters);
     public readonly  ImmutableArray<string> parameters = parameters;
-    public readonly  string                 key        = GetKey(matchAll, parameters.AsSpan());
+    public readonly  string                 key        = GetKey(parameters.AsSpan());
 
 
-    private static string GetKey( bool matchAll, params ReadOnlySpan<string> parameters ) => new StringBuilder(6 + parameters.Sum(static x => x.Length)).Append(matchAll)
-                                                                                                                                                        .Append(':')
-                                                                                                                                                        .AppendJoin(',', parameters!)
-                                                                                                                                                        .ToString();
-    public static SqlKey Create<TSelf>( bool matchAll, PostgresParameters parameters )
-        where TSelf : TableRecord<TSelf>,  ITableRecord<TSelf> => new(matchAll, [..parameters.ParameterNames]);
+    private static string GetKey( params ReadOnlySpan<string> parameters ) => new StringBuilder(parameters.Sum(static x => x.Length + 1)).AppendJoin(',', parameters!).ToString();
+    public static SqlKey Create<TSelf>( PostgresParameters parameters )
+        where TSelf : TableRecord<TSelf>, ITableRecord<TSelf> => new([..parameters.ParameterNames]);
 
 
     public ValueEnumerable<FromImmutableArray<string>, string> AsValueEnumerable() => new(new FromImmutableArray<string>(parameters));
@@ -38,15 +34,11 @@ public readonly struct SqlKey( bool matchAll, ImmutableArray<string> parameters 
     {
         if ( __hash != other.__hash ) { return false; }
 
-        if ( matchAll != other.matchAll ) { return false; }
-
-        return AsValueEnumerable()
-           .SequenceEqual(other.AsValueEnumerable());
+        return AsValueEnumerable().SequenceEqual(other.AsValueEnumerable());
     }
-    public override bool Equals( object? other ) => other is SqlKey x && Equals(x);
-    public bool Equals( PostgresParameters other ) => AsValueEnumerable()
-       .SequenceEqual(other.ParameterNames, StringComparer.Ordinal);
-    public override int GetHashCode() => __hash;
+    public override bool Equals( object?            other ) => other is SqlKey x && Equals(x);
+    public          bool Equals( PostgresParameters other ) => AsValueEnumerable().SequenceEqual(other.ParameterNames, StringComparer.Ordinal);
+    public override int  GetHashCode()                      => __hash;
     public int CompareTo( object? other ) =>
         other is SqlKey sqlKey
             ? CompareTo(sqlKey)

@@ -11,36 +11,20 @@ namespace Jakar.Database;
 [Serializable]
 public sealed record MigrationRecord : TableRecord<MigrationRecord>, ITableRecord<MigrationRecord>
 {
-    public const           string TABLE_NAME        = "migrations";
-    public static readonly string SelectSql         = $"SELECT * FROM {TABLE_NAME} ORDER BY {nameof(MigrationID).SqlName()};";
-    public static readonly string ApplySql = $"""
-                                              INSERT INTO {TABLE_NAME} 
-                                              (
-                                                  {nameof(MigrationID).SqlName()},
-                                                  {nameof(AppliedOn).SqlName()},
-                                                  {nameof(Description).SqlName()},
-                                                  {nameof(ReferenceID).SqlName()}
-                                              ) 
-                                              VALUES 
-                                              (
-                                                  @{nameof(MigrationID).SqlName()},
-                                                  @{nameof(AppliedOn).SqlName()},
-                                                  @{nameof(Description).SqlName()},
-                                                  @{nameof(ReferenceID).SqlName()}
-                                              );
-                                              """;
-    public static readonly string TryCreateSql = $"""
-                                                  CREATE TABLE IF NOT EXISTS {TABLE_NAME} (
-                                                      {nameof(MigrationID).SqlName()} bigint      PRIMARY KEY,
-                                                      {nameof(AppliedOn).SqlName()}   timestamptz NULL,
-                                                      {nameof(Description).SqlName()} text        NOT NULL,
-                                                      {nameof(ReferenceID).SqlName()}     text        NULL
-                                                  ); 
-                                                  """;
-
-    internal               long   MigrationIdValue;
+    public const           string     TABLE_NAME = "migrations";
+    public static readonly SqlCommand SelectSql  = SqlCommand.Parse<MigrationRecord>($"SELECT * FROM {TABLE_NAME} ORDER BY {nameof(MigrationID)};");
+    public static readonly SqlCommand TryCreateSql = SqlCommand.Parse<MigrationRecord>($"""
+                                                                                        CREATE TABLE IF NOT EXISTS {TABLE_NAME} (
+                                                                                            {nameof(MigrationID)} bigint      PRIMARY KEY,
+                                                                                            {nameof(AppliedOn)}   timestamptz NULL,
+                                                                                            {nameof(Description)} text        NOT NULL,
+                                                                                            {nameof(ReferenceID)} text        NULL
+                                                                                        ); 
+                                                                                        """);
     public static readonly string SetLastModifiedName = nameof(SetLastModified).SqlName();
-    internal readonly      string RollbackID          = Randoms.RandomString(10);
+
+    internal          long   MigrationIdValue;
+    internal readonly string RollbackID = Randoms.RandomString(10);
 
 
     public static              string          TableName   => TABLE_NAME;
@@ -59,6 +43,7 @@ public sealed record MigrationRecord : TableRecord<MigrationRecord>, ITableRecor
         AppliedOn   = reader.GetFieldValue<MigrationRecord, DateTimeOffset?>(nameof(AppliedOn));
         MigrationID = reader.GetFieldValue<MigrationRecord, long>(nameof(MigrationID));
     }
+
     public static MigrationRecord SetLastModified( long migrationID ) => new()
                                                                          {
                                                                              MigrationID = migrationID,
@@ -103,6 +88,7 @@ public sealed record MigrationRecord : TableRecord<MigrationRecord>, ITableRecor
 
 
     public static MigrationRecord CreateTable( long migrationID ) => MetaData.CreateTable(migrationID);
+    public        SqlCommand      ApplySql()                      => SqlCommand.GetInsert(this);
 
 
     public static MigrationRecord FromEnum<TEnum>( long migrationID )

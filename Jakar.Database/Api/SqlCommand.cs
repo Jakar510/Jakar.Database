@@ -4,8 +4,7 @@
 namespace Jakar.Database;
 
 
-public readonly struct SqlCommand<TSelf>( string sql, in PostgresParameters parameters, CommandType? commandType = null, CommandFlags flags = CommandFlags.None ) : IEquatable<SqlCommand<TSelf>>
-    where TSelf : TableRecord<TSelf>, ITableRecord<TSelf>
+public readonly struct SqlCommand( string sql, PostgresParameters parameters = default, CommandType? commandType = null, CommandFlags flags = CommandFlags.None ) : IEquatable<SqlCommand>
 {
     public const    string             SPACER      = ",\n      ";
     public readonly string             SQL         = sql;
@@ -13,16 +12,9 @@ public readonly struct SqlCommand<TSelf>( string sql, in PostgresParameters para
     public readonly CommandType?       CommandType = commandType;
     public readonly CommandFlags       Flags       = flags;
 
-    public static IEnumerable<string> GetColumnNames   => TSelf.MetaData.Properties.Values.Select(ColumnMetaData.GetColumnName);
-    public static IEnumerable<string> GetKeyValuePairs => TSelf.MetaData.Properties.Values.Select(ColumnMetaData.GetKeyValuePair);
 
-
-    public static implicit operator string( SqlCommand<TSelf>                                                   sql )  => sql.SQL;
-    public static implicit operator SqlCommand<TSelf>( string                                                   sql )  => new(sql, PostgresParameters.Create<TSelf>());
-    public static implicit operator SqlCommand<TSelf>( (string SQL, PostgresParameters Parameters)              pair ) => new(pair.SQL, pair.Parameters);
-    public static implicit operator SqlCommand<TSelf>( (string SQL, NpgsqlParameter[] Parameters)               pair ) => new(pair.SQL, PostgresParameters.Create<TSelf>(pair.Parameters.AsSpan()));
-    public static implicit operator SqlCommand<TSelf>( (string SQL, List<NpgsqlParameter> Parameters)           pair ) => new(pair.SQL, PostgresParameters.Create<TSelf>(pair.Parameters.AsSpan()));
-    public static implicit operator SqlCommand<TSelf>( (string SQL, ImmutableArray<NpgsqlParameter> Parameters) pair ) => new(pair.SQL, PostgresParameters.Create<TSelf>(pair.Parameters.AsSpan()));
+    public static implicit operator string( SqlCommand                                      sql )  => sql.SQL;
+    public static implicit operator SqlCommand( (string SQL, PostgresParameters Parameters) pair ) => new(pair.SQL, pair.Parameters);
 
 
     [Pure] [MustDisposeResource] public NpgsqlCommand ToCommand( NpgsqlConnection connection, NpgsqlTransaction? transaction = null )
@@ -49,7 +41,8 @@ public readonly struct SqlCommand<TSelf>( string sql, in PostgresParameters para
         await using NpgsqlCommand command = ToCommand(connection, transaction);
         await command.ExecuteNonQueryAsync(token);
     }
-    public async IAsyncEnumerable<TSelf> ExecuteAsync( NpgsqlConnection connection, NpgsqlTransaction? transaction, [EnumeratorCancellation] CancellationToken token )
+    public async IAsyncEnumerable<TSelf> ExecuteAsync<TSelf>( NpgsqlConnection connection, NpgsqlTransaction? transaction, [EnumeratorCancellation] CancellationToken token )
+        where TSelf : TableRecord<TSelf>, ITableRecord<TSelf>
     {
         await using NpgsqlCommand    command = ToCommand(connection, transaction);
         await using NpgsqlDataReader reader  = await command.ExecuteReaderAsync(token);
@@ -57,364 +50,295 @@ public readonly struct SqlCommand<TSelf>( string sql, in PostgresParameters para
     }
 
 
-    public static StringBuilder ColumnNames( int   indentLevel ) => TSelf.MetaData.ColumnNames(indentLevel);
-    public static StringBuilder KeyValuePairs( int indentLevel ) => TSelf.MetaData.KeyValuePairs(indentLevel);
+    public static SqlCommand Create( string sql, in PostgresParameters parameters, CommandType? commandType = null, CommandFlags flags = CommandFlags.None ) => new(sql, parameters, commandType, flags);
+    public static SqlCommand Create<TSelf>( string sql )
+        where TSelf : TableRecord<TSelf>, ITableRecord<TSelf> => new(sql, PostgresParameters.Create<TSelf>());
+    public static SqlCommand Create<TSelf>( (string SQL, NpgsqlParameter[] Parameters) pair )
+        where TSelf : TableRecord<TSelf>, ITableRecord<TSelf> => new(pair.SQL, PostgresParameters.Create<TSelf>(pair.Parameters.AsSpan()));
+    public static SqlCommand Create<TSelf>( (string SQL, List<NpgsqlParameter> Parameters) pair )
+        where TSelf : TableRecord<TSelf>, ITableRecord<TSelf> => new(pair.SQL, PostgresParameters.Create<TSelf>(pair.Parameters.AsSpan()));
+    public static SqlCommand Create<TSelf>( (string SQL, ImmutableArray<NpgsqlParameter> Parameters) pair )
+        where TSelf : TableRecord<TSelf>, ITableRecord<TSelf> => new(pair.SQL, PostgresParameters.Create<TSelf>(pair.Parameters.AsSpan()));
 
 
-    public static SqlCommand<TSelf> Parse( ref SqlInterpolatedStringHandler<TSelf> handler, CommandType?          commandType = null, CommandFlags flags = CommandFlags.None ) => handler.ToSqlCommand(commandType, flags);
-    public static SqlCommand<TSelf> Create( string                                 sql,     in PostgresParameters parameters ) => new(sql, in parameters);
+    public static SqlCommand Parse<TSelf>( ref SqlInterpolatedStringHandler<TSelf> handler, CommandType? commandType = null, CommandFlags flags = CommandFlags.None )
+        where TSelf : TableRecord<TSelf>, ITableRecord<TSelf> => handler.ToSqlCommand(commandType, flags);
 
 
-    public static SqlCommand<TSelf> GetRandom() => GetRandom(1);
-    public static SqlCommand<TSelf> GetRandom( int count )
-    {
-        string sql = $"""
-                      SELECT * FROM {TSelf.TableName} 
-                      ORDER BY RANDOM() 
-                      LIMIT {count};
-                      """;
-
-        return sql;
-    }
-    public static SqlCommand<TSelf> GetRandom( UserRecord user, int count ) => GetRandom(user.ID, count);
-    public static SqlCommand<TSelf> GetRandom( in RecordID<UserRecord> userID, int count )
-    {
-        string sql = $"""
-                      SELECT * FROM {TSelf.TableName} 
-                      WHERE {nameof(IUserID.UserID).SqlName()} = '{userID.Value}'
-                      ORDER BY RANDOM() 
-                      LIMIT {count};
-                      """;
-
-        return sql;
-    }
+    public static SqlCommand GetRandom<TSelf>( int count = 1 )
+        where TSelf : TableRecord<TSelf>, ITableRecord<TSelf> => Parse<TSelf>($"""
+                                                                               SELECT * FROM {TSelf.TableName}
+                                                                               ORDER BY RANDOM()
+                                                                               LIMIT {count};
+                                                                               """);
+    public static SqlCommand GetRandom<TSelf>( UserRecord user, int count )
+        where TSelf : TableRecord<TSelf>, ITableRecord<TSelf> => GetRandom<TSelf>(user.ID, count);
+    public static SqlCommand GetRandom<TSelf>( in RecordID<UserRecord> userID, int count )
+        where TSelf : TableRecord<TSelf>, ITableRecord<TSelf> => Parse<TSelf>($"""
+                                                                               SELECT * FROM {TSelf.TableName}
+                                                                               WHERE {nameof(IUserID.UserID)} = {userID.Value}
+                                                                               ORDER BY RANDOM()
+                                                                               LIMIT {count};
+                                                                               """);
 
 
-    public static SqlCommand<TSelf> WherePaged( bool matchAll, in PostgresParameters parameters, int start, int count )
-    {
-        string sql = $"""
-                        SELECT * FROM {TSelf.TableName}
-                        {parameters.KeyValuePairs(matchAll, 1)}
-                        OFFSET {start}
-                        LIMIT {count}
-                      """;
-
-        return new SqlCommand<TSelf>(sql, in parameters);
-    }
-    public static SqlCommand<TSelf> WherePaged( in RecordID<UserRecord> userID, int start, int count )
-    {
-        string sql = $"""
-                      SELECT * FROM {TSelf.TableName}
-                      WHERE 
-                          {nameof(IUserID.UserID).SqlName()} = '{userID.Value}'
-                      OFFSET {start}
-                      LIMIT {count};
-                      """;
-
-        return sql;
-    }
-    public static SqlCommand<TSelf> WherePaged( int start, int count )
-    {
-        string sql = $"""
-                      SELECT * FROM {TSelf.TableName}
-                      OFFSET {start}
-                      LIMIT {count};
-                      """;
-
-        return sql;
-    }
-    public static SqlCommand<TSelf> Where<TValue>( string columnName, TValue? value )
-    {
-        string sql = $"SELECT * FROM {TSelf.TableName} WHERE {columnName} = @{nameof(value)};";
-
-        PostgresParameters parameters = PostgresParameters.Create<TSelf>();
-        parameters.Add(nameof(value), value);
-
-        return new SqlCommand<TSelf>(sql, in parameters);
-    }
+    public static SqlCommand WherePaged<TSelf>( in PostgresParameters parameters, int start, int count )
+        where TSelf : TableRecord<TSelf>, ITableRecord<TSelf> => Parse<TSelf>($"""
+                                                                                 SELECT * FROM {TSelf.TableName}
+                                                                                 {parameters.KeyValuePairs:1}
+                                                                                 OFFSET {start}
+                                                                                 LIMIT {count}
+                                                                               """);
+    public static SqlCommand WherePaged<TSelf>( in RecordID<UserRecord> userID, int start, int count )
+        where TSelf : TableRecord<TSelf>, ITableRecord<TSelf> => Parse<TSelf>($"""
+                                                                               SELECT * FROM {TSelf.TableName}
+                                                                               WHERE 
+                                                                                   {nameof(IUserID.UserID)} = {userID.Value}
+                                                                               OFFSET {start}
+                                                                               LIMIT {count};
+                                                                               """);
+    public static SqlCommand WherePaged<TSelf>( int start, int count )
+        where TSelf : TableRecord<TSelf>, ITableRecord<TSelf> => Parse<TSelf>($"""
+                                                                               SELECT * FROM {TSelf.TableName}
+                                                                               OFFSET {start}
+                                                                               LIMIT {count};
+                                                                               """);
+    public static SqlCommand Where<TSelf, TValue>( string columnName, TValue? value )
+        where TSelf : PairRecord<TSelf>, ITableRecord<TSelf> =>
+        Parse<TSelf>($"SELECT * FROM {TSelf.TableName} WHERE {columnName} = @{value};");
 
 
-    public static SqlCommand<TRecord> Get<TRecord>( in RecordID<TRecord> id )
-        where TRecord : PairRecord<TRecord>, ITableRecord<TRecord>
-    {
-        string sql = $$"""
-                       SELECT * FROM {{TSelf.TableName}}
-                       WHERE 
-                           {{nameof(IUniqueID.ID).SqlName()}} = '{0}';
-                       """;
-
-        return string.Format(sql, id.Value.ToString());
-    }
-    public static SqlCommand<TRecord> Get<TRecord>( IEnumerable<RecordID<TRecord>> ids )
-        where TRecord : PairRecord<TRecord>, ITableRecord<TRecord>
-    {
-        string sql = $"""
-                      SELECT * FROM {TSelf.TableName}
-                      WHERE {nameof(IUniqueID.ID).SqlName()} in (
-                             {string.Join(",\n        ", ids.Select(GetValue))}
-                      );
-                      """;
-
-        return sql;
-    }
-    public static SqlCommand<TSelf> Get( bool matchAll, in PostgresParameters parameters )
-    {
-        string sql = $"""
-                      SELECT * FROM {TSelf.TableName}
-                      WHERE 
-                      {parameters.KeyValuePairs(matchAll, 1)};
-                      """;
-
-        return new SqlCommand<TSelf>(sql, in parameters);
-    }
-    public static SqlCommand<TSelf> GetAll() => $"SELECT * FROM {TSelf.TableName};";
-    public static SqlCommand<TSelf> GetFirst( int count = 1 ) => $"""
-                                                                  SELECT * FROM {TSelf.TableName}
-                                                                  ORDER BY {nameof(IDateCreated.DateCreated).SqlName()} ASC 
-                                                                  LIMIT {count};
-                                                                  """;
-    public static SqlCommand<TSelf> GetLast( int count = 1 ) => $"""
-                                                                 SELECT * FROM {TSelf.TableName}
-                                                                 ORDER BY {nameof(IDateCreated.DateCreated).SqlName()} DESC 
-                                                                 LIMIT {count}
-                                                                 """;
+    public static SqlCommand Get<TSelf>( in RecordID<TSelf> id )
+        where TSelf : PairRecord<TSelf>, ITableRecord<TSelf> => Parse<TSelf>($"""
+                                                                              SELECT * FROM {TSelf.TableName}
+                                                                              WHERE 
+                                                                              {nameof(IUniqueID.ID)} = {id};
+                                                                              """);
+    public static SqlCommand Get<TSelf>( IEnumerable<RecordID<TSelf>> ids )
+        where TSelf : PairRecord<TSelf>, ITableRecord<TSelf> => Parse<TSelf>($"""
+                                                                              SELECT * FROM {TSelf.TableName}
+                                                                              WHERE {nameof(IUniqueID.ID)} in (
+                                                                              {ids.Select(RecordID<TSelf>.GetValue)}
+                                                                              );
+                                                                              """);
+    public static SqlCommand Get<TSelf>( in PostgresParameters parameters )
+        where TSelf : TableRecord<TSelf>, ITableRecord<TSelf> => Parse<TSelf>($"""
+                                                                               SELECT * FROM {TSelf.TableName}
+                                                                               WHERE 
+                                                                               {parameters.KeyValuePairs:1};
+                                                                               """);
+    public static SqlCommand GetAll<TSelf>()
+        where TSelf : TableRecord<TSelf>, ITableRecord<TSelf> => Parse<TSelf>($"SELECT * FROM {TSelf.TableName};");
+    public static SqlCommand GetFirst<TSelf>( int count = 1 )
+        where TSelf : TableRecord<TSelf>, ITableRecord<TSelf> => Parse<TSelf>($"""
+                                                                               SELECT * FROM {TSelf.TableName}
+                                                                               ORDER BY {nameof(IDateCreated.DateCreated)} ASC 
+                                                                               LIMIT {count};
+                                                                               """);
+    public static SqlCommand GetLast<TSelf>( int count = 1 )
+        where TSelf : TableRecord<TSelf>, ITableRecord<TSelf> => Parse<TSelf>($"""
+                                                                               SELECT * FROM {TSelf.TableName}
+                                                                               ORDER BY {nameof(IDateCreated.DateCreated)} DESC 
+                                                                               LIMIT {count}
+                                                                               """);
 
 
-    public static SqlCommand<TSelf> GetCount() => $"SELECT COUNT(*) FROM {TSelf.TableName};";
-    public static SqlCommand<TSelf> GetSortedID() => $"""
-                                                      SELECT {nameof(IUniqueID.ID).SqlName()}, {nameof(IDateCreated.DateCreated).SqlName()} FROM {TSelf.TableName}
-                                                      ORDER BY {nameof(IDateCreated.DateCreated).SqlName()} DESC;
-                                                      """;
-    public static SqlCommand<TSelf> GetExists( bool matchAll, in PostgresParameters parameters )
-    {
-        string sql = $"""
-                      EXISTS( 
-                      SELECT * FROM {TSelf.TableName}
-                      WHERE 
-                      {parameters.KeyValuePairs(matchAll, 1)};
-                      """;
-
-        return new SqlCommand<TSelf>(sql, in parameters);
-    }
+    public static SqlCommand GetCount<TSelf>()
+        where TSelf : TableRecord<TSelf>, ITableRecord<TSelf> => Parse<TSelf>($"SELECT COUNT(*) FROM {TSelf.TableName};");
+    public static SqlCommand GetSortedID<TSelf>()
+        where TSelf : TableRecord<TSelf>, ITableRecord<TSelf> => Parse<TSelf>($"""
+                                                                               SELECT {nameof(IUniqueID.ID)}, {nameof(IDateCreated.DateCreated)} FROM {TSelf.TableName}
+                                                                               ORDER BY {nameof(IDateCreated.DateCreated)} DESC;
+                                                                               """);
+    public static SqlCommand GetExists<TSelf>( in PostgresParameters parameters )
+        where TSelf : TableRecord<TSelf>, ITableRecord<TSelf> => Parse<TSelf>($"""
+                                                                               EXISTS( 
+                                                                               SELECT * FROM {TSelf.TableName}
+                                                                               WHERE 
+                                                                               {parameters.KeyValuePairs:1};
+                                                                               """);
 
 
-    public static SqlCommand<TSelf> GetDelete( bool matchAll, in PostgresParameters parameters )
-    {
-        string sql = $"""
-                      DELETE FROM {TSelf.TableName} 
-                      WHERE 
-                         {nameof(IUniqueID.ID).SqlName()} in (
-                      {parameters.KeyValuePairs(matchAll, 2)}
-                         );
-                      """;
-
-        return new SqlCommand<TSelf>(sql, in parameters);
-    }
-    public static SqlCommand<TRecord> GetDeleteID<TRecord>( in RecordID<TRecord> id )
-        where TRecord : PairRecord<TRecord>, ITableRecord<TRecord>
-    {
-        string sql = $"""
-                      DELETE FROM {TSelf.TableName}
-                      WHERE {nameof(IUniqueID.ID).SqlName()} = '{id.Value}';
-                      """;
-
-        return sql;
-    }
-    public static SqlCommand<TRecord> GetDelete<TRecord>( IEnumerable<RecordID<TRecord>> ids )
-        where TRecord : PairRecord<TRecord>, ITableRecord<TRecord>
-    {
-        // ReSharper disable PossibleMultipleEnumeration
-        StringBuilder sb = new(256 + 30 * ids.Count());
-        sb.AppendJoin(',', ids.Select(GetValue));
-
-        // ReSharper restore PossibleMultipleEnumeration
-
-        string sql = $"""
-                      DELETE FROM {TSelf.TableName} 
-                      WHERE {nameof(IUniqueID.ID).SqlName()} in ({sb});
-                      """;
-
-        return sql;
-    }
-    public static SqlCommand<TSelf> GetDeleteAll() => $"DELETE FROM {TSelf.TableName};";
+    public static SqlCommand GetDelete<TSelf>( in PostgresParameters parameters )
+        where TSelf : TableRecord<TSelf>, ITableRecord<TSelf> => Parse<TSelf>($"""
+                                                                               DELETE FROM {TSelf.TableName} 
+                                                                               WHERE 
+                                                                                  {nameof(IUniqueID.ID)} in (
+                                                                               {parameters.KeyValuePairs:2}
+                                                                                  );
+                                                                               """);
+    public static SqlCommand GetDeleteID<TSelf>( in RecordID<TSelf> id )
+        where TSelf : PairRecord<TSelf>, ITableRecord<TSelf> => Parse<TSelf>($"""
+                                                                              DELETE FROM {TSelf.TableName}
+                                                                              WHERE {nameof(IUniqueID.ID)} = {id.Value};
+                                                                              """);
+    public static SqlCommand GetDelete<TSelf>( IEnumerable<RecordID<TSelf>> ids )
+        where TSelf : PairRecord<TSelf>, ITableRecord<TSelf> => Parse<TSelf>($"""
+                                                                              DELETE FROM {TSelf.TableName} 
+                                                                              WHERE {nameof(IUniqueID.ID)} in ({ids.Select(RecordID<TSelf>.GetValue)});
+                                                                              """);
+    public static SqlCommand GetDeleteAll<TSelf>()
+        where TSelf : TableRecord<TSelf>, ITableRecord<TSelf> => Parse<TSelf>($"DELETE FROM {TSelf.TableName};");
 
 
-    public static SqlCommand<TRecord> GetNext<TRecord>( in RecordPair<TRecord> pair )
-        where TRecord : PairRecord<TRecord>, ITableRecord<TRecord>
-    {
-        string sql = $"""
-                      SELECT * FROM {TSelf.TableName}
-                      WHERE ( id = IFNULL((SELECT MIN({nameof(IDateCreated.DateCreated).SqlName()}) FROM {TSelf.TableName} WHERE {nameof(IDateCreated.DateCreated).SqlName()} > '{pair.DateCreated}' LIMIT 2, 0) );
-                      """;
-
-        return sql;
-    }
-    public static SqlCommand<TRecord> GetNextID<TRecord>( in RecordPair<TRecord> pair )
-        where TRecord : PairRecord<TRecord>, ITableRecord<TRecord>
-    {
-        string sql = $"""
-                      SELECT {nameof(IUniqueID.ID).SqlName()} FROM {TSelf.TableName}
-                      WHERE ( id = IFNULL((SELECT MIN({nameof(IDateCreated.DateCreated).SqlName()}) FROM {TSelf.TableName} WHERE {nameof(IDateCreated.DateCreated).SqlName()} > '{pair.DateCreated}' LIMIT 2), 0) );
-                      """;
-
-        return sql;
-    }
+    public static SqlCommand GetNext<TSelf>( in RecordPair<TSelf> pair )
+        where TSelf : PairRecord<TSelf>, ITableRecord<TSelf> => Parse<TSelf>($"""
+                                                                              SELECT * FROM {TSelf.TableName}
+                                                                              WHERE ( id = IFNULL((SELECT MIN({nameof(IDateCreated.DateCreated)}) FROM {TSelf.TableName} WHERE {nameof(IDateCreated.DateCreated)} > {pair.DateCreated} LIMIT 2), 0) );
+                                                                              """);
+    public static SqlCommand GetNextID<TSelf>( in RecordPair<TSelf> pair )
+        where TSelf : PairRecord<TSelf>, ITableRecord<TSelf> => Parse<TSelf>($"""
+                                                                              SELECT {nameof(IUniqueID.ID)} FROM {TSelf.TableName}
+                                                                              WHERE ( id = IFNULL((SELECT MIN({nameof(IDateCreated.DateCreated)}) FROM {TSelf.TableName} WHERE {nameof(IDateCreated.DateCreated)} > {pair.DateCreated} LIMIT 2), 0) );
+                                                                              """);
 
 
-    public static SqlCommand<TSelf> GetCopy()
-    {
-        string sql = $"""
-                      CREATE TEMP TABLE tmp_mytable (LIKE {TSelf.TableName} INCLUDING DEFAULTS);
+    public static SqlCommand GetCopy<TSelf>()
+        where TSelf : TableRecord<TSelf>, ITableRecord<TSelf> => Parse<TSelf>($"""
+                                                                               CREATE TEMP TABLE tmp_mytable (LIKE {TSelf.TableName} INCLUDING DEFAULTS);
 
-                      COPY tmp_mytable (
-                      {ColumnNames(1)}
-                      )
-                      FROM STDIN;
+                                                                               COPY tmp_mytable (
+                                                                               {TSelf.MetaData.ColumnNames(1)}
+                                                                               )
+                                                                               FROM STDIN;
 
-                      INSERT INTO {TSelf.TableName}
-                      SELECT *
-                      FROM tmp_mytable
-                      RETURNING {nameof(IUniqueID.ID).SqlName()};      
-                      """;
-
-        return sql;
-    }
-    public static SqlCommand<TSelf> GetInsert( TSelf record )
+                                                                               INSERT INTO {TSelf.TableName}
+                                                                               SELECT *
+                                                                               FROM tmp_mytable
+                                                                               RETURNING {nameof(IUniqueID.ID)};      
+                                                                               """);
+    public static SqlCommand GetInsert<TSelf>( TSelf record )
+        where TSelf : TableRecord<TSelf>, ITableRecord<TSelf>
     {
         PostgresParameters parameters = record.ToDynamicParameters();
 
-        string sql = $"""
-                      INSERT INTO {TSelf.TableName} 
-                      (
-                      {ColumnNames(1)}
-                      )
-                      VALUES
-                      (
-                      {parameters.GetVariableNames(1)}
-                      )
-                      RETURNING {nameof(IUniqueID.ID).SqlName()};
-                      """;
-
-        return new SqlCommand<TSelf>(sql, in parameters);
+        return Parse<TSelf>($"""
+                             INSERT INTO {TSelf.TableName} 
+                             (
+                             {TSelf.MetaData.ColumnNames(1)}
+                             )
+                             VALUES
+                             (
+                             {parameters.VariableNames:1:1}
+                             )
+                             RETURNING {nameof(IUniqueID.ID)};
+                             """);
     }
-    public static SqlCommand<TSelf> GetInsert( IEnumerable<TSelf> records )
+    public static SqlCommand GetInsert<TSelf>( IEnumerable<TSelf> records )
+        where TSelf : TableRecord<TSelf>, ITableRecord<TSelf>
     {
         PostgresParameters parameters = PostgresParameters.Create(records);
 
-        string sql = $"""
-                      INSERT INTO {TSelf.TableName} 
-                      (
-                      {ColumnNames(1)}
-                      )
-                      VALUES
-                      (
-                      {parameters.GetVariableNames(1)}
-                      )
-                      RETURNING {nameof(IUniqueID.ID).SqlName()};
-                      """;
-
-        return new SqlCommand<TSelf>(sql, in parameters);
+        return Parse<TSelf>($"""
+                             INSERT INTO {TSelf.TableName} 
+                             (
+                             {TSelf.MetaData.ColumnNames(1)}
+                             )
+                             VALUES
+                             (
+                             {parameters.VariableNames:1}
+                             )
+                             RETURNING {nameof(IUniqueID.ID)};
+                             """);
     }
-    public static SqlCommand<TSelf> GetInsert( params ReadOnlySpan<TSelf> records )
+    public static SqlCommand GetInsert<TSelf>( params ReadOnlySpan<TSelf> records )
+        where TSelf : TableRecord<TSelf>, ITableRecord<TSelf>
     {
         PostgresParameters parameters = PostgresParameters.Create(records);
 
-        string sql = $"""
-                      INSERT INTO {TSelf.TableName} 
-                      (
-                      {ColumnNames(1)}
-                      )
-                      VALUES
-                      (
-                      {parameters.GetVariableNames(1)}
-                      )
-                      RETURNING {nameof(IUniqueID.ID).SqlName()};
-                      """;
-
-        return new SqlCommand<TSelf>(sql, in parameters);
+        return Parse<TSelf>($"""
+                             INSERT INTO {TSelf.TableName} 
+                             (
+                             {TSelf.MetaData.ColumnNames(1)}
+                             )
+                             VALUES
+                             (
+                             {parameters.VariableNames:1}
+                             )
+                             RETURNING {nameof(IUniqueID.ID)};
+                             """);
     }
 
 
-    public static SqlCommand<TSelf> GetUpdate( TSelf record ) => new($"""
-                                                                      UPDATE {TSelf.TableName} 
-                                                                      SET 
-                                                                      {KeyValuePairs(1)} 
-                                                                      WHERE {nameof(IUniqueID.ID).SqlName()} = @{nameof(IUniqueID.ID).SqlName()};
-                                                                      """,
-                                                                     record.ToDynamicParameters());
-    public static SqlCommand<TSelf> GetTryInsert( TSelf record, bool matchAll, in PostgresParameters parameters )
+    public static SqlCommand GetUpdate<TSelf>( TSelf record )
+        where TSelf : TableRecord<TSelf>, ITableRecord<TSelf>
+    {
+        PostgresParameters parameters = record.ToDynamicParameters();
+
+        return Parse<TSelf>($"""
+                             UPDATE {TSelf.TableName} 
+                             SET 
+                             {parameters} 
+                             WHERE {nameof(IUniqueID.ID)} = @{nameof(IUniqueID.ID)};
+                             """);
+    }
+    public static SqlCommand GetTryInsert<TSelf>( TSelf record, in PostgresParameters parameters )
+        where TSelf : TableRecord<TSelf>, ITableRecord<TSelf>
     {
         PostgresParameters param = record.ToDynamicParameters().With(in parameters);
 
-        string sql = $"""
-                      IF NOT EXISTS (
-                          SELECT * FROM {TSelf.TableName} 
-                          WHERE 
-                          {parameters.KeyValuePairs(matchAll, 2)}
-                      )
+        return Parse<TSelf>($"""
+                             IF NOT EXISTS (
+                             SELECT * FROM {TSelf.TableName} 
+                             WHERE 
+                             {parameters.KeyValuePairs:2}
+                             )
 
-                      BEGIN
-                      INSERT INTO {TSelf.TableName}
-                      (
-                      {ColumnNames(1)}
-                      )
-                      VALUES
-                      (
-                      {parameters.GetVariableNames(1)}
-                      ) 
-                      RETURNING {nameof(IUniqueID.ID).SqlName()};
-                      END
+                             BEGIN
+                             INSERT INTO {TSelf.TableName}
+                             (
+                             {TSelf.MetaData.ColumnNames(1)}
+                             )
+                             VALUES
+                             (
+                             {param.VariableNames:1}
+                             ) 
+                             RETURNING {nameof(IUniqueID.ID)};
+                             END
 
-                      ELSE
-                      BEGIN
-                      SELECT {nameof(IUniqueID.ID).SqlName()} = '{Guid.Empty}';
-                      END
-                      """;
-
-        return new SqlCommand<TSelf>(sql, param);
+                             ELSE
+                             BEGIN
+                             SELECT {Guid.Empty};
+                             END
+                             """);
     }
-    public static SqlCommand<TSelf> InsertOrUpdate( TSelf record, bool matchAll, in PostgresParameters parameters )
+    public static SqlCommand InsertOrUpdate<TSelf>( TSelf record, in PostgresParameters parameters )
+        where TSelf : TableRecord<TSelf>, ITableRecord<TSelf>
     {
-        PostgresParameters param = record.ToDynamicParameters().With(parameters);
+        PostgresParameters recordParameters = record.ToDynamicParameters();
 
-        string sql = $"""
-                      IF NOT EXISTS (
-                      SELECT * FROM {TSelf.TableName}
-                      WHERE
-                      {parameters.KeyValuePairs(matchAll, 2)}
-                      )
-                      BEGIN
-                      INSERT INTO {TSelf.TableName}
-                      (
-                      {ColumnNames(1)}
-                      ) 
-                      VALUES 
-                      (
-                      {param.GetVariableNames(1)}
-                      ) 
-                      RETURNING {nameof(IUniqueID.ID).SqlName()};
-                      END
+        return Parse<TSelf>($"""
+                             IF NOT EXISTS (
+                             SELECT * FROM {TSelf.TableName}
+                             WHERE
+                             {parameters.KeyValuePairs:2}
+                             )
+                             BEGIN
+                             INSERT INTO {TSelf.TableName}
+                             (
+                             {TSelf.MetaData.ColumnNames(1)}
+                             ) 
+                             VALUES 
+                             (
+                             {recordParameters.VariableNames:1}
+                             ) 
+                             RETURNING {nameof(IUniqueID.ID)};
+                             END
 
-                      ELSE
-                      BEGIN
-                      UPDATE {TSelf.TableName} 
-                        SET 
-                        {KeyValuePairs(2)}
-                        WHERE {nameof(IUniqueID.ID).SqlName()} = @{nameof(IUniqueID.ID).SqlName()};
-                        SELECT @{nameof(IUniqueID.ID).SqlName()};
-                      END
-                      """;
-
-        return new SqlCommand<TSelf>(sql, in parameters);
+                             ELSE
+                             BEGIN
+                             UPDATE {TSelf.TableName} 
+                             SET 
+                             {recordParameters.KeyValuePairs:2}
+                             WHERE {nameof(IUniqueID.ID)} = @{nameof(IUniqueID.ID)};
+                             SELECT @{nameof(IUniqueID.ID)};
+                             END
+                             """);
     }
 
 
-    private static Guid GetValue<TRecord>( RecordID<TRecord> id )
-        where TRecord : PairRecord<TRecord>, ITableRecord<TRecord> => id.Value;
-
-
-    public          bool Equals( SqlCommand<TSelf> other ) => string.Equals(SQL, other.SQL, StringComparison.InvariantCultureIgnoreCase) && Parameters.Equals(other.Parameters) && CommandType == other.CommandType && Flags == other.Flags;
-    public override bool Equals( object?           obj )   => obj is SqlCommand<TSelf> other                                             && Equals(other);
+    public          bool Equals( SqlCommand other ) => string.Equals(SQL, other.SQL, StringComparison.InvariantCultureIgnoreCase) && Parameters.Equals(other.Parameters) && CommandType == other.CommandType && Flags == other.Flags;
+    public override bool Equals( object?    obj )   => obj is SqlCommand other                                                    && Equals(other);
     public override int GetHashCode()
     {
         HashCode hashCode = new();
@@ -426,6 +350,6 @@ public readonly struct SqlCommand<TSelf>( string sql, in PostgresParameters para
     }
 
 
-    public static bool operator ==( SqlCommand<TSelf> left, SqlCommand<TSelf> right ) => left.Equals(right);
-    public static bool operator !=( SqlCommand<TSelf> left, SqlCommand<TSelf> right ) => !left.Equals(right);
+    public static bool operator ==( SqlCommand left, SqlCommand right ) => left.Equals(right);
+    public static bool operator !=( SqlCommand left, SqlCommand right ) => !left.Equals(right);
 }

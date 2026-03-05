@@ -268,8 +268,7 @@ public abstract partial class Database
 
     public async ValueTask<ImmutableArray<UserLoginProviderRecord>> GetUserLoginInfoRecords( string purpose, UserRecord user, CancellationToken token )
     {
-        HashSet<UserLoginProviderRecord> list = await UserLoginProviders.Where(true, UserLoginProviderRecord.GetDynamicParameters(user, purpose), token)
-                                                                        .ToHashSet(token);
+        HashSet<UserLoginProviderRecord> list = await UserLoginProviders.Where(UserLoginProviderRecord.GetDynamicParameters(user, purpose), token).ToHashSet(token);
 
         return [..list];
     }
@@ -291,11 +290,7 @@ public abstract partial class Database
 
         if ( !string.IsNullOrWhiteSpace(key) )
         {
-            if ( long.TryParse(token, out _) )
-            {
-                return OneTimePassword.Create(key, Options.TokenIssuer)
-                                      .ValidateToken(token);
-            }
+            if ( long.TryParse(token, out _) ) { return OneTimePassword.Create(key, Options.TokenIssuer).ValidateToken(token); }
 
             JwtSecurityTokenHandler   handler    = new();
             TokenValidationParameters parameters = await GetTokenValidationParameters(cancellationToken);
@@ -315,7 +310,6 @@ public abstract partial class Database
     {
         if ( !user.IsValidID() || string.IsNullOrWhiteSpace(user.UserName) ) { return false; }
 
-        return await UserLoginProviders.Where(true, UserLoginProviderRecord.GetDynamicParameters(user), token)
-                                       .AnyAsync(token);
+        return await UserLoginProviders.Where(UserLoginProviderRecord.GetDynamicParameters(user), token).AnyAsync(token);
     }
 }

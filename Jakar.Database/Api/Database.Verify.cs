@@ -73,7 +73,7 @@ public abstract partial class Database
 
     protected virtual async ValueTask<ErrorOrResult<UserRecord>> VerifyLogin( NpgsqlConnection connection, NpgsqlTransaction? transaction, ILoginRequest request, CancellationToken token = default )
     {
-        UserRecord? record = await Users.Get(connection, transaction, true, UserRecord.GetDynamicParameters(request), token);
+        UserRecord? record = await Users.Get(connection, transaction, UserRecord.GetDynamicParameters(request), token);
         if ( record is null ) { return Error.NotFound(); }
 
         try
@@ -229,7 +229,7 @@ public abstract partial class Database
     public virtual async ValueTask<ErrorOrResult<SessionToken>> Register<TUser>( NpgsqlConnection connection, NpgsqlTransaction? transaction, ILoginRequest<TUser> request, CancellationToken token = default )
         where TUser : class, IUserData<Guid>, IUserDetails
     {
-        UserRecord? record = await Users.Get(connection, transaction, true, UserRecord.GetDynamicParameters(request), token);
+        UserRecord? record = await Users.Get(connection, transaction, UserRecord.GetDynamicParameters(request), token);
         if ( record is not null ) { return Error.Conflict($"{nameof(UserRecord.UserName)} is already taken. Chose another {nameof(request.UserLogin)}"); }
 
         record = CreateNewUser(request);

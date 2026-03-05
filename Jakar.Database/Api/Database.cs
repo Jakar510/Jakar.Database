@@ -33,8 +33,7 @@ public abstract partial class Database : Randoms, IConnectableDbRoot, IHealthChe
     public static      DataProtector                    DataProtector    { get; set; } = new(RSAEncryptionPadding.OaepSHA1);
 
     public string ClassName =>
-        _className ??= GetType()
-           .GetFullName();
+        _className ??= GetType().GetFullName();
 
     protected internal SecuredString?               ConnectionString          { get; set; }
     ref readonly       DbOptions IConnectableDbRoot.Options                   => ref Options;
@@ -198,7 +197,7 @@ public abstract partial class Database : Randoms, IConnectableDbRoot, IHealthChe
     public virtual async ValueTask<ErrorOrResult<SessionToken>> Register<TRequest>( NpgsqlConnection connection, NpgsqlTransaction? transaction, TRequest request, string rights, ClaimType types = default, CancellationToken token = default )
         where TRequest : ILoginRequest<UserModel>
     {
-        UserRecord? record = await Users.Get(connection, transaction, true, UserRecord.GetDynamicParameters(request), token);
+        UserRecord? record = await Users.Get(connection, transaction, UserRecord.GetDynamicParameters(request), token);
         if ( record is not null ) { return Error.NotFound(request.UserLogin); }
 
         if ( !PasswordValidator.Validate(request.UserPassword, out PasswordValidator.Results results) ) { return Error.Unauthorized(in results); }
@@ -212,7 +211,7 @@ public abstract partial class Database : Randoms, IConnectableDbRoot, IHealthChe
     public virtual async IAsyncEnumerable<TSelf> Where<TSelf>( NpgsqlConnection connection, NpgsqlTransaction? transaction, string sql, PostgresParameters parameters, [EnumeratorCancellation] CancellationToken token = default )
         where TSelf : TableRecord<TSelf>, ITableRecord<TSelf>, IDateCreated
     {
-        SqlCommand<TSelf>            command = new(sql, parameters);
+        SqlCommand                   command = new(sql, parameters);
         await using NpgsqlCommand    cmd     = command.ToCommand(connection, transaction);
         await using NpgsqlDataReader reader  = await cmd.ExecuteReaderAsync(token);
         await foreach ( TSelf record in reader.CreateAsync<TSelf>(token) ) { yield return record; }
@@ -221,7 +220,7 @@ public abstract partial class Database : Randoms, IConnectableDbRoot, IHealthChe
         where TValue : struct
         where TSelf : TableRecord<TSelf>, ITableRecord<TSelf>
     {
-        SqlCommand<TSelf>            command = SqlCommand<TSelf>.Create(sql, parameters);
+        SqlCommand                   command = new(sql, parameters);
         await using NpgsqlCommand    cmd     = command.ToCommand(connection, transaction);
         await using NpgsqlDataReader reader  = await cmd.ExecuteReaderAsync(token);
         while ( await reader.ReadAsync(token) ) { yield return reader.GetFieldValue<TValue>(0); }

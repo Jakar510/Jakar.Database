@@ -18,12 +18,13 @@ public readonly record struct RecordID<TKey, TValue>( RecordID<TKey> Key, Record
 
 
 [DefaultMember(nameof(Empty))]
-public readonly struct RecordID<TSelf>( Guid id ) : IEqualComparable<RecordID<TSelf>>, ISpanFormattable, ISpanParsable<RecordID<TSelf>>, IRegisterDapperTypeHandlers
+public readonly struct RecordID<TSelf>( Guid id ) : IUniqueID, IEqualComparable<RecordID<TSelf>>, ISpanFormattable, ISpanParsable<RecordID<TSelf>>, IRegisterDapperTypeHandlers
     where TSelf : PairRecord<TSelf>, ITableRecord<TSelf>
 {
     public static readonly RecordID<TSelf> Empty = new(Guid.Empty);
     public readonly        string          key   = $"{TSelf.TableName}:{id}";
     public readonly        Guid            Value = id;
+    Guid IUniqueID<Guid>.                  ID => Value;
 
 
     [Pure] public static RecordID<TSelf>  New()                                                          => New(DateTimeOffset.UtcNow);
@@ -89,7 +90,8 @@ public readonly struct RecordID<TSelf>( Guid id ) : IEqualComparable<RecordID<TS
     public static implicit operator RecordID<TSelf>( TSelf record ) => record.ID;
 
 
-    public UInt128 GetHash() => key.Hash128();
+    public static Guid    GetValue( RecordID<TSelf> id ) => id.Value;
+    public        UInt128 GetHash()                      => key.Hash128();
     [Pure] public PostgresParameters ToDynamicParameters()
     {
         PostgresParameters parameters = PostgresParameters.Create<TSelf>();

@@ -13,7 +13,7 @@ public partial class DbTable<TSelf>
 
     public virtual async ValueTask<ErrorOrResult<TSelf>> First( NpgsqlConnection connection, NpgsqlTransaction? transaction, CancellationToken token = default )
     {
-        SqlCommand<TSelf> command = SqlCommand<TSelf>.GetFirst();
+        SqlCommand command = SqlCommand.GetFirst<TSelf>();
 
         try
         {
@@ -26,7 +26,7 @@ public partial class DbTable<TSelf>
     }
     public virtual async ValueTask<ErrorOrResult<TSelf>> FirstOrDefault( NpgsqlConnection connection, NpgsqlTransaction? transaction, CancellationToken token = default )
     {
-        SqlCommand<TSelf> command = SqlCommand<TSelf>.GetFirst();
+        SqlCommand command = SqlCommand.GetFirst<TSelf>();
 
         try
         {

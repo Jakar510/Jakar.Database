@@ -12,7 +12,7 @@ public partial class DbTable<TSelf>
 
     public virtual async ValueTask<ErrorOrResult<TSelf>> Last( NpgsqlConnection connection, NpgsqlTransaction? transaction, CancellationToken token = default )
     {
-        SqlCommand<TSelf> command = SqlCommand<TSelf>.GetLast();
+        SqlCommand command = SqlCommand.GetLast<TSelf>();
 
         try
         {
@@ -29,7 +29,7 @@ public partial class DbTable<TSelf>
 
     public virtual async ValueTask<ErrorOrResult<TSelf>> LastOrDefault( NpgsqlConnection connection, NpgsqlTransaction? transaction, CancellationToken token = default )
     {
-        SqlCommand<TSelf> command = SqlCommand<TSelf>.GetLast();
+        SqlCommand command = SqlCommand.GetLast<TSelf>();
 
         try
         {

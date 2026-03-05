@@ -662,7 +662,7 @@ public sealed record UserRecord : PairRecord<UserRecord>, ITableRecord<UserRecor
 
         if ( types.HasFlag(ClaimType.WebSite) ) { parameters.Add(nameof(Website), claims.Single(static x => x.IsWebSite()).Value); }
 
-        return db.Users.Get(connection, transaction, true, parameters, token);
+        return db.Users.Get(connection, transaction, parameters, token);
     }
     public static async IAsyncEnumerable<UserRecord> TryFromClaims( NpgsqlConnection connection, NpgsqlTransaction? transaction, Database db, Claim claim, [EnumeratorCancellation] CancellationToken token = default )
     {
@@ -703,7 +703,7 @@ public sealed record UserRecord : PairRecord<UserRecord>, ITableRecord<UserRecor
                 break;
         }
 
-        await foreach ( UserRecord record in db.Users.Where(connection, transaction, true, parameters, token) ) { yield return record; }
+        await foreach ( UserRecord record in db.Users.Where(connection, transaction, parameters, token) ) { yield return record; }
     }
 
     #endregion Claims

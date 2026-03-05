@@ -43,7 +43,7 @@ public partial class DbTable<TSelf> : IDbTable<TSelf>
     public IAsyncEnumerable<TSelf> All( CancellationToken token = default ) => this.Call(All, token);
     public virtual async IAsyncEnumerable<TSelf> All( NpgsqlConnection connection, NpgsqlTransaction? transaction, [EnumeratorCancellation] CancellationToken token = default )
     {
-        SqlCommand<TSelf>            command = SqlCommand<TSelf>.GetAll();
+        SqlCommand           command = SqlCommand.GetAll<TSelf>();
         await using NpgsqlCommand    cmd     = command.ToCommand(connection, transaction);
         await using NpgsqlDataReader reader  = await cmd.ExecuteReaderAsync(token);
         await foreach ( TSelf record in reader.CreateAsync<TSelf>(token) ) { yield return record; }
@@ -62,8 +62,8 @@ public partial class DbTable<TSelf> : IDbTable<TSelf>
     }
 
 
-    public ValueTask<TResult> Call<TResult>( SqlCommand<TSelf> sql, Func<NpgsqlDataReader, CancellationToken, ValueTask<TResult>> func, CancellationToken token = default ) => this.TryCall(Call, sql, func, token);
-    public virtual async ValueTask<TResult> Call<TResult>( NpgsqlConnection connection, NpgsqlTransaction? transaction, SqlCommand<TSelf> command, Func<NpgsqlDataReader, CancellationToken, ValueTask<TResult>> func, CancellationToken token = default )
+    public ValueTask<TResult> Call<TResult>( SqlCommand sql, Func<NpgsqlDataReader, CancellationToken, ValueTask<TResult>> func, CancellationToken token = default ) => this.TryCall(Call, sql, func, token);
+    public virtual async ValueTask<TResult> Call<TResult>( NpgsqlConnection connection, NpgsqlTransaction? transaction, SqlCommand command, Func<NpgsqlDataReader, CancellationToken, ValueTask<TResult>> func, CancellationToken token = default )
     {
         try
         {
@@ -156,7 +156,7 @@ public partial class DbTable<TSelf> : IDbTable<TSelf>
 
     public async ValueTask<int> Execute( NpgsqlConnection connection, NpgsqlTransaction? transaction, string sql, PostgresParameters parameters, CancellationToken token )
     {
-        SqlCommand<TSelf>         command = new(sql, parameters);
+        SqlCommand        command = new(sql, parameters);
         await using NpgsqlCommand cmd     = command.ToCommand(connection, transaction);
         return await cmd.ExecuteNonQueryAsync(token);
     }

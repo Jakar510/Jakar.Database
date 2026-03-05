@@ -202,7 +202,7 @@ public sealed record AddressRecord : OwnedTableRecord<AddressRecord>, IAddress<A
                                .Value);
         }
 
-        return await db.Addresses.Get(connection, transaction, true, parameters, token);
+        return await db.Addresses.Get(connection, transaction, parameters, token);
 
 
         static bool hasFlag( ClaimType value, ClaimType flag ) => ( value & flag ) != 0;
@@ -234,7 +234,7 @@ public sealed record AddressRecord : OwnedTableRecord<AddressRecord>, IAddress<A
                 break;
         }
 
-        await foreach ( AddressRecord record in db.Addresses.Where(connection, transaction, true, parameters, token) ) { yield return record; }
+        await foreach ( AddressRecord record in db.Addresses.Where(connection, transaction, parameters, token) ) { yield return record; }
     }
 
 

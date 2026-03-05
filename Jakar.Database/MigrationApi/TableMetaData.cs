@@ -147,14 +147,14 @@ public class TableMetaData<TSelf> : ITableMetaData
 
     public StringBuilder ColumnNames( int indentLevel )
     {
-        int           length = Columns.Sum(static x => x.ColumnName.Length + 2) + Properties.Count * indentLevel * 4;
+        int           length = ( MaxLength_ColumnName + 2 ) * Count + Count * 4 * indentLevel;
         StringBuilder sb     = new(length);
         int           index  = 0;
 
         foreach ( string columnName in Columns.Select(static x => x.ColumnName) )
         {
             sb.Append(' ', indentLevel * 4).Append(columnName);
-            if ( index++ < Count - 1 ) { sb.Append(',').Append('\n'); }
+            if ( index++ < Count - 1 ) { sb.Append(",\n"); }
         }
 
         return sb;
@@ -163,14 +163,14 @@ public class TableMetaData<TSelf> : ITableMetaData
 
     public StringBuilder VariableNames( int indentLevel )
     {
-        int           length = Columns.Sum(static x => x.VariableName.Length + 2) + Properties.Count * 4 * indentLevel;
+        int           length = ( MaxLength_Variables + 2 ) * Count + Count * 4 * indentLevel;
         StringBuilder sb     = new(length);
         int           index  = 0;
 
         foreach ( string columnName in Columns.Select(x => x.VariableName) )
         {
             sb.Append(' ', indentLevel * 4).Append(columnName);
-            if ( index++ < Count - 1 ) { sb.Append(',').Append('\n'); }
+            if ( index++ < Count - 1 ) { sb.Append(",\n"); }
         }
 
         return sb;
@@ -179,14 +179,14 @@ public class TableMetaData<TSelf> : ITableMetaData
 
     public StringBuilder KeyValuePairs( int indentLevel )
     {
-        int           length = Columns.Sum(static x => x.KeyValuePair.Length + 2) + Properties.Count * 4 * indentLevel;
+        int           length = ( MaxLength_KeyValuePair + 2 ) * Count + Count * 4 * indentLevel;
         StringBuilder sb     = new(length);
         int           index  = 0;
-        
+
         foreach ( string columnName in Columns.Select(static x => x.KeyValuePair) )
         {
             sb.Append(' ', indentLevel * 4).Append(columnName);
-            if ( index++ < Count - 1 ) { sb.Append(',').Append('\n'); }
+            if ( index++ < Count - 1 ) { sb.Append(",\n"); }
         }
 
         return sb;

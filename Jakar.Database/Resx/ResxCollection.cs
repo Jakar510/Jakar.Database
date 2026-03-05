@@ -33,8 +33,8 @@ public sealed class ResxCollection : IResxCollection
     public async ValueTask Init( NpgsqlConnection connection, NpgsqlTransaction? transaction, IResxProvider provider, CancellationToken token = default )
     {
         __rows.Clear();
-        SqlCommand<ResxRowRecord> command = provider.Get;
-        await foreach ( ResxRowRecord record in command.ExecuteAsync(connection, transaction, token) ) { __rows.Add(record); }
+        SqlCommand command = provider.Get;
+        await foreach ( ResxRowRecord record in command.ExecuteAsync<ResxRowRecord>(connection, transaction, token) ) { __rows.Add(record); }
     }
 
 

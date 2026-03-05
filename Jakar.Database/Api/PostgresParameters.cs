@@ -11,18 +11,21 @@ namespace Jakar.Database;
 public readonly struct PostgresParameters : IEquatable<PostgresParameters>
 {
     public readonly   ITableMetaData                         Table;
-    internal readonly Dictionary<int, List<NpgsqlParameter>> Groups;
+    internal readonly Dictionary<int, List<NpgsqlParameter>> Groups = new() { [0] = [] };
 
 
-    internal List<NpgsqlParameter> Params => Groups[0];
-    public   int                   Count  => Groups.Sum(static x => x.Value.Count);
+    public   PostgresParameters    ColumnNames   => this;
+    public   PostgresParameters    VariableNames => this;
+    public   PostgresParameters    KeyValuePairs => this;
+    internal List<NpgsqlParameter> Params        => Groups[0];
+    public   int                   Count         => Groups.Sum(static x => x.Value.Count);
 
     public ValueEnumerable<SelectMany<FromDictionary<int, List<NpgsqlParameter>>, KeyValuePair<int, List<NpgsqlParameter>>, NpgsqlParameter>, NpgsqlParameter> Parameters => Groups.AsValueEnumerable().SelectMany(static x => x.Value);
 
     public int                                                                                              ParameterCount     => Parameters.Count();
     public int                                                                                              Capacity           => Groups.Capacity;
     public bool                                                                                             IsGrouped          => Groups.Count > 1;
-    public PooledArray<string>                                                                              ParameterNameArray { [Pure] [MustDisposeResource] get => Parameters.Select(x => x.ParameterName).ToArrayPool(); }
+    public PooledArray<string>                                                                              ParameterNameArray { [Pure] [MustDisposeResource] get => Parameters.Select(static x => x.ParameterName).ToArrayPool(); }
     public ValueEnumerable<FromList<NpgsqlParameter>, NpgsqlParameter>                                      Values             { [Pure] get => Params.AsValueEnumerable(); }
     public ValueEnumerable<ListSelect<NpgsqlParameter, string>, string>                                     ParameterNames     { [Pure] get => Values.Select(static x => x.ParameterName); }
     public ValueEnumerable<DistinctBy<FromList<NpgsqlParameter>, NpgsqlParameter, string>, NpgsqlParameter> SourceProperties   { [Pure] get => Values.DistinctBy(static x => x.SourceColumn); }
@@ -33,9 +36,89 @@ public readonly struct PostgresParameters : IEquatable<PostgresParameters>
     public PostgresParameters() => throw new InvalidOperationException($"Use {nameof(PostgresParameters)}.{nameof(Create)} instead.");
     internal PostgresParameters( ITableMetaData table )
     {
-        Table  = table;
-        Groups = new Dictionary<int, List<NpgsqlParameter>> { [0] = new(Math.Max(table.Count, DEFAULT_CAPACITY)) };
+        Table = table;
+        Params.EnsureCapacity(table.Count);
     }
+
+
+    /*
+    internal StringBuilder GetParameterString( ReadOnlySpan<char> format ) => GetParameterString(int.TryParse(format, out int indentLevel)
+                                                                                                     ? indentLevel
+                                                                                                     : 1);
+    internal StringBuilder GetParameterString( int indentLevel )
+    {
+        int           length = ParameterNames.Sum(static x => x.Length + 10) + Params.Count * indentLevel * 4;
+        StringBuilder sb     = new(length);
+        int           index  = 0;
+        int           count  = Count;
+
+        foreach ( string value in ParameterNames )
+        {
+            sb.Append(' ', indentLevel * 4).Append('@').Append(value);
+
+            if ( index++ < count - 1 ) { sb.Append(",\n"); }
+        }
+
+        return sb;
+    }
+    */
+
+    internal StringBuilder GetKeyValuePairs( ReadOnlySpan<char> format ) => GetKeyValuePairs(int.TryParse(format, out int indentLevel)
+                                                                                                 ? indentLevel
+                                                                                                 : 1);
+    internal StringBuilder GetKeyValuePairs( int indentLevel )
+    {
+        int           length = Table.Properties.Values.Sum(static x => x.KeyValuePair.Length) + Params.Count * ( indentLevel * 4 + 3 );
+        StringBuilder sb     = new(length);
+        int           index  = 0;
+        int           count  = Count;
+
+        foreach ( NpgsqlParameter parameter in SourceProperties )
+        {
+            sb.Append(' ', indentLevel * 4).Append($" {parameter.SourceColumn} = @{parameter.ParameterName} ").Append(",\n");
+
+            if ( index++ < count - 1 ) { sb.Append("AND"); }
+        }
+
+        return sb;
+    }
+
+    internal StringBuilder GetVariableNames( ReadOnlySpan<char> format ) => GetVariableNames(int.TryParse(format, out int indentLevel)
+                                                                                                 ? indentLevel
+                                                                                                 : 1);
+    internal StringBuilder GetVariableNames( int indentLevel )
+    {
+        if ( !IsGrouped ) { return Table.VariableNames(indentLevel); }
+
+        int           length = Table.MaxLength_ColumnName * Table.Count + Parameters.Sum(static x => x.ParameterName.Length + 10);
+        StringBuilder sb     = new(length);
+        int           index  = 0;
+        int           count  = Count;
+
+        for ( int i = 0; i < Groups.Count; i++ )
+        {
+            indentLevel--;
+            sb.Append(' ', indentLevel * 4).Append("(");
+            indentLevel++;
+
+            foreach ( NpgsqlParameter column in Groups[i] )
+            {
+                sb.Append(' ', indentLevel * 4).Append('@').Append(column.ParameterName).Append('_').Append(i);
+
+                if ( index++ < count - 1 ) { sb.Append(",\n"); }
+            }
+
+            sb.Append(")");
+            if ( i < Groups.Count ) { sb.Append(",\n"); }
+        }
+
+        return sb;
+    }
+
+    public StringBuilder GetColumnNames( ReadOnlySpan<char> format ) => GetColumnNames(int.TryParse(format, out int indentLevel)
+                                                                                           ? indentLevel
+                                                                                           : 1);
+    public StringBuilder GetColumnNames( int indentLevel ) => Table.ColumnNames(indentLevel);
 
 
     public static PostgresParameters Create<TSelf>()
@@ -91,80 +174,10 @@ public readonly struct PostgresParameters : IEquatable<PostgresParameters>
         where T : struct, Enum => Add(Table[propertyName].ToParameter(value, parameterName, direction, sourceVersion));
     public PostgresParameters Add( string propertyName, object? value, [CallerArgumentExpression(nameof(value))] string parameterName = EMPTY, ParameterDirection direction = ParameterDirection.Input, DataRowVersion sourceVersion = DataRowVersion.Default ) =>
         Add(Table[propertyName].ToParameter(value, parameterName, direction, sourceVersion));
-
     public PostgresParameters Add( NpgsqlParameter parameter )
     {
         Params.Add(parameter);
         return this;
-    }
-
-
-    public StringBuilder KeyValuePairs( bool matchAll, int indentLevel )
-    {
-        string        match  = matchAll.GetAndOr();
-        int           count  = Count;
-        int           length = Table.Properties.Values.Sum(static x => x.KeyValuePair.Length) + Params.Count * ( indentLevel * 4 + 3 );
-        StringBuilder sb     = new(length);
-        int           index  = 0;
-
-        foreach ( NpgsqlParameter parameter in SourceProperties )
-        {
-            sb.Append($" {parameter.SourceColumn} = @{parameter.ParameterName} ").Append(",\n").Append(' ', indentLevel * 4);
-
-            ;
-            if ( index++ < count - 1 ) { sb.Append(match); }
-        }
-
-        return sb;
-    }
-    public StringBuilder GetParameterString( int indentLevel )
-    {
-        int           length = ParameterNames.Sum(static x => x.Length + 10) + Params.Count * indentLevel * 4;
-        StringBuilder sb     = new(length);
-        int           count  = Count;
-        int           index  = 0;
-
-        foreach ( string value in ParameterNames )
-        {
-            sb.Append('@').Append(value);
-
-            if ( index++ < count - 1 ) { sb.Append(",\n").Append(' ', indentLevel * 4); }
-        }
-
-        return sb;
-    }
-    public StringBuilder GetVariableNames( int indentLevel )
-    {
-        int           length = Table.MaxLength_ColumnName * Table.Count + Parameters.Sum(static x => x.ParameterName.Length + 10);
-        StringBuilder sb     = new(length);
-        int           count  = Count;
-        int           index  = 0;
-
-        if ( IsGrouped )
-        {
-            for ( int i = 0; i < Groups.Count; i++ )
-            {
-                foreach ( NpgsqlParameter column in Groups[i] )
-                {
-                    sb.Append('@').Append(column.ParameterName).Append('_').Append(i);
-
-                    if ( index++ < count - 1 ) { sb.Append(",\n").Append(' ', indentLevel * 4); }
-                }
-
-                if ( i < Groups.Count ) { sb.Append(',').Append('\n'); }
-            }
-        }
-        else
-        {
-            foreach ( NpgsqlParameter column in Values )
-            {
-                sb.Append('@').Append(column.ParameterName);
-
-                if ( index++ < count - 1 ) { sb.Append(",\n").Append(' ', indentLevel * 4); }
-            }
-        }
-
-        return sb;
     }
 
 

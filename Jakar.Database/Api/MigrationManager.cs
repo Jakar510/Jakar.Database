@@ -121,10 +121,7 @@ public class MigrationManager
     }
     public virtual async ValueTask<ImmutableArray<MigrationRecord>> AllMigrations( NpgsqlConnection connection, NpgsqlTransaction? transaction, CancellationToken token )
     {
-        SqlCommand<MigrationRecord> command = MigrationRecord.SelectSql;
-
-        ImmutableArray<MigrationRecord> records = await command.ExecuteAsync(connection, transaction, token).ToImmutableArray(__migrationFactories.Count, token);
-
+        ImmutableArray<MigrationRecord> records = await MigrationRecord.SelectSql.ExecuteAsync<MigrationRecord>(connection, transaction, token).ToImmutableArray(__migrationFactories.Count, token);
         return records;
     }
 
@@ -132,9 +129,7 @@ public class MigrationManager
     public async ValueTask ApplyMigrations( CancellationToken token = default )
     {
         await using NpgsqlConnection connection = await _db.ConnectAsync(token);
-
-        SqlCommand<MigrationRecord> command = MigrationRecord.TryCreateSql;
-        await command.ExecuteNonQueryAsync(connection, null, token);
+        await MigrationRecord.TryCreateSql.ExecuteNonQueryAsync(connection, null, token);
 
         await using NpgsqlTransaction transaction = await connection.BeginTransactionAsync(token);
 
@@ -165,25 +160,20 @@ public class MigrationManager
     {
         try
         {
-            SqlCommand<MigrationRecord> command = self.SQL;
+            SqlCommand command = new(self.SQL);
             await command.ExecuteNonQueryAsync(connection, transaction, token);
             self.AppliedOn = DateTimeOffset.UtcNow;
         }
         catch ( Exception e ) { throw new DbSqlException(self.SQL, e); }
 
-        PostgresParameters parameters = PostgresParameters.Create<MigrationRecord>();
-        parameters.Add(nameof(MigrationRecord.MigrationID), self.MigrationID);
-        parameters.Add(nameof(MigrationRecord.Description), self.Description);
-        parameters.Add(nameof(MigrationRecord.ReferenceID), self.ReferenceID);
-        parameters.Add(nameof(MigrationRecord.AppliedOn),   self.AppliedOn);
+        SqlCommand migrationRecord = self.ApplySql();
 
         try
         {
-            SqlCommand<MigrationRecord> migrationRecord = new(MigrationRecord.ApplySql, parameters);
             await migrationRecord.ExecuteNonQueryAsync(connection, transaction, token);
             await transaction.SaveAsync(self.RollbackID, token);
         }
-        catch ( Exception e ) { throw new DbSqlException(MigrationRecord.ApplySql, e, parameters) { RollbackID = self.RollbackID }; }
+        catch ( Exception e ) { throw new DbSqlException(migrationRecord, e) { RollbackID = self.RollbackID }; }
     }
 
 

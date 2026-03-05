@@ -21,13 +21,11 @@ public readonly ref struct SqlInterpolatedStringHandler<TSelf>( int literalLengt
 
 
     public void AppendLiteral( string value ) => __sb.Append(value);
-    public void AppendFormatted<T>( T value, [CallerArgumentExpression(nameof(value))] string paramName = EMPTY )
+    public void AppendFormatted<T>( T value, ReadOnlySpan<char> format = default, [CallerArgumentExpression(nameof(value))] string paramName = EMPTY )
     {
-        bool isTableName = paramName.Contains(nameof(UserRecord.TABLE_NAME)) || paramName.Contains(nameof(UserRecord.TableName));
+        bool isParameter = __sb.Length > 0 && __sb[^1] == '@';
         bool isNameOf    = paramName.StartsWith("nameof(", StringComparison.Ordinal);
         if ( isNameOf && value is string s ) { __columnNames.Push(s); }
-
-        bool isParameter = __sb.Length > 0 && __sb[^1] == '@';
 
         try
         {
@@ -57,7 +55,7 @@ public readonly ref struct SqlInterpolatedStringHandler<TSelf>( int literalLengt
                     __sb.Append(n.SqlName());
                     return;
 
-                case string n when isTableName || isParameter:
+                case string n when isParameter || paramName.Contains(nameof(UserRecord.TABLE_NAME)) || paramName.Contains(nameof(UserRecord.TableName)) || string.Equals(paramName, "columnName", StringComparison.Ordinal):
                     __sb.Append(n);
                     return;
 
@@ -76,6 +74,26 @@ public readonly ref struct SqlInterpolatedStringHandler<TSelf>( int literalLengt
 
                 case StringBuilder n:
                     foreach ( ReadOnlyMemory<char> memory in n.GetChunks() ) { __sb.Append(memory.Span); }
+
+                    return;
+
+                case PostgresParameters n when paramName.Contains(nameof(PostgresParameters.ColumnNames)):
+                    __parameters.With(n);
+                    __sb.Append(n.GetColumnNames(format));
+                    return;
+
+                case PostgresParameters n when paramName.Contains(nameof(PostgresParameters.VariableNames)):
+                    __parameters.With(n);
+                    __sb.Append(n.GetKeyValuePairs(format));
+                    return;
+
+                case PostgresParameters n when paramName.Contains(nameof(PostgresParameters.KeyValuePairs)):
+                    __parameters.With(n);
+                    __sb.Append(n.GetKeyValuePairs(format));
+                    return;
+
+                case PostgresParameters n:
+                    __parameters.With(n);
 
                     return;
 
@@ -330,5 +348,5 @@ public readonly ref struct SqlInterpolatedStringHandler<TSelf>( int literalLengt
 
     public override string                                                   ToString()                                                                              => __sb.ToString();
     public          (string SQL, ImmutableArray<NpgsqlParameter> Parameters) Build()                                                                                 => new(ToString(), [..__parameters.Params]);
-    public          SqlCommand<TSelf>                                        ToSqlCommand( CommandType? commandType = null, CommandFlags flags = CommandFlags.None ) => new(ToString(), __parameters, commandType, flags);
+    public          SqlCommand                                       ToSqlCommand( CommandType? commandType = null, CommandFlags flags = CommandFlags.None ) => new(ToString(), __parameters, commandType, flags);
 }

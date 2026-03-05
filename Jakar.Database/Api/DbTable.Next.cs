@@ -14,7 +14,7 @@ public partial class DbTable<TSelf>
 
     public virtual async ValueTask<ErrorOrResult<TSelf>> Next( NpgsqlConnection connection, NpgsqlTransaction? transaction, RecordPair<TSelf> pair, CancellationToken token = default )
     {
-        SqlCommand<TSelf> command = SqlCommand<TSelf>.GetNext(in pair);
+        SqlCommand command = SqlCommand.GetNext<TSelf>(in pair);
 
         try
         {
@@ -29,7 +29,7 @@ public partial class DbTable<TSelf>
 
     public virtual async ValueTask<IEnumerable<RecordPair<TSelf>>> SortedIDs( NpgsqlConnection connection, NpgsqlTransaction? transaction, CancellationToken token = default )
     {
-        SqlCommand<TSelf> command = SqlCommand<TSelf>.GetSortedID();
+        SqlCommand command = SqlCommand.GetSortedID<TSelf>();
 
         try
         {
@@ -46,7 +46,7 @@ public partial class DbTable<TSelf>
 
     public virtual async ValueTask<Guid?> NextID( NpgsqlConnection connection, NpgsqlTransaction? transaction, RecordPair<TSelf> pair, CancellationToken token = default )
     {
-        SqlCommand<TSelf> command = SqlCommand<TSelf>.GetNextID(in pair);
+        SqlCommand command = SqlCommand.GetNextID<TSelf>(in pair);
 
         try
         {

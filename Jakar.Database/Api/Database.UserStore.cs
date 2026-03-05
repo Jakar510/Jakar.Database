@@ -41,7 +41,7 @@
         public ValueTask<ErrorOrResult<UserLoginProviderRecord>> AddLoginAsync( UserRecord user, UserLoginInfo login, CancellationToken token ) => this.TryCall(AddLoginAsync, user, login, token);
         public virtual async ValueTask<ErrorOrResult<UserLoginProviderRecord>> AddLoginAsync( NpgsqlConnection connection, NpgsqlTransaction? transaction, UserRecord user, UserLoginInfo login, CancellationToken token )
         {
-            ErrorOrResult<UserLoginProviderRecord> result = await UserLoginProviders.Get(connection, transaction, true, UserLoginProviderRecord.GetDynamicParameters(user, login), token);
+            ErrorOrResult<UserLoginProviderRecord> result = await UserLoginProviders.Get(connection, transaction, UserLoginProviderRecord.GetDynamicParameters(user, login), token);
 
             if ( !result.TryGetValue(out UserLoginProviderRecord? record, out Errors? otherErrors) )
             {
@@ -64,7 +64,7 @@
             PostgresParameters parameters = PostgresParameters.Create<UserRecord>();
             parameters.Add(nameof(UserLoginProviderRecord.LoginProvider), loginProvider);
             parameters.Add(nameof(UserLoginProviderRecord.ProviderKey),   providerKey);
-            ErrorOrResult<UserLoginProviderRecord> userLoginProvider = await UserLoginProviders.Get(connection, transaction, true, parameters, token);
+            ErrorOrResult<UserLoginProviderRecord> userLoginProvider = await UserLoginProviders.Get(connection, transaction, parameters, token);
 
             if ( !userLoginProvider.TryGetValue(out UserLoginProviderRecord? mappingRecord, out Errors? errors) ) { return errors; }
 
@@ -76,12 +76,12 @@
         public virtual async ValueTask RemoveLoginAsync( NpgsqlConnection connection, NpgsqlTransaction? transaction, UserRecord user, string loginProvider, string providerKey, CancellationToken token )
         {
             PostgresParameters                        parameters = UserLoginProviderRecord.GetDynamicParameters(user, loginProvider, providerKey);
-            IAsyncEnumerable<UserLoginProviderRecord> records    = UserLoginProviders.Where(connection, transaction, true, parameters, token);
+            IAsyncEnumerable<UserLoginProviderRecord> records    = UserLoginProviders.Where(connection, transaction, parameters, token);
             await foreach ( UserLoginProviderRecord record in records ) { await UserLoginProviders.Delete(connection, transaction, record, token); }
         }
 
 
-        public         ValueTask<string?> GetAuthenticatorKeyAsync( UserRecord       user,       CancellationToken token )                                                 => this.TryCall(GetAuthenticatorKeyAsync, user, token);
+        public         ValueTask<string?> GetAuthenticatorKeyAsync( UserRecord       user,       CancellationToken  token )                                                 => this.TryCall(GetAuthenticatorKeyAsync, user, token);
         public virtual ValueTask<string?> GetAuthenticatorKeyAsync( NpgsqlConnection connection, NpgsqlTransaction? transaction, UserRecord user, CancellationToken token ) => new(user.AuthenticatorKey);
 
 
@@ -233,7 +233,7 @@
         }
 
 
-        public       ValueTask<UserRecord?> FindByEmailAsync( string           email,      CancellationToken token )                                              => this.TryCall(FindByEmailAsync, email, token);
+        public       ValueTask<UserRecord?> FindByEmailAsync( string           email,      CancellationToken  token )                                              => this.TryCall(FindByEmailAsync, email, token);
         public async ValueTask<UserRecord?> FindByEmailAsync( NpgsqlConnection connection, NpgsqlTransaction? transaction, string email, CancellationToken token ) => await Users.Get(connection, transaction, nameof(UserRecord.Email), email, token);
 
         #endregion
@@ -245,7 +245,7 @@
         public ValueTask<IdentityResult> CreateAsync( UserRecord user, CancellationToken token ) => this.TryCall(CreateAsync, user, token);
         public virtual async ValueTask<IdentityResult> CreateAsync( NpgsqlConnection connection, NpgsqlTransaction? transaction, UserRecord record, CancellationToken token )
         {
-            ErrorOrResult<UserRecord> user = await Users.Get(connection, transaction, true, UserRecord.GetDynamicParameters(record.UserName), token);
+            ErrorOrResult<UserRecord> user = await Users.Get(connection, transaction, UserRecord.GetDynamicParameters(record.UserName), token);
             if ( user.HasValue ) { return IdentityResult.Failed(new IdentityError { Description = Options.UserExists }); }
 
             await Users.Insert(connection, transaction, record, token);
@@ -327,7 +327,7 @@
         public virtual ValueTask RemoveClaimsAsync( NpgsqlConnection connection, NpgsqlTransaction? transaction, UserRecord        user, IEnumerable<Claim> claims, CancellationToken token ) => ValueTask.CompletedTask;
 
 
-        public         ValueTask ReplaceClaimAsync( UserRecord       user,       Claim             claim,       Claim      newClaim, CancellationToken token )                                          => this.TryCall(ReplaceClaimAsync, user, claim, newClaim, token);
+        public         ValueTask ReplaceClaimAsync( UserRecord       user,       Claim              claim,       Claim      newClaim, CancellationToken token )                                          => this.TryCall(ReplaceClaimAsync, user, claim, newClaim, token);
         public virtual ValueTask ReplaceClaimAsync( NpgsqlConnection connection, NpgsqlTransaction? transaction, UserRecord user,     Claim             claim, Claim newClaim, CancellationToken token ) => ValueTask.CompletedTask;
 
         #endregion

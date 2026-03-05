@@ -31,7 +31,7 @@ public partial class DbTable<TSelf>
 
     [MethodImpl(MethodImplOptions.AggressiveOptimization)] public virtual async ValueTask Update( NpgsqlConnection connection, NpgsqlTransaction? transaction, TSelf record, CancellationToken token = default )
     {
-        SqlCommand<TSelf> command = SqlCommand<TSelf>.GetUpdate(record);
+        SqlCommand command = SqlCommand.GetUpdate<TSelf>(record);
 
         try
         {
