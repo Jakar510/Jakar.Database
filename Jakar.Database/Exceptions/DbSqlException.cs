@@ -9,29 +9,27 @@ public class DbSqlException( string sql, Exception? inner = null, PostgresParame
     public readonly PostgresParameters? Parameters = parameters;
     public readonly string?             SQL        = sql;
     public          string?             RollbackID { get; init; }
-    public override string              Message    => field ??= GetMessage(SQL, Parameters);
+    public override string              Message    => field ??= GetMessage(base.Message, SQL, Parameters);
 
 
     public DbSqlException( SqlCommand command, Exception? inner = null ) : this(command.SQL, inner, command.Parameters) { }
 
 
-    public string GetMessage( string? sql, in PostgresParameters? dynamicParameters )
+    public static string GetMessage( string? title, string? sql, in PostgresParameters? dynamicParameters )
     {
+        title ??= "An error occurred with the following sql statement";
         string parameters;
 
         if ( dynamicParameters is null || dynamicParameters.Value.Count == 0 ) { parameters = "NONE"; }
         else
         {
-            StringBuilder sb = new(dynamicParameters.Value.Parameters.Sum(static x => x.ParameterName.Length + 1));
-            foreach ( string name in dynamicParameters.Value.Parameters.Select(static x => x.ParameterName) ) { sb.Append(name).Append(','); }
-
-            sb.Length--; // remove trailing ','
-            parameters = sb.ToString();
+            using PooledArray<string> buffer = dynamicParameters.Value.ParameterNameArray;
+            parameters = string.Join(", ", buffer.Span);
         }
 
         return $"""
-                {base.Message}
-                  An error occurred with the following sql statement
+                {title}
+                  
                     {nameof(SQL)}:    
                 {sql}
 

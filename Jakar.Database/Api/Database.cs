@@ -211,7 +211,7 @@ public abstract partial class Database : Randoms, IConnectableDbRoot, IHealthChe
     public virtual async IAsyncEnumerable<TSelf> Where<TSelf>( NpgsqlConnection connection, NpgsqlTransaction? transaction, string sql, PostgresParameters parameters, [EnumeratorCancellation] CancellationToken token = default )
         where TSelf : TableRecord<TSelf>, ITableRecord<TSelf>, IDateCreated
     {
-        SqlCommand                   command = new(sql, parameters);
+        SqlCommand                   command = SqlCommand.Create(sql, parameters);
         await using NpgsqlCommand    cmd     = command.ToCommand(connection, transaction);
         await using NpgsqlDataReader reader  = await cmd.ExecuteReaderAsync(token);
         await foreach ( TSelf record in reader.CreateAsync<TSelf>(token) ) { yield return record; }
@@ -220,7 +220,7 @@ public abstract partial class Database : Randoms, IConnectableDbRoot, IHealthChe
         where TValue : struct
         where TSelf : TableRecord<TSelf>, ITableRecord<TSelf>
     {
-        SqlCommand                   command = new(sql, parameters);
+        SqlCommand                   command = SqlCommand.Create(sql, parameters);
         await using NpgsqlCommand    cmd     = command.ToCommand(connection, transaction);
         await using NpgsqlDataReader reader  = await cmd.ExecuteReaderAsync(token);
         while ( await reader.ReadAsync(token) ) { yield return reader.GetFieldValue<TValue>(0); }

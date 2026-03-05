@@ -160,7 +160,7 @@ public class MigrationManager
     {
         try
         {
-            SqlCommand command = new(self.SQL);
+            SqlCommand command = SqlCommand.Create<MigrationRecord>(self.SQL);
             await command.ExecuteNonQueryAsync(connection, transaction, token);
             self.AppliedOn = DateTimeOffset.UtcNow;
         }

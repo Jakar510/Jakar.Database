@@ -156,7 +156,7 @@ public partial class DbTable<TSelf> : IDbTable<TSelf>
 
     public async ValueTask<int> Execute( NpgsqlConnection connection, NpgsqlTransaction? transaction, string sql, PostgresParameters parameters, CancellationToken token )
     {
-        SqlCommand        command = new(sql, parameters);
+        SqlCommand                command = SqlCommand.Create(sql, parameters);
         await using NpgsqlCommand cmd     = command.ToCommand(connection, transaction);
         return await cmd.ExecuteNonQueryAsync(token);
     }

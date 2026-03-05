@@ -346,7 +346,9 @@ public readonly ref struct SqlInterpolatedStringHandler<TSelf>( int literalLengt
     }
 
 
-    public override string                                                   ToString()                                                                              => __sb.ToString();
-    public          (string SQL, ImmutableArray<NpgsqlParameter> Parameters) Build()                                                                                 => new(ToString(), [..__parameters.Params]);
-    public          SqlCommand                                       ToSqlCommand( CommandType? commandType = null, CommandFlags flags = CommandFlags.None ) => new(ToString(), __parameters, commandType, flags);
+    public override string ToString() => __sb.ToString();
+
+    public (string SQL, ImmutableArray<NpgsqlParameter> Parameters) Build() => new(ToString(), [..__parameters.Params]);
+
+    public SqlCommand ToSqlCommand( CommandType? commandType = null, CommandFlags flags = CommandFlags.None ) => SqlCommand.Create(ToString(), __parameters, commandType, flags);
 }

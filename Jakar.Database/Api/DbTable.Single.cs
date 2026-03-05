@@ -13,8 +13,8 @@ public partial class DbTable<TSelf>
     public ValueTask<ErrorOrResult<TSelf>> SingleOrDefault( string          sql, PostgresParameters parameters, CancellationToken token = default ) => this.Call(SingleOrDefault, sql, parameters, token);
 
 
-    public ValueTask<ErrorOrResult<TSelf>> Single( NpgsqlConnection connection, NpgsqlTransaction? transaction, RecordID<TSelf> id,  CancellationToken  token                               = default ) => Single(connection, transaction, SqlCommand.Get(in id),           token);
-    public ValueTask<ErrorOrResult<TSelf>> Single( NpgsqlConnection connection, NpgsqlTransaction? transaction, string          sql, PostgresParameters parameters, CancellationToken token = default ) => Single(connection, transaction, new SqlCommand(sql, parameters), token);
+    public ValueTask<ErrorOrResult<TSelf>> Single( NpgsqlConnection connection, NpgsqlTransaction? transaction, RecordID<TSelf> id,  CancellationToken  token                               = default ) => Single(connection, transaction, SqlCommand.Get(in id),              token);
+    public ValueTask<ErrorOrResult<TSelf>> Single( NpgsqlConnection connection, NpgsqlTransaction? transaction, string          sql, PostgresParameters parameters, CancellationToken token = default ) => Single(connection, transaction, SqlCommand.Create(sql, parameters), token);
     public virtual async ValueTask<ErrorOrResult<TSelf>> Single( NpgsqlConnection connection, NpgsqlTransaction? transaction, SqlCommand command, CancellationToken token = default )
     {
         try
@@ -28,8 +28,8 @@ public partial class DbTable<TSelf>
     }
 
 
-    public ValueTask<ErrorOrResult<TSelf>> SingleOrDefault( NpgsqlConnection connection, NpgsqlTransaction? transaction, RecordID<TSelf> id,  CancellationToken  token                               = default ) => SingleOrDefault(connection, transaction, SqlCommand.Get(in id),           token);
-    public ValueTask<ErrorOrResult<TSelf>> SingleOrDefault( NpgsqlConnection connection, NpgsqlTransaction? transaction, string          sql, PostgresParameters parameters, CancellationToken token = default ) => SingleOrDefault(connection, transaction, new SqlCommand(sql, parameters), token);
+    public ValueTask<ErrorOrResult<TSelf>> SingleOrDefault( NpgsqlConnection connection, NpgsqlTransaction? transaction, RecordID<TSelf> id,  CancellationToken  token                               = default ) => SingleOrDefault(connection, transaction, SqlCommand.Get(in id),              token);
+    public ValueTask<ErrorOrResult<TSelf>> SingleOrDefault( NpgsqlConnection connection, NpgsqlTransaction? transaction, string          sql, PostgresParameters parameters, CancellationToken token = default ) => SingleOrDefault(connection, transaction, SqlCommand.Create(sql, parameters), token);
     public virtual async ValueTask<ErrorOrResult<TSelf>> SingleOrDefault( NpgsqlConnection connection, NpgsqlTransaction? transaction, SqlCommand command, CancellationToken token = default )
     {
         try

@@ -8,12 +8,21 @@ using ZLinq.Linq;
 namespace Jakar.Database;
 
 
-public readonly struct PostgresParameters : IEquatable<PostgresParameters>
+public readonly struct PostgresParameters() : IEquatable<PostgresParameters>
 {
-    public readonly   ITableMetaData                         Table;
     internal readonly Dictionary<int, List<NpgsqlParameter>> Groups = new() { [0] = [] };
 
 
+    public bool IsEmpty { [MemberNotNullWhen(true, nameof(Table))] get => Table is not null; }
+    public required ITableMetaData Table
+    {
+        get;
+        init
+        {
+            field = value;
+            Params.EnsureCapacity(value.Count);
+        }
+    }
     public   PostgresParameters    ColumnNames   => this;
     public   PostgresParameters    VariableNames => this;
     public   PostgresParameters    KeyValuePairs => this;
@@ -32,36 +41,6 @@ public readonly struct PostgresParameters : IEquatable<PostgresParameters>
     public int                                                                                              SpacerCount        => Math.Max(Params.Count, Table.Count) - 1;
     public ReadOnlySpan<NpgsqlParameter>                                                                    Span               => Params.AsSpan();
 
-
-    public PostgresParameters() => throw new InvalidOperationException($"Use {nameof(PostgresParameters)}.{nameof(Create)} instead.");
-    internal PostgresParameters( ITableMetaData table )
-    {
-        Table = table;
-        Params.EnsureCapacity(table.Count);
-    }
-
-
-    /*
-    internal StringBuilder GetParameterString( ReadOnlySpan<char> format ) => GetParameterString(int.TryParse(format, out int indentLevel)
-                                                                                                     ? indentLevel
-                                                                                                     : 1);
-    internal StringBuilder GetParameterString( int indentLevel )
-    {
-        int           length = ParameterNames.Sum(static x => x.Length + 10) + Params.Count * indentLevel * 4;
-        StringBuilder sb     = new(length);
-        int           index  = 0;
-        int           count  = Count;
-
-        foreach ( string value in ParameterNames )
-        {
-            sb.Append(' ', indentLevel * 4).Append('@').Append(value);
-
-            if ( index++ < count - 1 ) { sb.Append(",\n"); }
-        }
-
-        return sb;
-    }
-    */
 
     internal StringBuilder GetKeyValuePairs( ReadOnlySpan<char> format ) => GetKeyValuePairs(int.TryParse(format, out int indentLevel)
                                                                                                  ? indentLevel
@@ -122,13 +101,13 @@ public readonly struct PostgresParameters : IEquatable<PostgresParameters>
 
 
     public static PostgresParameters Create<TSelf>()
-        where TSelf : TableRecord<TSelf>, ITableRecord<TSelf> => new(TSelf.MetaData);
+        where TSelf : TableRecord<TSelf>, ITableRecord<TSelf> => new() { Table = TSelf.MetaData };
     public static PostgresParameters Create<TSelf>( TSelf _ )
-        where TSelf : TableRecord<TSelf>, ITableRecord<TSelf> => new(TSelf.MetaData);
+        where TSelf : TableRecord<TSelf>, ITableRecord<TSelf> => new() { Table = TSelf.MetaData };
     public static PostgresParameters Create<TSelf>( IEnumerable<TSelf> records )
         where TSelf : TableRecord<TSelf>, ITableRecord<TSelf>
     {
-        PostgresParameters parameters = new(TSelf.MetaData);
+        PostgresParameters parameters = new() { Table = TSelf.MetaData };
         foreach ( TSelf record in records ) { parameters.With(record.ToDynamicParameters()); }
 
         return parameters;
@@ -152,7 +131,7 @@ public readonly struct PostgresParameters : IEquatable<PostgresParameters>
     public static PostgresParameters Create<TSelf>( int capacity )
         where TSelf : TableRecord<TSelf>, ITableRecord<TSelf>
     {
-        PostgresParameters parameters = new(TSelf.MetaData);
+        PostgresParameters parameters = new() { Table = TSelf.MetaData };
         parameters.Params.EnsureCapacity(capacity);
         return parameters;
     }
@@ -171,12 +150,13 @@ public readonly struct PostgresParameters : IEquatable<PostgresParameters>
 
 
     public PostgresParameters Add<T>( string propertyName, T? value, [CallerArgumentExpression(nameof(value))] string parameterName = EMPTY, ParameterDirection direction = ParameterDirection.Input, DataRowVersion sourceVersion = DataRowVersion.Default )
-        where T : struct, Enum => Add(Table[propertyName].ToParameter(value, parameterName, direction, sourceVersion));
+        where T : struct, Enum => Add(Table?[propertyName].ToParameter(value, parameterName, direction, sourceVersion));
     public PostgresParameters Add( string propertyName, object? value, [CallerArgumentExpression(nameof(value))] string parameterName = EMPTY, ParameterDirection direction = ParameterDirection.Input, DataRowVersion sourceVersion = DataRowVersion.Default ) =>
-        Add(Table[propertyName].ToParameter(value, parameterName, direction, sourceVersion));
-    public PostgresParameters Add( NpgsqlParameter parameter )
+        Add(Table?[propertyName].ToParameter(value, parameterName, direction, sourceVersion));
+    public PostgresParameters Add( NpgsqlParameter? parameter )
     {
-        Params.Add(parameter);
+        if ( parameter is not null ) { Params.Add(parameter); }
+
         return this;
     }
 

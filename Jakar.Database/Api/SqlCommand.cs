@@ -4,17 +4,26 @@
 namespace Jakar.Database;
 
 
-public readonly struct SqlCommand( string sql, PostgresParameters parameters = default, CommandType? commandType = null, CommandFlags flags = CommandFlags.None ) : IEquatable<SqlCommand>
+public readonly struct SqlCommand : IEquatable<SqlCommand>
 {
-    public const    string             SPACER      = ",\n      ";
-    public readonly string             SQL         = sql;
-    public readonly PostgresParameters Parameters  = parameters;
-    public readonly CommandType?       CommandType = commandType;
-    public readonly CommandFlags       Flags       = flags;
+    public const    string             SPACER = ",\n      ";
+    public readonly string             SQL;
+    public readonly PostgresParameters Parameters;
+    public readonly CommandType?       CommandType;
+    public readonly CommandFlags       Flags;
 
 
-    public static implicit operator string( SqlCommand                                      sql )  => sql.SQL;
-    public static implicit operator SqlCommand( (string SQL, PostgresParameters Parameters) pair ) => new(pair.SQL, pair.Parameters);
+    private SqlCommand( string sql, PostgresParameters parameters, CommandType? commandType = null, CommandFlags flags = CommandFlags.None )
+    {
+        SQL         = sql;
+        Parameters  = parameters;
+        CommandType = commandType;
+        Flags       = flags;
+    }
+
+
+    public static implicit operator string( SqlCommand             sql ) => sql.SQL;
+    public static implicit operator PostgresParameters( SqlCommand sql ) => sql.Parameters;
 
 
     [Pure] [MustDisposeResource] public NpgsqlCommand ToCommand( NpgsqlConnection connection, NpgsqlTransaction? transaction = null )
@@ -36,6 +45,7 @@ public readonly struct SqlCommand( string sql, PostgresParameters parameters = d
     }
 
 
+    public override string ToString() => DbSqlException.GetMessage(nameof(SqlCommand), SQL, Parameters);
     public async ValueTask ExecuteNonQueryAsync( NpgsqlConnection connection, NpgsqlTransaction? transaction, CancellationToken token )
     {
         await using NpgsqlCommand command = ToCommand(connection, transaction);
@@ -195,16 +205,16 @@ public readonly struct SqlCommand( string sql, PostgresParameters parameters = d
 
     public static SqlCommand GetCopy<TSelf>()
         where TSelf : TableRecord<TSelf>, ITableRecord<TSelf> => Parse<TSelf>($"""
-                                                                               CREATE TEMP TABLE tmp_mytable (LIKE {TSelf.TableName} INCLUDING DEFAULTS);
+                                                                               CREATE TEMP TABLE temp_table (LIKE {TSelf.TableName} INCLUDING DEFAULTS);
 
-                                                                               COPY tmp_mytable (
+                                                                               COPY temp_table (
                                                                                {TSelf.MetaData.ColumnNames(1)}
                                                                                )
                                                                                FROM STDIN;
 
                                                                                INSERT INTO {TSelf.TableName}
                                                                                SELECT *
-                                                                               FROM tmp_mytable
+                                                                               FROM temp_table
                                                                                RETURNING {nameof(IUniqueID.ID)};      
                                                                                """);
     public static SqlCommand GetInsert<TSelf>( TSelf record )
