@@ -18,7 +18,7 @@ public readonly record struct RecordID<TKey, TValue>( RecordID<TKey> Key, Record
 
 
 [DefaultMember(nameof(Empty))]
-public readonly struct RecordID<TSelf>( Guid id ) : IEquatable<RecordID<TSelf>>, IComparable<RecordID<TSelf>>, ISpanFormattable, ISpanParsable<RecordID<TSelf>>, IRegisterDapperTypeHandlers
+public readonly struct RecordID<TSelf>( Guid id ) : IEqualComparable<RecordID<TSelf>>, ISpanFormattable, ISpanParsable<RecordID<TSelf>>, IRegisterDapperTypeHandlers
     where TSelf : PairRecord<TSelf>, ITableRecord<TSelf>
 {
     public static readonly RecordID<TSelf> Empty = new(Guid.Empty);
@@ -117,6 +117,9 @@ public readonly struct RecordID<TSelf>( Guid id ) : IEquatable<RecordID<TSelf>>,
     }
 
 
+    public int CompareTo( object? other ) => other is RecordID<TSelf> id
+                                                 ? CompareTo(id)
+                                                 : throw new ExpectedValueTypeException(other, typeof(RecordID<TSelf>));
     public          bool Equals( RecordID<TSelf>    other )          => Value.Equals(other.Value);
     public          int  CompareTo( RecordID<TSelf> other )          => Value.CompareTo(other.Value);
     public override int  GetHashCode()                               => Value.GetHashCode();

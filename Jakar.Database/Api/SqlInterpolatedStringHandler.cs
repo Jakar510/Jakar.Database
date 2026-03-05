@@ -4,6 +4,13 @@
 namespace Jakar.Database;
 
 
+public readonly struct SqlRaw( string value )
+{
+    public readonly string Value = value;
+}
+
+
+
 [InterpolatedStringHandler]
 public readonly ref struct SqlInterpolatedStringHandler<TSelf>( int literalLength, int formattedCount )
     where TSelf : TableRecord<TSelf>, ITableRecord<TSelf>
@@ -16,135 +23,308 @@ public readonly ref struct SqlInterpolatedStringHandler<TSelf>( int literalLengt
     public void AppendLiteral( string value ) => __sb.Append(value);
     public void AppendFormatted<T>( T value, [CallerArgumentExpression(nameof(value))] string paramName = EMPTY )
     {
-        bool isNameOf = paramName.Contains("nameof");
+        bool isTableName = paramName.Contains(nameof(UserRecord.TABLE_NAME)) || paramName.Contains(nameof(UserRecord.TableName));
+        bool isNameOf    = paramName.StartsWith("nameof(", StringComparison.Ordinal);
         if ( isNameOf && value is string s ) { __columnNames.Push(s); }
 
-        bool isParameter = __sb[^1].Equals('@');
+        bool isParameter = __sb.Length > 0 && __sb[^1] == '@';
 
-        switch ( value )
+        try
         {
-            case bool n:
-                __sb.Append(n);
-                break;
-
-            case byte n:
-                __sb.Append(n);
-                break;
-
-            case sbyte n:
-                __sb.Append(n);
-                break;
-
-            case short n:
-                __sb.Append(n);
-                break;
-
-            case int n:
-                __sb.Append(n);
-                break;
-
-            case long n:
-                __sb.Append(n);
-                break;
-
-            case uint n:
-                __sb.Append(n);
-                break;
-
-            case ushort n:
-                __sb.Append(n);
-                break;
-
-            case ulong n:
-                __sb.Append(n);
-                break;
-
-            case float n:
-                __sb.Append(n);
-                break;
-
-            case double n:
-                __sb.Append(n);
-                break;
-
-            case decimal n:
-                __sb.Append(n);
-                break;
-
-            case DateTime n:
-                __sb.Append(n);
-                break;
-
-            case DateTimeOffset n:
-                __sb.Append(n);
-                break;
-
-            case TimeSpan n:
-                __sb.Append(n);
-                break;
-
-            case TimeOnly n:
-                __sb.Append(n);
-                break;
-
-            case DateOnly n:
-                __sb.Append(n);
-                break;
-
-            case char n:
-                __sb.Append(n);
-                break;
-
-            case char[] n:
-                __sb.Append(n);
-                break;
-
-            case string n when isNameOf:
-                __sb.Append(n.SqlName());
-                break;
-
-            case string n:
-                __sb.Append(n);
-                break;
-
-            case Guid n:
+            switch ( value )
             {
-                Span<char> destination = stackalloc char[100];
-                n.TryFormat(destination, out int charsWritten);
-                __sb.Append(destination[..charsWritten]);
-                break;
+                case null:
+                case DBNull:
+                    __sb.Append("NULL");
+                    return;
+
+                case bool n:
+                    __sb.Append(n
+                                    ? "true"
+                                    : "false");
+
+                    return;
+
+                case char n:
+                    __sb.Append("'").Append(n).Append("'");
+                    return;
+
+                case SqlRaw n:
+                    __sb.Append(n.Value);
+                    return;
+
+                case string n when isNameOf:
+                    __sb.Append(n.SqlName());
+                    return;
+
+                case string n when isTableName || isParameter:
+                    __sb.Append(n);
+                    return;
+
+                case string n:
+                    __sb.Append("'").Append(n).Append("'");
+                    return;
+
+                case IReadOnlyList<string> n:
+                    for ( int i = 0; i < n.Count; i++ )
+                    {
+                        __sb.Append("'").Append(n[i]).Append("'");
+                        if ( i < n.Count - 1 ) { __sb.Append(", "); }
+                    }
+
+                    return;
+
+                case StringBuilder n:
+                    foreach ( ReadOnlyMemory<char> memory in n.GetChunks() ) { __sb.Append(memory.Span); }
+
+                    return;
+
+                case Enum n:
+                    // ReSharper disable once RedundantToStringCall
+                    // __sb.Append("'").Append(n.ToString()).Append("'");
+                    __sb.Append(Convert.ToInt32(n));
+                    return;
+
+                case Type n:
+                    __sb.Append(n.Name);
+                    return;
+
+                case Guid n:
+                    Append(n);
+                    return;
+
+                case DateTime n:
+                    Append(n);
+                    return;
+
+                case DateTimeOffset n:
+                    Append(n);
+                    return;
+
+                case DateOnly n:
+                    Append(n);
+                    return;
+
+                case TimeOnly n:
+                    Append(n);
+                    return;
+
+                case TimeSpan n:
+                    Append(n);
+                    return;
+
+                case IReadOnlyList<Int128> n:
+                    __sb.Append(n);
+                    return;
+
+                case IReadOnlyList<UInt128> n:
+                    __sb.Append(n);
+                    return;
+
+                case IReadOnlyList<byte> n:
+                    Append(n);
+                    return;
+
+                case IReadOnlyList<sbyte> n:
+                    Append(n);
+                    return;
+
+                case IReadOnlyList<short> n:
+                    Append(n);
+                    return;
+
+                case IReadOnlyList<int> n:
+                    Append(n);
+                    return;
+
+                case IReadOnlyList<long> n:
+                    Append(n);
+                    return;
+
+                case IReadOnlyList<uint> n:
+                    Append(n);
+                    return;
+
+                case IReadOnlyList<ushort> n:
+                    Append(n);
+                    return;
+
+                case IReadOnlyList<ulong> n:
+                    Append(n);
+                    return;
+
+                case IReadOnlyList<float> n:
+                    Append(n);
+                    return;
+
+                case IReadOnlyList<double> n:
+                    Append(n);
+                    return;
+
+                case IReadOnlyList<decimal> n:
+                    Append(n);
+                    return;
+
+                case IReadOnlyList<char> n:
+                    Append(n);
+                    return;
+
+                case IReadOnlyList<Guid> n:
+                    Append(n);
+                    return;
+
+                case IReadOnlyList<DateTime> n:
+                    Append(n);
+                    return;
+
+                case IReadOnlyList<DateTimeOffset> n:
+                    Append(n);
+                    return;
+
+                case IReadOnlyList<DateOnly> n:
+                    Append(n);
+                    return;
+
+                case IReadOnlyList<TimeSpan> n:
+                    Append(n);
+                    return;
+
+                case IReadOnlyList<TimeOnly> n:
+                    Append(n);
+                    return;
+
+                case ISpanFormattable formattable:
+                    Append(formattable);
+                    return;
+
+                case IFormattable formattable:
+                    __sb.Append(formattable.ToString(null, CultureInfo.InvariantCulture));
+                    return;
+
+                default:
+                    __sb.Append(value);
+                    return;
             }
-
-            case Guid[] n:
-            {
-                Span<char> destination = stackalloc char[100];
-
-                for ( int i = 0; i < n.Length; i++ )
-                {
-                    n[i].TryFormat(destination, out int charsWritten);
-                    __sb.Append('\'').Append(destination[..charsWritten]).Append('\'');
-
-                    if ( i < ( n.Length - 1 ) ) { __sb.Append(", "); }
-                }
-
-                break;
-            }
-
-            case Type n:
-                __sb.Append(n.Name);
-                break;
-
-            case StringBuilder n:
-                foreach ( ReadOnlyMemory<char> memory in n.GetChunks() ) { __sb.Append(memory.Span); }
-
-                break;
-
-            default:
-                __sb.Append(value);
-                break;
         }
+        finally
+        {
+            if ( isParameter && __columnNames.Count > 0 ) { __parameters.Add(__columnNames.Pop(), value); }
+        }
+    }
 
-        if ( isParameter ) { __parameters.Add(__columnNames.Pop(), value); }
+
+    private void Append<T>( T value )
+        where T : ISpanFormattable
+    {
+        Span<char> destination = stackalloc char[256];
+
+        if ( value.TryFormat(destination, out int written, ReadOnlySpan<char>.Empty, CultureInfo.InvariantCulture) ) { __sb.Append("'").Append(destination[..written]).Append("'"); }
+        else { __sb.Append("'").Append(value.ToString(null, CultureInfo.InvariantCulture)).Append("'"); }
+    }
+    private void Append<T>( IReadOnlyList<T> array )
+        where T : ISpanFormattable
+    {
+        for ( int i = 0; i < array.Count; i++ )
+        {
+            Append(array[i]);
+            if ( i < array.Count - 1 ) { __sb.Append(", "); }
+        }
+    }
+
+    private void Append( DateTimeOffset value )
+    {
+        Span<char> destination = stackalloc char[256];
+
+        if ( value.TryFormat(destination, out int written, ReadOnlySpan<char>.Empty, CultureInfo.InvariantCulture) ) { __sb.Append("'").Append(destination[..written]).Append("'"); }
+        else { __sb.Append("'").Append(value.ToString(null, CultureInfo.InvariantCulture)).Append("'"); }
+    }
+    private void Append( IReadOnlyList<DateTimeOffset> array )
+    {
+        for ( int i = 0; i < array.Count; i++ )
+        {
+            Append(array[i]);
+            if ( i < array.Count - 1 ) { __sb.Append(", "); }
+        }
+    }
+
+    private void Append( DateTime value )
+    {
+        Span<char> destination = stackalloc char[256];
+
+        if ( value.TryFormat(destination, out int written, ReadOnlySpan<char>.Empty, CultureInfo.InvariantCulture) ) { __sb.Append("'").Append(destination[..written]).Append("'"); }
+        else { __sb.Append("'").Append(value.ToString(null, CultureInfo.InvariantCulture)).Append("'"); }
+    }
+    private void Append( IReadOnlyList<DateTime> array )
+    {
+        for ( int i = 0; i < array.Count; i++ )
+        {
+            Append(array[i]);
+            if ( i < array.Count - 1 ) { __sb.Append(", "); }
+        }
+    }
+
+    private void Append( DateOnly value )
+    {
+        Span<char> destination = stackalloc char[256];
+
+        if ( value.TryFormat(destination, out int written, ReadOnlySpan<char>.Empty, CultureInfo.InvariantCulture) ) { __sb.Append("'").Append(destination[..written]).Append("'"); }
+        else { __sb.Append("'").Append(value.ToString(null, CultureInfo.InvariantCulture)).Append("'"); }
+    }
+    private void Append( IReadOnlyList<DateOnly> array )
+    {
+        for ( int i = 0; i < array.Count; i++ )
+        {
+            Append(array[i]);
+            if ( i < array.Count - 1 ) { __sb.Append(", "); }
+        }
+    }
+
+    private void Append( TimeSpan value )
+    {
+        Span<char> destination = stackalloc char[256];
+
+        if ( value.TryFormat(destination, out int written, ReadOnlySpan<char>.Empty, CultureInfo.InvariantCulture) ) { __sb.Append("'").Append(destination[..written]).Append("'"); }
+        else { __sb.Append("'").Append(value.ToString(null, CultureInfo.InvariantCulture)).Append("'"); }
+    }
+    private void Append( IReadOnlyList<TimeSpan> array )
+    {
+        for ( int i = 0; i < array.Count; i++ )
+        {
+            Append(array[i]);
+            if ( i < array.Count - 1 ) { __sb.Append(", "); }
+        }
+    }
+
+    private void Append( TimeOnly value )
+    {
+        Span<char> destination = stackalloc char[256];
+
+        if ( value.TryFormat(destination, out int written, ReadOnlySpan<char>.Empty, CultureInfo.InvariantCulture) ) { __sb.Append("'").Append(destination[..written]).Append("'"); }
+        else { __sb.Append("'").Append(value.ToString(null, CultureInfo.InvariantCulture)).Append("'"); }
+    }
+    private void Append( IReadOnlyList<TimeOnly> array )
+    {
+        for ( int i = 0; i < array.Count; i++ )
+        {
+            Append(array[i]);
+            if ( i < array.Count - 1 ) { __sb.Append(", "); }
+        }
+    }
+
+    private void Append( Guid value )
+    {
+        Span<char> destination = stackalloc char[256];
+
+        if ( value.TryFormat(destination, out int written) ) { __sb.Append("'").Append(destination[..written]).Append("'"); }
+        else { __sb.Append("'").Append(value.ToString(null, CultureInfo.InvariantCulture)).Append("'"); }
+    }
+    private void Append( IReadOnlyList<Guid> array )
+    {
+        for ( int i = 0; i < array.Count; i++ )
+        {
+            Append(array[i]);
+            if ( i < array.Count - 1 ) { __sb.Append(", "); }
+        }
     }
 
 

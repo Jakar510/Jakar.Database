@@ -61,8 +61,8 @@ public readonly struct SqlCommand<TSelf>( string sql, in PostgresParameters para
     public static StringBuilder KeyValuePairs( int indentLevel ) => TSelf.MetaData.KeyValuePairs(indentLevel);
 
 
-    public static SqlCommand<TSelf> Create( ref SqlInterpolatedStringHandler<TSelf> handler, CommandType?          commandType = null, CommandFlags flags = CommandFlags.None ) => handler.ToSqlCommand(commandType, flags);
-    public static SqlCommand<TSelf> Create( string                                  sql,     in PostgresParameters parameters ) => new(sql, in parameters);
+    public static SqlCommand<TSelf> Parse( ref SqlInterpolatedStringHandler<TSelf> handler, CommandType?          commandType = null, CommandFlags flags = CommandFlags.None ) => handler.ToSqlCommand(commandType, flags);
+    public static SqlCommand<TSelf> Create( string                                 sql,     in PostgresParameters parameters ) => new(sql, in parameters);
 
 
     public static SqlCommand<TSelf> GetRandom() => GetRandom(1);
