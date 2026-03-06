@@ -21,7 +21,7 @@ public readonly ref struct SqlInterpolatedStringHandler<TSelf>( int literalLengt
 
 
     public void AppendLiteral( string value ) => __sb.Append(value);
-    public void AppendFormatted<T>( T value, ReadOnlySpan<char> format = default, [CallerArgumentExpression(nameof(value))] string paramName = EMPTY )
+    public void AppendFormatted<TValue>( TValue value, ReadOnlySpan<char> format = default, [CallerArgumentExpression(nameof(value))] string paramName = EMPTY )
     {
         bool isParameter = __sb.Length > 0 && __sb[^1] == '@';
         bool isNameOf    = paramName.StartsWith("nameof(", StringComparison.Ordinal);
@@ -67,7 +67,7 @@ public readonly ref struct SqlInterpolatedStringHandler<TSelf>( int literalLengt
                     for ( int i = 0; i < n.Count; i++ )
                     {
                         __sb.Append("'").Append(n[i]).Append("'");
-                        if ( i < n.Count - 1 ) { __sb.Append(", "); }
+                        if ( i < n.Count - 1 ) { __sb.Append(",\n "); }
                     }
 
                     return;
@@ -84,12 +84,12 @@ public readonly ref struct SqlInterpolatedStringHandler<TSelf>( int literalLengt
 
                 case PostgresParameters n when paramName.Contains(nameof(PostgresParameters.VariableNames)):
                     __parameters.With(n);
-                    __sb.Append(n.GetKeyValuePairs(format));
+                    __sb.Append(n.GetVariableNames(format));
                     return;
 
                 case PostgresParameters n when paramName.Contains(nameof(PostgresParameters.KeyValuePairs)):
                     __parameters.With(n);
-                    __sb.Append(n.GetKeyValuePairs(format));
+                    __sb.Append(n.GetKeyValuePairs(format, "AND"));
                     return;
 
                 case PostgresParameters n:
@@ -191,6 +191,10 @@ public readonly ref struct SqlInterpolatedStringHandler<TSelf>( int literalLengt
                     Append(n);
                     return;
 
+                case IEnumerable<Guid> n:
+                    Append(n);
+                    return;
+
                 case IReadOnlyList<DateTime> n:
                     Append(n);
                     return;
@@ -245,7 +249,7 @@ public readonly ref struct SqlInterpolatedStringHandler<TSelf>( int literalLengt
         for ( int i = 0; i < array.Count; i++ )
         {
             Append(array[i]);
-            if ( i < array.Count - 1 ) { __sb.Append(", "); }
+            if ( i < array.Count - 1 ) { __sb.Append(",\n "); }
         }
     }
 
@@ -261,7 +265,7 @@ public readonly ref struct SqlInterpolatedStringHandler<TSelf>( int literalLengt
         for ( int i = 0; i < array.Count; i++ )
         {
             Append(array[i]);
-            if ( i < array.Count - 1 ) { __sb.Append(", "); }
+            if ( i < array.Count - 1 ) { __sb.Append(",\n "); }
         }
     }
 
@@ -277,7 +281,7 @@ public readonly ref struct SqlInterpolatedStringHandler<TSelf>( int literalLengt
         for ( int i = 0; i < array.Count; i++ )
         {
             Append(array[i]);
-            if ( i < array.Count - 1 ) { __sb.Append(", "); }
+            if ( i < array.Count - 1 ) { __sb.Append(",\n "); }
         }
     }
 
@@ -293,7 +297,7 @@ public readonly ref struct SqlInterpolatedStringHandler<TSelf>( int literalLengt
         for ( int i = 0; i < array.Count; i++ )
         {
             Append(array[i]);
-            if ( i < array.Count - 1 ) { __sb.Append(", "); }
+            if ( i < array.Count - 1 ) { __sb.Append(",\n "); }
         }
     }
 
@@ -309,7 +313,7 @@ public readonly ref struct SqlInterpolatedStringHandler<TSelf>( int literalLengt
         for ( int i = 0; i < array.Count; i++ )
         {
             Append(array[i]);
-            if ( i < array.Count - 1 ) { __sb.Append(", "); }
+            if ( i < array.Count - 1 ) { __sb.Append(",\n "); }
         }
     }
 
@@ -325,7 +329,7 @@ public readonly ref struct SqlInterpolatedStringHandler<TSelf>( int literalLengt
         for ( int i = 0; i < array.Count; i++ )
         {
             Append(array[i]);
-            if ( i < array.Count - 1 ) { __sb.Append(", "); }
+            if ( i < array.Count - 1 ) { __sb.Append(",\n "); }
         }
     }
 
@@ -336,12 +340,24 @@ public readonly ref struct SqlInterpolatedStringHandler<TSelf>( int literalLengt
         if ( value.TryFormat(destination, out int written) ) { __sb.Append("'").Append(destination[..written]).Append("'"); }
         else { __sb.Append("'").Append(value.ToString(null, CultureInfo.InvariantCulture)).Append("'"); }
     }
+    private void Append( IEnumerable<Guid> array )
+    {
+        using IEnumerator<Guid> enumerator = array.GetEnumerator();
+
+        while ( enumerator.MoveNext() )
+        {
+            Append(enumerator.Current);
+            __sb.Append(",\n ");
+        }
+
+        __sb.Length -= 3;
+    }
     private void Append( IReadOnlyList<Guid> array )
     {
         for ( int i = 0; i < array.Count; i++ )
         {
             Append(array[i]);
-            if ( i < array.Count - 1 ) { __sb.Append(", "); }
+            if ( i < array.Count - 1 ) { __sb.Append(",\n "); }
         }
     }
 

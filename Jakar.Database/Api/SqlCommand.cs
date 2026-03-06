@@ -61,14 +61,18 @@ public readonly struct SqlCommand : IEquatable<SqlCommand>
 
 
     public static SqlCommand Create( string sql, in PostgresParameters parameters, CommandType? commandType = null, CommandFlags flags = CommandFlags.None ) => new(sql, parameters, commandType, flags);
+
+
     public static SqlCommand Create<TSelf>( string sql )
         where TSelf : TableRecord<TSelf>, ITableRecord<TSelf> => new(sql, PostgresParameters.Create<TSelf>());
+    public static SqlCommand Create<TSelf>( string sql, params ReadOnlySpan<NpgsqlParameter> parameters )
+        where TSelf : TableRecord<TSelf>, ITableRecord<TSelf> => new(sql, PostgresParameters.Create<TSelf>(parameters));
     public static SqlCommand Create<TSelf>( (string SQL, NpgsqlParameter[] Parameters) pair )
-        where TSelf : TableRecord<TSelf>, ITableRecord<TSelf> => new(pair.SQL, PostgresParameters.Create<TSelf>(pair.Parameters.AsSpan()));
+        where TSelf : TableRecord<TSelf>, ITableRecord<TSelf> => Create<TSelf>(pair.SQL, pair.Parameters);
     public static SqlCommand Create<TSelf>( (string SQL, List<NpgsqlParameter> Parameters) pair )
-        where TSelf : TableRecord<TSelf>, ITableRecord<TSelf> => new(pair.SQL, PostgresParameters.Create<TSelf>(pair.Parameters.AsSpan()));
+        where TSelf : TableRecord<TSelf>, ITableRecord<TSelf> => Create<TSelf>(pair.SQL, pair.Parameters.AsSpan());
     public static SqlCommand Create<TSelf>( (string SQL, ImmutableArray<NpgsqlParameter> Parameters) pair )
-        where TSelf : TableRecord<TSelf>, ITableRecord<TSelf> => new(pair.SQL, PostgresParameters.Create<TSelf>(pair.Parameters.AsSpan()));
+        where TSelf : TableRecord<TSelf>, ITableRecord<TSelf> => Create<TSelf>(pair.SQL, pair.Parameters.AsSpan());
 
 
     public static SqlCommand Parse<TSelf>( ref SqlInterpolatedStringHandler<TSelf> handler, CommandType? commandType = null, CommandFlags flags = CommandFlags.None )
@@ -81,9 +85,9 @@ public readonly struct SqlCommand : IEquatable<SqlCommand>
                                                                                ORDER BY RANDOM()
                                                                                LIMIT {count};
                                                                                """);
-    public static SqlCommand GetRandom<TSelf>( UserRecord user, int count )
+    public static SqlCommand GetRandom<TSelf>( UserRecord user, int count = 1 )
         where TSelf : TableRecord<TSelf>, ITableRecord<TSelf> => GetRandom<TSelf>(user.ID, count);
-    public static SqlCommand GetRandom<TSelf>( in RecordID<UserRecord> userID, int count )
+    public static SqlCommand GetRandom<TSelf>( in RecordID<UserRecord> userID, int count = 1 )
         where TSelf : TableRecord<TSelf>, ITableRecord<TSelf> => Parse<TSelf>($"""
                                                                                SELECT * FROM {TSelf.TableName}
                                                                                WHERE {nameof(IUserID.UserID)} = {userID.Value}
@@ -113,9 +117,15 @@ public readonly struct SqlCommand : IEquatable<SqlCommand>
                                                                                OFFSET {start}
                                                                                LIMIT {count};
                                                                                """);
+    public static SqlCommand WherePaged<TSelf>( DateTimeOffset startTime, int start, int count )
+        where TSelf : TableRecord<TSelf>, ITableRecord<TSelf> => Parse<TSelf>($"""
+                                                                               SELECT * FROM {TSelf.TableName}
+                                                                               WHERE {nameof(IDateCreated.DateCreated)} > {startTime}
+                                                                               OFFSET {start}
+                                                                               LIMIT {count};
+                                                                               """);
     public static SqlCommand Where<TSelf, TValue>( string columnName, TValue? value )
-        where TSelf : PairRecord<TSelf>, ITableRecord<TSelf> =>
-        Parse<TSelf>($"SELECT * FROM {TSelf.TableName} WHERE {columnName} = @{value};");
+        where TSelf : PairRecord<TSelf>, ITableRecord<TSelf> => Parse<TSelf>($"SELECT * FROM {TSelf.TableName} WHERE {columnName} = @{value};");
 
 
     public static SqlCommand Get<TSelf>( in RecordID<TSelf> id )
@@ -154,7 +164,7 @@ public readonly struct SqlCommand : IEquatable<SqlCommand>
 
 
     public static SqlCommand GetCount<TSelf>()
-        where TSelf : TableRecord<TSelf>, ITableRecord<TSelf> => Parse<TSelf>($"SELECT COUNT(*) FROM {TSelf.TableName};");
+        where TSelf : TableRecord<TSelf>, ITableRecord<TSelf> => Parse<TSelf>($"SELECT COUNT({nameof(IUniqueID.ID)}) FROM {TSelf.TableName};");
     public static SqlCommand GetSortedID<TSelf>()
         where TSelf : TableRecord<TSelf>, ITableRecord<TSelf> => Parse<TSelf>($"""
                                                                                SELECT {nameof(IUniqueID.ID)}, {nameof(IDateCreated.DateCreated)} FROM {TSelf.TableName}
@@ -177,7 +187,7 @@ public readonly struct SqlCommand : IEquatable<SqlCommand>
                                                                                {parameters.KeyValuePairs:2}
                                                                                   );
                                                                                """);
-    public static SqlCommand GetDeleteID<TSelf>( in RecordID<TSelf> id )
+    public static SqlCommand GetDelete<TSelf>( in RecordID<TSelf> id )
         where TSelf : PairRecord<TSelf>, ITableRecord<TSelf> => Parse<TSelf>($"""
                                                                               DELETE FROM {TSelf.TableName}
                                                                               WHERE {nameof(IUniqueID.ID)} = {id.Value};

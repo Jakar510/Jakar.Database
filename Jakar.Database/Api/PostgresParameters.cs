@@ -34,7 +34,7 @@ public readonly struct PostgresParameters() : IEquatable<PostgresParameters>
     public int                                                                                              ParameterCount     => Parameters.Count();
     public int                                                                                              Capacity           => Groups.Capacity;
     public bool                                                                                             IsGrouped          => Groups.Count > 1;
-    public PooledArray<string>                                                                              ParameterNameArray { [Pure] [MustDisposeResource] get => Parameters.Select(static x => x.ParameterName).ToArrayPool(); }
+    public PooledArray<string>                                                                              ParameterNameArray { [Pure] [MustDisposeResource] get => Parameters.Select(static x => x.ParameterName).Order().ToArrayPool(); }
     public ValueEnumerable<FromList<NpgsqlParameter>, NpgsqlParameter>                                      Values             { [Pure] get => Params.AsValueEnumerable(); }
     public ValueEnumerable<ListSelect<NpgsqlParameter, string>, string>                                     ParameterNames     { [Pure] get => Values.Select(static x => x.ParameterName); }
     public ValueEnumerable<DistinctBy<FromList<NpgsqlParameter>, NpgsqlParameter, string>, NpgsqlParameter> SourceProperties   { [Pure] get => Values.DistinctBy(static x => x.SourceColumn); }
@@ -42,10 +42,11 @@ public readonly struct PostgresParameters() : IEquatable<PostgresParameters>
     public ReadOnlySpan<NpgsqlParameter>                                                                    Span               => Params.AsSpan();
 
 
-    internal StringBuilder GetKeyValuePairs( ReadOnlySpan<char> format ) => GetKeyValuePairs(int.TryParse(format, out int indentLevel)
-                                                                                                 ? indentLevel
-                                                                                                 : 1);
-    internal StringBuilder GetKeyValuePairs( int indentLevel )
+    internal StringBuilder GetKeyValuePairs( ReadOnlySpan<char> format, string? otherSeparator = null ) => GetKeyValuePairs(int.TryParse(format, out int indentLevel)
+                                                                                                                                ? indentLevel
+                                                                                                                                : 1,
+                                                                                                                            otherSeparator);
+    internal StringBuilder GetKeyValuePairs( int indentLevel, string? otherSeparator = null )
     {
         int           length = Table.Properties.Values.Sum(static x => x.KeyValuePair.Length) + Params.Count * ( indentLevel * 4 + 3 );
         StringBuilder sb     = new(length);
@@ -54,9 +55,12 @@ public readonly struct PostgresParameters() : IEquatable<PostgresParameters>
 
         foreach ( NpgsqlParameter parameter in SourceProperties )
         {
-            sb.Append(' ', indentLevel * 4).Append($" {parameter.SourceColumn} = @{parameter.ParameterName} ").Append(",\n");
+            sb.Append(' ', indentLevel * 4).Append($" {parameter.SourceColumn} = @{parameter.ParameterName} ");
 
-            if ( index++ < count - 1 ) { sb.Append("AND"); }
+            if ( index++ >= count - 1 ) { continue; }
+
+            sb.Append(",\n");
+            sb.Append(otherSeparator);
         }
 
         return sb;

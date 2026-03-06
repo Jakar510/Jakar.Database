@@ -24,7 +24,7 @@ public class DbSqlException( string sql, Exception? inner = null, PostgresParame
         else
         {
             using PooledArray<string> buffer = dynamicParameters.Value.ParameterNameArray;
-            parameters = string.Join(", ", buffer.Span);
+            parameters = string.Join(",\n        ", buffer.Span);
         }
 
         return $"""
@@ -33,8 +33,9 @@ public class DbSqlException( string sql, Exception? inner = null, PostgresParame
                     {nameof(SQL)}:    
                 {sql}
 
+                
                     {nameof(Parameters)}:   
-                {parameters}
+                        {parameters}
                 """;
     }
 }

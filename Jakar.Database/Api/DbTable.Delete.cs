@@ -30,7 +30,7 @@ public partial class DbTable<TSelf>
     }
     public virtual async ValueTask Delete( NpgsqlConnection connection, NpgsqlTransaction? transaction, RecordID<TSelf> id, CancellationToken token = default )
     {
-        SqlCommand                command = SqlCommand.GetDeleteID<TSelf>(in id);
+        SqlCommand                command = SqlCommand.GetDelete(in id);
         await using NpgsqlCommand cmd     = command.ToCommand(connection, transaction);
         await cmd.ExecuteScalarAsync(token);
     }
@@ -38,7 +38,7 @@ public partial class DbTable<TSelf>
 
     public virtual async ValueTask Delete( NpgsqlConnection connection, NpgsqlTransaction? transaction, IEnumerable<RecordID<TSelf>> ids, CancellationToken token = default )
     {
-        SqlCommand command = SqlCommand.GetDelete<TSelf>(ids);
+        SqlCommand command = SqlCommand.GetDelete(ids);
 
         try
         {

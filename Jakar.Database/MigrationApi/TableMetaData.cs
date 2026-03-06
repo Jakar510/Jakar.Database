@@ -167,7 +167,7 @@ public class TableMetaData<TSelf> : ITableMetaData
         StringBuilder sb     = new(length);
         int           index  = 0;
 
-        foreach ( string columnName in Columns.Select(x => x.VariableName) )
+        foreach ( string columnName in Columns.Select(static x => x.VariableName) )
         {
             sb.Append(' ', indentLevel * 4).Append(columnName);
             if ( index++ < Count - 1 ) { sb.Append(",\n"); }
