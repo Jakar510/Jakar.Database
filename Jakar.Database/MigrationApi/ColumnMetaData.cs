@@ -129,7 +129,7 @@ public sealed class ColumnMetaData
 
     public NpgsqlParameter ToParameter( object? value, [CallerArgumentExpression(nameof(value))] string parameterName = EMPTY, ParameterDirection direction = ParameterDirection.Input, DataRowVersion sourceVersion = DataRowVersion.Default )
     {
-        if ( parameterName.Contains('.') ) { parameterName = parameterNameCache.GetOrAdd(parameterName, x => x.Split('.')[^1]); }
+        if ( parameterName.Contains('.') ) { parameterName = parameterNameCache.GetOrAdd(parameterName, static x => x.Split('.')[^1]); }
 
         NpgsqlParameter parameter = new(parameterName.SqlName(), PostgresDbType, 0, ColumnName)
                                     {

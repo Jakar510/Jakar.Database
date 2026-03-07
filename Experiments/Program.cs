@@ -1,4 +1,5 @@
-﻿using Jakar.Database;
+﻿using System.Runtime.CompilerServices;
+using Jakar.Database;
 
 
 [assembly: Experimental("SqlTableBuilder")]
@@ -21,41 +22,56 @@ try
     parameters.Add(nameof(RoleRecord.NormalizedName), "Admin");
 
 
-    SqlCommand.GetRandom<RoleRecord>().WriteToConsole();
-    SqlCommand.GetRandom<RoleRecord>(userID).WriteToConsole();
-    SqlCommand.WherePaged<RoleRecord>(parameters, 0, 10).WriteToConsole();
-    SqlCommand.WherePaged<RoleRecord>(userID,     0, 10).WriteToConsole();
-    SqlCommand.WherePaged<RoleRecord>(0,          10).WriteToConsole();
-    SqlCommand.WherePaged<RoleRecord>(date,       0, 10).WriteToConsole();
+    writeLine(SqlCommand.GetRandom<RoleRecord>().ToString());
 
-    SqlCommand.Where<RoleRecord, string>(nameof(RoleRecord.NameOfRole), ADMIN).WriteToConsole();
+    writeLine(SqlCommand.GetRandom<RoleRecord>(userID).ToString());
+    writeLine(SqlCommand.WherePaged<RoleRecord>(parameters, 0, 10).ToString());
+    writeLine(SqlCommand.WherePaged<RoleRecord>(userID,     0, 10).ToString());
+    writeLine(SqlCommand.WherePaged<RoleRecord>(0,          10).ToString());
+    writeLine(SqlCommand.WherePaged<RoleRecord>(date,       0, 10).ToString());
 
-    SqlCommand.Get(id).WriteToConsole();
-    SqlCommand.Get<RoleRecord>([id, RecordID<RoleRecord>.New()]).WriteToConsole();
-    SqlCommand.Get<RoleRecord>(parameters).WriteToConsole();
-    SqlCommand.GetAll<RoleRecord>().WriteToConsole();
-    SqlCommand.GetFirst<RoleRecord>().WriteToConsole();
-    SqlCommand.GetLast<RoleRecord>().WriteToConsole();
-    SqlCommand.GetCount<RoleRecord>().WriteToConsole();
-    SqlCommand.GetSortedID<RoleRecord>().WriteToConsole();
-    SqlCommand.GetExists<RoleRecord>(parameters).WriteToConsole();
+    writeLine(SqlCommand.Where<RoleRecord, string>(nameof(RoleRecord.NameOfRole), ADMIN).ToString());
 
-    SqlCommand.GetDelete<RoleRecord>(parameters).WriteToConsole();
-    SqlCommand.GetDelete(id).WriteToConsole();
-    SqlCommand.GetDeleteAll<RoleRecord>().WriteToConsole();
+    writeLine(SqlCommand.Get(id).ToString());
+    writeLine(SqlCommand.Get<RoleRecord>([id, RecordID<RoleRecord>.New()]).ToString());
+    writeLine(SqlCommand.Get<RoleRecord>(parameters).ToString());
+    writeLine(SqlCommand.GetAll<RoleRecord>().ToString());
+    writeLine(SqlCommand.GetFirst<RoleRecord>().ToString());
+    writeLine(SqlCommand.GetLast<RoleRecord>().ToString());
+    writeLine(SqlCommand.GetCount<RoleRecord>().ToString());
+    writeLine(SqlCommand.GetSortedID<RoleRecord>().ToString());
+    writeLine(SqlCommand.GetExists<RoleRecord>(parameters).ToString());
 
-    SqlCommand.GetNext(pair).WriteToConsole();
-    SqlCommand.GetNextID(pair).WriteToConsole();
+    writeLine(SqlCommand.GetDelete<RoleRecord>(parameters).ToString());
+    writeLine(SqlCommand.GetDelete(id).ToString());
+    writeLine(SqlCommand.GetDeleteAll<RoleRecord>().ToString());
 
-    SqlCommand.GetCopy<RoleRecord>().WriteToConsole();
-    SqlCommand.GetInsert(record).WriteToConsole();
-    SqlCommand.GetInsert<RoleRecord>([record, record]).WriteToConsole();
+    writeLine(SqlCommand.GetNext(pair).ToString());
+    writeLine(SqlCommand.GetNextID(pair).ToString());
 
-    SqlCommand.GetUpdate(record).WriteToConsole();
-    SqlCommand.GetTryInsert(record, parameters).WriteToConsole();
-    SqlCommand.InsertOrUpdate(record, parameters).WriteToConsole();
+    writeLine(SqlCommand.GetCopy<RoleRecord>().ToString());
+    writeLine(SqlCommand.GetInsert(record).ToString());
+    writeLine(SqlCommand.GetInsert<RoleRecord>([record, record]).ToString());
+
+    writeLine(SqlCommand.GetUpdate(record).ToString());
+    writeLine(SqlCommand.GetTryInsert(record, parameters).ToString());
+    writeLine(SqlCommand.InsertOrUpdate(record, parameters).ToString());
 
     // await TestDatabase.TestAsync();
 }
 catch ( Exception e ) { e.WriteToConsole(); }
 finally { "Bye".WriteToConsole(); }
+
+return;
+
+static void writeLine( string line, [CallerArgumentExpression(nameof(line))] string paramName = EMPTY )
+{
+    string header = new('=', paramName.Length + 20);
+    Console.WriteLine();
+    Console.WriteLine(header);
+    Console.WriteLine(paramName.PadLeft(header.Length - 10).PadRight(header.Length));
+    Console.WriteLine(header);
+    Console.WriteLine();
+    Console.WriteLine(line);
+    Console.WriteLine();
+}

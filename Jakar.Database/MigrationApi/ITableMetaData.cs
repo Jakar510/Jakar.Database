@@ -32,12 +32,12 @@ public interface ITableMetaData
     public string                                   SetLastModifiedFunctionName { get; }
 
 
-    public StringBuilder ColumnNames( int    indentLevel );
-    public StringBuilder VariableNames( int  indentLevel );
-    public StringBuilder KeyValuePairs( int  indentLevel );
-    public string        IndexName( string   propertyName );
-    public bool          ContainsKey( string propertyName );
-    public bool          TryGetValue( string propertyName, [MaybeNullWhen(false)] out ColumnMetaData value );
+    public void   ColumnNames( StringBuilder   sb, ref int indentLevel );
+    public void   VariableNames( StringBuilder sb, ref int indentLevel );
+    public void   KeyValuePairs( StringBuilder sb, ref int indentLevel );
+    public string IndexName( string            propertyName );
+    public bool   ContainsKey( string          propertyName );
+    public bool   TryGetValue( string          propertyName, [MaybeNullWhen(false)] out ColumnMetaData value );
 
 
     public MigrationRecord SetLastModifiedFunction( long migrationID );

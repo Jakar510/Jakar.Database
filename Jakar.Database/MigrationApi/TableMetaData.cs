@@ -147,49 +147,52 @@ public class TableMetaData<TSelf> : ITableMetaData
 
     public StringBuilder ColumnNames( int indentLevel )
     {
-        int           length = ( MaxLength_ColumnName + 2 ) * Count + Count * 4 * indentLevel;
-        StringBuilder sb     = new(length);
-        int           index  = 0;
+        StringBuilder sb = new();
+        ColumnNames(sb, ref indentLevel);
+        return sb;
+    }
+    public void ColumnNames( StringBuilder sb, ref int indentLevel )
+    {
+        int length = ( MaxLength_ColumnName + 2 ) * Count + Count * 4 * indentLevel;
+        sb.EnsureCapacity(length);
+
+        int index = 0;
 
         foreach ( string columnName in Columns.Select(static x => x.ColumnName) )
         {
             sb.Append(' ', indentLevel * 4).Append(columnName);
             if ( index++ < Count - 1 ) { sb.Append(",\n"); }
         }
-
-        return sb;
     }
 
 
-    public StringBuilder VariableNames( int indentLevel )
+    public void VariableNames( StringBuilder sb, ref int indentLevel )
     {
-        int           length = ( MaxLength_Variables + 2 ) * Count + Count * 4 * indentLevel;
-        StringBuilder sb     = new(length);
-        int           index  = 0;
+        int length = ( MaxLength_Variables + 2 ) * Count + Count * 4 * indentLevel;
+        sb.EnsureCapacity(length);
+
+        int index = 0;
 
         foreach ( string columnName in Columns.Select(static x => x.VariableName) )
         {
             sb.Append(' ', indentLevel * 4).Append(columnName);
             if ( index++ < Count - 1 ) { sb.Append(",\n"); }
         }
-
-        return sb;
     }
 
 
-    public StringBuilder KeyValuePairs( int indentLevel )
+    public void KeyValuePairs( StringBuilder sb, ref int indentLevel )
     {
-        int           length = ( MaxLength_KeyValuePair + 2 ) * Count + Count * 4 * indentLevel;
-        StringBuilder sb     = new(length);
-        int           index  = 0;
+        int length = ( MaxLength_KeyValuePair + 2 ) * Count + Count * 4 * indentLevel;
+        sb.EnsureCapacity(length);
+
+        int index = 0;
 
         foreach ( string columnName in Columns.Select(static x => x.KeyValuePair) )
         {
             sb.Append(' ', indentLevel * 4).Append(columnName);
             if ( index++ < Count - 1 ) { sb.Append(",\n"); }
         }
-
-        return sb;
     }
 
 

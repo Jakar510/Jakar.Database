@@ -40,7 +40,8 @@ public readonly struct SqlCommand : IEquatable<SqlCommand>
                                     AllResultTypesAreUnknown = false
                                 };
 
-        command.Parameters.Add(Parameters.Span);
+        foreach ( NpgsqlParameter parameter in Parameters.Parameters ) { command.Parameters.Add(parameter); }
+
         return command;
     }
 
@@ -90,7 +91,8 @@ public readonly struct SqlCommand : IEquatable<SqlCommand>
     public static SqlCommand GetRandom<TSelf>( in RecordID<UserRecord> userID, int count = 1 )
         where TSelf : TableRecord<TSelf>, ITableRecord<TSelf> => Parse<TSelf>($"""
                                                                                SELECT * FROM {TSelf.TableName}
-                                                                               WHERE {nameof(IUserID.UserID)} = {userID.Value}
+                                                                               WHERE 
+                                                                                    {nameof(IUserID.UserID)} = {userID.Value}
                                                                                ORDER BY RANDOM()
                                                                                LIMIT {count};
                                                                                """);
@@ -98,8 +100,9 @@ public readonly struct SqlCommand : IEquatable<SqlCommand>
 
     public static SqlCommand WherePaged<TSelf>( in PostgresParameters parameters, int start, int count )
         where TSelf : TableRecord<TSelf>, ITableRecord<TSelf> => Parse<TSelf>($"""
-                                                                                 SELECT * FROM {TSelf.TableName}
-                                                                                 {parameters.KeyValuePairs:1}
+                                                                                 SELECT * FROM {TSelf.TableName} 
+                                                                                 WHERE
+                                                                                 {parameters.KeyValuePairs(1)}
                                                                                  OFFSET {start}
                                                                                  LIMIT {count}
                                                                                """);
@@ -120,7 +123,8 @@ public readonly struct SqlCommand : IEquatable<SqlCommand>
     public static SqlCommand WherePaged<TSelf>( DateTimeOffset startTime, int start, int count )
         where TSelf : TableRecord<TSelf>, ITableRecord<TSelf> => Parse<TSelf>($"""
                                                                                SELECT * FROM {TSelf.TableName}
-                                                                               WHERE {nameof(IDateCreated.DateCreated)} > {startTime}
+                                                                               WHERE 
+                                                                                    {nameof(IDateCreated.DateCreated)} > {startTime}
                                                                                OFFSET {start}
                                                                                LIMIT {count};
                                                                                """);
@@ -137,15 +141,16 @@ public readonly struct SqlCommand : IEquatable<SqlCommand>
     public static SqlCommand Get<TSelf>( IEnumerable<RecordID<TSelf>> ids )
         where TSelf : PairRecord<TSelf>, ITableRecord<TSelf> => Parse<TSelf>($"""
                                                                               SELECT * FROM {TSelf.TableName}
-                                                                              WHERE {nameof(IUniqueID.ID)} in (
-                                                                              {ids.Select(RecordID<TSelf>.GetValue)}
-                                                                              );
+                                                                              WHERE 
+                                                                                    {nameof(IUniqueID.ID)} in (
+                                                                                    {ids.Select(RecordID<TSelf>.GetValue):2}
+                                                                                    );
                                                                               """);
     public static SqlCommand Get<TSelf>( in PostgresParameters parameters )
         where TSelf : TableRecord<TSelf>, ITableRecord<TSelf> => Parse<TSelf>($"""
                                                                                SELECT * FROM {TSelf.TableName}
                                                                                WHERE 
-                                                                               {parameters.KeyValuePairs:1};
+                                                                               {parameters.KeyValuePairs(1)};
                                                                                """);
     public static SqlCommand GetAll<TSelf>()
         where TSelf : TableRecord<TSelf>, ITableRecord<TSelf> => Parse<TSelf>($"SELECT * FROM {TSelf.TableName};");
@@ -175,7 +180,7 @@ public readonly struct SqlCommand : IEquatable<SqlCommand>
                                                                                EXISTS( 
                                                                                SELECT * FROM {TSelf.TableName}
                                                                                WHERE 
-                                                                               {parameters.KeyValuePairs:1};
+                                                                               {parameters.KeyValuePairs(1)};
                                                                                """);
 
 
@@ -183,9 +188,9 @@ public readonly struct SqlCommand : IEquatable<SqlCommand>
         where TSelf : TableRecord<TSelf>, ITableRecord<TSelf> => Parse<TSelf>($"""
                                                                                DELETE FROM {TSelf.TableName} 
                                                                                WHERE 
-                                                                                  {nameof(IUniqueID.ID)} in (
-                                                                               {parameters.KeyValuePairs:2}
-                                                                                  );
+                                                                               {nameof(IUniqueID.ID)} in (
+                                                                               {parameters.KeyValuePairs(2)}
+                                                                               );
                                                                                """);
     public static SqlCommand GetDelete<TSelf>( in RecordID<TSelf> id )
         where TSelf : PairRecord<TSelf>, ITableRecord<TSelf> => Parse<TSelf>($"""
@@ -195,7 +200,10 @@ public readonly struct SqlCommand : IEquatable<SqlCommand>
     public static SqlCommand GetDelete<TSelf>( IEnumerable<RecordID<TSelf>> ids )
         where TSelf : PairRecord<TSelf>, ITableRecord<TSelf> => Parse<TSelf>($"""
                                                                               DELETE FROM {TSelf.TableName} 
-                                                                              WHERE {nameof(IUniqueID.ID)} in ({ids.Select(RecordID<TSelf>.GetValue)});
+                                                                              WHERE 
+                                                                                    {nameof(IUniqueID.ID)} in (
+                                                                                    {ids.Select(RecordID<TSelf>.GetValue):2}
+                                                                                    );
                                                                               """);
     public static SqlCommand GetDeleteAll<TSelf>()
         where TSelf : TableRecord<TSelf>, ITableRecord<TSelf> => Parse<TSelf>($"DELETE FROM {TSelf.TableName};");
@@ -239,7 +247,7 @@ public readonly struct SqlCommand : IEquatable<SqlCommand>
                              )
                              VALUES
                              (
-                             {parameters.VariableNames:1:1}
+                             {parameters.VariableNames(1)}
                              )
                              RETURNING {nameof(IUniqueID.ID)};
                              """);
@@ -256,7 +264,7 @@ public readonly struct SqlCommand : IEquatable<SqlCommand>
                              )
                              VALUES
                              (
-                             {parameters.VariableNames:1}
+                             {parameters.VariableNames(1)}
                              )
                              RETURNING {nameof(IUniqueID.ID)};
                              """);
@@ -273,7 +281,7 @@ public readonly struct SqlCommand : IEquatable<SqlCommand>
                              )
                              VALUES
                              (
-                             {parameters.VariableNames:1}
+                             {parameters.VariableNames(1)}
                              )
                              RETURNING {nameof(IUniqueID.ID)};
                              """);
@@ -289,30 +297,35 @@ public readonly struct SqlCommand : IEquatable<SqlCommand>
                              UPDATE {TSelf.TableName} 
                              SET 
                              {parameters} 
-                             WHERE {nameof(IUniqueID.ID)} = @{nameof(IUniqueID.ID)};
+                             WHERE 
+                                  {nameof(IUniqueID.ID)} = @{nameof(IUniqueID.ID)};
                              """);
     }
     public static SqlCommand GetTryInsert<TSelf>( TSelf record, in PostgresParameters parameters )
-        where TSelf : TableRecord<TSelf>, ITableRecord<TSelf>
+        where TSelf : PairRecord<TSelf>, ITableRecord<TSelf>
     {
-        PostgresParameters param = record.ToDynamicParameters().With(in parameters);
+        PostgresParameters recordParameters = record.ToDynamicParameters();
 
         return Parse<TSelf>($"""
                              IF NOT EXISTS (
                              SELECT * FROM {TSelf.TableName} 
-                             WHERE 
-                             {parameters.KeyValuePairs:2}
+                                WHERE 
+                                    {nameof(IUniqueID.ID)} = @{record.ID}
+                                OR 
+                                (
+                             {parameters.KeyValuePairs(2)}
+                                )
                              )
 
                              BEGIN
                              INSERT INTO {TSelf.TableName}
-                             (
-                             {TSelf.MetaData.ColumnNames(1)}
-                             )
+                                (
+                             {recordParameters.ColumnNames(2)}
+                                )
                              VALUES
-                             (
-                             {param.VariableNames:1}
-                             ) 
+                                (
+                             {recordParameters.VariableNames(2)}
+                                ) 
                              RETURNING {nameof(IUniqueID.ID)};
                              END
 
@@ -323,34 +336,42 @@ public readonly struct SqlCommand : IEquatable<SqlCommand>
                              """);
     }
     public static SqlCommand InsertOrUpdate<TSelf>( TSelf record, in PostgresParameters parameters )
-        where TSelf : TableRecord<TSelf>, ITableRecord<TSelf>
+        where TSelf : PairRecord<TSelf>, ITableRecord<TSelf>
     {
         PostgresParameters recordParameters = record.ToDynamicParameters();
 
         return Parse<TSelf>($"""
-                             IF NOT EXISTS (
-                             SELECT * FROM {TSelf.TableName}
-                             WHERE
-                             {parameters.KeyValuePairs:2}
+                             IF NOT EXISTS 
+                             (
+                                 SELECT * FROM {TSelf.TableName}
+                                     WHERE
+                                         {nameof(IUniqueID.ID)} = @{record.ID}
+                                         OR 
+                                             (
+                             {parameters.KeyValuePairs(4)}
+                                             )
                              )
+                                 
                              BEGIN
                              INSERT INTO {TSelf.TableName}
-                             (
-                             {TSelf.MetaData.ColumnNames(1)}
-                             ) 
+                                (
+                             {recordParameters.ColumnNames(2)}
+                                ) 
                              VALUES 
-                             (
-                             {recordParameters.VariableNames:1}
-                             ) 
+                                 (
+                             {recordParameters.VariableNames(2)}
+                                 ) 
                              RETURNING {nameof(IUniqueID.ID)};
                              END
 
                              ELSE
                              BEGIN
                              UPDATE {TSelf.TableName} 
-                             SET 
-                             {recordParameters.KeyValuePairs:2}
-                             WHERE {nameof(IUniqueID.ID)} = @{nameof(IUniqueID.ID)};
+                                SET
+                             {recordParameters.VariableNames(2)}
+                                WHERE 
+                                    {nameof(IUniqueID.ID)} = @{nameof(IUniqueID.ID)};
+
                              SELECT @{nameof(IUniqueID.ID)};
                              END
                              """);
