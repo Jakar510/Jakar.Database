@@ -26,7 +26,7 @@ public readonly struct KeyValuePairs
     public KeyValuePairs( PostgresParameters parameters, int indentLevel, string separator )
     {
         Parameters = parameters;
-        int           length = parameters.Table.Properties.Values.Sum(static x => x.KeyValuePair.Length) + parameters.Params.Count * ( indentLevel * 4 + 3 );
+        int           length = parameters.Table.Properties.Values.Sum(static x => x.KeyValuePair.Length) + parameters.Count * ( indentLevel * 4 + 3 );
         StringBuilder sb     = Value = new StringBuilder(length);
 
         int index = 0;

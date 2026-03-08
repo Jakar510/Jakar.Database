@@ -56,7 +56,7 @@ public readonly ref struct SqlInterpolatedStringHandler<TSelf>( int literalLengt
         }
         finally
         {
-            if ( isParameter && __columnNames.Count > 0 ) { __parameters.Add(__columnNames.Pop(), value); }
+            if ( isParameter && __columnNames.Count > 0 ) { __parameters.Add(__columnNames.Pop(), value, paramName); }
         }
     }
     */
@@ -89,7 +89,7 @@ public readonly ref struct SqlInterpolatedStringHandler<TSelf>( int literalLengt
         }
         finally
         {
-            if ( isParameter && __columnNames.Count > 0 ) { __parameters.Add(__columnNames.Pop(), value); }
+            if ( isParameter && __columnNames.Count > 0 ) { __parameters.Add(__columnNames.Pop(), value, paramName); }
         }
     }
 
@@ -206,7 +206,7 @@ public readonly ref struct SqlInterpolatedStringHandler<TSelf>( int literalLengt
         }
         finally
         {
-            if ( isParameter && __columnNames.Count > 0 ) { __parameters.Add(__columnNames.Pop(), value); }
+            if ( isParameter && __columnNames.Count > 0 ) { __parameters.Add(__columnNames.Pop(), value, paramName); }
         }
     }
     public void AppendFormatted<TValue>( IEnumerable<TValue> value, string? format = null, [CallerArgumentExpression(nameof(value))] string paramName = EMPTY )
@@ -329,7 +329,7 @@ public readonly ref struct SqlInterpolatedStringHandler<TSelf>( int literalLengt
         }
         finally
         {
-            if ( isParameter && __columnNames.Count > 0 ) { __parameters.Add(__columnNames.Pop(), value); }
+            if ( isParameter && __columnNames.Count > 0 ) { __parameters.Add(__columnNames.Pop(), value, paramName); }
         }
     }
 
@@ -445,7 +445,7 @@ public readonly ref struct SqlInterpolatedStringHandler<TSelf>( int literalLengt
 
     public override string ToString() => __sb.ToString();
 
-    public (string SQL, ImmutableArray<NpgsqlParameter> Parameters) Build() => new(ToString(), [..__parameters.Params]);
+    public (string SQL, ImmutableArray<NpgsqlParameter> Parameters) Build() => new(ToString(), [..__parameters.Values]);
 
     public SqlCommand ToSqlCommand( CommandType? commandType = null, CommandFlags flags = CommandFlags.None ) => SqlCommand.Create(ToString(), __parameters, commandType, flags);
 }

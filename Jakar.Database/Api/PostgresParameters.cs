@@ -21,20 +21,19 @@ public readonly struct PostgresParameters() : IEquatable<PostgresParameters>
         init
         {
             field = value;
-            Params.EnsureCapacity(value.Count);
+            parameters.EnsureCapacity(value.Count);
         }
     }
-    internal List<NpgsqlParameter>                                                                            Params             => parameters;
-    public   int                                                                                              Count              => parameters.Count + Extras.Sum(static x => x.Count);
-    public   ValueEnumerable<FromEnumerable<NpgsqlParameter>, NpgsqlParameter>                                Parameters         { [Pure] get => parameters.Union(Extras.SelectMany(static x => x.parameters)).AsValueEnumerable(); }
-    public   int                                                                                              ParameterCount     => Parameters.Count();
-    public   int                                                                                              Capacity           => Extras.Capacity;
-    public   bool                                                                                             IsGrouped          => Extras.Count > 1;
-    public   PooledArray<string>                                                                              ParameterNameArray { [Pure] [MustDisposeResource] get => Parameters.Select(static x => x.ParameterName).Order().ToArrayPool(); }
-    public   ValueEnumerable<FromList<NpgsqlParameter>, NpgsqlParameter>                                      Values             { [Pure] get => Params.AsValueEnumerable(); }
-    public   ValueEnumerable<ListSelect<NpgsqlParameter, string>, string>                                     ParameterNames     { [Pure] get => Values.Select(static x => x.ParameterName); }
-    public   ValueEnumerable<DistinctBy<FromList<NpgsqlParameter>, NpgsqlParameter, string>, NpgsqlParameter> SourceProperties   { [Pure] get => Values.DistinctBy(static x => x.SourceColumn); }
-    public   int                                                                                              SpacerCount        => Math.Max(Params.Count, Table.Count) - 1;
+    public ValueEnumerable<FromList<NpgsqlParameter>, NpgsqlParameter>                                      Values             => parameters.AsValueEnumerable();
+    public int                                                                                              Count              => parameters.Count + Extras.Sum(static x => x.Count);
+    public ValueEnumerable<FromEnumerable<NpgsqlParameter>, NpgsqlParameter>                                Parameters         { [Pure] get => parameters.Union(Extras.SelectMany(static x => x.parameters)).AsValueEnumerable(); }
+    public int                                                                                              ParameterCount     => Parameters.Count();
+    public int                                                                                              Capacity           => Extras.Capacity;
+    public bool                                                                                             IsGrouped          => Extras.Count > 1;
+    public PooledArray<string>                                                                              ParameterNameArray { [Pure] [MustDisposeResource] get => Parameters.Select(static x => x.ParameterName).Order().ToArrayPool(); }
+    public ValueEnumerable<ListSelect<NpgsqlParameter, string>, string>                                     ParameterNames     { [Pure] get => Values.Select(static x => x.ParameterName); }
+    public ValueEnumerable<DistinctBy<FromList<NpgsqlParameter>, NpgsqlParameter, string>, NpgsqlParameter> SourceProperties   { [Pure] get => Values.DistinctBy(static x => x.SourceColumn); }
+    public int                                                                                              SpacerCount        => Math.Max(parameters.Count, Table.Count) - 1;
 
 
     public ColumnNames   ColumnNames( int   indentLevel )                           => new(this, indentLevel);
@@ -74,7 +73,7 @@ public readonly struct PostgresParameters() : IEquatable<PostgresParameters>
         where TSelf : TableRecord<TSelf>, ITableRecord<TSelf>
     {
         PostgresParameters parameters = new() { Table = TSelf.MetaData };
-        parameters.Params.EnsureCapacity(capacity);
+        parameters.parameters.EnsureCapacity(capacity);
         return parameters;
     }
 
@@ -95,10 +94,9 @@ public readonly struct PostgresParameters() : IEquatable<PostgresParameters>
         Add(Table[propertyName].ToParameter(value, parameterName, direction, sourceVersion));
     public PostgresParameters Add( NpgsqlParameter? parameter )
     {
-        if ( parameter is null ) { return this; }
+        if ( parameter is null || Values.Where(x => x.ParameterName == parameter.ParameterName).Any(x => Equals(x.Value, parameter.Value)) ) { return this; }
 
-        if ( Params.FindIndex(x => x.ParameterName == parameter.ParameterName) < 0 ) { Params.TryAdd(parameter); }
-
+        parameters.Add(parameter);
         return this;
     }
 
@@ -118,7 +116,7 @@ public readonly struct PostgresParameters() : IEquatable<PostgresParameters>
     }
 
 
-    public          bool Equals( PostgresParameters      other )                          => Params.Equals(other.Params);
+    public          bool Equals( PostgresParameters      other )                          => parameters.Equals(other.parameters);
     public override bool Equals( object?                 obj )                            => obj is PostgresParameters other && Equals(other);
     public static   bool operator ==( PostgresParameters left, PostgresParameters right ) => left.Equals(right);
     public static   bool operator !=( PostgresParameters left, PostgresParameters right ) => !left.Equals(right);
