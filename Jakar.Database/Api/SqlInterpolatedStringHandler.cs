@@ -22,44 +22,10 @@ public readonly ref struct SqlInterpolatedStringHandler<TSelf>( int literalLengt
     private readonly Stack<string>      __columnNames = new(formattedCount);
 
 
-    public void AppendLiteral( string value ) => __sb.Append(value);
+    public void AppendLiteral( ReadOnlySpan<char> value )                                                                                            => __sb.Append(value);
+    public void AppendFormatted( StringBuilder?   value, string? format = null, [CallerArgumentExpression(nameof(value))] string paramName = EMPTY ) => __sb.Append(value);
 
 
-    public void AppendFormatted( StringBuilder? value, string? format = null, [CallerArgumentExpression(nameof(value))] string paramName = EMPTY ) => __sb.Append(value);
-    /*
-    public void AppendFormatted( ReadOnlySpan<char> value, string? format = null, [CallerArgumentExpression(nameof(value))] string paramName = EMPTY )
-    {
-        bool isParameter = __sb.Length > 0 && __sb[^1] == '@';
-        bool isNameOf    = paramName.StartsWith("nameof(", StringComparison.Ordinal);
-        if ( isNameOf && value is not null ) { __columnNames.Push(value); }
-
-        try
-        {
-            switch ( value )
-            {
-                case null:
-                    __sb.Append("NULL");
-                    return;
-
-                case var n when isNameOf:
-                    __sb.Append(n.SqlName());
-                    return;
-
-                case var n when isParameter || paramName.Contains(nameof(UserRecord.TABLE_NAME)) || paramName.Contains(nameof(UserRecord.TableName)) || string.Equals(paramName, "columnName", StringComparison.Ordinal):
-                    __sb.Append(n);
-                    return;
-
-                case var n:
-                    AppendQuoted(n);
-                    return;
-            }
-        }
-        finally
-        {
-            if ( isParameter && __columnNames.Count > 0 ) { __parameters.Add(__columnNames.Pop(), value, paramName); }
-        }
-    }
-    */
     public void AppendFormatted( string? value, string? format = null, [CallerArgumentExpression(nameof(value))] string paramName = EMPTY )
     {
         bool isParameter = __sb.Length > 0 && __sb[^1] == '@';
@@ -68,22 +34,26 @@ public readonly ref struct SqlInterpolatedStringHandler<TSelf>( int literalLengt
 
         try
         {
-            switch ( value )
+            switch ( value?.Length )
             {
                 case null:
                     __sb.Append("NULL");
                     return;
 
-                case var n when isNameOf:
-                    __sb.Append(n.SqlName());
+                case > 0 when isNameOf:
+                    __sb.Append(value.SqlName());
                     return;
 
-                case var n when isParameter || paramName.Contains(nameof(UserRecord.TABLE_NAME)) || paramName.Contains(nameof(UserRecord.TableName)) || string.Equals(paramName, "columnName", StringComparison.Ordinal):
-                    __sb.Append(n);
+                case > 0 when isParameter || paramName.Contains(nameof(UserRecord.TABLE_NAME)) || paramName.Contains(nameof(UserRecord.TableName)) || string.Equals(paramName, "columnName", StringComparison.Ordinal):
+                    __sb.Append(value);
                     return;
 
-                case var n:
-                    AppendQuoted(n);
+                case > 0:
+                    AppendQuoted(value);
+                    return;
+
+                default:
+                    AppendQuoted("");
                     return;
             }
         }
@@ -398,8 +368,8 @@ public readonly ref struct SqlInterpolatedStringHandler<TSelf>( int literalLengt
     }
 
 
-    private void AppendQuoted( string value )                     => __sb.Append("'").Append(value).Append("'");
-    private void AppendQuoted( string value, ushort indentLevel ) => __sb.AppendJoin(' ', indentLevel * 4).Append("'").Append(value).Append("'");
+    private void AppendQuoted( ReadOnlySpan<char> value )                     => __sb.Append("'").Append(value).Append("'");
+    private void AppendQuoted( ReadOnlySpan<char> value, ushort indentLevel ) => __sb.AppendJoin(' ', indentLevel * 4).Append("'").Append(value).Append("'");
     private void AppendQuoted( IEnumerable<string> enumerable, ushort indentLevel )
     {
         switch ( enumerable )

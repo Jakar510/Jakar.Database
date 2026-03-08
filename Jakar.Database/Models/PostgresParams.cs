@@ -38,6 +38,17 @@ public static class PostgresParams
     public static string SqlName( this Type type ) => __nameSnakeCaseCache.GetOrAdd(type.Name, Strings.ToSnakeCase);
 
 
+    public static string SqlName( this ReadOnlySpan<char> propertyName )
+    {
+        ConcurrentDictionary<string, string>.AlternateLookup<ReadOnlySpan<char>> lookup = __nameSnakeCaseCache.GetAlternateLookup<ReadOnlySpan<char>>();
+        if ( lookup.TryGetValue(propertyName, out string? result) ) { return result; }
+
+        result = propertyName.ToSnakeCase(CultureInfo.InvariantCulture);
+        lookup.TryAdd(propertyName, result);
+        return result;
+    }
+
+
 
     extension( string propertyName )
     {

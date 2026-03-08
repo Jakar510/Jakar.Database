@@ -347,9 +347,9 @@ public readonly struct SqlCommand : IEquatable<SqlCommand>
                                      WHERE
                                          {nameof(IUniqueID.ID)} = @{record.ID}
                                          OR 
-                                             (
+                                         (
                              {parameters.KeyValuePairs(4)}
-                                             )
+                                         )
                              )
                                  
                              BEGIN

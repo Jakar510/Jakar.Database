@@ -44,6 +44,7 @@ try
 
     writeLine(SqlCommand.GetDelete<RoleRecord>(parameters).ToString());
     writeLine(SqlCommand.GetDelete(id).ToString());
+    writeLine(SqlCommand.GetDelete([id, RecordID<RoleRecord>.New()]).ToString());
     writeLine(SqlCommand.GetDeleteAll<RoleRecord>().ToString());
 
     writeLine(SqlCommand.GetNext(pair).ToString());
