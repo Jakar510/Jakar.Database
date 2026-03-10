@@ -1,6 +1,10 @@
 ﻿// Jakar.Database :: Jakar.Database
 // 03/06/2026  22:33
 
+using ZLinq.Linq;
+
+
+
 namespace Jakar.Database;
 
 
@@ -26,15 +30,14 @@ public readonly struct KeyValuePairs
     public KeyValuePairs( PostgresParameters parameters, int indentLevel, string separator )
     {
         Parameters = parameters;
-        int           length = parameters.Table.Properties.Values.Sum(static x => x.KeyValuePair.Length) + parameters.Count * ( indentLevel * 4 + 3 );
-        StringBuilder sb     = Value = new StringBuilder(length);
+        StringBuilder sb = Value = new StringBuilder(parameters.KeyValuePairLength(indentLevel));
 
         int index = 0;
         int count = parameters.Count;
 
-        foreach ( NpgsqlParameter parameter in parameters.SourceProperties )
+        foreach ( NpgsqlParameter parameter in parameters.Parameters.DistinctBy(static x => x.SourceColumn) )
         {
-            sb.Append(' ', indentLevel * 4).Append($" {parameter.SourceColumn} = @{parameter.ParameterName} ");
+            sb.Append(' ', indentLevel * 4).Append(parameter.SourceColumn).Append(" = @").Append(parameter.ParameterName);
 
             if ( index++ >= count - 1 ) { continue; }
 
@@ -54,35 +57,45 @@ public readonly struct VariableNames
     public VariableNames( PostgresParameters parameters, int indentLevel )
     {
         Parameters = parameters;
-        int           length = parameters.Table.MaxLength_ColumnName * parameters.Table.Count + parameters.Parameters.Sum(static x => x.ParameterName.Length + 10);
-        StringBuilder sb     = Value = new StringBuilder(length);
+        StringBuilder sb = Value = new StringBuilder(parameters.VariableNameLength);
 
         if ( !parameters.IsGrouped )
         {
-            parameters.Table.VariableNames(sb, ref indentLevel);
-            return;
+            foreach ( NpgsqlParameter parameter in parameters.parameters ) { sb.Append(' ', indentLevel * 4).Append('@').Append(parameter.ParameterName).Append(",\n"); }
         }
-
-        int index = 0;
-        int count = parameters.Count;
-
-        for ( int i = 0; i < parameters.Extras.Count; i++ )
+        else
         {
-            sb.Append(' ', indentLevel * 4).Append("(");
-            indentLevel++;
-
-            foreach ( NpgsqlParameter parameter in parameters.Extras[i].Values )
+            if ( parameters.parameters.Count > 0 )
             {
-                sb.Append(' ', indentLevel * 4).Append('@').Append(parameter.ParameterName).Append('_').Append(i);
+                sb.Append(' ', indentLevel * 4).Append('(');
+                indentLevel++;
+                foreach ( NpgsqlParameter parameter in parameters.parameters ) { sb.Append(' ', indentLevel * 4).Append('@').Append(parameter.ParameterName).Append(",\n"); }
 
-                if ( index++ < count - 1 ) { sb.Append(",\n"); }
+                sb.Append("),\n");
+                indentLevel--;
             }
 
-            sb.Append(")");
-            if ( i < parameters.Extras.Count ) { sb.Append(",\n"); }
+            ReadOnlySpan<ImmutableArray<NpgsqlParameter>> span = parameters.Extras.AsSpan();
 
-            indentLevel--;
+            for ( int i = 0; i < span.Length; i++ )
+            {
+                ref readonly ImmutableArray<NpgsqlParameter> array = ref span[i];
+                sb.Append(' ', indentLevel * 4).Append("(\n");
+
+                indentLevel++;
+
+                foreach ( NpgsqlParameter parameter in array )
+                {
+                    sb.Append(' ', indentLevel * 4).Append('@').Append(parameter.ParameterName);
+                    if ( i < span.Length ) { sb.Append(",\n"); }
+                }
+
+                indentLevel--;
+                sb.Append(' ', indentLevel * 4).Append("),\n");
+            }
         }
+
+        sb.Length -= 2;
     }
     public override string ToString() => Value.ToString();
 }

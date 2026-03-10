@@ -64,16 +64,8 @@ public readonly struct SqlCommand : IEquatable<SqlCommand>
     public static SqlCommand Create( string sql, in PostgresParameters parameters, CommandType? commandType = null, CommandFlags flags = CommandFlags.None ) => new(sql, parameters, commandType, flags);
 
 
-    public static SqlCommand Create<TSelf>( string sql )
-        where TSelf : TableRecord<TSelf>, ITableRecord<TSelf> => new(sql, PostgresParameters.Create<TSelf>());
     public static SqlCommand Create<TSelf>( string sql, params ReadOnlySpan<NpgsqlParameter> parameters )
         where TSelf : TableRecord<TSelf>, ITableRecord<TSelf> => new(sql, PostgresParameters.Create<TSelf>(parameters));
-    public static SqlCommand Create<TSelf>( (string SQL, NpgsqlParameter[] Parameters) pair )
-        where TSelf : TableRecord<TSelf>, ITableRecord<TSelf> => Create<TSelf>(pair.SQL, pair.Parameters);
-    public static SqlCommand Create<TSelf>( (string SQL, List<NpgsqlParameter> Parameters) pair )
-        where TSelf : TableRecord<TSelf>, ITableRecord<TSelf> => Create<TSelf>(pair.SQL, pair.Parameters.AsSpan());
-    public static SqlCommand Create<TSelf>( (string SQL, ImmutableArray<NpgsqlParameter> Parameters) pair )
-        where TSelf : TableRecord<TSelf>, ITableRecord<TSelf> => Create<TSelf>(pair.SQL, pair.Parameters.AsSpan());
 
 
     public static SqlCommand Parse<TSelf>( ref SqlInterpolatedStringHandler<TSelf> handler, CommandType? commandType = null, CommandFlags flags = CommandFlags.None )
@@ -131,22 +123,29 @@ public readonly struct SqlCommand : IEquatable<SqlCommand>
     public static SqlCommand Where<TSelf, TValue>( string columnName, TValue? value )
         where TSelf : PairRecord<TSelf>, ITableRecord<TSelf> => Parse<TSelf>($"SELECT * FROM {TSelf.TableName} WHERE {columnName} = @{value};");
 
-
-    public static SqlCommand Get<TSelf>( in RecordID<TSelf> id )
+    [OverloadResolutionPriority(3)] public static SqlCommand Get<TSelf>( in RecordID<TSelf> id )
         where TSelf : PairRecord<TSelf>, ITableRecord<TSelf> => Parse<TSelf>($"""
                                                                               SELECT * FROM {TSelf.TableName}
                                                                               WHERE 
                                                                               {nameof(IUniqueID.ID)} = {id};
                                                                               """);
-    public static SqlCommand Get<TSelf>( IEnumerable<RecordID<TSelf>> ids )
+    [OverloadResolutionPriority(1)] public static SqlCommand Get<TSelf>( IEnumerable<RecordID<TSelf>> ids )
         where TSelf : PairRecord<TSelf>, ITableRecord<TSelf> => Parse<TSelf>($"""
                                                                               SELECT * FROM {TSelf.TableName}
                                                                               WHERE 
                                                                                     {nameof(IUniqueID.ID)} in (
-                                                                                    {ids.Select(RecordID<TSelf>.GetValue):2}
+                                                                              {ids:2}
                                                                                     );
                                                                               """);
-    public static SqlCommand Get<TSelf>( in PostgresParameters parameters )
+    [OverloadResolutionPriority(2)] public static SqlCommand Get<TSelf>( params ReadOnlySpan<RecordID<TSelf>> ids )
+        where TSelf : PairRecord<TSelf>, ITableRecord<TSelf> => Parse<TSelf>($"""
+                                                                              SELECT * FROM {TSelf.TableName}
+                                                                              WHERE 
+                                                                                    {nameof(IUniqueID.ID)} in (
+                                                                              {ids:2}
+                                                                                    );
+                                                                              """);
+    [OverloadResolutionPriority(0)] public static SqlCommand Get<TSelf>( in PostgresParameters parameters )
         where TSelf : TableRecord<TSelf>, ITableRecord<TSelf> => Parse<TSelf>($"""
                                                                                SELECT * FROM {TSelf.TableName}
                                                                                WHERE 
@@ -184,7 +183,7 @@ public readonly struct SqlCommand : IEquatable<SqlCommand>
                                                                                """);
 
 
-    public static SqlCommand GetDelete<TSelf>( in PostgresParameters parameters )
+    [OverloadResolutionPriority(0)] public static SqlCommand GetDelete<TSelf>( in PostgresParameters parameters )
         where TSelf : TableRecord<TSelf>, ITableRecord<TSelf> => Parse<TSelf>($"""
                                                                                DELETE FROM {TSelf.TableName} 
                                                                                WHERE 
@@ -192,17 +191,25 @@ public readonly struct SqlCommand : IEquatable<SqlCommand>
                                                                                {parameters.KeyValuePairs(2)}
                                                                                );
                                                                                """);
-    public static SqlCommand GetDelete<TSelf>( in RecordID<TSelf> id )
+    [OverloadResolutionPriority(3)] public static SqlCommand GetDelete<TSelf>( in RecordID<TSelf> id )
         where TSelf : PairRecord<TSelf>, ITableRecord<TSelf> => Parse<TSelf>($"""
                                                                               DELETE FROM {TSelf.TableName}
                                                                               WHERE {nameof(IUniqueID.ID)} = {id.Value};
                                                                               """);
-    public static SqlCommand GetDelete<TSelf>( IEnumerable<RecordID<TSelf>> ids )
+    [OverloadResolutionPriority(1)] public static SqlCommand GetDelete<TSelf>( IEnumerable<RecordID<TSelf>> ids )
         where TSelf : PairRecord<TSelf>, ITableRecord<TSelf> => Parse<TSelf>($"""
                                                                               DELETE FROM {TSelf.TableName} 
                                                                               WHERE 
                                                                                     {nameof(IUniqueID.ID)} in (
-                                                                                    {ids.Select(RecordID<TSelf>.GetValue):2}
+                                                                              {ids:2}
+                                                                                    );
+                                                                              """);
+    [OverloadResolutionPriority(2)] public static SqlCommand GetDelete<TSelf>( params ReadOnlySpan<RecordID<TSelf>> ids )
+        where TSelf : PairRecord<TSelf>, ITableRecord<TSelf> => Parse<TSelf>($"""
+                                                                              DELETE FROM {TSelf.TableName} 
+                                                                              WHERE 
+                                                                                    {nameof(IUniqueID.ID)} in (
+                                                                              {ids:2}
                                                                                     );
                                                                               """);
     public static SqlCommand GetDeleteAll<TSelf>()
@@ -212,12 +219,30 @@ public readonly struct SqlCommand : IEquatable<SqlCommand>
     public static SqlCommand GetNext<TSelf>( in RecordPair<TSelf> pair )
         where TSelf : PairRecord<TSelf>, ITableRecord<TSelf> => Parse<TSelf>($"""
                                                                               SELECT * FROM {TSelf.TableName}
-                                                                              WHERE ( id = IFNULL((SELECT MIN({nameof(IDateCreated.DateCreated)}) FROM {TSelf.TableName} WHERE {nameof(IDateCreated.DateCreated)} > {pair.DateCreated} LIMIT 2), 0) );
+                                                                              WHERE ( 
+                                                                                    id = IFNULL(
+                                                                                            (
+                                                                                            SELECT MIN({nameof(IDateCreated.DateCreated)}) FROM {TSelf.TableName} 
+                                                                                                WHERE {nameof(IDateCreated.DateCreated)} > {pair.DateCreated} 
+                                                                                            LIMIT 2
+                                                                                            ),
+                                                                                            0
+                                                                                        )
+                                                                                );
                                                                               """);
     public static SqlCommand GetNextID<TSelf>( in RecordPair<TSelf> pair )
         where TSelf : PairRecord<TSelf>, ITableRecord<TSelf> => Parse<TSelf>($"""
                                                                               SELECT {nameof(IUniqueID.ID)} FROM {TSelf.TableName}
-                                                                              WHERE ( id = IFNULL((SELECT MIN({nameof(IDateCreated.DateCreated)}) FROM {TSelf.TableName} WHERE {nameof(IDateCreated.DateCreated)} > {pair.DateCreated} LIMIT 2), 0) );
+                                                                              WHERE (
+                                                                                  id = IFNULL(
+                                                                                          (
+                                                                                          SELECT MIN({nameof(IDateCreated.DateCreated)}) FROM {TSelf.TableName}
+                                                                                              WHERE {nameof(IDateCreated.DateCreated)} > {pair.DateCreated}
+                                                                                          LIMIT 2
+                                                                                          ),
+                                                                                          0
+                                                                                      )
+                                                                                );
                                                                               """);
 
 
@@ -235,7 +260,7 @@ public readonly struct SqlCommand : IEquatable<SqlCommand>
                                                                                FROM temp_table
                                                                                RETURNING {nameof(IUniqueID.ID)};      
                                                                                """);
-    public static SqlCommand GetInsert<TSelf>( TSelf record )
+    [OverloadResolutionPriority(3)] public static SqlCommand GetInsert<TSelf>( TSelf record )
         where TSelf : TableRecord<TSelf>, ITableRecord<TSelf>
     {
         PostgresParameters parameters = record.ToDynamicParameters();
@@ -246,13 +271,12 @@ public readonly struct SqlCommand : IEquatable<SqlCommand>
                              {TSelf.MetaData.ColumnNames(1)}
                              )
                              VALUES
-                             (
                              {parameters.VariableNames(1)}
-                             )
+
                              RETURNING {nameof(IUniqueID.ID)};
                              """);
     }
-    public static SqlCommand GetInsert<TSelf>( IEnumerable<TSelf> records )
+    [OverloadResolutionPriority(1)] public static SqlCommand GetInsert<TSelf>( IEnumerable<TSelf> records )
         where TSelf : TableRecord<TSelf>, ITableRecord<TSelf>
     {
         PostgresParameters parameters = PostgresParameters.Create(records);
@@ -263,13 +287,12 @@ public readonly struct SqlCommand : IEquatable<SqlCommand>
                              {TSelf.MetaData.ColumnNames(1)}
                              )
                              VALUES
-                             (
                              {parameters.VariableNames(1)}
-                             )
+
                              RETURNING {nameof(IUniqueID.ID)};
                              """);
     }
-    public static SqlCommand GetInsert<TSelf>( params ReadOnlySpan<TSelf> records )
+    [OverloadResolutionPriority(2)] public static SqlCommand GetInsert<TSelf>( params ReadOnlySpan<TSelf> records )
         where TSelf : TableRecord<TSelf>, ITableRecord<TSelf>
     {
         PostgresParameters parameters = PostgresParameters.Create(records);
@@ -280,9 +303,8 @@ public readonly struct SqlCommand : IEquatable<SqlCommand>
                              {TSelf.MetaData.ColumnNames(1)}
                              )
                              VALUES
-                             (
                              {parameters.VariableNames(1)}
-                             )
+
                              RETURNING {nameof(IUniqueID.ID)};
                              """);
     }

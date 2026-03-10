@@ -10,8 +10,8 @@ namespace Jakar.Database;
 
 public readonly struct PostgresParameters() : IEquatable<PostgresParameters>
 {
-    internal readonly List<NpgsqlParameter>    parameters = [];
-    internal readonly List<PostgresParameters> Extras     = [];
+    internal readonly List<NpgsqlParameter>                 parameters = [];
+    internal readonly List<ImmutableArray<NpgsqlParameter>> Extras     = [];
 
 
     public bool IsEmpty { [MemberNotNullWhen(true, nameof(Table))] get => Table is not null; }
@@ -24,16 +24,17 @@ public readonly struct PostgresParameters() : IEquatable<PostgresParameters>
             parameters.EnsureCapacity(value.Count);
         }
     }
-    public ValueEnumerable<FromList<NpgsqlParameter>, NpgsqlParameter>                                      Values             => parameters.AsValueEnumerable();
-    public int                                                                                              Count              => parameters.Count + Extras.Sum(static x => x.Count);
-    public ValueEnumerable<FromEnumerable<NpgsqlParameter>, NpgsqlParameter>                                Parameters         { [Pure] get => parameters.Union(Extras.SelectMany(static x => x.parameters)).AsValueEnumerable(); }
-    public int                                                                                              ParameterCount     => Parameters.Count();
-    public int                                                                                              Capacity           => Extras.Capacity;
-    public bool                                                                                             IsGrouped          => Extras.Count > 1;
-    public PooledArray<string>                                                                              ParameterNameArray { [Pure] [MustDisposeResource] get => Parameters.Select(static x => x.ParameterName).Order().ToArrayPool(); }
-    public ValueEnumerable<ListSelect<NpgsqlParameter, string>, string>                                     ParameterNames     { [Pure] get => Values.Select(static x => x.ParameterName); }
-    public ValueEnumerable<DistinctBy<FromList<NpgsqlParameter>, NpgsqlParameter, string>, NpgsqlParameter> SourceProperties   { [Pure] get => Values.DistinctBy(static x => x.SourceColumn); }
-    public int                                                                                              SpacerCount        => Math.Max(parameters.Count, Table.Count) - 1;
+    public   ValueEnumerable<FromList<NpgsqlParameter>, NpgsqlParameter>                                                                                                                                  Values                                => parameters.AsValueEnumerable();
+    public   int                                                                                                                                                                                          Count                                 => parameters.Count + Extras.AsValueEnumerable().Sum(static x => x.Length);
+    public   ValueEnumerable<Union<FromList<NpgsqlParameter>, SelectMany<FromList<ImmutableArray<NpgsqlParameter>>, ImmutableArray<NpgsqlParameter>, NpgsqlParameter>, NpgsqlParameter>, NpgsqlParameter> Parameters                            { [Pure] get => parameters.AsValueEnumerable().Union(Extras.AsValueEnumerable().SelectMany(static x => x)); }
+    public   int                                                                                                                                                                                          ParameterCount                        => Parameters.Count();
+    public   int                                                                                                                                                                                          Capacity                              => Extras.Capacity;
+    public   bool                                                                                                                                                                                         IsGrouped                             => Extras.Count > 0;
+    public   ValueEnumerable<ParameterNames, string>                                                                                                                                                      ParameterNames                        { [Pure] get => new(new ParameterNames(this)); }
+    public   int                                                                                                                                                                                          SpacerCount                           => Math.Max(parameters.Count, Table.Count)  - 1;
+    internal int                                                                                                                                                                                          VariableNameLength                    => Table.MaxLength_ColumnName * Table.Count + Parameters.Sum(static x => x.ParameterName.Length + 10);
+    public   IndexedEnumerator                                                                                                                                                                            IndexedParameters                     => new(this);
+    internal int                                                                                                                                                                                          KeyValuePairLength( int indentLevel ) => Table.Properties.Values.Sum(static x => x.KeyValuePair.Length) + Count * ( indentLevel * 4 + 3 );
 
 
     public ColumnNames   ColumnNames( int   indentLevel )                           => new(this, indentLevel);
@@ -80,18 +81,24 @@ public readonly struct PostgresParameters() : IEquatable<PostgresParameters>
 
     public ValueEnumerable<ListWhere<NpgsqlParameter>, NpgsqlParameter> ColumnsFor( string propertyName ) => Values.Where(x => string.Equals(x.SourceColumn, propertyName.SqlName(), StringComparison.InvariantCulture));
 
-
-    public PostgresParameters With( in PostgresParameters other )
+    public PostgresParameters With( in PostgresParameters other ) => With([..other.parameters]);
+    public PostgresParameters With( in ImmutableArray<NpgsqlParameter> other )
     {
+        int i = Extras.Count;
+        foreach ( NpgsqlParameter parameter in other ) { parameter.ParameterName = $"{parameter.ParameterName}_{i}"; }
+
         Extras.Add(other);
         return this;
     }
 
 
+    public PostgresParameters Add<TSelf>( string propertyName, IRecordID value, [CallerArgumentExpression(nameof(value))] string parameterName = EMPTY, ParameterDirection direction = ParameterDirection.Input, DataRowVersion sourceVersion = DataRowVersion.Default )
+        where TSelf : PairRecord<TSelf>, ITableRecord<TSelf> => Add(Table[propertyName].ToParameter(value.ID, parameterName, direction, sourceVersion));
+    public PostgresParameters Add<TSelf>( string propertyName, RecordID<TSelf> value, [CallerArgumentExpression(nameof(value))] string parameterName = EMPTY, ParameterDirection direction = ParameterDirection.Input, DataRowVersion sourceVersion = DataRowVersion.Default )
+        where TSelf : PairRecord<TSelf>, ITableRecord<TSelf> => Add(Table[propertyName].ToParameter(value.Value, parameterName, direction, sourceVersion));
     public PostgresParameters Add<T>( string propertyName, T? value, [CallerArgumentExpression(nameof(value))] string parameterName = EMPTY, ParameterDirection direction = ParameterDirection.Input, DataRowVersion sourceVersion = DataRowVersion.Default )
         where T : struct, Enum => Add(Table[propertyName].ToParameter(value, parameterName, direction, sourceVersion));
-    public PostgresParameters Add( string propertyName, object? value, [CallerArgumentExpression(nameof(value))] string parameterName = EMPTY, ParameterDirection direction = ParameterDirection.Input, DataRowVersion sourceVersion = DataRowVersion.Default ) =>
-        Add(Table[propertyName].ToParameter(value, parameterName, direction, sourceVersion));
+    public PostgresParameters Add( string propertyName, object? value, [CallerArgumentExpression(nameof(value))] string parameterName = EMPTY, ParameterDirection direction = ParameterDirection.Input, DataRowVersion sourceVersion = DataRowVersion.Default ) => Add(Table[propertyName].ToParameter(value, parameterName, direction, sourceVersion));
     public PostgresParameters Add( NpgsqlParameter? parameter )
     {
         if ( parameter is null || Values.Where(x => x.ParameterName == parameter.ParameterName).Any(x => Equals(x.Value, parameter.Value)) ) { return this; }
@@ -104,14 +111,14 @@ public readonly struct PostgresParameters() : IEquatable<PostgresParameters>
     public override int GetHashCode() => Extras.GetHashCode();
     public ulong GetHash64()
     {
-        using PooledArray<string> array = ParameterNameArray;
-        ReadOnlySpan<string>      names = array.Span;
+        using ParameterNames array = new(this);
+        ReadOnlySpan<string> names = array.Span;
         return Hashes.Hash(in names);
     }
     public UInt128 GetHash128()
     {
-        using PooledArray<string> array = ParameterNameArray;
-        ReadOnlySpan<string>      names = array.Span;
+        using ParameterNames array = new(this);
+        ReadOnlySpan<string> names = array.Span;
         return Hashes.Hash128(in names);
     }
 

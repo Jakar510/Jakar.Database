@@ -1,15 +1,13 @@
-﻿using System.Data;
-
-
-
-namespace Jakar.Database;
+﻿namespace Jakar.Database;
 
 
 public static class TableExtensions
 {
+    public static StringBuilder Spacer( this StringBuilder sb, int indentLevel ) => sb.Append(' ', indentLevel * 4);
+
+
     [Pure] public static StringBuilder Ids<TSelf>( this IEnumerable<RecordID<TSelf>> values )
-        where TSelf : PairRecord<TSelf>, ITableRecord<TSelf> => values.AsValueEnumerable()
-                                                                      .Ids();
+        where TSelf : PairRecord<TSelf>, ITableRecord<TSelf> => values.AsValueEnumerable().Ids();
     [Pure] public static StringBuilder Ids<TEnumerable, TSelf>( this ValueEnumerable<TEnumerable, RecordID<TSelf>> values )
         where TSelf : PairRecord<TSelf>, ITableRecord<TSelf>
         where TEnumerable : struct, IValueEnumerator<RecordID<TSelf>>, allows ref struct
@@ -44,8 +42,8 @@ public static class TableExtensions
 
         if ( length == TSelf.PropertyCount ) { return self; }
 
-        HashSet<string>           missing = [.. TSelf.ClassProperties.Select(static x => x.Name)];
-        using PooledArray<string> array   = parameters.ParameterNameArray;
+        HashSet<string>      missing = [.. TSelf.ClassProperties.Select(static x => x.Name)];
+        using ParameterNames array   = new(parameters);
         missing.ExceptWith(array.Array);
 
         string message = $"""
@@ -74,8 +72,7 @@ public static class TableExtensions
 
             return self.IsDBNull(ordinal)
                        ? null
-                       : self.GetValue<string>(ordinal)
-                            ?.GetAdditionalData();
+                       : self.GetValue<string>(ordinal)?.GetAdditionalData();
         }
         public TValue GetFieldValue<TRecord, TValue>( string propertyName )
             where TRecord : TableRecord<TRecord>, ITableRecord<TRecord>
@@ -128,11 +125,7 @@ public static class TableExtensions
 
     public static string GetTableName( this Type type, bool convertToSnakeCase = true )
     {
-        string name = type.GetCustomAttribute<TableAttribute>()
-                         ?.Name ??
-                      type.GetCustomAttribute<System.ComponentModel.DataAnnotations.Schema.TableAttribute>()
-                         ?.Name ??
-                      type.Name;
+        string name = type.GetCustomAttribute<TableAttribute>()?.Name ?? type.GetCustomAttribute<System.ComponentModel.DataAnnotations.Schema.TableAttribute>()?.Name ?? type.Name;
 
         if ( convertToSnakeCase ) { name = name.ToSnakeCase(CultureInfo.InvariantCulture); }
 

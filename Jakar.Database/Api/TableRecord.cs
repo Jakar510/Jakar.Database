@@ -18,6 +18,10 @@ public interface ILastModified : IDateCreated
 
 
 
+public interface IRecordID : IUniqueID, ISpanFormattable;
+
+
+
 public interface ITableRecord<TSelf>
     where TSelf : TableRecord<TSelf>, ITableRecord<TSelf>
 {
