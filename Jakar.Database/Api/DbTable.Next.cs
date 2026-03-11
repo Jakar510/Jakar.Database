@@ -19,7 +19,7 @@ public partial class DbTable<TSelf>
         try
         {
             await using NpgsqlCommand    cmd    = command.ToCommand(connection, transaction);
-            await using NpgsqlDataReader reader = await cmd.ExecuteReaderAsync(token);
+            await using DbDataReader reader = await cmd.ExecuteReaderAsync(token);
             ErrorOrResult<TSelf>         record = await reader.SingleAsync<TSelf>(token);
             return record;
         }
@@ -34,7 +34,7 @@ public partial class DbTable<TSelf>
         try
         {
             await using NpgsqlCommand    cmd    = command.ToCommand(connection, transaction);
-            await using NpgsqlDataReader reader = await cmd.ExecuteReaderAsync(token);
+            await using DbDataReader reader = await cmd.ExecuteReaderAsync(token);
             List<RecordPair<TSelf>>      pairs  = [];
             while ( await reader.ReadAsync(token) ) { pairs.Add(RecordPair<TSelf>.Create(reader)); }
 
@@ -51,7 +51,7 @@ public partial class DbTable<TSelf>
         try
         {
             await using NpgsqlCommand    cmd    = command.ToCommand(connection, transaction);
-            await using NpgsqlDataReader reader = await cmd.ExecuteReaderAsync(token);
+            await using DbDataReader reader = await cmd.ExecuteReaderAsync(token);
             Guid?                        id     = null;
             if ( await reader.ReadAsync(token) ) { id = reader.GetGuid(0); }
 

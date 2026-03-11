@@ -45,7 +45,7 @@ public partial class DbTable<TSelf> : IDbTable<TSelf>
     {
         SqlCommand           command = SqlCommand.GetAll<TSelf>();
         await using NpgsqlCommand    cmd     = command.ToCommand(connection, transaction);
-        await using NpgsqlDataReader reader  = await cmd.ExecuteReaderAsync(token);
+        await using DbDataReader reader  = await cmd.ExecuteReaderAsync(token);
         await foreach ( TSelf record in reader.CreateAsync<TSelf>(token) ) { yield return record; }
     }
 
@@ -62,13 +62,13 @@ public partial class DbTable<TSelf> : IDbTable<TSelf>
     }
 
 
-    public ValueTask<TResult> Call<TResult>( SqlCommand sql, Func<NpgsqlDataReader, CancellationToken, ValueTask<TResult>> func, CancellationToken token = default ) => this.TryCall(Call, sql, func, token);
-    public virtual async ValueTask<TResult> Call<TResult>( NpgsqlConnection connection, NpgsqlTransaction? transaction, SqlCommand command, Func<NpgsqlDataReader, CancellationToken, ValueTask<TResult>> func, CancellationToken token = default )
+    public ValueTask<TResult> Call<TResult>( SqlCommand sql, Func<DbDataReader, CancellationToken, ValueTask<TResult>> func, CancellationToken token = default ) => this.TryCall(Call, sql, func, token);
+    public virtual async ValueTask<TResult> Call<TResult>( NpgsqlConnection connection, NpgsqlTransaction? transaction, SqlCommand command, Func<DbDataReader, CancellationToken, ValueTask<TResult>> func, CancellationToken token = default )
     {
         try
         {
             await using NpgsqlCommand    cmd    = command.ToCommand(connection, transaction);
-            await using NpgsqlDataReader reader = await cmd.ExecuteReaderAsync(token);
+            await using DbDataReader reader = await cmd.ExecuteReaderAsync(token);
             return await func(reader, token);
         }
         catch ( Exception e ) { throw new DbSqlException(command.SQL, e, command.Parameters); }

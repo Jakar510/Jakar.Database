@@ -36,7 +36,7 @@ public sealed record FileRecord : PairRecord<FileRecord>, ITableRecord<FileRecor
         Payload         = data.Payload;
         FullPath        = file?.FullPath;
     }
-    internal FileRecord( NpgsqlDataReader reader ) : base(reader)
+    internal FileRecord( DbDataReader reader ) : base(reader)
     {
         FileName        = reader.GetFieldValue<FileRecord, string?>(nameof(FileName));
         FileDescription = reader.GetFieldValue<FileRecord, string?>(nameof(FileDescription));
@@ -47,8 +47,8 @@ public sealed record FileRecord : PairRecord<FileRecord>, ITableRecord<FileRecor
         Payload         = reader.GetFieldValue<FileRecord, string>(nameof(Payload));
         FullPath        = reader.GetFieldValue<FileRecord, string?>(nameof(FullPath));
     }
-    [Pure] public static FileRecord      Create( NpgsqlDataReader              reader )                       => new FileRecord(reader).Validate();
-    public static        FileRecord      Create( IFileData<Guid, FileMetaData> data, LocalFile? file = null ) => new(data, file);
+    [Pure] public static FileRecord Create( DbDataReader              reader )                       => new FileRecord(reader).Validate();
+    public static        FileRecord Create( IFileData<Guid, FileMetaData> data, LocalFile? file = null ) => new(data, file);
     public static FileRecord Create<TFileMetaData>( IFileData<Guid, TFileMetaData> data, LocalFile? file = null )
         where TFileMetaData : class, IFileMetaData<TFileMetaData> => new(data, data.MetaData, file);
     public TFileData ToFileData<TFileData, TFileMetaData>()
@@ -65,10 +65,8 @@ public sealed record FileRecord : PairRecord<FileRecord>, ITableRecord<FileRecor
         if ( MimeType != file.Mime ) { throw new InvalidOperationException($"{nameof(MimeType)} mismatch. Got {file.Mime} but expected {MimeType}"); }
 
         return file.Mime.IsText()
-                   ? await file.ReadAsync()
-                               .AsString(token)
-                   : await file.ReadAsync()
-                               .AsBytes(token);
+                   ? await file.ReadAsync().AsString(token)
+                   : await file.ReadAsync().AsBytes(token);
     }
 
 
@@ -124,69 +122,75 @@ public sealed record FileRecord : PairRecord<FileRecord>, ITableRecord<FileRecor
 
 
     public override ValueTask Export( NpgsqlBinaryExporter exporter, CancellationToken token ) => default;
-    public override async ValueTask Import( NpgsqlBinaryImporter importer, CancellationToken token )
+    protected override async ValueTask Import( NpgsqlBinaryImporter importer, string propertyName, NpgsqlDbType postgresDbType, CancellationToken token )
     {
-        await importer.StartRowAsync(token);
-        using PooledArray<ColumnMetaData> buffer = MetaData.SortedColumns;
-
-        foreach ( ColumnMetaData column in buffer.Array )
+        switch ( propertyName )
         {
-            switch ( column.PropertyName )
-            {
-                case nameof(ID):
-                    await importer.WriteAsync(ID.Value, column.PostgresDbType, token);
-                    break;
+            case nameof(ID):
+                await importer.WriteAsync(ID.Value, postgresDbType, token);
+                return;
 
-                case nameof(DateCreated):
-                    await importer.WriteAsync(DateCreated, column.PostgresDbType, token);
-                    break;
+            case nameof(DateCreated):
+                await importer.WriteAsync(DateCreated, postgresDbType, token);
+                return;
 
-                case nameof(LastModified):
-                    if ( LastModified.HasValue ) { await importer.WriteAsync(LastModified.Value, column.PostgresDbType, token); }
-                    else { await importer.WriteNullAsync(token); }
+            case nameof(LastModified):
+                if ( LastModified.HasValue ) { await importer.WriteAsync(LastModified.Value, postgresDbType, token); }
+                else { await importer.WriteNullAsync(token); }
 
-                    break;
+                return;
 
-                case nameof(FileDescription):
-                    await importer.WriteAsync(FileDescription, column.PostgresDbType, token);
-                    break;
+            case nameof(FileDescription):
+                await importer.WriteAsync(FileDescription, postgresDbType, token);
+                return;
 
-                case nameof(FileName):
-                    await importer.WriteAsync(FileName, column.PostgresDbType, token);
-                    break;
+            case nameof(FileName):
+                await importer.WriteAsync(FileName, postgresDbType, token);
+                return;
 
-                case nameof(FileType):
-                    if ( string.IsNullOrWhiteSpace(FileType) ) { await importer.WriteAsync(FileType, column.PostgresDbType, token); }
-                    else { await importer.WriteNullAsync(token); }
+            case nameof(FileType):
+                if ( string.IsNullOrWhiteSpace(FileType) ) { await importer.WriteAsync(FileType, postgresDbType, token); }
+                else { await importer.WriteNullAsync(token); }
 
-                    break;
+                return;
 
-                case nameof(FileSize):
-                    await importer.WriteAsync(FileSize, column.PostgresDbType, token);
-                    break;
+            case nameof(FileSize):
+                await importer.WriteAsync(FileSize, postgresDbType, token);
+                return;
 
-                case nameof(Hash):
-                    await importer.WriteAsync(Hash, column.PostgresDbType, token);
-                    break;
+            case nameof(Hash):
+                await importer.WriteAsync(Hash, postgresDbType, token);
+                return;
 
-                case nameof(MimeType):
-                    await importer.WriteAsync(MimeType, column.PostgresDbType, token);
-                    break;
+            case nameof(MimeType):
+                await importer.WriteAsync(MimeType, postgresDbType, token);
+                return;
 
-                case nameof(Payload):
-                    await importer.WriteAsync(Payload, column.PostgresDbType, token);
-                    break;
+            case nameof(Payload):
+                await importer.WriteAsync(Payload, postgresDbType, token);
+                return;
 
-                case nameof(FullPath):
-                    if ( string.IsNullOrWhiteSpace(FullPath) ) { await importer.WriteAsync(FullPath, column.PostgresDbType, token); }
-                    else { await importer.WriteNullAsync(token); }
+            case nameof(FullPath):
+                if ( string.IsNullOrWhiteSpace(FullPath) ) { await importer.WriteAsync(FullPath, postgresDbType, token); }
+                else { await importer.WriteNullAsync(token); }
 
-                    break;
+                return;
 
-                default:
-                    throw new InvalidOperationException($"Unknown column: {column.PropertyName}");
-            }
+            default:
+                throw new InvalidOperationException($"Unknown column: {propertyName}");
         }
+    }
+    public override ValueTask Import( DataRow row, CancellationToken token )
+    {
+        row[MetaData[nameof(FileName)].DataColumn]        = FileName;
+        row[MetaData[nameof(FileDescription)].DataColumn] = FileDescription;
+        row[MetaData[nameof(FileType)].DataColumn]        = FileType;
+        row[MetaData[nameof(FileSize)].DataColumn]        = FileSize;
+        row[MetaData[nameof(Hash)].DataColumn]            = Hash;
+        row[MetaData[nameof(MimeType)].DataColumn]        = MimeType;
+        row[MetaData[nameof(Payload)].DataColumn]         = Payload;
+        row[MetaData[nameof(FullPath)].DataColumn]        = FullPath;
+        return base.Import(row, token);
     }
     [Pure] public override PostgresParameters ToDynamicParameters()
     {

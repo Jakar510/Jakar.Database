@@ -43,7 +43,7 @@ public sealed record AddressRecord : OwnedTableRecord<AddressRecord>, IAddress<A
         Address         = address.Address;
         IsPrimary       = IsPrimary;
     }
-    internal AddressRecord( NpgsqlDataReader reader ) : base(reader)
+    internal AddressRecord( DbDataReader reader ) : base(reader)
     {
         Line1           = reader.GetFieldValue<AddressRecord, string>(nameof(Line1));
         Line2           = reader.GetFieldValue<AddressRecord, string>(nameof(Line2));
@@ -61,61 +61,67 @@ public sealed record AddressRecord : OwnedTableRecord<AddressRecord>, IAddress<A
                                        ? $"{Line1}. {City}, {StateOrProvince}. {Country}. {PostalCode}"
                                        : $"{Line1} {Line2}. {City}, {StateOrProvince}. {Country}. {PostalCode}";
     public override ValueTask Export( NpgsqlBinaryExporter exporter, CancellationToken token ) => default;
-    public override async ValueTask Import( NpgsqlBinaryImporter importer, CancellationToken token )
+    protected override async ValueTask Import( NpgsqlBinaryImporter importer, string propertyName, NpgsqlDbType postgresDbType, CancellationToken token )
     {
-        await importer.StartRowAsync(token);
-        using PooledArray<ColumnMetaData> buffer = MetaData.SortedColumns;
-
-        foreach ( ColumnMetaData column in buffer.Array )
+        switch ( propertyName )
         {
-            switch ( column.PropertyName )
-            {
-                case nameof(ID):
-                    await importer.WriteAsync(ID.Value, column.PostgresDbType, token);
-                    break;
+            case nameof(ID):
+                await importer.WriteAsync(ID.Value, postgresDbType, token);
+                return;
 
-                case nameof(DateCreated):
-                    await importer.WriteAsync(DateCreated, column.PostgresDbType, token);
-                    break;
+            case nameof(DateCreated):
+                await importer.WriteAsync(DateCreated, postgresDbType, token);
+                return;
 
-                case nameof(UserID):
-                    await importer.WriteAsync(UserID.Value, column.PostgresDbType, token);
-                    break;
+            case nameof(UserID):
+                await importer.WriteAsync(UserID.Value, postgresDbType, token);
+                return;
 
-                case nameof(Address):
-                    await importer.WriteAsync(Address, column.PostgresDbType, token);
-                    break;
+            case nameof(Address):
+                await importer.WriteAsync(Address, postgresDbType, token);
+                return;
 
-                case nameof(City):
-                    await importer.WriteAsync(City, column.PostgresDbType, token);
-                    break;
+            case nameof(City):
+                await importer.WriteAsync(City, postgresDbType, token);
+                return;
 
-                case nameof(Country):
-                    await importer.WriteAsync(Country, column.PostgresDbType, token);
-                    break;
+            case nameof(Country):
+                await importer.WriteAsync(Country, postgresDbType, token);
+                return;
 
-                case nameof(StateOrProvince):
-                    await importer.WriteAsync(StateOrProvince, column.PostgresDbType, token);
-                    break;
+            case nameof(StateOrProvince):
+                await importer.WriteAsync(StateOrProvince, postgresDbType, token);
+                return;
 
-                case nameof(Line1):
-                    await importer.WriteAsync(Line1, column.PostgresDbType, token);
-                    break;
+            case nameof(Line1):
+                await importer.WriteAsync(Line1, postgresDbType, token);
+                return;
 
-                case nameof(Line2):
-                    await importer.WriteAsync(Line2, column.PostgresDbType, token);
-                    break;
+            case nameof(Line2):
+                await importer.WriteAsync(Line2, postgresDbType, token);
+                return;
 
-                case nameof(LastModified):
-                    if ( LastModified.HasValue ) { await importer.WriteAsync(LastModified.Value, column.PostgresDbType, token); }
-                    else { await importer.WriteNullAsync(token); }
+            case nameof(LastModified):
+                if ( LastModified.HasValue ) { await importer.WriteAsync(LastModified.Value, postgresDbType, token); }
+                else { await importer.WriteNullAsync(token); }
 
-                    break;
+                return;
 
-                default:
-                    throw new InvalidOperationException($"Unknown column: {column.PropertyName}");
-            }
+            default:
+                throw new InvalidOperationException($"Unknown column: {propertyName}");
         }
+    }
+    public override ValueTask Import( DataRow row, CancellationToken token )
+    {
+        row[MetaData[nameof(Line1)].DataColumn]           = Line1;
+        row[MetaData[nameof(Line2)].DataColumn]           = Line2;
+        row[MetaData[nameof(City)].DataColumn]            = City;
+        row[MetaData[nameof(StateOrProvince)].DataColumn] = StateOrProvince;
+        row[MetaData[nameof(Country)].DataColumn]         = Country;
+        row[MetaData[nameof(PostalCode)].DataColumn]      = PostalCode;
+        row[MetaData[nameof(Address)].DataColumn]         = Address;
+        row[MetaData[nameof(IsPrimary)].DataColumn]       = IsPrimary;
+        return base.Import(row, token);
     }
     [Pure] public override PostgresParameters ToDynamicParameters()
     {
@@ -147,7 +153,7 @@ public sealed record AddressRecord : OwnedTableRecord<AddressRecord>, IAddress<A
     }
 
 
-    [Pure] public static AddressRecord Create( NpgsqlDataReader reader )                                                                                                         => new AddressRecord(reader).Validate();
+    [Pure] public static AddressRecord Create( DbDataReader reader )                                                                                                         => new AddressRecord(reader).Validate();
     [Pure] public static AddressRecord Create( Match            match )                                                                                                          => new(match);
     [Pure] public static AddressRecord Create( IAddress<Guid>   address )                                                                                                        => new(address);
     public static        AddressRecord Create( string           line1, string line2, string city, string stateOrProvince, string postalCode, string country, Guid id = default ) => Create(line1, line2, city, stateOrProvince, postalCode, country, id, RecordID<UserRecord>.Empty);

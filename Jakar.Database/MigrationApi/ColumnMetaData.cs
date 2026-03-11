@@ -9,34 +9,45 @@ namespace Jakar.Database;
 public sealed class ColumnMetaData
 {
     private static readonly ConcurrentDictionary<string, string> parameterNameCache = new(Environment.ProcessorCount, DEFAULT_CAPACITY, StringComparer.InvariantCulture);
+    public readonly         bool                                 IsAlwaysIdentity;
+    public readonly         bool                                 IsDefaultIdentity;
+    public readonly         bool                                 IsFixed;
     public readonly         bool                                 IsNullable;
     public readonly         bool                                 IsPrimaryKey;
     public readonly         bool                                 IsUnique;
-    public readonly         bool                                 IsAlwaysIdentity;
-    public readonly         bool                                 IsDefaultIdentity;
     public readonly         ChecksAttribute?                     Checks;
+    public readonly         DbSizeAttribute?                     Length;
+    public readonly         DefaultsAttribute?                   Defaults;
+    public readonly         ForeignKeyAttribute?                 ForeignKey;
+    public readonly         IndexedAttribute?                    Indexed;
     public readonly         PostgresType                         DbType;
     public readonly         string                               ColumnName;
+    public readonly         string                               DataType;
     public readonly         string                               KeyValuePair;
     public readonly         string                               PropertyName;
     public readonly         string                               VariableName;
-    public readonly         ForeignKeyAttribute?                 ForeignKey;
-    public readonly         IndexedAttribute?                    Indexed;
-    public readonly         string                               DataType;
-    public readonly         DefaultsAttribute?                   Defaults;
-    public readonly         bool                                 IsFixed;
-    public readonly         DbSizeAttribute?                     Length;
-    public readonly         DataColumn                           DataColumn;
+    public readonly         Type                                 PropertyType;
     private                 NpgsqlDbType?                        __postgresDbType;
     private                 SqlDbType?                           __sqlDbType;
 
 
+    public DataColumn DataColumn => new(ColumnName, PropertyType)
+                                    {
+                                        AllowDBNull       = IsNullable,
+                                        AutoIncrement     = DbType is PostgresType.BigSerial or PostgresType.Serial or PostgresType.SmallSerial,
+                                        AutoIncrementSeed = 1,
+                                        AutoIncrementStep = 0,
+                                        DateTimeMode      = DataSetDateTime.Utc,
+                                        MaxLength         = Length?.Max ?? -1,
+                                        Unique            = IsUnique,
+                                    };
+
+    public bool         HasCheckConstraint      { [MemberNotNullWhen(true, nameof(Checks))] get => Checks?.IsValid is true; }
+    public bool         HasDefaultConstraint    { [MemberNotNullWhen(true, nameof(Defaults))] get => Defaults?.IsValid is true; }
+    public bool         HasForeignKeyConstraint { [MemberNotNullWhen(true, nameof(ForeignKey))] get => ForeignKey?.IsValid is true; }
+    public bool         HasLengthConstraint     { [MemberNotNullWhen(true, nameof(Length))] get => Length is not null; }
     public int          Index                   { get; internal set; } = -1;
     public bool         IsColumnIndexed         { [MemberNotNullWhen(true, nameof(Indexed))] get => Indexed?.IsValid is true || HasForeignKeyConstraint; }
-    public bool         HasForeignKeyConstraint { [MemberNotNullWhen(true, nameof(ForeignKey))] get => ForeignKey?.IsValid is true; }
-    public bool         HasDefaultConstraint    { [MemberNotNullWhen(true, nameof(Defaults))] get => Defaults?.IsValid is true; }
-    public bool         HasCheckConstraint      { [MemberNotNullWhen(true, nameof(Checks))] get => Checks?.IsValid is true; }
-    public bool         HasLengthConstraint     { [MemberNotNullWhen(true, nameof(Length))] get => Length is not null; }
     public NpgsqlDbType PostgresDbType          => __postgresDbType ??= DbType.ToNpgsqlDbType();
     public SqlDbType    SqlDbType               => __sqlDbType ??= DbType.ToSqlDbType();
 
@@ -51,6 +62,7 @@ public sealed class ColumnMetaData
             string columnName = Validate.ThrowIfNull(propertyName.SqlName());
 
             IsPrimaryKey      = IsDbKey(property);
+            PropertyType      = property.PropertyType;
             IsFixed           = property.HasAttribute<FixedAttribute>();
             IsDefaultIdentity = property.HasAttribute<DefaultIdentityAttribute>();
             IsAlwaysIdentity  = property.HasAttribute<AlwaysIdentityAttribute>();
@@ -66,16 +78,6 @@ public sealed class ColumnMetaData
             KeyValuePair      = $"{columnName} = @{columnName}";
             VariableName      = $"@{columnName}";
 
-            DataColumn = new DataColumn(columnName, property.PropertyType)
-                         {
-                             AllowDBNull       = IsNullable,
-                             AutoIncrement     = DbType is PostgresType.BigSerial or PostgresType.Serial or PostgresType.SmallSerial,
-                             AutoIncrementSeed = 1,
-                             AutoIncrementStep = 0,
-                             DateTimeMode      = DataSetDateTime.Utc,
-                             MaxLength         = Length?.Max ?? -1,
-                             Unique            = IsUnique,
-                         };
 
             if ( IsPrimaryKey && ForeignKey?.IsValid is true ) { throw new ArgumentException($"Column '{propertyName}' has a PrimaryKey flag but {nameof(ForeignKey)} is invalid.", nameof(ForeignKey)); }
         }

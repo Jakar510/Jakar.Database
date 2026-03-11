@@ -36,7 +36,7 @@ public sealed record MigrationRecord : TableRecord<MigrationRecord>, ITableRecor
 
 
     public MigrationRecord() : base(DateTimeOffset.UtcNow) { }
-    [SetsRequiredMembers] public MigrationRecord( NpgsqlDataReader reader ) : base(reader)
+    [SetsRequiredMembers] public MigrationRecord( DbDataReader reader ) : base(reader)
     {
         Description = reader.GetFieldValue<MigrationRecord, string>(nameof(Description));
         ReferenceID = reader.GetFieldValue<MigrationRecord, string?>(nameof(ReferenceID));
@@ -132,43 +132,48 @@ public sealed record MigrationRecord : TableRecord<MigrationRecord>, ITableRecor
     }
 
 
-    public static MigrationRecord Create( NpgsqlDataReader reader )
+    public static MigrationRecord Create( DbDataReader reader )
     {
         MigrationRecord record = new(reader);
         return record.Validate();
     }
 
 
-    public override async ValueTask Import( NpgsqlBinaryImporter importer, CancellationToken token )
+    protected override async ValueTask Import( NpgsqlBinaryImporter importer, string propertyName, NpgsqlDbType postgresDbType, CancellationToken token )
     {
-        await importer.StartRowAsync(token);
-        using PooledArray<ColumnMetaData> buffer = MetaData.SortedColumns;
-
-        foreach ( ColumnMetaData column in buffer.Array )
+        switch ( propertyName )
         {
-            switch ( column.PropertyName )
-            {
-                case nameof(MigrationID):
-                    await importer.WriteAsync(MigrationID, NpgsqlDbType.Bigint, token);
-                    break;
+            case nameof(MigrationID):
+                await importer.WriteAsync(MigrationID, postgresDbType, token);
+                return;
 
-                case nameof(AppliedOn):
-                    await importer.WriteAsync(AppliedOn, NpgsqlDbType.TimestampTz, token);
-                    break;
+            case nameof(AppliedOn):
+                await importer.WriteAsync(AppliedOn, postgresDbType, token);
+                return;
 
-                case nameof(ReferenceID):
-                    await importer.WriteAsync(ReferenceID, NpgsqlDbType.Bigint, token);
-                    break;
+            case nameof(ReferenceID):
+                await importer.WriteAsync(ReferenceID, postgresDbType, token);
+                return;
 
-                case nameof(Description):
-                    await importer.WriteAsync(Description, NpgsqlDbType.Text, token);
-                    break;
+            case nameof(Description):
+                await importer.WriteAsync(Description, postgresDbType, token);
+                return;
 
-                case nameof(DateCreated):
-                    await importer.WriteAsync(DateCreated, NpgsqlDbType.TimestampTz, token);
-                    break;
-            }
+            case nameof(DateCreated):
+                await importer.WriteAsync(DateCreated, postgresDbType, token);
+                return;
+
+            default:
+                throw new InvalidOperationException($"Unknown column: {propertyName}");
         }
+    }
+    public override ValueTask Import( DataRow row, CancellationToken token )
+    {
+        row[MetaData[nameof(ReferenceID)].DataColumn] = ReferenceID;
+        row[MetaData[nameof(Description)].DataColumn] = Description;
+        row[MetaData[nameof(AppliedOn)].DataColumn]   = AppliedOn;
+        row[MetaData[nameof(MigrationID)].DataColumn] = MigrationID;
+        return base.Import(row, token);
     }
     public override PostgresParameters ToDynamicParameters()
     {

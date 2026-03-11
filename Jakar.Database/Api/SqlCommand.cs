@@ -73,11 +73,23 @@ public readonly struct SqlCommand : IEquatable<SqlCommand>
         await using NpgsqlCommand command = ToCommand(connection, transaction);
         await command.ExecuteNonQueryAsync(token);
     }
+    public async ValueTask ExecuteNonQueryAsync( SqlConnection connection, SqlTransaction? transaction, CancellationToken token )
+    {
+        await using Microsoft.Data.SqlClient.SqlCommand command = ToCommand(connection, transaction);
+        await command.ExecuteNonQueryAsync(token);
+    }
     public async IAsyncEnumerable<TSelf> ExecuteAsync<TSelf>( NpgsqlConnection connection, NpgsqlTransaction? transaction, [EnumeratorCancellation] CancellationToken token )
         where TSelf : TableRecord<TSelf>, ITableRecord<TSelf>
     {
         await using NpgsqlCommand    command = ToCommand(connection, transaction);
         await using NpgsqlDataReader reader  = await command.ExecuteReaderAsync(token);
+        while ( await reader.ReadAsync(token) ) { yield return TSelf.Create(reader); }
+    }
+    public async IAsyncEnumerable<TSelf> ExecuteAsync<TSelf>( SqlConnection connection, SqlTransaction? transaction, [EnumeratorCancellation] CancellationToken token )
+        where TSelf : TableRecord<TSelf>, ITableRecord<TSelf>
+    {
+        await using Microsoft.Data.SqlClient.SqlCommand command = ToCommand(connection, transaction);
+        await using SqlDataReader                       reader  = await command.ExecuteReaderAsync(token);
         while ( await reader.ReadAsync(token) ) { yield return TSelf.Create(reader); }
     }
 

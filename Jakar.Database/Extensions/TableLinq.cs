@@ -6,7 +6,7 @@ namespace Jakar.Database;
 
 public static class TableLinq
 {
-    extension( NpgsqlDataReader reader )
+    extension( DbDataReader reader )
     {
         public async ValueTask<ErrorOrResult<TSelf>> FirstAsync<TSelf>( [EnumeratorCancellation] CancellationToken token = default )
             where TSelf : TableRecord<TSelf>,  ITableRecord<TSelf>

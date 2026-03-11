@@ -1,4 +1,9 @@
-﻿namespace Jakar.Database;
+﻿using static Npgsql.Replication.PgOutput.Messages.RelationMessage;
+using static Pipelines.Sockets.Unofficial.SocketConnection;
+
+
+
+namespace Jakar.Database;
 
 
 /// <see cref="ResxString"/>
@@ -36,7 +41,7 @@ public sealed record ResxRowRecord : TableRecord<ResxRowRecord>, ITableRecord<Re
         Key     = key;
         Neutral = neutral;
     }
-    [SetsRequiredMembers] public ResxRowRecord( NpgsqlDataReader reader ) : base(reader)
+    [SetsRequiredMembers] public ResxRowRecord( DbDataReader reader ) : base(reader)
     {
         KeyID      = AutoRecordID<ResxRowRecord>.Create(reader, nameof(KeyID));
         Key        = reader.GetFieldValue<ResxRowRecord, string>(nameof(Key));
@@ -58,101 +63,115 @@ public sealed record ResxRowRecord : TableRecord<ResxRowRecord>, ITableRecord<Re
     }
 
 
-    [Pure] public static ResxRowRecord   Create( NpgsqlDataReader reader )      => new ResxRowRecord(reader).Validate();
-    [Pure] public static async IAsyncEnumerable<ResxRowRecord> CreateAsync( NpgsqlDataReader reader, [EnumeratorCancellation] CancellationToken token = default )
+    [Pure] public static ResxRowRecord Create( DbDataReader reader ) => new ResxRowRecord(reader).Validate();
+    [Pure] public static async IAsyncEnumerable<ResxRowRecord> CreateAsync( DbDataReader reader, [EnumeratorCancellation] CancellationToken token = default )
     {
         while ( await reader.ReadAsync(token) ) { yield return Create(reader); }
     }
 
 
     public override ValueTask Export( NpgsqlBinaryExporter exporter, CancellationToken token ) => default;
-    public override async ValueTask Import( NpgsqlBinaryImporter importer, CancellationToken token )
+    protected override async ValueTask Import( NpgsqlBinaryImporter importer, string propertyName, NpgsqlDbType postgresDbType, CancellationToken token )
     {
-        await importer.StartRowAsync(token);
-        using PooledArray<ColumnMetaData> buffer = MetaData.SortedColumns;
-
-        foreach ( ColumnMetaData column in buffer.Array )
+        switch ( propertyName )
         {
-            switch ( column.PropertyName )
-            {
-                case nameof(DateCreated):
-                    await importer.WriteAsync(DateCreated, NpgsqlDbType.TimestampTz, token);
-                    break;
+            case nameof(DateCreated):
+                await importer.WriteAsync(DateCreated, postgresDbType, token);
+                return;
 
-                case nameof(Key):
-                    await importer.WriteAsync(Key, NpgsqlDbType.Text, token);
-                    break;
+            case nameof(LastModified):
+                if ( LastModified.HasValue ) { await importer.WriteAsync(LastModified.Value, postgresDbType, token); }
+                else { await importer.WriteNullAsync(token); }
 
-                case nameof(KeyID):
-                    await importer.WriteAsync(KeyID, NpgsqlDbType.Integer, token);
-                    break;
+                return;
 
-                case nameof(Neutral):
-                    await importer.WriteAsync(Neutral, NpgsqlDbType.Text, token);
-                    break;
+            case nameof(Key):
+                await importer.WriteAsync(Key, postgresDbType, token);
+                return;
 
-                case nameof(English):
-                    await importer.WriteAsync(English, NpgsqlDbType.Text, token);
-                    break;
+            case nameof(KeyID):
+                await importer.WriteAsync(KeyID, postgresDbType, token);
+                return;
 
-                case nameof(Spanish):
-                    await importer.WriteAsync(Spanish, NpgsqlDbType.Text, token);
-                    break;
+            case nameof(Neutral):
+                await importer.WriteAsync(Neutral, postgresDbType, token);
+                return;
 
-                case nameof(French):
-                    await importer.WriteAsync(French, NpgsqlDbType.Text, token);
-                    break;
+            case nameof(English):
+                await importer.WriteAsync(English, postgresDbType, token);
+                return;
 
-                case nameof(Swedish):
-                    await importer.WriteAsync(Swedish, NpgsqlDbType.Text, token);
-                    break;
+            case nameof(Spanish):
+                await importer.WriteAsync(Spanish, postgresDbType, token);
+                return;
 
-                case nameof(German):
-                    await importer.WriteAsync(German, NpgsqlDbType.Text, token);
-                    break;
+            case nameof(French):
+                await importer.WriteAsync(French, postgresDbType, token);
+                return;
 
-                case nameof(Polish):
-                    await importer.WriteAsync(Polish, NpgsqlDbType.Text, token);
-                    break;
+            case nameof(Swedish):
+                await importer.WriteAsync(Swedish, postgresDbType, token);
+                return;
 
-                case nameof(Thai):
-                    await importer.WriteAsync(Thai, NpgsqlDbType.Text, token);
-                    break;
+            case nameof(German):
+                await importer.WriteAsync(German, postgresDbType, token);
+                return;
 
-                case nameof(Japanese):
-                    await importer.WriteAsync(Japanese, NpgsqlDbType.Text, token);
-                    break;
+            case nameof(Polish):
+                await importer.WriteAsync(Polish, postgresDbType, token);
+                return;
 
-                case nameof(Czech):
-                    await importer.WriteAsync(Czech, NpgsqlDbType.Text, token);
-                    break;
+            case nameof(Thai):
+                await importer.WriteAsync(Thai, postgresDbType, token);
+                return;
 
-                case nameof(Portuguese):
-                    await importer.WriteAsync(Portuguese, NpgsqlDbType.Text, token);
-                    break;
+            case nameof(Japanese):
+                await importer.WriteAsync(Japanese, postgresDbType, token);
+                return;
 
-                case nameof(Dutch):
-                    await importer.WriteAsync(Dutch, NpgsqlDbType.Text, token);
-                    break;
+            case nameof(Czech):
+                await importer.WriteAsync(Czech, postgresDbType, token);
+                return;
 
-                case nameof(Korean):
-                    await importer.WriteAsync(Korean, NpgsqlDbType.Text, token);
-                    break;
+            case nameof(Portuguese):
+                await importer.WriteAsync(Portuguese, postgresDbType, token);
+                return;
 
-                case nameof(Arabic):
-                    await importer.WriteAsync(Arabic, NpgsqlDbType.Text, token);
-                    break;
+            case nameof(Dutch):
+                await importer.WriteAsync(Dutch, postgresDbType, token);
+                return;
 
-                case nameof(LastModified):
-                    if ( LastModified.HasValue ) { await importer.WriteAsync(LastModified.Value, NpgsqlDbType.TimestampTz, token); }
-                    else { await importer.WriteNullAsync(token); }
+            case nameof(Korean):
+                await importer.WriteAsync(Korean, postgresDbType, token);
+                return;
 
-                    break;
+            case nameof(Arabic):
+                await importer.WriteAsync(Arabic, postgresDbType, token);
+                return;
 
-                default:
-                    throw new InvalidOperationException($"Unknown column: {column.PropertyName}");
-            }
+            default:
+                throw new InvalidOperationException($"Unknown column: {propertyName}");
         }
+    }
+    public override ValueTask Import( DataRow row, CancellationToken token )
+    {
+        row[MetaData[nameof(KeyID)].DataColumn]      = KeyID;
+        row[MetaData[nameof(Key)].DataColumn]        = Key;
+        row[MetaData[nameof(Neutral)].DataColumn]    = Neutral;
+        row[MetaData[nameof(English)].DataColumn]    = English;
+        row[MetaData[nameof(Spanish)].DataColumn]    = Spanish;
+        row[MetaData[nameof(French)].DataColumn]     = French;
+        row[MetaData[nameof(Swedish)].DataColumn]    = Swedish;
+        row[MetaData[nameof(German)].DataColumn]     = German;
+        row[MetaData[nameof(Polish)].DataColumn]     = Polish;
+        row[MetaData[nameof(Thai)].DataColumn]       = Thai;
+        row[MetaData[nameof(Japanese)].DataColumn]   = Japanese;
+        row[MetaData[nameof(Czech)].DataColumn]      = Czech;
+        row[MetaData[nameof(Portuguese)].DataColumn] = Portuguese;
+        row[MetaData[nameof(Dutch)].DataColumn]      = Dutch;
+        row[MetaData[nameof(Korean)].DataColumn]     = Korean;
+        row[MetaData[nameof(Arabic)].DataColumn]     = Arabic;
+        return base.Import(row, token);
     }
     public override PostgresParameters ToDynamicParameters()
     {

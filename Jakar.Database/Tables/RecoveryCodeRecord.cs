@@ -22,41 +22,40 @@ public sealed record RecoveryCodeRecord : OwnedTableRecord<RecoveryCodeRecord>, 
 
 
     public override ValueTask Export( NpgsqlBinaryExporter exporter, CancellationToken token ) => default;
-    public override async ValueTask Import( NpgsqlBinaryImporter importer, CancellationToken token )
+    protected override async ValueTask Import( NpgsqlBinaryImporter importer, string propertyName, NpgsqlDbType postgresDbType, CancellationToken token )
     {
-        await importer.StartRowAsync(token);
-        using PooledArray<ColumnMetaData> buffer = MetaData.SortedColumns;
-
-        foreach ( ColumnMetaData column in buffer.Array )
+        switch ( propertyName )
         {
-            switch ( column.PropertyName )
-            {
-                case nameof(ID):
-                    await importer.WriteAsync(ID.Value, column.PostgresDbType, token);
-                    break;
+            case nameof(ID):
+                await importer.WriteAsync(ID.Value, postgresDbType, token);
+                break;
 
-                case nameof(DateCreated):
-                    await importer.WriteAsync(DateCreated, column.PostgresDbType, token);
-                    break;
+            case nameof(DateCreated):
+                await importer.WriteAsync(DateCreated, postgresDbType, token);
+                break;
 
-                case nameof(UserID):
-                    await importer.WriteAsync(UserID.Value, column.PostgresDbType, token);
-                    break;
+            case nameof(UserID):
+                await importer.WriteAsync(UserID.Value, postgresDbType, token);
+                break;
 
-                case nameof(Code):
-                    await importer.WriteAsync(Code, column.PostgresDbType, token);
-                    break;
+            case nameof(Code):
+                await importer.WriteAsync(Code, postgresDbType, token);
+                break;
 
-                case nameof(LastModified):
-                    if ( LastModified.HasValue ) { await importer.WriteAsync(LastModified.Value, column.PostgresDbType, token); }
-                    else { await importer.WriteNullAsync(token); }
+            case nameof(LastModified):
+                if ( LastModified.HasValue ) { await importer.WriteAsync(LastModified.Value, postgresDbType, token); }
+                else { await importer.WriteNullAsync(token); }
 
-                    break;
+                break;
 
-                default:
-                    throw new InvalidOperationException($"Unknown column: {column.PropertyName}");
-            }
+            default:
+                throw new InvalidOperationException($"Unknown column: {propertyName}");
         }
+    }
+    public override ValueTask Import( DataRow row, CancellationToken token )
+    {
+        row[MetaData[nameof(Code)].DataColumn] = Code;
+        return base.Import(row, token);
     }
     [Pure] public override PostgresParameters ToDynamicParameters()
     {
@@ -64,7 +63,7 @@ public sealed record RecoveryCodeRecord : OwnedTableRecord<RecoveryCodeRecord>, 
         parameters.Add(nameof(Code), Code);
         return parameters;
     }
-    [Pure] public static RecoveryCodeRecord Create( NpgsqlDataReader reader )
+    [Pure] public static RecoveryCodeRecord Create( DbDataReader reader )
     {
         string                       code         = reader.GetFieldValue<RecoveryCodeRecord, string>(nameof(Code));
         DateTimeOffset               dateCreated  = reader.GetFieldValue<RecoveryCodeRecord, DateTimeOffset>(nameof(DateCreated));

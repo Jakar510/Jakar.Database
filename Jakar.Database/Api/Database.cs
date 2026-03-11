@@ -213,7 +213,7 @@ public abstract partial class Database : Randoms, IConnectableDbRoot, IHealthChe
     {
         SqlCommand                   command = SqlCommand.Create(sql, parameters);
         await using NpgsqlCommand    cmd     = command.ToCommand(connection, transaction);
-        await using NpgsqlDataReader reader  = await cmd.ExecuteReaderAsync(token);
+        await using DbDataReader reader  = await cmd.ExecuteReaderAsync(token);
         await foreach ( TSelf record in reader.CreateAsync<TSelf>(token) ) { yield return record; }
     }
     public virtual async IAsyncEnumerable<TValue> Where<TSelf, TValue>( NpgsqlConnection connection, NpgsqlTransaction? transaction, string sql, PostgresParameters parameters, [EnumeratorCancellation] CancellationToken token = default )
@@ -222,7 +222,7 @@ public abstract partial class Database : Randoms, IConnectableDbRoot, IHealthChe
     {
         SqlCommand                   command = SqlCommand.Create(sql, parameters);
         await using NpgsqlCommand    cmd     = command.ToCommand(connection, transaction);
-        await using NpgsqlDataReader reader  = await cmd.ExecuteReaderAsync(token);
+        await using DbDataReader reader  = await cmd.ExecuteReaderAsync(token);
         while ( await reader.ReadAsync(token) ) { yield return reader.GetFieldValue<TValue>(0); }
     }
 }

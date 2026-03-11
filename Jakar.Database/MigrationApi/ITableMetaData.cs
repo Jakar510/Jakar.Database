@@ -18,8 +18,8 @@ public interface ITableMetaData : IDisposable
     public                 int                                                                                              ColumnCount     { get; }
     public                 DataTable                                                                                        DataTable       { get; }
     public                 int                                                                                              ForeignKeyCount { get; }
-    public                 PooledArray<ColumnMetaData>                                                                      ForeignKeys     { [Pure] [MustUseReturnValue] [MustDisposeResource] get; }
-    public                 PooledArray<Func<long, MigrationRecord>>                                                         IndexedColumns  { [Pure] [MustUseReturnValue] [MustDisposeResource] get; }
+    public                 ArrayBuffer<ColumnMetaData>                                                                      ForeignKeys     { [Pure] [MustUseReturnValue] [MustDisposeResource] get; }
+    public                 ArrayBuffer<Func<long, MigrationRecord>>                                                         IndexedColumns  { [Pure] [MustUseReturnValue] [MustDisposeResource] get; }
     public                 FrozenDictionary<int, string>                                                                    Indexes         { get; }
     public ref readonly ColumnMetaData this[ string propertyName ] { get; }
     public PropertyColumn this[ int                 index ] { get; }
@@ -30,7 +30,7 @@ public interface ITableMetaData : IDisposable
     public int                                      MaxLength_Variables         { get; }
     public FrozenDictionary<string, ColumnMetaData> Properties                  { get; }
     public string                                   SetLastModifiedFunctionName { get; }
-    public PooledArray<ColumnMetaData>              SortedColumns               { [Pure] [MustUseReturnValue] [MustDisposeResource] get; }
+    public ArrayBuffer<ColumnMetaData>              SortedColumns               { [Pure] [MustUseReturnValue] [MustDisposeResource] get; }
     public string                                   TableName                   { [Pure] get; }
 
 

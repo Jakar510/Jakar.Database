@@ -320,7 +320,7 @@ public sealed class TableRecordGenerator : IIncrementalGenerator
 
         #region Create (from reader)
 
-        sb.AppendLine("    public static " + rec.TypeName + " Create(NpgsqlDataReader reader)");
+        sb.AppendLine("    public static " + rec.TypeName + " Create(DbDataReader reader)");
         sb.AppendLine("    {");
         sb.AppendLine("        var instance = new " + rec.TypeName + "();");
 

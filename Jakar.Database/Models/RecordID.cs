@@ -31,10 +31,10 @@ public readonly struct RecordID<TSelf>( Guid id ) : IRecordID, IEqualComparable<
     [Pure] public static RecordID<TSelf>  New( DateTimeOffset              timeStamp )                   => Create(Guid.CreateVersion7(timeStamp));
     [Pure] public static RecordID<TSelf>  Parse( string                    value )                       => Create(Guid.Parse(value));
     [Pure] public static RecordID<TSelf>  Parse( params ReadOnlySpan<char> value )                       => Create(Guid.Parse(value));
-    [Pure] public static RecordID<TSelf>  ID( NpgsqlDataReader             reader )                      => Create(reader, nameof(IUniqueID.ID));
-    [Pure] public static RecordID<TSelf>  UserID( NpgsqlDataReader         reader )                      => Create(reader, nameof(IUserRecordID.UserID));
-    [Pure] public static RecordID<TSelf>? TryCreate( NpgsqlDataReader      reader, string propertyName ) => TryCreate(reader.GetFieldValue<Guid?>(TSelf.MetaData[propertyName].Index));
-    [Pure] public static RecordID<TSelf>  Create( NpgsqlDataReader         reader, string propertyName ) => Create(reader.GetFieldValue<Guid>(TSelf.MetaData[propertyName].Index));
+    [Pure] public static RecordID<TSelf>  ID( DbDataReader             reader )                      => Create(reader, nameof(IUniqueID.ID));
+    [Pure] public static RecordID<TSelf>  UserID( DbDataReader         reader )                      => Create(reader, nameof(IUserRecordID.UserID));
+    [Pure] public static RecordID<TSelf>? TryCreate( DbDataReader      reader, string propertyName ) => TryCreate(reader.GetFieldValue<Guid?>(TSelf.MetaData[propertyName].Index));
+    [Pure] public static RecordID<TSelf>  Create( DbDataReader         reader, string propertyName ) => Create(reader.GetFieldValue<Guid>(TSelf.MetaData[propertyName].Index));
     [Pure] public static RecordID<TSelf>  Create( Guid                     id ) => new(id);
     [Pure] public static RecordID<TSelf> Create( [NotNullIfNotNull(nameof(id))] Guid? id ) => id.HasValue
                                                                                                   ? new RecordID<TSelf>(id.Value)

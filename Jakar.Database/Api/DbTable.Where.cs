@@ -22,7 +22,7 @@ public partial class DbTable<TSelf>
     public virtual async IAsyncEnumerable<TSelf> Where( NpgsqlConnection connection, NpgsqlTransaction? transaction, SqlCommand command, [EnumeratorCancellation] CancellationToken token = default )
     {
         await using NpgsqlCommand    cmd    = command.ToCommand(connection, transaction);
-        await using NpgsqlDataReader reader = await cmd.ExecuteReaderAsync(token);
+        await using DbDataReader reader = await cmd.ExecuteReaderAsync(token);
         await foreach ( TSelf record in reader.CreateAsync<TSelf>(token) ) { yield return record; }
     }
     public virtual IAsyncEnumerable<TSelf> Where( SqlCommand command, [EnumeratorCancellation] CancellationToken token = default ) => this.TryCall(Where, command, token);
@@ -47,7 +47,7 @@ public partial class DbTable<TSelf>
     public virtual async IAsyncEnumerable<RecordID<TSelf>> WhereID( NpgsqlConnection connection, NpgsqlTransaction? transaction, SqlCommand command, [EnumeratorCancellation] CancellationToken token = default )
     {
         await using NpgsqlCommand    cmd    = command.ToCommand(connection, transaction);
-        await using NpgsqlDataReader reader = await cmd.ExecuteReaderAsync(token);
+        await using DbDataReader reader = await cmd.ExecuteReaderAsync(token);
         await foreach ( TSelf record in reader.CreateAsync<TSelf>(token) ) { yield return record; }
     }
     public virtual IAsyncEnumerable<RecordID<TSelf>> WhereID( SqlCommand command, [EnumeratorCancellation] CancellationToken token = default ) => this.TryCall(WhereID, command, token);

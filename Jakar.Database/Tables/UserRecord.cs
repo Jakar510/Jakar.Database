@@ -80,7 +80,7 @@ public sealed record UserRecord : PairRecord<UserRecord>, ITableRecord<UserRecor
     public UserRecord( in RecordID<UserRecord> ID ) : this(in ID, null, DateTimeOffset.UtcNow) { }
     public UserRecord( in RecordID<UserRecord> ID, UserRecord?             user,   in DateTimeOffset DateCreated, in DateTimeOffset? LastModified = null ) : this(in ID, user?.ID ?? RecordID<UserRecord>.Empty, in DateCreated, in LastModified) { }
     public UserRecord( in RecordID<UserRecord> ID, in RecordID<UserRecord> userID, in DateTimeOffset DateCreated, in DateTimeOffset? LastModified = null ) : base(in ID, in DateCreated, null, in LastModified) => EscalateTo = userID;
-    internal UserRecord( NpgsqlDataReader reader ) : base(reader)
+    internal UserRecord( DbDataReader reader ) : base(reader)
     {
         UserName               = reader.GetFieldValue<UserRecord, string>(nameof(UserName));
         FirstName              = reader.GetFieldValue<UserRecord, string?>(nameof(FirstName));
@@ -161,7 +161,7 @@ public sealed record UserRecord : PairRecord<UserRecord>, ITableRecord<UserRecor
     public string GetDescription() => Description ??= IUserDetails.GetDescription(this);
 
 
-    public static UserRecord Create( NpgsqlDataReader reader ) => new UserRecord(reader).Validate();
+    public static UserRecord Create( DbDataReader reader ) => new UserRecord(reader).Validate();
     public static UserRecord Create<TUser>( ILoginRequest<TUser> request, UserRecord? caller = null )
         where TUser : class, IUserData<Guid>, IUserDetails => Create(request, request.Data.Rights, caller);
     public static UserRecord Create<TUser, TEnum>( ILoginRequest<TUser> request, scoped in Permissions<TEnum> rights, UserRecord? caller = null )
@@ -216,165 +216,188 @@ public sealed record UserRecord : PairRecord<UserRecord>, ITableRecord<UserRecor
 
 
     public override ValueTask Export( NpgsqlBinaryExporter exporter, CancellationToken token ) => default;
-    public override async ValueTask Import( NpgsqlBinaryImporter importer, CancellationToken token )
+    protected override async ValueTask Import( NpgsqlBinaryImporter importer, string propertyName, NpgsqlDbType postgresDbType, CancellationToken token )
     {
-        await importer.StartRowAsync(token);
-        using PooledArray<ColumnMetaData> buffer = MetaData.SortedColumns;
-
-        foreach ( ColumnMetaData column in buffer.Array )
+        switch ( propertyName )
         {
-            switch ( column.PropertyName )
-            {
-                case nameof(ID):
-                    await importer.WriteAsync(ID.Value, column.PostgresDbType, token);
-                    break;
+            case nameof(ID):
+                await importer.WriteAsync(ID.Value, postgresDbType, token);
+                break;
 
-                case nameof(DateCreated):
-                    await importer.WriteAsync(DateCreated, column.PostgresDbType, token);
-                    break;
+            case nameof(DateCreated):
+                await importer.WriteAsync(DateCreated, postgresDbType, token);
+                break;
 
-                case nameof(Rights):
-                    await importer.WriteAsync(Rights.Value, column.PostgresDbType, token);
-                    break;
+            case nameof(Rights):
+                await importer.WriteAsync(Rights.Value, postgresDbType, token);
+                break;
 
-                case nameof(UserName):
-                    await importer.WriteAsync(UserName, column.PostgresDbType, token);
-                    break;
+            case nameof(UserName):
+                await importer.WriteAsync(UserName, postgresDbType, token);
+                break;
 
-                case nameof(FirstName):
-                    await importer.WriteAsync(FirstName, column.PostgresDbType, token);
-                    break;
+            case nameof(FirstName):
+                await importer.WriteAsync(FirstName, postgresDbType, token);
+                break;
 
-                case nameof(LastName):
-                    await importer.WriteAsync(LastName, column.PostgresDbType, token);
-                    break;
+            case nameof(LastName):
+                await importer.WriteAsync(LastName, postgresDbType, token);
+                break;
 
-                case nameof(FullName):
-                    await importer.WriteAsync(FullName, column.PostgresDbType, token);
-                    break;
+            case nameof(FullName):
+                await importer.WriteAsync(FullName, postgresDbType, token);
+                break;
 
-                case nameof(Gender):
-                    await importer.WriteAsync(Gender, column.PostgresDbType, token);
-                    break;
+            case nameof(Gender):
+                await importer.WriteAsync(Gender, postgresDbType, token);
+                break;
 
-                case nameof(Company):
-                    await importer.WriteAsync(Company, column.PostgresDbType, token);
-                    break;
+            case nameof(Company):
+                await importer.WriteAsync(Company, postgresDbType, token);
+                break;
 
-                case nameof(Department):
-                    await importer.WriteAsync(Department, column.PostgresDbType, token);
-                    break;
+            case nameof(Department):
+                await importer.WriteAsync(Department, postgresDbType, token);
+                break;
 
-                case nameof(Title):
-                    await importer.WriteAsync(Title, column.PostgresDbType, token);
-                    break;
+            case nameof(Title):
+                await importer.WriteAsync(Title, postgresDbType, token);
+                break;
 
-                case nameof(Website):
-                    await importer.WriteAsync(Website, column.PostgresDbType, token);
-                    break;
+            case nameof(Website):
+                await importer.WriteAsync(Website, postgresDbType, token);
+                break;
 
-                case nameof(PreferredLanguage):
-                    await importer.WriteAsync(PreferredLanguage, column.PostgresDbType, token);
-                    break;
+            case nameof(PreferredLanguage):
+                await importer.WriteAsync(PreferredLanguage, postgresDbType, token);
+                break;
 
-                case nameof(Email):
-                    await importer.WriteAsync(Email, column.PostgresDbType, token);
-                    break;
+            case nameof(Email):
+                await importer.WriteAsync(Email, postgresDbType, token);
+                break;
 
-                case nameof(LastModified):
-                    if ( LastModified.HasValue ) { await importer.WriteAsync(LastModified.Value, column.PostgresDbType, token); }
-                    else { await importer.WriteNullAsync(token); }
+            case nameof(LastModified):
+                if ( LastModified.HasValue ) { await importer.WriteAsync(LastModified.Value, postgresDbType, token); }
+                else { await importer.WriteNullAsync(token); }
 
-                    break;
+                break;
 
-                case nameof(LastBadAttempt):
-                    if ( LastBadAttempt.HasValue ) { await importer.WriteAsync(LastBadAttempt.Value, column.PostgresDbType, token); }
-                    else { await importer.WriteNullAsync(token); }
+            case nameof(LastBadAttempt):
+                if ( LastBadAttempt.HasValue ) { await importer.WriteAsync(LastBadAttempt.Value, postgresDbType, token); }
+                else { await importer.WriteNullAsync(token); }
 
-                    break;
+                break;
 
-                case nameof(LastLogin):
-                    if ( LastLogin.HasValue ) { await importer.WriteAsync(LastLogin.Value, column.PostgresDbType, token); }
-                    else { await importer.WriteNullAsync(token); }
+            case nameof(LastLogin):
+                if ( LastLogin.HasValue ) { await importer.WriteAsync(LastLogin.Value, postgresDbType, token); }
+                else { await importer.WriteNullAsync(token); }
 
-                    break;
+                break;
 
-                case nameof(BadLogins):
-                    if ( BadLogins.HasValue ) { await importer.WriteAsync(BadLogins.Value, column.PostgresDbType, token); }
-                    else { await importer.WriteNullAsync(token); }
+            case nameof(BadLogins):
+                if ( BadLogins.HasValue ) { await importer.WriteAsync(BadLogins.Value, postgresDbType, token); }
+                else { await importer.WriteNullAsync(token); }
 
-                    break;
+                break;
 
-                case nameof(LockDate):
-                    if ( LockDate.HasValue ) { await importer.WriteAsync(LockDate.Value, column.PostgresDbType, token); }
-                    else { await importer.WriteNullAsync(token); }
+            case nameof(LockDate):
+                if ( LockDate.HasValue ) { await importer.WriteAsync(LockDate.Value, postgresDbType, token); }
+                else { await importer.WriteNullAsync(token); }
 
-                    break;
+                break;
 
-                case nameof(LockoutEnd):
-                    if ( LockoutEnd.HasValue ) { await importer.WriteAsync(LockoutEnd.Value, column.PostgresDbType, token); }
-                    else { await importer.WriteNullAsync(token); }
+            case nameof(LockoutEnd):
+                if ( LockoutEnd.HasValue ) { await importer.WriteAsync(LockoutEnd.Value, postgresDbType, token); }
+                else { await importer.WriteNullAsync(token); }
 
-                    break;
+                break;
 
-                case nameof(PasswordHash):
-                    await importer.WriteAsync(PasswordHash, column.PostgresDbType, token);
-                    break;
+            case nameof(PasswordHash):
+                await importer.WriteAsync(PasswordHash, postgresDbType, token);
+                break;
 
-                case nameof(RefreshTokenHash):
-                    await importer.WriteAsync(RefreshTokenHash, column.PostgresDbType, token);
-                    break;
+            case nameof(RefreshTokenHash):
+                await importer.WriteAsync(RefreshTokenHash, postgresDbType, token);
+                break;
 
-                case nameof(RefreshTokenExpiryTime):
+            case nameof(RefreshTokenExpiryTime):
 
-                    if ( RefreshTokenExpiryTime.HasValue ) { await importer.WriteAsync(RefreshTokenExpiryTime.Value, column.PostgresDbType, token); }
-                    else { await importer.WriteNullAsync(token); }
+                if ( RefreshTokenExpiryTime.HasValue ) { await importer.WriteAsync(RefreshTokenExpiryTime.Value, postgresDbType, token); }
+                else { await importer.WriteNullAsync(token); }
 
-                    break;
+                break;
 
-                case nameof(SessionID):
-                    if ( SessionID.HasValue ) { await importer.WriteAsync(SessionID.Value, column.PostgresDbType, token); }
-                    else { await importer.WriteNullAsync(token); }
+            case nameof(SessionID):
+                if ( SessionID.HasValue ) { await importer.WriteAsync(SessionID.Value, postgresDbType, token); }
+                else { await importer.WriteNullAsync(token); }
 
-                    break;
+                break;
 
-                case nameof(IsActive):
-                    await importer.WriteAsync(IsActive, column.PostgresDbType, token);
-                    break;
+            case nameof(IsActive):
+                await importer.WriteAsync(IsActive, postgresDbType, token);
+                break;
 
-                case nameof(IsDisabled):
-                    await importer.WriteAsync(IsDisabled, column.PostgresDbType, token);
-                    break;
+            case nameof(IsDisabled):
+                await importer.WriteAsync(IsDisabled, postgresDbType, token);
+                break;
 
-                case nameof(SecurityStamp):
-                    await importer.WriteAsync(SecurityStamp, column.PostgresDbType, token);
-                    break;
+            case nameof(SecurityStamp):
+                await importer.WriteAsync(SecurityStamp, postgresDbType, token);
+                break;
 
-                case nameof(ConcurrencyStamp):
-                    await importer.WriteAsync(ConcurrencyStamp, column.PostgresDbType, token);
-                    break;
+            case nameof(ConcurrencyStamp):
+                await importer.WriteAsync(ConcurrencyStamp, postgresDbType, token);
+                break;
 
-                case nameof(AuthenticatorKey):
-                    await importer.WriteAsync(AuthenticatorKey, column.PostgresDbType, token);
-                    break;
+            case nameof(AuthenticatorKey):
+                await importer.WriteAsync(AuthenticatorKey, postgresDbType, token);
+                break;
 
-                case nameof(AdditionalData):
-                    await importer.WriteAsync(AdditionalData, column.PostgresDbType, token);
-                    break;
+            case nameof(AdditionalData):
+                await importer.WriteAsync(AdditionalData, postgresDbType, token);
+                break;
 
-                case nameof(EscalateTo):
-                    if ( EscalateTo.HasValue ) { await importer.WriteAsync(EscalateTo.Value, column.PostgresDbType, token); }
-                    else { await importer.WriteNullAsync(token); }
+            case nameof(EscalateTo):
+                if ( EscalateTo.HasValue ) { await importer.WriteAsync(EscalateTo.Value, postgresDbType, token); }
+                else { await importer.WriteNullAsync(token); }
 
-                    break;
+                break;
 
-                default:
-                    throw new InvalidOperationException($"Unknown column: {column.PropertyName}");
-            }
+            default:
+                throw new InvalidOperationException($"Unknown column: {propertyName}");
         }
-
-
-        // await importer.WriteAsync(IsLocked, column.PostgresDbType, token);
+    }
+    public override ValueTask Import( DataRow row, CancellationToken token )
+    {
+        row[MetaData[nameof(Rights)].DataColumn]                 = Rights;
+        row[MetaData[nameof(UserName)].DataColumn]               = UserName;
+        row[MetaData[nameof(FirstName)].DataColumn]              = FirstName;
+        row[MetaData[nameof(LastName)].DataColumn]               = LastName;
+        row[MetaData[nameof(FullName)].DataColumn]               = FullName;
+        row[MetaData[nameof(Gender)].DataColumn]                 = Gender;
+        row[MetaData[nameof(Company)].DataColumn]                = Company;
+        row[MetaData[nameof(Department)].DataColumn]             = Department;
+        row[MetaData[nameof(Title)].DataColumn]                  = Title;
+        row[MetaData[nameof(Website)].DataColumn]                = Website;
+        row[MetaData[nameof(PreferredLanguage)].DataColumn]      = PreferredLanguage;
+        row[MetaData[nameof(Email)].DataColumn]                  = Email;
+        row[MetaData[nameof(LastBadAttempt)].DataColumn]         = LastBadAttempt;
+        row[MetaData[nameof(LastLogin)].DataColumn]              = LastLogin;
+        row[MetaData[nameof(BadLogins)].DataColumn]              = BadLogins;
+        row[MetaData[nameof(LockDate)].DataColumn]               = LockDate;
+        row[MetaData[nameof(LockoutEnd)].DataColumn]             = LockoutEnd;
+        row[MetaData[nameof(PasswordHash)].DataColumn]           = PasswordHash;
+        row[MetaData[nameof(RefreshTokenHash)].DataColumn]       = RefreshTokenHash;
+        row[MetaData[nameof(RefreshTokenExpiryTime)].DataColumn] = RefreshTokenExpiryTime;
+        row[MetaData[nameof(SessionID)].DataColumn]              = SessionID;
+        row[MetaData[nameof(IsActive)].DataColumn]               = IsActive;
+        row[MetaData[nameof(IsDisabled)].DataColumn]             = IsDisabled;
+        row[MetaData[nameof(SecurityStamp)].DataColumn]          = SecurityStamp;
+        row[MetaData[nameof(ConcurrencyStamp)].DataColumn]       = ConcurrencyStamp;
+        row[MetaData[nameof(AuthenticatorKey)].DataColumn]       = AuthenticatorKey;
+        row[MetaData[nameof(AdditionalData)].DataColumn]         = AdditionalData;
+        row[MetaData[nameof(EscalateTo)].DataColumn]             = EscalateTo;
+        return base.Import(row, token);
     }
     public override PostgresParameters ToDynamicParameters()
     {

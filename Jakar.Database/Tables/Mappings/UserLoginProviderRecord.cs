@@ -29,7 +29,7 @@ public sealed record UserLoginProviderRecord : OwnedTableRecord<UserLoginProvide
         this.ProviderKey         = ProviderKey;
         this.Value               = Value;
     }
-    internal UserLoginProviderRecord( NpgsqlDataReader reader ) : base(reader)
+    internal UserLoginProviderRecord( DbDataReader reader ) : base(reader)
     {
         LoginProvider       = reader.GetFieldValue<UserLoginProviderRecord, string>(nameof(LoginProvider));
         ProviderDisplayName = reader.GetFieldValue<UserLoginProviderRecord, string>(nameof(ProviderDisplayName));
@@ -39,53 +39,55 @@ public sealed record UserLoginProviderRecord : OwnedTableRecord<UserLoginProvide
 
 
     public override ValueTask Export( NpgsqlBinaryExporter exporter, CancellationToken token ) => default;
-    public override async ValueTask Import( NpgsqlBinaryImporter importer, CancellationToken token )
+    protected override async ValueTask Import( NpgsqlBinaryImporter importer, string propertyName, NpgsqlDbType postgresDbType, CancellationToken token )
     {
-        await importer.StartRowAsync(token);
-        using PooledArray<ColumnMetaData> buffer = MetaData.SortedColumns;
-
-        foreach ( ColumnMetaData column in buffer.Array )
+        switch ( propertyName )
         {
-            switch ( column.PropertyName )
-            {
-                case nameof(ID):
-                    await importer.WriteAsync(ID.Value, column.PostgresDbType, token);
-                    break;
+            case nameof(ID):
+                await importer.WriteAsync(ID.Value, postgresDbType, token);
+                break;
 
-                case nameof(DateCreated):
-                    await importer.WriteAsync(DateCreated, column.PostgresDbType, token);
-                    break;
+            case nameof(DateCreated):
+                await importer.WriteAsync(DateCreated, postgresDbType, token);
+                break;
 
-                case nameof(UserID):
-                    await importer.WriteAsync(UserID.Value, column.PostgresDbType, token);
-                    break;
+            case nameof(UserID):
+                await importer.WriteAsync(UserID.Value, postgresDbType, token);
+                break;
 
-                case nameof(LoginProvider):
-                    await importer.WriteAsync(LoginProvider, column.PostgresDbType, token);
-                    break;
+            case nameof(LoginProvider):
+                await importer.WriteAsync(LoginProvider, postgresDbType, token);
+                break;
 
-                case nameof(ProviderDisplayName):
-                    await importer.WriteAsync(ProviderDisplayName, column.PostgresDbType, token);
-                    break;
+            case nameof(ProviderDisplayName):
+                await importer.WriteAsync(ProviderDisplayName, postgresDbType, token);
+                break;
 
-                case nameof(ProviderKey):
-                    await importer.WriteAsync(ProviderKey, column.PostgresDbType, token);
-                    break;
+            case nameof(ProviderKey):
+                await importer.WriteAsync(ProviderKey, postgresDbType, token);
+                break;
 
-                case nameof(Value):
-                    await importer.WriteAsync(Value, column.PostgresDbType, token);
-                    break;
+            case nameof(Value):
+                await importer.WriteAsync(Value, postgresDbType, token);
+                break;
 
-                case nameof(LastModified):
-                    if ( LastModified.HasValue ) { await importer.WriteAsync(LastModified.Value, column.PostgresDbType, token); }
-                    else { await importer.WriteNullAsync(token); }
+            case nameof(LastModified):
+                if ( LastModified.HasValue ) { await importer.WriteAsync(LastModified.Value, postgresDbType, token); }
+                else { await importer.WriteNullAsync(token); }
 
-                    break;
+                break;
 
-                default:
-                    throw new InvalidOperationException($"Unknown column: {column.PropertyName}");
-            }
+            default:
+                throw new InvalidOperationException($"Unknown column: {propertyName}");
         }
+    }
+    public override ValueTask Import( DataRow row, CancellationToken token )
+    {
+        row[MetaData[nameof(LoginProvider)].DataColumn]       = LoginProvider;
+        row[MetaData[nameof(ProviderDisplayName)].DataColumn] = ProviderDisplayName;
+        row[MetaData[nameof(ProviderKey)].DataColumn]         = ProviderKey;
+        row[MetaData[nameof(Value)].DataColumn]               = Value;
+        return base.Import(row, token);
     }
     public override PostgresParameters ToDynamicParameters()
     {
@@ -98,7 +100,7 @@ public sealed record UserLoginProviderRecord : OwnedTableRecord<UserLoginProvide
     }
 
 
-    [Pure] public static UserLoginProviderRecord Create( NpgsqlDataReader reader )      => new UserLoginProviderRecord(reader).Validate();
+    [Pure] public static UserLoginProviderRecord Create( DbDataReader reader ) => new UserLoginProviderRecord(reader).Validate();
 
 
     public static PostgresParameters GetDynamicParameters( UserRecord user, string value )

@@ -28,7 +28,7 @@ public sealed record GroupRecord : OwnedTableRecord<GroupRecord>, ITableRecord<G
     }
 
 
-    [Pure] public static GroupRecord Create( NpgsqlDataReader reader )
+    [Pure] public static GroupRecord Create( DbDataReader reader )
     {
         string                normalizedName = reader.GetFieldValue<GroupRecord, string>(nameof(NormalizedName));
         string                nameOfGroup    = reader.GetFieldValue<GroupRecord, string>(nameof(NameOfGroup));
@@ -78,49 +78,50 @@ public sealed record GroupRecord : OwnedTableRecord<GroupRecord>, ITableRecord<G
 
 
     public override ValueTask Export( NpgsqlBinaryExporter exporter, CancellationToken token ) => default;
-    public override async ValueTask Import( NpgsqlBinaryImporter importer, CancellationToken token )
+    protected override async ValueTask Import( NpgsqlBinaryImporter importer, string propertyName, NpgsqlDbType postgresDbType, CancellationToken token )
     {
-        await importer.StartRowAsync(token);
-        using PooledArray<ColumnMetaData> buffer = MetaData.SortedColumns;
-
-        foreach ( ColumnMetaData column in buffer.Array )
+        switch ( propertyName )
         {
-            switch ( column.PropertyName )
-            {
-                case nameof(ID):
-                    await importer.WriteAsync(ID.Value, column.PostgresDbType, token);
-                    break;
+            case nameof(ID):
+                await importer.WriteAsync(ID.Value, postgresDbType, token);
+                break;
 
-                case nameof(DateCreated):
-                    await importer.WriteAsync(DateCreated, column.PostgresDbType, token);
-                    break;
+            case nameof(DateCreated):
+                await importer.WriteAsync(DateCreated, postgresDbType, token);
+                break;
 
-                case nameof(UserID):
-                    await importer.WriteAsync(UserID.Value, column.PostgresDbType, token);
-                    break;
+            case nameof(UserID):
+                await importer.WriteAsync(UserID.Value, postgresDbType, token);
+                break;
 
-                case nameof(Rights):
-                    await importer.WriteAsync(Rights.Value, column.PostgresDbType, token);
-                    break;
+            case nameof(Rights):
+                await importer.WriteAsync(Rights.Value, postgresDbType, token);
+                break;
 
-                case nameof(NameOfGroup):
-                    await importer.WriteAsync(NameOfGroup, column.PostgresDbType, token);
-                    break;
+            case nameof(NameOfGroup):
+                await importer.WriteAsync(NameOfGroup, postgresDbType, token);
+                break;
 
-                case nameof(NormalizedName):
-                    await importer.WriteAsync(NormalizedName, column.PostgresDbType, token);
-                    break;
+            case nameof(NormalizedName):
+                await importer.WriteAsync(NormalizedName, postgresDbType, token);
+                break;
 
-                case nameof(LastModified):
-                    if ( LastModified.HasValue ) { await importer.WriteAsync(LastModified.Value, column.PostgresDbType, token); }
-                    else { await importer.WriteNullAsync(token); }
+            case nameof(LastModified):
+                if ( LastModified.HasValue ) { await importer.WriteAsync(LastModified.Value, postgresDbType, token); }
+                else { await importer.WriteNullAsync(token); }
 
-                    break;
+                break;
 
-                default:
-                    throw new InvalidOperationException($"Unknown column: {column.PropertyName}");
-            }
+            default:
+                throw new InvalidOperationException($"Unknown column: {propertyName}");
         }
+    }
+    public override ValueTask Import( DataRow row, CancellationToken token )
+    {
+        row[MetaData[nameof(Rights)].DataColumn]         = Rights;
+        row[MetaData[nameof(NameOfGroup)].DataColumn]    = NameOfGroup;
+        row[MetaData[nameof(NormalizedName)].DataColumn] = NormalizedName;
+        return base.Import(row, token);
     }
     [Pure] public override PostgresParameters ToDynamicParameters()
     {

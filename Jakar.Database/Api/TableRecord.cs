@@ -1,6 +1,13 @@
 ﻿// Jakar.Extensions :: Jakar.Database
 // 08/14/2022  8:38 PM
 
+using Microsoft.AspNetCore.DataProtection.KeyManagement;
+using Microsoft.Data.SqlClient;
+using OpenTelemetry;
+using static Pipelines.Sockets.Unofficial.SocketConnection;
+
+
+
 namespace Jakar.Database;
 
 
@@ -30,7 +37,9 @@ public interface ITableRecord<TSelf>
     public abstract static              TableMetaData<TSelf>         MetaData        { [Pure] get; }
     public abstract static              string                       TableName       { [Pure] get; }
 
-    [Pure] public abstract static TSelf Create( NpgsqlDataReader reader );
+
+    // [Pure] public abstract static TSelf Create( SqlDataReader    reader );
+    [Pure] public abstract static TSelf Create( DbDataReader reader );
 }
 
 
@@ -49,7 +58,7 @@ public abstract record TableRecord<TSelf>( in DateTimeOffset DateCreated ) : IJs
     public static              int                          PropertyCount   => Properties.Length;
 
 
-    protected internal TableRecord( NpgsqlDataReader reader ) : this(reader.DateCreated<TSelf>()) { }
+    protected internal TableRecord( DbDataReader reader ) : this(reader.DateCreated<TSelf>()) { }
 
 
     [Pure] public UInt128 GetHash()
@@ -99,10 +108,25 @@ public abstract record TableRecord<TSelf>( in DateTimeOffset DateCreated ) : IJs
     public static TSelf FromJson( string json ) => json.FromJson<TSelf>();
 
 
-    public virtual  ValueTask Export( NpgsqlBinaryExporter exporter, CancellationToken token ) => default;
-    public virtual  ValueTask Import( NpgsqlBatchCommand   batch,    CancellationToken token ) => default;
-    public abstract ValueTask Import( NpgsqlBinaryImporter importer, CancellationToken token );
-    public abstract ValueTask Import( DataRow              row, CancellationToken token );
+    // IDataReader
+    public virtual ValueTask Export( NpgsqlBinaryExporter exporter, CancellationToken token ) => default;
+    public virtual ValueTask Import( NpgsqlBatchCommand   batch,    CancellationToken token ) => default;
+    public async ValueTask Import( NpgsqlBinaryImporter importer, CancellationToken token )
+    {
+        await importer.StartRowAsync(token);
+        using ArrayBuffer<ColumnMetaData> buffer = MetaData.SortedColumns;
+
+        foreach ( ColumnMetaData column in buffer.Array ) { await Import(importer, column.PropertyName, column.PostgresDbType, token); }
+    }
+    protected abstract ValueTask Import( NpgsqlBinaryImporter importer, string propertyName, NpgsqlDbType postgresDbType, CancellationToken token );
+    public virtual ValueTask Import( DataRow row, CancellationToken token )
+    {
+        row[MetaData[nameof(DateCreated)].DataColumn] = DateCreated;
+
+        return token.IsCancellationRequested
+                   ? ValueTask.FromCanceled(token)
+                   : ValueTask.CompletedTask;
+    }
     [Pure] public virtual PostgresParameters ToDynamicParameters()
     {
         PostgresParameters parameters = PostgresParameters.Create<TSelf>();
@@ -125,9 +149,13 @@ public abstract record LastModifiedRecord<TSelf> : TableRecord<TSelf>, ILastModi
         DateCreated  = dateCreated;
         LastModified = lastModified;
     }
-    protected internal LastModifiedRecord( NpgsqlDataReader reader ) : base(reader) => LastModified = reader.LastModified<TSelf>();
+    protected internal LastModifiedRecord( DbDataReader reader ) : base(reader) => LastModified = reader.LastModified<TSelf>();
 
-
+    public override ValueTask Import( DataRow row, CancellationToken token )
+    {
+        row[MetaData[nameof(LastModified)].DataColumn] = LastModified;
+        return base.Import(row, token);
+    }
     [Pure] public override PostgresParameters ToDynamicParameters()
     {
         PostgresParameters parameters = base.ToDynamicParameters();
@@ -156,7 +184,7 @@ public abstract record PairRecord<TSelf> : LastModifiedRecord<TSelf>, IUniqueID
         ID             = id;
         AdditionalData = additionalData;
     }
-    protected internal PairRecord( NpgsqlDataReader reader ) : base(reader)
+    protected internal PairRecord( DbDataReader reader ) : base(reader)
     {
         ID             = RecordID<TSelf>.ID(reader);
         AdditionalData = reader.GetAdditionalData<TSelf>();
@@ -196,6 +224,11 @@ public abstract record PairRecord<TSelf> : LastModifiedRecord<TSelf>, IUniqueID
     }
 
 
+    public override ValueTask Import( DataRow row, CancellationToken token )
+    {
+        row[MetaData[nameof(ID)].DataColumn] = ID;
+        return base.Import(row, token);
+    }
     [Pure] public override PostgresParameters ToDynamicParameters()
     {
         PostgresParameters parameters = base.ToDynamicParameters();
@@ -232,7 +265,7 @@ public abstract record OwnedTableRecord<TSelf> : PairRecord<TSelf>, IUserRecordI
 
 
     protected OwnedTableRecord( in RecordID<UserRecord>   userID, in RecordID<TSelf> id, in DateTimeOffset dateCreated, in DateTimeOffset? lastModified, JObject? additionalData = null ) : base(in id, in dateCreated, additionalData, in lastModified) => UserID = userID;
-    protected internal OwnedTableRecord( NpgsqlDataReader reader ) : base(reader) => UserID = RecordID<UserRecord>.UserID(reader);
+    protected internal OwnedTableRecord( DbDataReader reader ) : base(reader) => UserID = RecordID<UserRecord>.UserID(reader);
 
 
     public static implicit operator RecordID<UserRecord>( OwnedTableRecord<TSelf>? record ) => record?.UserID ?? RecordID<UserRecord>.Empty;
@@ -263,7 +296,12 @@ public abstract record OwnedTableRecord<TSelf> : PairRecord<TSelf>, IUserRecordI
     public async ValueTask<UserRecord?> GetUser( NpgsqlConnection           connection, NpgsqlTransaction? transaction, Database db, CancellationToken token ) => await db.Users.Get(connection, transaction, GetDynamicParameters(this), token);
     public async ValueTask<UserRecord?> GetUserWhoCreated( NpgsqlConnection connection, NpgsqlTransaction? transaction, Database db, CancellationToken token ) => await db.Users.Get(connection, transaction, UserID,                     token);
 
-
+    
+    public override ValueTask Import( DataRow row, CancellationToken token )
+    {
+        row[MetaData[nameof(UserID)].DataColumn] = UserID;
+        return base.Import(row, token);
+    }
     public TSelf WithOwner( UserRecord  user )   => (TSelf)( this with { UserID = user.ID } );
     public bool  Owns( UserRecord       record ) => UserID == record.ID;
     public bool  DoesNotOwn( UserRecord record ) => UserID != record.ID;

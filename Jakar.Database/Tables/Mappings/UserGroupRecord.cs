@@ -18,7 +18,7 @@ public sealed record UserGroupRecord : Mapping<UserGroupRecord, UserRecord, Grou
 
     public UserGroupRecord( RecordID<UserRecord>  key, RecordID<GroupRecord> value ) : base(key, value) { }
     private UserGroupRecord( RecordID<UserRecord> key, RecordID<GroupRecord> value, DateTimeOffset dateCreated ) : base(key, value, dateCreated) { }
-    internal UserGroupRecord( NpgsqlDataReader    reader ) : base(reader) { }
+    internal UserGroupRecord( DbDataReader    reader ) : base(reader) { }
 
 
     [Pure] public static UserGroupRecord Create( UserRecord           key, GroupRecord           value ) => new(key, value);
@@ -47,7 +47,7 @@ public sealed record UserGroupRecord : Mapping<UserGroupRecord, UserRecord, Grou
         // ReSharper disable once LoopCanBeConvertedToQuery
         foreach ( RecordID<GroupRecord> value in values ) { yield return Create(key, value); }
     }
-    [Pure] public static UserGroupRecord Create( NpgsqlDataReader reader ) => new UserGroupRecord(reader).Validate();
+    [Pure] public static UserGroupRecord Create( DbDataReader reader ) => new UserGroupRecord(reader).Validate();
 
 
     public static bool operator >( UserGroupRecord  left, UserGroupRecord right ) => left.CompareTo(right) > 0;

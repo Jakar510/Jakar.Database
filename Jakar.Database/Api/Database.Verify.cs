@@ -213,7 +213,7 @@ public abstract partial class Database
                       """;
 
         await using NpgsqlCommand    command = new(sql, connection, transaction);
-        await using NpgsqlDataReader reader  = await command.ExecuteReaderAsync(token);
+        await using DbDataReader reader  = await command.ExecuteReaderAsync(token);
         Permissions<TEnum>           result  = Permissions<TEnum>.Default;
 
         while ( await reader.ReadAsync(token) )

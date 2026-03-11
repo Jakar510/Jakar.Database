@@ -4,37 +4,37 @@
 public ref struct ParameterNames( PostgresParameters self ) : IValueEnumerator<ParameterNames, string>
 {
     private int                 __index = -1;
-    private PooledArray<string> __array;
+    private ArrayBuffer<string> __array;
 
 
-    public ImmutableArray<string> Array => __array.Array.AsImmutableArray();
+    public ImmutableArray<string> Array => [..__array.Values];
     public ReadOnlySpan<string> Span
     {
         get
         {
-            if ( __array.Size <= 0 ) { Reset(); }
+            if ( __array.Length <= 0 ) { Reset(); }
 
             return __array.Span;
         }
     }
 
-    public string? Current => __index >= 0 && __index < __array.Size
+    public string? Current => __index >= 0 && __index < __array.Length
                                   ? __array.Span[__index]
                                   : null;
 
     public bool MoveNext()
     {
-        if ( __array.Size <= 0 ) { Reset(); }
+        if ( __array.Length <= 0 ) { Reset(); }
 
         int index = Interlocked.Increment(ref __index);
-        return index < __array.Size;
+        return index < __array.Length;
     }
 
     public void Reset()
     {
         __index = 0;
         __array.Dispose();
-        __array = self.Parameters.AsValueEnumerable().Select(static x => x.ParameterName).Order().ToArrayPool();
+        __array = self.Parameters.AsValueEnumerable().Select(static x => x.ParameterName).Order().ToArrayBuffer();
     }
     public void Dispose()
     {
@@ -52,7 +52,7 @@ public ref struct ParameterNames( PostgresParameters self ) : IValueEnumerator<P
     }
     public bool TryGetNonEnumeratedCount( out int count )
     {
-        count = __array.Size;
+        count = __array.Length;
         return true;
     }
     public bool TryGetSpan( out ReadOnlySpan<string> span )

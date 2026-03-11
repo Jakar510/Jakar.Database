@@ -20,7 +20,7 @@ public sealed record UserAddressRecord : Mapping<UserAddressRecord, UserRecord, 
     public UserAddressRecord( UserRecord            key, AddressRecord           value ) : base(key, value) { }
     public UserAddressRecord( RecordID<UserRecord>  key, RecordID<AddressRecord> value ) : base(key, value) { }
     private UserAddressRecord( RecordID<UserRecord> key, RecordID<AddressRecord> value, DateTimeOffset dateCreated ) : base(key, value, dateCreated) { }
-    internal UserAddressRecord( NpgsqlDataReader    reader ) : base(reader) { }
+    internal UserAddressRecord( DbDataReader    reader ) : base(reader) { }
 
 
     [Pure] public static UserAddressRecord Create( UserRecord           key, AddressRecord           value ) => new(key, value);
@@ -47,7 +47,7 @@ public sealed record UserAddressRecord : Mapping<UserAddressRecord, UserRecord, 
     {
         foreach ( RecordID<AddressRecord> value in values ) { yield return Create(key, value); }
     }
-    [Pure] public static UserAddressRecord Create( NpgsqlDataReader reader ) => new UserAddressRecord(reader).Validate();
+    [Pure] public static UserAddressRecord Create( DbDataReader reader ) => new UserAddressRecord(reader).Validate();
 
 
     public static bool operator >( UserAddressRecord  left, UserAddressRecord right ) => left.CompareTo(right) > 0;

@@ -18,7 +18,7 @@ public partial class DbTable<TSelf>
         try
         {
             await using NpgsqlCommand    cmd    = command.ToCommand(connection, transaction);
-            await using NpgsqlDataReader reader = await cmd.ExecuteReaderAsync(token);
+            await using DbDataReader reader = await cmd.ExecuteReaderAsync(token);
             ErrorOrResult<TSelf>         record = await reader.FirstAsync<TSelf>(token);
             return record;
         }
@@ -31,7 +31,7 @@ public partial class DbTable<TSelf>
         try
         {
             await using NpgsqlCommand    cmd    = command.ToCommand(connection, transaction);
-            await using NpgsqlDataReader reader = await cmd.ExecuteReaderAsync(token);
+            await using DbDataReader reader = await cmd.ExecuteReaderAsync(token);
             ErrorOrResult<TSelf>         record = await reader.FirstOrDefaultAsync<TSelf>(token);
             return record;
         }

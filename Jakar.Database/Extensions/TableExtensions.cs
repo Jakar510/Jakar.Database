@@ -56,7 +56,7 @@ public static class TableExtensions
 
 
 
-    extension( NpgsqlDataReader self )
+    extension( DbDataReader self )
     {
         public DateTimeOffset DateCreated<TRecord>()
             where TRecord : TableRecord<TRecord>, ITableRecord<TRecord>, IDateCreated => self.GetFieldValue<TRecord, DateTimeOffset>(nameof(IDateCreated.DateCreated));

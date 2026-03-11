@@ -47,7 +47,7 @@ public abstract record Mapping<TSelf, TKey, TValue> : TableRecord<TSelf>
         __owner = new WeakReference<TKey>(key);
         __value = new WeakReference<TValue>(value);
     }
-    protected internal Mapping( NpgsqlDataReader reader ) : base(reader)
+    protected internal Mapping( DbDataReader reader ) : base(reader)
     {
         KeyID   = RecordID<TKey>.Create(reader, nameof(KeyID));
         ValueID = RecordID<TValue>.Create(reader, nameof(ValueID));
@@ -82,31 +82,31 @@ public abstract record Mapping<TSelf, TKey, TValue> : TableRecord<TSelf>
 
 
     public override ValueTask Export( NpgsqlBinaryExporter exporter, CancellationToken token ) => default;
-    public override async ValueTask Import( NpgsqlBinaryImporter importer, CancellationToken token )
+    protected override async ValueTask Import( NpgsqlBinaryImporter importer, string propertyName, NpgsqlDbType postgresDbType, CancellationToken token )
     {
-        await importer.StartRowAsync(token);
-        using PooledArray<ColumnMetaData> buffer = MetaData.SortedColumns;
-
-        foreach ( ColumnMetaData column in buffer.Array )
+        switch ( propertyName )
         {
-            switch ( column.PropertyName )
-            {
-                case nameof(DateCreated):
-                    await importer.WriteAsync(DateCreated, column.PostgresDbType, token);
-                    break;
+            case nameof(DateCreated):
+                await importer.WriteAsync(DateCreated, postgresDbType, token);
+                break;
 
-                case nameof(KeyID):
-                    await importer.WriteAsync(KeyID.Value, column.PostgresDbType, token);
-                    break;
+            case nameof(KeyID):
+                await importer.WriteAsync(KeyID.Value, postgresDbType, token);
+                break;
 
-                case nameof(ValueID):
-                    await importer.WriteAsync(ValueID.Value, column.PostgresDbType, token);
-                    break;
+            case nameof(ValueID):
+                await importer.WriteAsync(ValueID.Value, postgresDbType, token);
+                break;
 
-                default:
-                    throw new InvalidOperationException($"Unknown column: {column.PropertyName}");
-            }
+            default:
+                throw new InvalidOperationException($"Unknown column: {propertyName}");
         }
+    }
+    public override ValueTask Import( DataRow row, CancellationToken token )
+    {
+        row[MetaData[nameof(KeyID)].DataColumn]   = KeyID;
+        row[MetaData[nameof(ValueID)].DataColumn] = ValueID;
+        return base.Import(row, token);
     }
     public override PostgresParameters ToDynamicParameters()
     {
