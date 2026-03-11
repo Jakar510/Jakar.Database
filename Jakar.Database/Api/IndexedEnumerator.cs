@@ -17,10 +17,10 @@ public ref struct IndexedEnumerator( PostgresParameters self )
                 return false;
 
             case -1:
-                Current = new Set(0, __parameters.parameters.AsSpan());
+                Current = new Set(0, __parameters.Values);
                 return true;
 
-            case >= 0 when index < __parameters.Extras.Count:
+            case >= 0 when index < __parameters.Extras.Length:
                 Current = new Set(__index, __parameters.Extras[index].AsSpan());
                 return true;
 
@@ -45,11 +45,11 @@ public ref struct IndexedEnumerator( PostgresParameters self )
 
 
 
-    public readonly ref struct Set( int index, ReadOnlySpan<NpgsqlParameter> span )
+    public readonly ref struct Set( int index, ReadOnlySpan<Parameter> span )
     {
-        public readonly int                           Index = index;
-        public readonly ReadOnlySpan<NpgsqlParameter> Span  = span;
-        public void Deconstruct( out int index, out ReadOnlySpan<NpgsqlParameter> span )
+        public readonly int                     Index = index;
+        public readonly ReadOnlySpan<Parameter> Span  = span;
+        public void Deconstruct( out int index, out ReadOnlySpan<Parameter> span )
         {
             index = Index;
             span  = Span;

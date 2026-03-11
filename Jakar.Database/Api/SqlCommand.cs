@@ -1,6 +1,10 @@
 ﻿// Jakar.Extensions :: Jakar.Database
 // 10/19/2025  10:38
 
+using Microsoft.Data.SqlClient;
+
+
+
 namespace Jakar.Database;
 
 
@@ -26,6 +30,23 @@ public readonly struct SqlCommand : IEquatable<SqlCommand>
     public static implicit operator PostgresParameters( SqlCommand sql ) => sql.Parameters;
 
 
+    [Pure] [MustDisposeResource] public Microsoft.Data.SqlClient.SqlCommand ToCommand( SqlConnection connection, SqlTransaction? transaction = null )
+    {
+        ArgumentNullException.ThrowIfNull(connection);
+
+        Microsoft.Data.SqlClient.SqlCommand command = new()
+                                                      {
+                                                          Connection     = connection,
+                                                          CommandText    = SQL,
+                                                          CommandType    = CommandType ?? System.Data.CommandType.Text,
+                                                          Transaction    = transaction,
+                                                          CommandTimeout = 30,
+                                                      };
+
+        foreach ( ref readonly Parameter parameter in Parameters.Parameters ) { command.Parameters.Add(parameter.ToSqlParameter()); }
+
+        return command;
+    }
     [Pure] [MustDisposeResource] public NpgsqlCommand ToCommand( NpgsqlConnection connection, NpgsqlTransaction? transaction = null )
     {
         ArgumentNullException.ThrowIfNull(connection);
@@ -40,7 +61,7 @@ public readonly struct SqlCommand : IEquatable<SqlCommand>
                                     AllResultTypesAreUnknown = false
                                 };
 
-        foreach ( NpgsqlParameter parameter in Parameters.Parameters ) { command.Parameters.Add(parameter); }
+        foreach ( ref readonly Parameter parameter in Parameters.Parameters ) { command.Parameters.Add(parameter.ToPostgresParameter()); }
 
         return command;
     }
@@ -64,7 +85,7 @@ public readonly struct SqlCommand : IEquatable<SqlCommand>
     public static SqlCommand Create( string sql, in PostgresParameters parameters, CommandType? commandType = null, CommandFlags flags = CommandFlags.None ) => new(sql, parameters, commandType, flags);
 
 
-    public static SqlCommand Create<TSelf>( string sql, params ReadOnlySpan<NpgsqlParameter> parameters )
+    public static SqlCommand Create<TSelf>( string sql, params ReadOnlySpan<Parameter> parameters )
         where TSelf : TableRecord<TSelf>, ITableRecord<TSelf> => new(sql, PostgresParameters.Create<TSelf>(parameters));
 
 

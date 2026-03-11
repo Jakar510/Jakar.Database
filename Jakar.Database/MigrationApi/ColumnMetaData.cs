@@ -1,4 +1,8 @@
-﻿namespace Jakar.Database;
+﻿using Microsoft.Data.SqlClient;
+
+
+
+namespace Jakar.Database;
 
 
 [SuppressMessage("ReSharper", "InconsistentNaming")]
@@ -19,18 +23,22 @@ public sealed class ColumnMetaData
     public readonly         ForeignKeyAttribute?                 ForeignKey;
     public readonly         IndexedAttribute?                    Indexed;
     public readonly         string                               DataType;
-    public readonly         NpgsqlDbType                         PostgresDbType;
     public readonly         DefaultsAttribute?                   Defaults;
     public readonly         bool                                 IsFixed;
     public readonly         DbSizeAttribute?                     Length;
+    public readonly         DataColumn                           DataColumn;
+    private                 NpgsqlDbType?                        __postgresDbType;
+    private                 SqlDbType?                           __sqlDbType;
 
 
-    public int  Index                   { get; internal set; } = -1;
-    public bool IsColumnIndexed         { [MemberNotNullWhen(true, nameof(Indexed))] get => Indexed?.IsValid is true || HasForeignKeyConstraint; }
-    public bool HasForeignKeyConstraint { [MemberNotNullWhen(true, nameof(ForeignKey))] get => ForeignKey?.IsValid is true; }
-    public bool HasDefaultConstraint    { [MemberNotNullWhen(true, nameof(Defaults))] get => Defaults?.IsValid is true; }
-    public bool HasCheckConstraint      { [MemberNotNullWhen(true, nameof(Checks))] get => Checks?.IsValid is true; }
-    public bool HasLengthConstraint     { [MemberNotNullWhen(true, nameof(Length))] get => Length is not null; }
+    public int          Index                   { get; internal set; } = -1;
+    public bool         IsColumnIndexed         { [MemberNotNullWhen(true, nameof(Indexed))] get => Indexed?.IsValid is true || HasForeignKeyConstraint; }
+    public bool         HasForeignKeyConstraint { [MemberNotNullWhen(true, nameof(ForeignKey))] get => ForeignKey?.IsValid is true; }
+    public bool         HasDefaultConstraint    { [MemberNotNullWhen(true, nameof(Defaults))] get => Defaults?.IsValid is true; }
+    public bool         HasCheckConstraint      { [MemberNotNullWhen(true, nameof(Checks))] get => Checks?.IsValid is true; }
+    public bool         HasLengthConstraint     { [MemberNotNullWhen(true, nameof(Length))] get => Length is not null; }
+    public NpgsqlDbType PostgresDbType          => __postgresDbType ??= DbType.ToNpgsqlDbType();
+    public SqlDbType    SqlDbType               => __sqlDbType ??= DbType.ToSqlDbType();
 
 
     public ColumnMetaData( in PropertyInfo property )
@@ -52,11 +60,22 @@ public sealed class ColumnMetaData
             ForeignKey        = property.GetCustomAttribute<ForeignKeyAttribute>();
             Indexed           = property.GetCustomAttribute<IndexedAttribute>();
             Length            = property.GetCustomAttribute<DbSizeAttribute>();
-            DataType          = property.GetPostgresDataType(out DbType, out PostgresDbType, out IsNullable);
+            DataType          = property.GetDataType(DatabaseType.PostgreSQL, out DbType, out IsNullable);
             PropertyName      = propertyName;
             ColumnName        = columnName;
             KeyValuePair      = $"{columnName} = @{columnName}";
             VariableName      = $"@{columnName}";
+
+            DataColumn = new DataColumn(columnName, property.PropertyType)
+                         {
+                             AllowDBNull       = IsNullable,
+                             AutoIncrement     = DbType is PostgresType.BigSerial or PostgresType.Serial or PostgresType.SmallSerial,
+                             AutoIncrementSeed = 1,
+                             AutoIncrementStep = 0,
+                             DateTimeMode      = DataSetDateTime.Utc,
+                             MaxLength         = Length?.Max ?? -1,
+                             Unique            = IsUnique,
+                         };
 
             if ( IsPrimaryKey && ForeignKey?.IsValid is true ) { throw new ArgumentException($"Column '{propertyName}' has a PrimaryKey flag but {nameof(ForeignKey)} is invalid.", nameof(ForeignKey)); }
         }
@@ -127,7 +146,21 @@ public sealed class ColumnMetaData
     public static bool   IsDbKey( MemberInfo                    property ) => property.GetCustomAttribute<KeyAttribute>() is not null || property.GetCustomAttribute<System.ComponentModel.DataAnnotations.KeyAttribute>() is not null;
 
 
-    public NpgsqlParameter ToParameter( object? value, [CallerArgumentExpression(nameof(value))] string parameterName = EMPTY, ParameterDirection direction = ParameterDirection.Input, DataRowVersion sourceVersion = DataRowVersion.Default )
+    public SqlParameter ToSqlParameter( object? value, [CallerArgumentExpression(nameof(value))] string parameterName = EMPTY, ParameterDirection direction = ParameterDirection.Input, DataRowVersion sourceVersion = DataRowVersion.Default )
+    {
+        if ( parameterName.Contains('.') ) { parameterName = parameterNameCache.GetOrAdd(parameterName, static x => x.Split('.')[^1]); }
+
+        SqlParameter parameter = new(parameterName.SqlName(), SqlDbType, 0, ColumnName)
+                                 {
+                                     IsNullable    = IsNullable,
+                                     SourceVersion = sourceVersion,
+                                     Direction     = direction,
+                                     Value         = value ?? DBNull.Value
+                                 };
+
+        return parameter;
+    }
+    public NpgsqlParameter ToPostgresParameter( object? value, [CallerArgumentExpression(nameof(value))] string parameterName = EMPTY, ParameterDirection direction = ParameterDirection.Input, DataRowVersion sourceVersion = DataRowVersion.Default )
     {
         if ( parameterName.Contains('.') ) { parameterName = parameterNameCache.GetOrAdd(parameterName, static x => x.Split('.')[^1]); }
 
@@ -139,6 +172,13 @@ public sealed class ColumnMetaData
                                         Value         = value ?? DBNull.Value
                                     };
 
+        return parameter;
+    }
+    public Parameter ToParameter( object? value, [CallerArgumentExpression(nameof(value))] string parameterName = EMPTY, ParameterDirection direction = ParameterDirection.Input, DataRowVersion sourceVersion = DataRowVersion.Default )
+    {
+        if ( parameterName.Contains('.') ) { parameterName = parameterNameCache.GetOrAdd(parameterName, static x => x.Split('.')[^1]); }
+
+        Parameter parameter = new(value, parameterName.SqlName(), ColumnName, DbType, IsNullable, direction, sourceVersion);
         return parameter;
     }
 

@@ -41,17 +41,17 @@ public partial class DbTable<TSelf>
     public virtual async ValueTask<ImmutableArray<TSelf>> Insert( NpgsqlConnection connection, NpgsqlTransaction? transaction, IEnumerable<TSelf> records, [EnumeratorCancellation] CancellationToken token = default )
     {
         ReadOnlySpan<TSelf> array   = [..records];
-        SqlCommand          command = SqlCommand.GetInsert(array);
+        SqlCommand          command = SqlCommand.GetInsert<TSelf>(array);
         return await command.ExecuteAsync<TSelf>(connection, transaction, token).ToImmutableArray(array.Length, token);
     }
     public virtual async ValueTask<ImmutableArray<TSelf>> Insert( NpgsqlConnection connection, NpgsqlTransaction? transaction, ReadOnlyMemory<TSelf> records, [EnumeratorCancellation] CancellationToken token = default )
     {
-        SqlCommand command = SqlCommand.GetInsert(records.Span);
+        SqlCommand command = SqlCommand.GetInsert<TSelf>(records.Span);
         return await command.ExecuteAsync<TSelf>(connection, transaction, token).ToImmutableArray(records.Length, token);
     }
     public virtual async ValueTask<ImmutableArray<TSelf>> Insert( NpgsqlConnection connection, NpgsqlTransaction? transaction, ImmutableArray<TSelf> records, [EnumeratorCancellation] CancellationToken token = default )
     {
-        SqlCommand command = SqlCommand.GetInsert(records);
+        SqlCommand command = SqlCommand.GetInsert<TSelf>(records);
         return await command.ExecuteAsync<TSelf>(connection, transaction, token).ToImmutableArray(records.Length, token);
     }
     public virtual async IAsyncEnumerable<TSelf> Insert( NpgsqlConnection connection, NpgsqlTransaction? transaction, IAsyncEnumerable<TSelf> records, [EnumeratorCancellation] CancellationToken token = default )

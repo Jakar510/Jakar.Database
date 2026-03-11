@@ -85,12 +85,15 @@
 		<PackageReference Include="Dapper.Contrib" />
 		<PackageReference Include="dbup-postgresql" />
 		<PackageReference Include="dbup-sqlserver" />
+		<PackageReference Include="FirebirdSql.Data.FirebirdClient" />
 		<PackageReference Include="FluentMigrator.Abstractions" />
 		<PackageReference Include="InterpolatedSql.Dapper" />
 		<PackageReference Include="Jakar.Extensions" />
 		<PackageReference Include="Jakar.Shapes" />
 		<PackageReference Include="MailKit" />
 		<PackageReference Include="Microsoft.CodeAnalysis.CSharp" />
+		<PackageReference Include="Microsoft.Data.SqlClient" />
+		<PackageReference Include="Microsoft.Data.Sqlite" />
 		<PackageReference Include="Microsoft.Extensions.Caching.Hybrid" />
 		<PackageReference Include="Microsoft.Extensions.Caching.StackExchangeRedis" />
 		<PackageReference Include="Microsoft.Identity.Client" />
@@ -98,6 +101,7 @@
 		<PackageReference Include="Microsoft.IdentityModel.JsonWebTokens" />
 		<PackageReference Include="Microsoft.IdentityModel.Protocols.OpenIdConnect" />
 		<PackageReference Include="Microsoft.IdentityModel.Tokens" />
+		<PackageReference Include="MySqlConnector" />
 		<PackageReference Include="Npgsql" />
 		<PackageReference Include="Npgsql.Json.NET" />
 		<PackageReference Include="Npgsql.OpenTelemetry" />
@@ -113,6 +117,7 @@
 		<PackageReference Include="OpenTelemetry.Instrumentation.Http" />
 		<PackageReference Include="OpenTelemetry.Instrumentation.Runtime" />
 		<PackageReference Include="OpenTelemetry.Extensions.Hosting" />
+		<PackageReference Include="Oracle.ManagedDataAccess.Core" />
 		<PackageReference Include="prometheus-net.AspNetCore" />
 		<PackageReference Include="prometheus-net.AspNetCore.HealthChecks" />
 		<PackageReference Include="prometheus-net.SystemMetrics" />

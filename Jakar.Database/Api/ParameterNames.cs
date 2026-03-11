@@ -34,7 +34,7 @@ public ref struct ParameterNames( PostgresParameters self ) : IValueEnumerator<P
     {
         __index = 0;
         __array.Dispose();
-        __array = self.Parameters.Select(static x => x.ParameterName).Order().ToArrayPool();
+        __array = self.Parameters.AsValueEnumerable().Select(static x => x.ParameterName).Order().ToArrayPool();
     }
     public void Dispose()
     {

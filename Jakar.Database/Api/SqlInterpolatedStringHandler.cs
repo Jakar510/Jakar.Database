@@ -490,7 +490,7 @@ public readonly ref struct SqlInterpolatedStringHandler<TSelf>( int literalLengt
 
     public override string ToString() => Sb.ToString();
 
-    public (string SQL, ImmutableArray<NpgsqlParameter> Parameters) Build() => new(ToString(), [..Parameters.Values]);
+    public (string SQL, ImmutableArray<Parameter> Parameters) Build() => new(ToString(), [..Parameters.Values]);
 
     public SqlCommand ToSqlCommand( CommandType? commandType = null, CommandFlags flags = CommandFlags.None ) => SqlCommand.Create(ToString(), Parameters, commandType, flags);
 

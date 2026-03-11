@@ -84,6 +84,7 @@ public abstract record Mapping<TSelf, TKey, TValue> : TableRecord<TSelf>
     public override ValueTask Export( NpgsqlBinaryExporter exporter, CancellationToken token ) => default;
     public override async ValueTask Import( NpgsqlBinaryImporter importer, CancellationToken token )
     {
+        await importer.StartRowAsync(token);
         using PooledArray<ColumnMetaData> buffer = MetaData.SortedColumns;
 
         foreach ( ColumnMetaData column in buffer.Array )
@@ -215,7 +216,7 @@ public abstract record Mapping<TSelf, TKey, TValue> : TableRecord<TSelf>
 
             sb.Append('\n');
         }
-        
+
         SqlCommand command = SqlCommand.Parse<TSelf>($"""
                                                       INSERT INTO {TSelf.TableName} ({nameof(KeyID)}, {nameof(ValueID)}, {nameof(DateCreated)})
                                                       SELECT v.KeyID, v.ValueID, NOW()
@@ -309,7 +310,7 @@ public abstract record Mapping<TSelf, TKey, TValue> : TableRecord<TSelf>
             list.Add(record);
         }
 
-        SqlCommand command = SqlCommand.GetInsert(list);
+        SqlCommand command = SqlCommand.GetInsert<TSelf>(list);
         await command.ExecuteNonQueryAsync(connection, transaction, token);
     }
 
@@ -347,7 +348,7 @@ public abstract record Mapping<TSelf, TKey, TValue> : TableRecord<TSelf>
 
         await command.ExecuteNonQueryAsync(connection, transaction, token);
     }
-    public static async ValueTask Delete( NpgsqlConnection connection, NpgsqlTransaction? transaction, RecordID<TKey> key, RecordID<TValue> value, CancellationToken token)
+    public static async ValueTask Delete( NpgsqlConnection connection, NpgsqlTransaction? transaction, RecordID<TKey> key, RecordID<TValue> value, CancellationToken token )
     {
         SqlCommand command = SqlCommand.Parse<TSelf>($"""
                                                       DELETE FROM {TSelf.TableName} 

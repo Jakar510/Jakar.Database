@@ -729,12 +729,129 @@ public static class PostgresTypes
         public int TryGetLength() => self.GetCustomAttribute<StringLengthAttribute>()?.MaximumLength ?? self.GetCustomAttribute<LengthAttribute>()?.MaximumLength ?? self.GetCustomAttribute<MaxLengthAttribute>()?.Length ?? self.GetCustomAttribute<MinLengthAttribute>()?.Length ?? 0;
 
 
-        public string GetPostgresDataType( out PostgresType dbType, out NpgsqlDbType postgresDbType, out bool isNullable )
+        public string GetDataType( DatabaseType type, out PostgresType dbType, out bool isNullable )
         {
-            dbType         = self.PropertyType.GetPostgresType(in self, out isNullable, out int length);
-            postgresDbType = dbType.ToNpgsqlDbType();
+            dbType = self.PropertyType.GetPostgresType(in self, out isNullable, out int length);
+
+            return type switch
+                   {
+                       DatabaseType.PostgreSQL   => self.GetPostgresDataType(in dbType, in length),
+                       DatabaseType.MicrosoftSql => EMPTY,
+                       DatabaseType.Oracle       => EMPTY,
+                       DatabaseType.MySQL        => EMPTY,
+                       DatabaseType.Firebird     => EMPTY,
+                       DatabaseType.NotSet       => throw new InvalidOperationException("Database type is not set"),
+                       _                         => throw new OutOfRangeException(type)
+                   };
+        }
 
 
+        public string GetMicrosoftSqlServerDataType( in PostgresType dbType, in int length )
+        {
+            return dbType switch
+                   {
+                       PostgresType.Binary => self.GetCustomAttribute<MaxLengthAttribute>() is { } attribute
+                                                  ? @$"varbit({attribute.Length})"
+                                                  : "bytea",
+                       PostgresType.String => self.GetCustomAttribute<MaxLengthAttribute>() is { } attribute
+                                                  ? $"varchar({attribute.Length})"
+                                                  : "text",
+                       PostgresType.Byte => self.GetCustomAttribute<FixedAttribute>() is { } attribute
+                                                ? $"bit({attribute.Length})"
+                                                : "bit(8)",
+                       PostgresType.SByte => self.GetCustomAttribute<FixedAttribute>() is { } attribute
+                                                 ? $"bit({attribute.Length})"
+                                                 : "bit(8)",
+                       PostgresType.Bit => self.GetCustomAttribute<FixedAttribute>() is { } attribute
+                                               ? $"bit({attribute.Length})"
+                                               : "bit(8)",
+                       PostgresType.VarBit => self.GetCustomAttribute<FixedAttribute>() is { } attribute
+                                                  ? $"bit varying({attribute.Length})"
+                                                  : "bit varying(8)",
+                       PostgresType.Numeric => self.GetCustomAttribute<PrecisionAttribute>() is { } attribute
+                                                   ? $"numeric({attribute.Scope}, {attribute.Precision})"
+                                                   : "numeric",
+                       PostgresType.Enum                     => $"varchar({length})", // enum
+                       PostgresType.Serial                   => "serial",
+                       PostgresType.BigSerial                => @"bigserial",
+                       PostgresType.SmallSerial              => @"smallserial",
+                       PostgresType.Short                    => "smallint",
+                       PostgresType.UShort                   => "integer",
+                       PostgresType.Int                      => "integer",
+                       PostgresType.UInt                     => "bigint",
+                       PostgresType.Long                     => "bigint",
+                       PostgresType.ULong                    => "numeric(20,0)",
+                       PostgresType.Single                   => "float4",
+                       PostgresType.Double                   => "double precision",
+                       PostgresType.Decimal                  => "numeric(28, 28)",
+                       PostgresType.Boolean                  => "bool",
+                       PostgresType.Date                     => "date",
+                       PostgresType.Time                     => "time",
+                       PostgresType.DateTime                 => "timestamp",
+                       PostgresType.DateTimeOffset           => @"timestamptz",
+                       PostgresType.Money                    => "money",
+                       PostgresType.Guid                     => "uuid",
+                       PostgresType.Json                     => "json",
+                       PostgresType.Xml                      => "xml",
+                       PostgresType.Polygon                  => "polygon",
+                       PostgresType.LineSegment              => @"lseg",
+                       PostgresType.Point                    => "point",
+                       PostgresType.Int128                   => "int16",  // numeric(39,0)
+                       PostgresType.UInt128                  => "uint16", // numeric(39,0)
+                       PostgresType.Box                      => "box",
+                       PostgresType.Circle                   => "circle",
+                       PostgresType.Line                     => "line",
+                       PostgresType.Path                     => "path",
+                       PostgresType.Char                     => "char",
+                       PostgresType.CiText                   => @"citext",
+                       PostgresType.TimeSpan                 => "interval",
+                       PostgresType.TimeTz                   => "time with time zone",
+                       PostgresType.Inet                     => "inet",
+                       PostgresType.Cidr                     => "cidr",
+                       PostgresType.MacAddr                  => @"macaddr",
+                       PostgresType.MacAddr8                 => "macaddr8",
+                       PostgresType.TsVector                 => @"tsvector",
+                       PostgresType.TsQuery                  => @"tsquery",
+                       PostgresType.RegConfig                => @"regconfig",
+                       PostgresType.Jsonb                    => "jsonb",
+                       PostgresType.JsonPath                 => "jsonpath",
+                       PostgresType.Hstore                   => "hstore",
+                       PostgresType.RefCursor                => @"refcursor",
+                       PostgresType.OidVector                => @"oidvector",
+                       PostgresType.Oid                      => "oid",
+                       PostgresType.Xid                      => "xid",
+                       PostgresType.Xid8                     => "xid8",
+                       PostgresType.Cid                      => "cit",
+                       PostgresType.RegType                  => @"regtype",
+                       PostgresType.Tid                      => "tid",
+                       PostgresType.PgLsn                    => @"pglsn",
+                       PostgresType.Geometry                 => "geometry",
+                       PostgresType.Geography                => "geodetic",
+                       PostgresType.LTree                    => @"ltree",
+                       PostgresType.LQuery                   => @"lquery",
+                       PostgresType.LTxtQuery                => @"ltxtquery",
+                       PostgresType.IntVector                => "integer[]",
+                       PostgresType.LongVector               => "bigint[]",
+                       PostgresType.FloatVector              => "float[]",
+                       PostgresType.DoubleVector             => "double[]",
+                       PostgresType.IntegerRange             => "int4range",
+                       PostgresType.BigIntRange              => "int8range",
+                       PostgresType.NumericRange             => @"numrange",
+                       PostgresType.TimestampRange           => @"tsrange",
+                       PostgresType.DateTimeOffsetRange      => @"tstzrange",
+                       PostgresType.DateRange                => @"daterange",
+                       PostgresType.IntMultirange            => "int4multirange",
+                       PostgresType.LongMultirange           => "int8multirange",
+                       PostgresType.NumericMultirange        => @"nummultirange",
+                       PostgresType.TimestampMultirange      => @"tsmultirange",
+                       PostgresType.DateTimeOffsetMultirange => @"tstzmultirange",
+                       PostgresType.DateMultirange           => @"datemultirange",
+                       PostgresType.NotSet                   => EMPTY,
+                       _                                     => throw new OutOfRangeException(self)
+                   };
+        }
+        public string GetPostgresDataType( in PostgresType dbType, in int length )
+        {
             return dbType switch
                    {
                        PostgresType.Binary => self.GetCustomAttribute<MaxLengthAttribute>() is { } attribute
@@ -1113,6 +1230,47 @@ public static class PostgresTypes
                        PostgresType.DateMultirange           => NpgsqlDbType.DateMultirange,
                        PostgresType.NotSet                   => 0,
                        _                                     => throw new OutOfRangeException(self)
+                   };
+        }
+
+
+        [SuppressMessage("ReSharper", "BitwiseOperatorOnEnumWithoutFlags")] public SqlDbType ToSqlDbType()
+        {
+            return self switch
+                   {
+                       PostgresType.Enum           => SqlDbType.BigInt,
+                       PostgresType.Serial         => SqlDbType.Int,
+                       PostgresType.BigSerial      => SqlDbType.BigInt,
+                       PostgresType.SmallSerial    => SqlDbType.SmallInt,
+                       PostgresType.Boolean        => SqlDbType.Bit,
+                       PostgresType.Short          => SqlDbType.SmallInt,
+                       PostgresType.UShort         => SqlDbType.SmallInt,
+                       PostgresType.Int            => SqlDbType.Int,
+                       PostgresType.UInt           => SqlDbType.Int,
+                       PostgresType.Long           => SqlDbType.BigInt,
+                       PostgresType.ULong          => SqlDbType.BigInt,
+                       PostgresType.Single         => SqlDbType.Float,
+                       PostgresType.Double         => SqlDbType.Float,
+                       PostgresType.Decimal        => SqlDbType.Decimal,
+                       PostgresType.Money          => SqlDbType.Money,
+                       PostgresType.Char           => SqlDbType.Char,
+                       PostgresType.String         => SqlDbType.Text,
+                       PostgresType.Binary         => SqlDbType.Binary,
+                       PostgresType.Date           => SqlDbType.Date,
+                       PostgresType.Time           => SqlDbType.Time,
+                       PostgresType.DateTime       => SqlDbType.DateTime,
+                       PostgresType.DateTimeOffset => SqlDbType.DateTimeOffset,
+                       PostgresType.TimeSpan       => SqlDbType.Time,
+                       PostgresType.TimeTz         => SqlDbType.Timestamp,
+                       PostgresType.Bit            => SqlDbType.Bit,
+                       PostgresType.Byte           => SqlDbType.Bit,
+                       PostgresType.SByte          => SqlDbType.Bit,
+                       PostgresType.VarBit         => SqlDbType.Bit,
+                       PostgresType.Guid           => SqlDbType.UniqueIdentifier,
+                       PostgresType.Xml            => SqlDbType.Xml,
+                       PostgresType.Json           => SqlDbType.Json,
+                       PostgresType.NotSet         => 0,
+                       _                           => throw new OutOfRangeException(self)
                    };
         }
     }

@@ -46,6 +46,7 @@ public sealed record RoleRecord : OwnedTableRecord<RoleRecord>, ITableRecord<Rol
     public override ValueTask Export( NpgsqlBinaryExporter exporter, CancellationToken token ) => default;
     public override async ValueTask Import( NpgsqlBinaryImporter importer, CancellationToken token )
     {
+        await importer.StartRowAsync(token);
         using PooledArray<ColumnMetaData> buffer = MetaData.SortedColumns;
 
         foreach ( ColumnMetaData column in buffer.Array )

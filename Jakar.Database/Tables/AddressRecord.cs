@@ -63,6 +63,7 @@ public sealed record AddressRecord : OwnedTableRecord<AddressRecord>, IAddress<A
     public override ValueTask Export( NpgsqlBinaryExporter exporter, CancellationToken token ) => default;
     public override async ValueTask Import( NpgsqlBinaryImporter importer, CancellationToken token )
     {
+        await importer.StartRowAsync(token);
         using PooledArray<ColumnMetaData> buffer = MetaData.SortedColumns;
 
         foreach ( ColumnMetaData column in buffer.Array )
@@ -146,10 +147,10 @@ public sealed record AddressRecord : OwnedTableRecord<AddressRecord>, IAddress<A
     }
 
 
-    [Pure] public static AddressRecord   Create( NpgsqlDataReader reader )                                                                                                         => new AddressRecord(reader).Validate();
-    [Pure] public static AddressRecord   Create( Match            match )                                                                                                          => new(match);
-    [Pure] public static AddressRecord   Create( IAddress<Guid>   address )                                                                                                        => new(address);
-    public static        AddressRecord   Create( string           line1, string line2, string city, string stateOrProvince, string postalCode, string country, Guid id = default ) => Create(line1, line2, city, stateOrProvince, postalCode, country, id, RecordID<UserRecord>.Empty);
+    [Pure] public static AddressRecord Create( NpgsqlDataReader reader )                                                                                                         => new AddressRecord(reader).Validate();
+    [Pure] public static AddressRecord Create( Match            match )                                                                                                          => new(match);
+    [Pure] public static AddressRecord Create( IAddress<Guid>   address )                                                                                                        => new(address);
+    public static        AddressRecord Create( string           line1, string line2, string city, string stateOrProvince, string postalCode, string country, Guid id = default ) => Create(line1, line2, city, stateOrProvince, postalCode, country, id, RecordID<UserRecord>.Empty);
     [Pure] public static AddressRecord Create( string line1, string line2, string city, string stateOrProvince, string postalCode, string country, Guid id, RecordID<UserRecord> userID ) =>
         new(userID, RecordID<AddressRecord>.Create(id), DateTimeOffset.UtcNow)
         {
@@ -167,40 +168,15 @@ public sealed record AddressRecord : OwnedTableRecord<AddressRecord>, IAddress<A
         PostgresParameters  parameters = PostgresParameters.Create<AddressRecord>();
         ReadOnlySpan<Claim> span       = claims;
 
-        if ( hasFlag(types, ClaimType.StreetAddressLine1) )
-        {
-            parameters.Add(nameof(Line1),
-                           span.Single(static ( ref readonly x ) => x.Type == ClaimType.StreetAddressLine1.ToClaimTypes())
-                               .Value);
-        }
+        if ( hasFlag(types, ClaimType.StreetAddressLine1) ) { parameters.Add(nameof(Line1), span.Single(static ( ref readonly x ) => x.Type == ClaimType.StreetAddressLine1.ToClaimTypes()).Value); }
 
-        if ( hasFlag(types, ClaimType.StreetAddressLine2) )
-        {
-            parameters.Add(nameof(Line2),
-                           span.Single(static ( ref readonly x ) => x.Type == ClaimType.StreetAddressLine2.ToClaimTypes())
-                               .Value);
-        }
+        if ( hasFlag(types, ClaimType.StreetAddressLine2) ) { parameters.Add(nameof(Line2), span.Single(static ( ref readonly x ) => x.Type == ClaimType.StreetAddressLine2.ToClaimTypes()).Value); }
 
-        if ( hasFlag(types, ClaimType.StateOrProvince) )
-        {
-            parameters.Add(nameof(StateOrProvince),
-                           span.Single(static ( ref readonly x ) => x.Type == ClaimType.StateOrProvince.ToClaimTypes())
-                               .Value);
-        }
+        if ( hasFlag(types, ClaimType.StateOrProvince) ) { parameters.Add(nameof(StateOrProvince), span.Single(static ( ref readonly x ) => x.Type == ClaimType.StateOrProvince.ToClaimTypes()).Value); }
 
-        if ( hasFlag(types, ClaimType.Country) )
-        {
-            parameters.Add(nameof(Country),
-                           span.Single(static ( ref readonly x ) => x.Type == ClaimType.Country.ToClaimTypes())
-                               .Value);
-        }
+        if ( hasFlag(types, ClaimType.Country) ) { parameters.Add(nameof(Country), span.Single(static ( ref readonly x ) => x.Type == ClaimType.Country.ToClaimTypes()).Value); }
 
-        if ( hasFlag(types, ClaimType.PostalCode) )
-        {
-            parameters.Add(nameof(PostalCode),
-                           span.Single(static ( ref readonly x ) => x.Type == ClaimType.PostalCode.ToClaimTypes())
-                               .Value);
-        }
+        if ( hasFlag(types, ClaimType.PostalCode) ) { parameters.Add(nameof(PostalCode), span.Single(static ( ref readonly x ) => x.Type == ClaimType.PostalCode.ToClaimTypes()).Value); }
 
         return await db.Addresses.Get(connection, transaction, parameters, token);
 

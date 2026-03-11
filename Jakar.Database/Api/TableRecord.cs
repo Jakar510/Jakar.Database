@@ -102,6 +102,7 @@ public abstract record TableRecord<TSelf>( in DateTimeOffset DateCreated ) : IJs
     public virtual  ValueTask Export( NpgsqlBinaryExporter exporter, CancellationToken token ) => default;
     public virtual  ValueTask Import( NpgsqlBatchCommand   batch,    CancellationToken token ) => default;
     public abstract ValueTask Import( NpgsqlBinaryImporter importer, CancellationToken token );
+    public abstract ValueTask Import( DataRow              row, CancellationToken token );
     [Pure] public virtual PostgresParameters ToDynamicParameters()
     {
         PostgresParameters parameters = PostgresParameters.Create<TSelf>();

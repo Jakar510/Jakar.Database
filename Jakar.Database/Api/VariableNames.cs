@@ -32,10 +32,11 @@ public readonly struct KeyValuePairs
         Parameters = parameters;
         StringBuilder sb = Value = new StringBuilder(parameters.KeyValuePairLength(indentLevel));
 
-        int index = 0;
-        int count = parameters.Count;
+        int                          index  = 0;
+        int                          count  = parameters.Count;
+        using ArrayBuffer<Parameter> buffer = parameters.Parameters;
 
-        foreach ( NpgsqlParameter parameter in parameters.Parameters.DistinctBy(static x => x.SourceColumn) )
+        foreach ( ref readonly Parameter parameter in buffer.Values )
         {
             sb.Append(' ', indentLevel * 4).Append(parameter.SourceColumn).Append(" = @").Append(parameter.ParameterName);
 
@@ -61,30 +62,30 @@ public readonly struct VariableNames
 
         if ( !parameters.IsGrouped )
         {
-            foreach ( NpgsqlParameter parameter in parameters.parameters ) { sb.Append(' ', indentLevel * 4).Append('@').Append(parameter.ParameterName).Append(",\n"); }
+            foreach ( ref readonly Parameter parameter in parameters.Values ) { sb.Append(' ', indentLevel * 4).Append('@').Append(parameter.ParameterName).Append(",\n"); }
         }
         else
         {
-            if ( parameters.parameters.Count > 0 )
+            if ( parameters.Count > 0 )
             {
                 sb.Append(' ', indentLevel * 4).Append('(');
                 indentLevel++;
-                foreach ( NpgsqlParameter parameter in parameters.parameters ) { sb.Append(' ', indentLevel * 4).Append('@').Append(parameter.ParameterName).Append(",\n"); }
+                foreach ( ref readonly Parameter parameter in parameters.Values ) { sb.Append(' ', indentLevel * 4).Append('@').Append(parameter.ParameterName).Append(",\n"); }
 
                 sb.Append("),\n");
                 indentLevel--;
             }
 
-            ReadOnlySpan<ImmutableArray<NpgsqlParameter>> span = parameters.Extras.AsSpan();
+            ReadOnlySpan<ImmutableArray<Parameter>> span = parameters.Extras;
 
             for ( int i = 0; i < span.Length; i++ )
             {
-                ref readonly ImmutableArray<NpgsqlParameter> array = ref span[i];
+                ref readonly ImmutableArray<Parameter> array = ref span[i];
                 sb.Append(' ', indentLevel * 4).Append("(\n");
 
                 indentLevel++;
 
-                foreach ( NpgsqlParameter parameter in array )
+                foreach ( ref readonly Parameter parameter in array.AsSpan() )
                 {
                     sb.Append(' ', indentLevel * 4).Append('@').Append(parameter.ParameterName);
                     if ( i < span.Length ) { sb.Append(",\n"); }
