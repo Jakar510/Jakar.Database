@@ -2,6 +2,7 @@
 // 01/28/2026  18:42
 
 using Microsoft.Data.SqlClient;
+using StackExchange.Redis;
 using ZLinq.Linq;
 
 
@@ -9,11 +10,19 @@ using ZLinq.Linq;
 namespace Jakar.Database;
 
 
-public readonly record struct SqlParameter( object? Value, string ParameterName, string SourceColumn, PostgresType DbType, bool IsNullable, ParameterDirection Direction, DataRowVersion SourceVersion )
+public readonly record struct SqlParameter( object?            Value,
+                                            string             ParameterName,
+                                            string             SourceColumn,
+                                            int                Index,
+                                            PostgresType       DbType,
+                                            bool               IsNullable,
+                                            ParameterDirection Direction,
+                                            DataRowVersion     SourceVersion ) : IComparable<SqlParameter>, IComparable
 {
     public readonly object?            Value         = Value ?? DBNull.Value;
     public readonly string             ParameterName = ParameterName.SqlName();
     public readonly string             SourceColumn  = SourceColumn;
+    public readonly int                Index         = Index;
     public readonly PostgresType       DbType        = DbType;
     public readonly bool               IsNullable    = IsNullable;
     public readonly ParameterDirection Direction     = Direction;
@@ -34,6 +43,30 @@ public readonly record struct SqlParameter( object? Value, string ParameterName,
                                                                          SourceVersion = SourceVersion,
                                                                          Direction     = Direction,
                                                                      };
+
+
+    public int CompareTo( SqlParameter other )
+    {
+        int indexComparison = Index.CompareTo(other.Index);
+        if ( indexComparison != 0 ) { return indexComparison; }
+
+        int sourceColumnComparison = string.Compare(SourceColumn, other.SourceColumn, StringComparison.Ordinal);
+        if ( sourceColumnComparison != 0 ) { return sourceColumnComparison; }
+
+        return string.Compare(ParameterName, other.ParameterName, StringComparison.Ordinal);
+    }
+    public int CompareTo( object? obj )
+    {
+        if ( obj is null ) { return 1; }
+
+        return obj is SqlParameter other
+                   ? CompareTo(other)
+                   : throw new ArgumentException($"Object must be of type {nameof(SqlParameter)}");
+    }
+    public static bool operator <( SqlParameter  left, SqlParameter right ) => left.CompareTo(right) < 0;
+    public static bool operator >( SqlParameter  left, SqlParameter right ) => left.CompareTo(right) > 0;
+    public static bool operator <=( SqlParameter left, SqlParameter right ) => left.CompareTo(right) <= 0;
+    public static bool operator >=( SqlParameter left, SqlParameter right ) => left.CompareTo(right) >= 0;
 }
 
 
@@ -46,7 +79,6 @@ public readonly struct CommandParameters() : IEquatable<CommandParameters>
     private readonly List<ImmutableArray<SqlParameter>> __extras     = [];
 
 
-    public bool IsEmpty { [MemberNotNullWhen(true, nameof(Table))] get => Table is not null; }
     public required ITableMetaData Table
     {
         get;
@@ -56,7 +88,14 @@ public readonly struct CommandParameters() : IEquatable<CommandParameters>
             __parameters.EnsureCapacity(value.ColumnCount);
         }
     }
-    public ReadOnlySpan<SqlParameter>                 Values                   => __parameters.AsSpan();
+    public ReadOnlySpan<SqlParameter> Values
+    {
+        get
+        {
+            __parameters.AsSpan().Sort(Comparer<SqlParameter>.Default);
+            return __parameters.AsSpan();
+        }
+    }
     public ReadOnlySpan<ImmutableArray<SqlParameter>> Extras                   => __extras.AsSpan();
     public ReadOnlySpan<SqlParameter>                 ExtraValues( int index ) => Extras[index].AsSpan();
     public int                                        Count                    => __parameters.Count;
@@ -73,10 +112,11 @@ public readonly struct CommandParameters() : IEquatable<CommandParameters>
                 foreach ( ref readonly SqlParameter parameter in array.AsSpan() ) { buffer.Add(in parameter); }
             }
 
+            buffer.Span.Sort(Comparer<SqlParameter>.Default);
             return buffer;
         }
     }
-    public   int                                     Capacity                              => __extras.Capacity;
+    public   int                                     Capacity                              => __parameters.Capacity;
     public   bool                                    IsGrouped                             => __extras.Count > 0;
     public   ValueEnumerable<ParameterNames, string> ParameterNames                        { [Pure] get => new(new ParameterNames(this)); }
     public   int                                     SpacerCount                           => Math.Max(__parameters.Count, Table.ColumnCount) - 1;
@@ -91,8 +131,6 @@ public readonly struct CommandParameters() : IEquatable<CommandParameters>
 
 
     public static CommandParameters Create<TSelf>()
-        where TSelf : TableRecord<TSelf>, ITableRecord<TSelf> => new() { Table = TSelf.MetaData };
-    public static CommandParameters Create<TSelf>( TSelf _ )
         where TSelf : TableRecord<TSelf>, ITableRecord<TSelf> => new() { Table = TSelf.MetaData };
     public static CommandParameters Create<TSelf>( IEnumerable<TSelf> records )
         where TSelf : TableRecord<TSelf>, ITableRecord<TSelf>
@@ -110,13 +148,13 @@ public readonly struct CommandParameters() : IEquatable<CommandParameters>
 
         return parameters;
     }
-    public static CommandParameters Create<TSelf>( params ReadOnlySpan<SqlParameter> records )
+    public static CommandParameters Create<TSelf>( params ReadOnlySpan<SqlParameter> parameters )
         where TSelf : TableRecord<TSelf>, ITableRecord<TSelf>
     {
-        CommandParameters parameters = Create<TSelf>(records.Length);
-        foreach ( ref readonly SqlParameter record in records ) { parameters.Add(in record); }
+        CommandParameters result = Create<TSelf>(parameters.Length);
+        foreach ( ref readonly SqlParameter record in parameters ) { result.Add(in record); }
 
-        return parameters;
+        return result;
     }
     public static CommandParameters Create<TSelf>( int capacity )
         where TSelf : TableRecord<TSelf>, ITableRecord<TSelf>
@@ -129,31 +167,54 @@ public readonly struct CommandParameters() : IEquatable<CommandParameters>
 
     public ValueEnumerable<Where<FromSpan<SqlParameter>, SqlParameter>, SqlParameter> ColumnsFor( string propertyName ) => Values.AsValueEnumerable().Where(x => string.Equals(x.SourceColumn, propertyName.SqlName(), StringComparison.InvariantCulture));
 
-    public CommandParameters With( in CommandParameters other ) => With([..other.__parameters]);
-    public CommandParameters With( in ImmutableArray<SqlParameter> other )
+
+    public CommandParameters With( in CommandParameters other )
     {
-        __extras.Add(other);
+        SqlParameter[] array = [..other.Values];
+        Array.Sort(array, Comparer<SqlParameter>.Default);
+        __extras.Add(array.AsImmutableArray());
+        return this;
+    }
+
+
+    internal void Add( in SqlParameter parameter )
+    {
+        foreach ( ref readonly SqlParameter value in Values )
+        {
+            if ( string.Equals(value.ParameterName, parameter.ParameterName, StringComparison.InvariantCulture) && Equals(value.Value, parameter.Value) ) { return; }
+        }
+
+        __parameters.Add(parameter);
+    }
+    internal CommandParameters Add( params ReadOnlySpan<SqlParameter> parameters )
+    {
+        foreach ( ref readonly SqlParameter record in parameters ) { Add(in record); }
+
         return this;
     }
 
 
     public CommandParameters Add<TSelf>( string propertyName, IRecordID value, [CallerArgumentExpression(nameof(value))] string parameterName = EMPTY, ParameterDirection direction = ParameterDirection.Input, DataRowVersion sourceVersion = DataRowVersion.Default )
-        where TSelf : PairRecord<TSelf>, ITableRecord<TSelf> => Add(Table[propertyName].ToParameter(value.ID, parameterName, direction, sourceVersion));
-    public CommandParameters Add<TSelf>( string propertyName, RecordID<TSelf> value, [CallerArgumentExpression(nameof(value))] string parameterName = EMPTY, ParameterDirection direction = ParameterDirection.Input, DataRowVersion sourceVersion = DataRowVersion.Default )
-        where TSelf : PairRecord<TSelf>, ITableRecord<TSelf> => Add(Table[propertyName].ToParameter(value.Value, parameterName, direction, sourceVersion));
-    public CommandParameters Add<T>( string propertyName, T? value, [CallerArgumentExpression(nameof(value))] string parameterName = EMPTY, ParameterDirection direction = ParameterDirection.Input, DataRowVersion sourceVersion = DataRowVersion.Default )
-        where T : struct, Enum => Add(Table[propertyName].ToParameter(value, parameterName, direction, sourceVersion));
-    public CommandParameters Add( string propertyName, object? value, [CallerArgumentExpression(nameof(value))] string parameterName = EMPTY, ParameterDirection direction = ParameterDirection.Input, DataRowVersion sourceVersion = DataRowVersion.Default ) => Add(Table[propertyName].ToParameter(value, parameterName, direction, sourceVersion));
-    public CommandParameters Add( in SqlParameter parameter )
+        where TSelf : PairRecord<TSelf>, ITableRecord<TSelf>
     {
-        foreach ( ref readonly SqlParameter value in Values )
-        {
-            if ( !string.Equals(value.ParameterName, parameter.ParameterName, StringComparison.InvariantCulture) ) { continue; }
-
-            if ( Equals(value.Value, parameter.Value) ) { return this; }
-        }
-
-        __parameters.Add(parameter);
+        Add(Table[propertyName].ToParameter(value.ID, parameterName, direction, sourceVersion));
+        return this;
+    }
+    public CommandParameters Add<TSelf>( string propertyName, RecordID<TSelf> value, [CallerArgumentExpression(nameof(value))] string parameterName = EMPTY, ParameterDirection direction = ParameterDirection.Input, DataRowVersion sourceVersion = DataRowVersion.Default )
+        where TSelf : PairRecord<TSelf>, ITableRecord<TSelf>
+    {
+        Add(Table[propertyName].ToParameter(value.Value, parameterName, direction, sourceVersion));
+        return this;
+    }
+    public CommandParameters Add<T>( string propertyName, T? value, [CallerArgumentExpression(nameof(value))] string parameterName = EMPTY, ParameterDirection direction = ParameterDirection.Input, DataRowVersion sourceVersion = DataRowVersion.Default )
+        where T : struct, Enum
+    {
+        Add(Table[propertyName].ToParameter(value, parameterName, direction, sourceVersion));
+        return this;
+    }
+    public CommandParameters Add( string propertyName, object? value, [CallerArgumentExpression(nameof(value))] string parameterName = EMPTY, ParameterDirection direction = ParameterDirection.Input, DataRowVersion sourceVersion = DataRowVersion.Default )
+    {
+        Add(Table[propertyName].ToParameter(value, parameterName, direction, sourceVersion));
         return this;
     }
 

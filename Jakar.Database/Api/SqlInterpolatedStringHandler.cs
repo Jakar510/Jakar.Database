@@ -17,51 +17,15 @@ public readonly record struct SqlRaw( string Value )
 public readonly ref struct SqlInterpolatedStringHandler<TSelf>( int literalLength, int formattedCount )
     where TSelf : TableRecord<TSelf>, ITableRecord<TSelf>
 {
-    internal readonly StringBuilder      Sb          = new(literalLength);
+    internal readonly StringBuilder     Sb          = new(literalLength);
     internal readonly CommandParameters Parameters  = CommandParameters.Create<TSelf>(formattedCount);
-    internal readonly Stack<string>      ColumnNames = new(formattedCount);
+    internal readonly Stack<string>     ColumnNames = new(formattedCount);
 
 
     public void AppendLiteral( ReadOnlySpan<char> value )                                                                                            => Sb.Append(value);
     public void AppendFormatted( StringBuilder?   value, string? format = null, [CallerArgumentExpression(nameof(value))] string paramName = EMPTY ) => Sb.Append(value);
 
 
-    public void AppendFormatted( string? value, string? format = null, [CallerArgumentExpression(nameof(value))] string paramName = EMPTY )
-    {
-        bool isParameter = Sb.Length > 0 && Sb[^1] == '@';
-        bool isNameOf    = paramName.StartsWith("nameof(", StringComparison.Ordinal);
-        if ( isNameOf && value is not null ) { ColumnNames.Push(value); }
-
-        try
-        {
-            switch ( value?.Length )
-            {
-                case null:
-                    Sb.Append("NULL");
-                    return;
-
-                case > 0 when isNameOf:
-                    Sb.Append(value.SqlName());
-                    return;
-
-                case > 0 when isParameter || paramName.Contains(nameof(UserRecord.TABLE_NAME)) || paramName.Contains(nameof(UserRecord.TableName)) || string.Equals(paramName, "columnName", StringComparison.Ordinal):
-                    Sb.Append(value);
-                    return;
-
-                case > 0:
-                    AppendQuoted(value);
-                    return;
-
-                default:
-                    AppendQuoted("");
-                    return;
-            }
-        }
-        finally
-        {
-            if ( isParameter && ColumnNames.Count > 0 ) { Parameters.Add(ColumnNames.Pop(), value, paramName); }
-        }
-    }
     public void AppendFormatted( ReadOnlySpan<string> value, string? format = null )
     {
         ParseFormat(ref format, out ushort indentLevel);
@@ -104,197 +68,232 @@ public readonly ref struct SqlInterpolatedStringHandler<TSelf>( int literalLengt
 
     public void AppendFormatted<TValue>( TValue value, string? format = null, [CallerArgumentExpression(nameof(value))] string paramName = EMPTY )
     {
-        bool isParameter = Sb.Length > 0 && Sb[^1] == '@';
+        char lastChar = Sb.Length > 0
+                            ? Sb[^1]
+                            : '\0';
+
+        bool isParameter = lastChar == '@';
         bool isNameOf    = paramName.StartsWith("nameof(", StringComparison.Ordinal);
+
         if ( isNameOf && value is string s ) { ColumnNames.Push(s); }
 
         ParseFormat(ref format, out ushort indentLevel);
 
-        try
+        switch ( value )
         {
-            switch ( value )
-            {
-                case null:
-                case DBNull:
-                    Sb.Append("NULL");
-                    return;
+            case null:
+            case DBNull:
+                Sb.Append("NULL");
+                return;
 
-                case SqlRaw n:
-                    Sb.Append(n.Value);
-                    return;
+            case string n:
+                switch ( n.Length )
+                {
+                    case > 0 when isNameOf:
+                        Sb.Append(n.SqlName());
+                        return;
 
-                case ColumnNames n:
-                    Sb.Append(n.Value);
-                    return;
+                    case > 0 when paramName == "columnName":
+                    case > 0 when paramName.Contains("TABLE_NAME") || paramName.Contains("TableName"):
+                        Sb.Append(n);
+                        return;
 
-                case VariableNames n:
-                    Parameters.With(n.Parameters);
-                    Sb.Append(n.Value);
-                    return;
+                    case > 0 when isParameter:
+                        ReadOnlySpan<char> span  = paramName;
+                        int                index = span.IndexOf('.');
+                        if ( index >= 0 ) { span = span[index..]; }
 
-                case KeyValuePairs n:
-                    Parameters.With(n.Parameters);
-                    Sb.Append(n.Value);
-                    return;
+                        Sb.Append(span);
 
-                case CommandParameters n:
-                    Parameters.With(n);
+                        if ( ColumnNames.TryPop(out string? name) )
+                        {
+                            Parameters.Add(name, value, paramName);
+                            Debug.Assert(Parameters.Count > 0);
+                        }
+                        else { throw new FormatException($"Missing parameter (column_name) for {value}"); }
 
-                    return;
+                        return;
 
-                case Enum n:
-                    // ReSharper disable once RedundantToStringCall
-                    if ( string.Equals(format, "str", StringComparison.OrdinalIgnoreCase) || string.Equals(format, "string", StringComparison.OrdinalIgnoreCase) ) { Sb.Append("'").Append(n.ToString()).Append("'"); }
-                    else { Sb.Append(Convert.ToInt64(n)); }
+                    case > 0:
+                        AppendQuoted(n);
+                        return;
 
-                    return;
+                    default:
+                        AppendQuoted(EMPTY);
+                        return;
+                }
 
-                case bool n:
-                    Sb.Append(n.GetString());
-                    return;
+            case SqlRaw n:
+                Sb.Append(n.Value);
+                return;
 
-                case char n:
-                    Sb.Append("'").Append(n).Append("'");
-                    return;
+            case ColumnNames n:
+                Sb.Append(n.Value);
+                return;
 
-                case Guid n:
-                    AppendSingle(n, format, true);
-                    return;
+            case VariableNames n:
+                Parameters.With(n.Parameters);
+                Sb.Append(n.Value);
+                return;
 
-                case DateTime n:
-                    AppendSingle(n, format, true);
-                    return;
+            case KeyValuePairs n:
+                Parameters.Add(n.Parameters.Values);
+                Sb.Append(n.Value);
+                return;
 
-                case DateTimeOffset n:
-                    AppendSingle(n, format, true);
-                    return;
+            case CommandParameters n:
+                Parameters.Add(n.Values);
 
-                case DateOnly n:
-                    AppendSingle(n, format, true);
-                    return;
+                return;
 
-                case TimeOnly n:
-                    AppendSingle(n, format, true);
-                    return;
+            case Enum n:
+                // ReSharper disable once RedundantToStringCall
+                if ( string.Equals(format, "str", StringComparison.OrdinalIgnoreCase) || string.Equals(format, "string", StringComparison.OrdinalIgnoreCase) ) { Sb.Append("'").Append(n.ToString()).Append("'"); }
+                else { Sb.Append(Convert.ToInt64(n)); }
 
-                case TimeSpan n:
-                    AppendSingle(n, format, true);
-                    return;
+                return;
 
-                case Type n:
-                    AppendQuoted(n.Name);
-                    return;
+            case bool n:
+                Sb.Append(n.GetString());
+                return;
 
-                case StringBuilder n:
-                    Sb.Append(n);
-                    return;
+            case char n:
+                Sb.Append("'").Append(n).Append("'");
+                return;
 
-                case IEnumerable<string> n:
-                    AppendQuoted(n, indentLevel);
-                    return;
+            case Guid n:
+                AppendSingle(n, format, true);
+                return;
 
-                case IEnumerable<Int128> n:
-                    AppendMany(n, format, indentLevel);
-                    return;
+            case DateTime n:
+                AppendSingle(n, format, true);
+                return;
 
-                case IEnumerable<UInt128> n:
-                    AppendMany(n, format, indentLevel);
-                    return;
+            case DateTimeOffset n:
+                AppendSingle(n, format, true);
+                return;
 
-                case IEnumerable<byte> n:
-                    AppendMany(n, format, indentLevel);
-                    return;
+            case DateOnly n:
+                AppendSingle(n, format, true);
+                return;
 
-                case IEnumerable<sbyte> n:
-                    AppendMany(n, format, indentLevel);
-                    return;
+            case TimeOnly n:
+                AppendSingle(n, format, true);
+                return;
 
-                case IEnumerable<short> n:
-                    AppendMany(n, format, indentLevel);
-                    return;
+            case TimeSpan n:
+                AppendSingle(n, format, true);
+                return;
 
-                case IEnumerable<int> n:
-                    AppendMany(n, format, indentLevel);
-                    return;
+            case Type n:
+                AppendQuoted(n.Name);
+                return;
 
-                case IEnumerable<long> n:
-                    AppendMany(n, format, indentLevel);
-                    return;
+            case StringBuilder n:
+                Sb.Append(n);
+                return;
 
-                case IEnumerable<uint> n:
-                    AppendMany(n, format, indentLevel);
-                    return;
+            case IEnumerable<string> n:
+                AppendQuoted(n, indentLevel);
+                return;
 
-                case IEnumerable<ushort> n:
-                    AppendMany(n, format, indentLevel);
-                    return;
+            case IEnumerable<Int128> n:
+                AppendMany(n, format, indentLevel);
+                return;
 
-                case IEnumerable<ulong> n:
-                    AppendMany(n, format, indentLevel);
-                    return;
+            case IEnumerable<UInt128> n:
+                AppendMany(n, format, indentLevel);
+                return;
 
-                case IEnumerable<float> n:
-                    AppendMany(n, format, indentLevel);
-                    return;
+            case IEnumerable<byte> n:
+                AppendMany(n, format, indentLevel);
+                return;
 
-                case IEnumerable<double> n:
-                    AppendMany(n, format, indentLevel);
-                    return;
+            case IEnumerable<sbyte> n:
+                AppendMany(n, format, indentLevel);
+                return;
 
-                case IEnumerable<decimal> n:
-                    AppendMany(n, format, indentLevel);
-                    return;
+            case IEnumerable<short> n:
+                AppendMany(n, format, indentLevel);
+                return;
 
-                case IEnumerable<char> n:
-                    AppendMany(n, format, indentLevel, true);
-                    return;
+            case IEnumerable<int> n:
+                AppendMany(n, format, indentLevel);
+                return;
 
-                case IEnumerable<IRecordID> n:
-                    AppendMany(n, format, indentLevel, true);
-                    return;
+            case IEnumerable<long> n:
+                AppendMany(n, format, indentLevel);
+                return;
 
-                case IEnumerable<Guid> n:
-                    AppendMany(n, format, indentLevel, true);
-                    return;
+            case IEnumerable<uint> n:
+                AppendMany(n, format, indentLevel);
+                return;
 
-                case IEnumerable<DateTime> n:
-                    AppendMany(n, format, indentLevel, true);
-                    return;
+            case IEnumerable<ushort> n:
+                AppendMany(n, format, indentLevel);
+                return;
 
-                case IEnumerable<DateTimeOffset> n:
-                    AppendMany(n, format, indentLevel, true);
-                    return;
+            case IEnumerable<ulong> n:
+                AppendMany(n, format, indentLevel);
+                return;
 
-                case IEnumerable<DateOnly> n:
-                    AppendMany(n, format, indentLevel, true);
-                    return;
+            case IEnumerable<float> n:
+                AppendMany(n, format, indentLevel);
+                return;
 
-                case IEnumerable<TimeSpan> n:
-                    AppendMany(n, format, indentLevel, true);
-                    return;
+            case IEnumerable<double> n:
+                AppendMany(n, format, indentLevel);
+                return;
 
-                case IEnumerable<TimeOnly> n:
-                    AppendMany(n, format, indentLevel, true);
-                    return;
+            case IEnumerable<decimal> n:
+                AppendMany(n, format, indentLevel);
+                return;
+
+            case IEnumerable<char> n:
+                AppendMany(n, format, indentLevel, true);
+                return;
+
+            case IEnumerable<IRecordID> n:
+                AppendMany(n, format, indentLevel, true);
+                return;
+
+            case IEnumerable<Guid> n:
+                AppendMany(n, format, indentLevel, true);
+                return;
+
+            case IEnumerable<DateTime> n:
+                AppendMany(n, format, indentLevel, true);
+                return;
+
+            case IEnumerable<DateTimeOffset> n:
+                AppendMany(n, format, indentLevel, true);
+                return;
+
+            case IEnumerable<DateOnly> n:
+                AppendMany(n, format, indentLevel, true);
+                return;
+
+            case IEnumerable<TimeSpan> n:
+                AppendMany(n, format, indentLevel, true);
+                return;
+
+            case IEnumerable<TimeOnly> n:
+                AppendMany(n, format, indentLevel, true);
+                return;
 
 
-                case ISpanFormattable x:
-                    AppendSingle(x, format);
-                    return;
+            case ISpanFormattable x:
+                AppendSingle(x, format);
+                return;
 
-                case IFormattable x:
-                    Sb.Append(x.ToString(format, CultureInfo.InvariantCulture));
-                    return;
+            case IFormattable x:
+                Sb.Append(x.ToString(format, CultureInfo.InvariantCulture));
+                return;
 
-                default:
-                    // ReSharper disable once RedundantToStringCallForValueType
-                    Sb.Append(value.ToString());
-                    return;
-            }
-        }
-        finally
-        {
-            if ( isParameter && ColumnNames.Count > 0 ) { Parameters.Add(ColumnNames.Pop(), value, paramName); }
+            default:
+                // ReSharper disable once RedundantToStringCallForValueType
+                Sb.Append(value.ToString());
+                return;
         }
     }
 

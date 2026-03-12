@@ -10,11 +10,11 @@ namespace Jakar.Database;
 
 public readonly struct SqlCommand : IEquatable<SqlCommand>
 {
-    public const    string             SPACER = ",\n      ";
-    public readonly string             SQL;
+    public const    string            SPACER = ",\n      ";
+    public readonly string            SQL;
     public readonly CommandParameters Parameters;
-    public readonly CommandType?       CommandType;
-    public readonly CommandFlags       Flags;
+    public readonly CommandType?      CommandType;
+    public readonly CommandFlags      Flags;
 
 
     private SqlCommand( string sql, CommandParameters parameters, CommandType? commandType = null, CommandFlags flags = CommandFlags.None )
@@ -26,7 +26,7 @@ public readonly struct SqlCommand : IEquatable<SqlCommand>
     }
 
 
-    public static implicit operator string( SqlCommand             sql ) => sql.SQL;
+    public static implicit operator string( SqlCommand            sql ) => sql.SQL;
     public static implicit operator CommandParameters( SqlCommand sql ) => sql.Parameters;
 
 
@@ -145,8 +145,12 @@ public readonly struct SqlCommand : IEquatable<SqlCommand>
                                                                                OFFSET {start}
                                                                                LIMIT {count};
                                                                                """);
-    public static SqlCommand Where<TSelf, TValue>( string columnName, TValue? value )
-        where TSelf : PairRecord<TSelf>, ITableRecord<TSelf> => Parse<TSelf>($"SELECT * FROM {TSelf.TableName} WHERE {columnName} = @{value};");
+    public static SqlCommand Where<TSelf>( in CommandParameters parameters )
+        where TSelf : TableRecord<TSelf>, ITableRecord<TSelf> => Parse<TSelf>($"""
+                                                                                 SELECT * FROM {TSelf.TableName} 
+                                                                                 WHERE
+                                                                                 {parameters.KeyValuePairs(1)}
+                                                                               """);
 
     [OverloadResolutionPriority(3)] public static SqlCommand Get<TSelf>( in RecordID<TSelf> id )
         where TSelf : PairRecord<TSelf>, ITableRecord<TSelf> => Parse<TSelf>($"""

@@ -176,7 +176,8 @@ public sealed class ColumnMetaData
     {
         if ( parameterName.Contains('.') ) { parameterName = parameterNameCache.GetOrAdd(parameterName, static x => x.Split('.')[^1]); }
 
-        SqlParameter parameter = new(value, parameterName.SqlName(), ColumnName, DbType, IsNullable, direction, sourceVersion);
+        Debug.Assert(Index >= 0);
+        SqlParameter parameter = new(value, parameterName.SqlName(), ColumnName, Index, DbType, IsNullable, direction, sourceVersion);
         return parameter;
     }
 

@@ -129,6 +129,9 @@ public class TableMetaData<TSelf> : ITableMetaData
             indexes[i++] = propertyName;
         }
 
+        Console.WriteLine();
+        Console.WriteLine(indexes.ToJson());
+        Console.WriteLine();
         return indexes.ToFrozenDictionary();
     }
 

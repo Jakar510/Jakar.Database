@@ -1,20 +1,14 @@
 ﻿// Jakar.Database :: Jakar.Database
 // 03/06/2026  22:33
 
-using ZLinq.Linq;
-
-
-
 namespace Jakar.Database;
 
 
 public readonly struct ColumnNames
 {
-    internal readonly CommandParameters Parameters;
-    internal readonly StringBuilder      Value;
+    internal readonly StringBuilder Value;
     public ColumnNames( CommandParameters parameters, int indentLevel )
     {
-        Parameters = parameters;
         StringBuilder sb = Value = new StringBuilder();
         parameters.Table.ColumnNames(sb, ref indentLevel);
     }
@@ -26,14 +20,14 @@ public readonly struct ColumnNames
 public readonly struct KeyValuePairs
 {
     internal readonly CommandParameters Parameters;
-    internal readonly StringBuilder      Value;
+    internal readonly StringBuilder     Value;
     public KeyValuePairs( CommandParameters parameters, int indentLevel, string separator )
     {
         Parameters = parameters;
         StringBuilder sb = Value = new StringBuilder(parameters.KeyValuePairLength(indentLevel));
 
-        int                          index  = 0;
-        int                          count  = parameters.Count;
+        int                             index  = 0;
+        int                             count  = parameters.Count;
         using ArrayBuffer<SqlParameter> buffer = parameters.Parameters;
 
         foreach ( ref readonly SqlParameter parameter in buffer.Values )
@@ -54,7 +48,7 @@ public readonly struct KeyValuePairs
 public readonly struct VariableNames
 {
     internal readonly CommandParameters Parameters;
-    internal readonly StringBuilder      Value;
+    internal readonly StringBuilder     Value;
     public VariableNames( CommandParameters parameters, int indentLevel )
     {
         Parameters = parameters;
