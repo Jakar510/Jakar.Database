@@ -123,9 +123,9 @@ public sealed record AddressRecord : OwnedTableRecord<AddressRecord>, IAddress<A
         row[MetaData[nameof(IsPrimary)].DataColumn]       = IsPrimary;
         return base.Import(row, token);
     }
-    [Pure] public override PostgresParameters ToDynamicParameters()
+    [Pure] public override CommandParameters ToDynamicParameters()
     {
-        PostgresParameters parameters = base.ToDynamicParameters();
+        CommandParameters parameters = base.ToDynamicParameters();
         parameters.Add(nameof(Line1),           Line1);
         parameters.Add(nameof(Line2),           Line2);
         parameters.Add(nameof(City),            City);
@@ -169,9 +169,9 @@ public sealed record AddressRecord : OwnedTableRecord<AddressRecord>, IAddress<A
         };
 
 
-    [Pure] public static async ValueTask<AddressRecord?> TryFromClaims( NpgsqlConnection connection, NpgsqlTransaction? transaction, Database db, Claim[] claims, ClaimType types, CancellationToken token )
+    [Pure] public static async ValueTask<AddressRecord?> TryFromClaims( DbConnectionContext context, Database db, Claim[] claims, ClaimType types, CancellationToken token )
     {
-        PostgresParameters  parameters = PostgresParameters.Create<AddressRecord>();
+        CommandParameters  parameters = CommandParameters.Create<AddressRecord>();
         ReadOnlySpan<Claim> span       = claims;
 
         if ( hasFlag(types, ClaimType.StreetAddressLine1) ) { parameters.Add(nameof(Line1), span.Single(static ( ref readonly x ) => x.Type == ClaimType.StreetAddressLine1.ToClaimTypes()).Value); }
@@ -184,14 +184,14 @@ public sealed record AddressRecord : OwnedTableRecord<AddressRecord>, IAddress<A
 
         if ( hasFlag(types, ClaimType.PostalCode) ) { parameters.Add(nameof(PostalCode), span.Single(static ( ref readonly x ) => x.Type == ClaimType.PostalCode.ToClaimTypes()).Value); }
 
-        return await db.Addresses.Get(connection, transaction, parameters, token);
+        return await db.Addresses.Get(context, parameters, token);
 
 
         static bool hasFlag( ClaimType value, ClaimType flag ) => ( value & flag ) != 0;
     }
-    [Pure] public static async IAsyncEnumerable<AddressRecord> TryFromClaims( NpgsqlConnection connection, NpgsqlTransaction? transaction, Database db, Claim claim, [EnumeratorCancellation] CancellationToken token )
+    [Pure] public static async IAsyncEnumerable<AddressRecord> TryFromClaims( DbConnectionContext context, Database db, Claim claim, [EnumeratorCancellation] CancellationToken token )
     {
-        PostgresParameters parameters = PostgresParameters.Create<AddressRecord>();
+        CommandParameters parameters = CommandParameters.Create<AddressRecord>();
 
         switch ( claim.Type )
         {
@@ -216,7 +216,7 @@ public sealed record AddressRecord : OwnedTableRecord<AddressRecord>, IAddress<A
                 break;
         }
 
-        await foreach ( AddressRecord record in db.Addresses.Where(connection, transaction, parameters, token) ) { yield return record; }
+        await foreach ( AddressRecord record in db.Addresses.Where(context, parameters, token) ) { yield return record; }
     }
 
 

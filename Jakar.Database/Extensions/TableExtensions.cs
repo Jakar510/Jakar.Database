@@ -3,6 +3,34 @@
 
 public static class TableExtensions
 {
+    public static string GetCollectionTypeName( this PostgresCollectionType type )
+    {
+        return type switch
+               {
+                   PostgresCollectionType.METADATA_COLLECTIONS    => @"METADATACOLLECTIONS",
+                   PostgresCollectionType.RESTRICTIONS            => @"RESTRICTIONS",
+                   PostgresCollectionType.DATA_SOURCE_INFORMATION => @"DATASOURCEINFORMATION",
+                   PostgresCollectionType.DATA_TYPES              => @"DATATYPES",
+                   PostgresCollectionType.RESERVED_WORDS          => @"RESERVEDWORDS",
+                   PostgresCollectionType.DATABASES               => @"DATABASES",
+                   PostgresCollectionType.SCHEMATA                => @"SCHEMATA",
+                   PostgresCollectionType.TABLES                  => @"TABLES",
+                   PostgresCollectionType.COLUMNS                 => @"COLUMNS",
+                   PostgresCollectionType.VIEWS                   => @"VIEWS",
+                   PostgresCollectionType.MATERIALIZED_VIEWS      => @"MATERIALIZEDVIEWS",
+                   PostgresCollectionType.USERS                   => @"USERS",
+                   PostgresCollectionType.INDEXES                 => @"INDEXES",
+                   PostgresCollectionType.INDEX_COLUMNS           => @"INDEXCOLUMNS",
+                   PostgresCollectionType.CONSTRAINTS             => @"CONSTRAINTS",
+                   PostgresCollectionType.PRIMARY_KEY             => @"PRIMARYKEY",
+                   PostgresCollectionType.UNIQUE_KEYS             => @"UNIQUEKEYS",
+                   PostgresCollectionType.FOREIGN_KEYS            => @"FOREIGNKEYS",
+                   PostgresCollectionType.CONSTRAINT_COLUMNS      => @"CONSTRAINTCOLUMNS",
+                   _                                              => throw new OutOfRangeException(type)
+               };
+    }
+
+
     public static StringBuilder Spacer( this StringBuilder sb, int indentLevel ) => sb.Append(' ', indentLevel * 4);
 
 
@@ -36,7 +64,7 @@ public static class TableExtensions
 
         if ( !string.Equals(TSelf.TableName, TSelf.TableName.ToSnakeCase()) ) { throw new InvalidOperationException($"{typeof(TSelf).Name}: {nameof(TSelf.TableName)} is not snake_case: '{TSelf.TableName}'"); }
 
-        PostgresParameters parameters = self.ToDynamicParameters();
+        CommandParameters parameters = self.ToDynamicParameters();
         int                length     = parameters.Count;
 
 

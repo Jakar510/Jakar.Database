@@ -175,9 +175,9 @@ public sealed record MigrationRecord : TableRecord<MigrationRecord>, ITableRecor
         row[MetaData[nameof(MigrationID)].DataColumn] = MigrationID;
         return base.Import(row, token);
     }
-    public override PostgresParameters ToDynamicParameters()
+    public override CommandParameters ToDynamicParameters()
     {
-        PostgresParameters parameters = base.ToDynamicParameters();
+        CommandParameters parameters = base.ToDynamicParameters();
         parameters.Add(nameof(MigrationID), MigrationID);
         parameters.Add(nameof(ReferenceID), ReferenceID);
         parameters.Add(nameof(AppliedOn),   AppliedOn);

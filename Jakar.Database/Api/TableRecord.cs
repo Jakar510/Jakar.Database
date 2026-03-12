@@ -127,9 +127,9 @@ public abstract record TableRecord<TSelf>( in DateTimeOffset DateCreated ) : IJs
                    ? ValueTask.FromCanceled(token)
                    : ValueTask.CompletedTask;
     }
-    [Pure] public virtual PostgresParameters ToDynamicParameters()
+    [Pure] public virtual CommandParameters ToDynamicParameters()
     {
-        PostgresParameters parameters = PostgresParameters.Create<TSelf>();
+        CommandParameters parameters = CommandParameters.Create<TSelf>();
         parameters.Add(nameof(DateCreated), DateCreated);
         return parameters;
     }
@@ -156,9 +156,9 @@ public abstract record LastModifiedRecord<TSelf> : TableRecord<TSelf>, ILastModi
         row[MetaData[nameof(LastModified)].DataColumn] = LastModified;
         return base.Import(row, token);
     }
-    [Pure] public override PostgresParameters ToDynamicParameters()
+    [Pure] public override CommandParameters ToDynamicParameters()
     {
-        PostgresParameters parameters = base.ToDynamicParameters();
+        CommandParameters parameters = base.ToDynamicParameters();
         parameters.Add(nameof(LastModified), LastModified);
         return parameters;
     }
@@ -215,10 +215,10 @@ public abstract record PairRecord<TSelf> : LastModifiedRecord<TSelf>, IUniqueID
     }
 
 
-    public static PostgresParameters GetDynamicParameters( TSelf record ) => GetDynamicParameters(in record.__id);
-    public static PostgresParameters GetDynamicParameters( in RecordID<TSelf> id )
+    public static CommandParameters GetDynamicParameters( TSelf record ) => GetDynamicParameters(in record.__id);
+    public static CommandParameters GetDynamicParameters( in RecordID<TSelf> id )
     {
-        PostgresParameters parameters = PostgresParameters.Create<TSelf>();
+        CommandParameters parameters = CommandParameters.Create<TSelf>();
         parameters.Add(nameof(ID), id.Value);
         return parameters;
     }
@@ -229,9 +229,9 @@ public abstract record PairRecord<TSelf> : LastModifiedRecord<TSelf>, IUniqueID
         row[MetaData[nameof(ID)].DataColumn] = ID;
         return base.Import(row, token);
     }
-    [Pure] public override PostgresParameters ToDynamicParameters()
+    [Pure] public override CommandParameters ToDynamicParameters()
     {
-        PostgresParameters parameters = base.ToDynamicParameters();
+        CommandParameters parameters = base.ToDynamicParameters();
         parameters.Add(nameof(ID),             ID.Value);
         parameters.Add(nameof(AdditionalData), AdditionalData);
         return parameters;
@@ -271,30 +271,30 @@ public abstract record OwnedTableRecord<TSelf> : PairRecord<TSelf>, IUserRecordI
     public static implicit operator RecordID<UserRecord>( OwnedTableRecord<TSelf>? record ) => record?.UserID ?? RecordID<UserRecord>.Empty;
 
 
-    public static PostgresParameters GetDynamicParameters( UserRecord user )
+    public static CommandParameters GetDynamicParameters( UserRecord user )
     {
-        PostgresParameters parameters = PostgresParameters.Create<TSelf>();
+        CommandParameters parameters = CommandParameters.Create<TSelf>();
         parameters.Add(nameof(UserID), user.ID.Value);
         return parameters;
     }
-    protected static PostgresParameters GetDynamicParameters( OwnedTableRecord<TSelf> record )
+    protected static CommandParameters GetDynamicParameters( OwnedTableRecord<TSelf> record )
     {
-        PostgresParameters parameters = PostgresParameters.Create<TSelf>();
+        CommandParameters parameters = CommandParameters.Create<TSelf>();
         parameters.Add(nameof(UserID), record.UserID);
         return parameters;
     }
 
 
-    public override PostgresParameters ToDynamicParameters()
+    public override CommandParameters ToDynamicParameters()
     {
-        PostgresParameters parameters = base.ToDynamicParameters();
+        CommandParameters parameters = base.ToDynamicParameters();
         parameters.Add(nameof(UserID), UserID);
         return parameters;
     }
 
 
-    public async ValueTask<UserRecord?> GetUser( NpgsqlConnection           connection, NpgsqlTransaction? transaction, Database db, CancellationToken token ) => await db.Users.Get(connection, transaction, GetDynamicParameters(this), token);
-    public async ValueTask<UserRecord?> GetUserWhoCreated( NpgsqlConnection connection, NpgsqlTransaction? transaction, Database db, CancellationToken token ) => await db.Users.Get(connection, transaction, UserID,                     token);
+    public async ValueTask<UserRecord?> GetUser( DbConnectionContext context, Database db, CancellationToken token ) => await db.Users.Get(context, GetDynamicParameters(this), token);
+    public async ValueTask<UserRecord?> GetUserWhoCreated( DbConnectionContext context, Database db, CancellationToken token ) => await db.Users.Get(context, UserID,                     token);
 
     
     public override ValueTask Import( DataRow row, CancellationToken token )

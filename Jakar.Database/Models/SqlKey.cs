@@ -8,7 +8,7 @@ using ZLinq.Linq;
 namespace Jakar.Database;
 
 
-public readonly struct SqlKey( ImmutableArray<string> parameters ) : IEquatable<PostgresParameters>, IEqualityOperators<SqlKey>, IComparisonOperators<SqlKey>, IValueEnumerable<FromImmutableArray<string>, string>
+public readonly struct SqlKey( ImmutableArray<string> parameters ) : IEquatable<CommandParameters>, IEqualityOperators<SqlKey>, IComparisonOperators<SqlKey>, IValueEnumerable<FromImmutableArray<string>, string>
 {
     private readonly int                    __hash     = HashCode.Combine(parameters);
     public readonly  ImmutableArray<string> parameters = parameters;
@@ -16,7 +16,7 @@ public readonly struct SqlKey( ImmutableArray<string> parameters ) : IEquatable<
 
 
     private static string GetKey( params ReadOnlySpan<string> parameters ) => new StringBuilder(parameters.Sum(static x => x.Length + 1)).AppendJoin(',', parameters!).ToString();
-    public static SqlKey Create<TSelf>( PostgresParameters parameters )
+    public static SqlKey Create<TSelf>( CommandParameters parameters )
         where TSelf : TableRecord<TSelf>, ITableRecord<TSelf> => new([..parameters.ParameterNames]);
 
 
@@ -37,7 +37,7 @@ public readonly struct SqlKey( ImmutableArray<string> parameters ) : IEquatable<
         return AsValueEnumerable().SequenceEqual(other.AsValueEnumerable());
     }
     public override bool Equals( object?            other ) => other is SqlKey x && Equals(x);
-    public          bool Equals( PostgresParameters other ) => AsValueEnumerable().SequenceEqual(other.ParameterNames, StringComparer.Ordinal);
+    public          bool Equals( CommandParameters other ) => AsValueEnumerable().SequenceEqual(other.ParameterNames, StringComparer.Ordinal);
     public override int  GetHashCode()                      => __hash;
     public int CompareTo( object? other ) =>
         other is SqlKey sqlKey

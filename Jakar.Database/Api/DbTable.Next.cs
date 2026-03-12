@@ -12,13 +12,13 @@ public partial class DbTable<TSelf>
     public ValueTask<IEnumerable<RecordPair<TSelf>>> SortedIDs( CancellationToken token = default ) => this.Call(SortedIDs, token);
 
 
-    public virtual async ValueTask<ErrorOrResult<TSelf>> Next( NpgsqlConnection connection, NpgsqlTransaction? transaction, RecordPair<TSelf> pair, CancellationToken token = default )
+    public virtual async ValueTask<ErrorOrResult<TSelf>> Next( DbConnectionContext context, RecordPair<TSelf> pair, CancellationToken token = default )
     {
-        SqlCommand command = SqlCommand.GetNext<TSelf>(in pair);
+        SqlCommand command = SqlCommand.GetNext(in pair);
 
         try
         {
-            await using NpgsqlCommand    cmd    = command.ToCommand(connection, transaction);
+            await using DbCommand    cmd    = command.ToCommand(context);
             await using DbDataReader reader = await cmd.ExecuteReaderAsync(token);
             ErrorOrResult<TSelf>         record = await reader.SingleAsync<TSelf>(token);
             return record;
@@ -27,13 +27,13 @@ public partial class DbTable<TSelf>
     }
 
 
-    public virtual async ValueTask<IEnumerable<RecordPair<TSelf>>> SortedIDs( NpgsqlConnection connection, NpgsqlTransaction? transaction, CancellationToken token = default )
+    public virtual async ValueTask<IEnumerable<RecordPair<TSelf>>> SortedIDs( DbConnectionContext context, CancellationToken token = default )
     {
         SqlCommand command = SqlCommand.GetSortedID<TSelf>();
 
         try
         {
-            await using NpgsqlCommand    cmd    = command.ToCommand(connection, transaction);
+            await using DbCommand    cmd    = command.ToCommand(context);
             await using DbDataReader reader = await cmd.ExecuteReaderAsync(token);
             List<RecordPair<TSelf>>      pairs  = [];
             while ( await reader.ReadAsync(token) ) { pairs.Add(RecordPair<TSelf>.Create(reader)); }
@@ -44,13 +44,13 @@ public partial class DbTable<TSelf>
     }
 
 
-    public virtual async ValueTask<Guid?> NextID( NpgsqlConnection connection, NpgsqlTransaction? transaction, RecordPair<TSelf> pair, CancellationToken token = default )
+    public virtual async ValueTask<Guid?> NextID( DbConnectionContext context, RecordPair<TSelf> pair, CancellationToken token = default )
     {
-        SqlCommand command = SqlCommand.GetNextID<TSelf>(in pair);
+        SqlCommand command = SqlCommand.GetNextID(in pair);
 
         try
         {
-            await using NpgsqlCommand    cmd    = command.ToCommand(connection, transaction);
+            await using DbCommand    cmd    = command.ToCommand(context);
             await using DbDataReader reader = await cmd.ExecuteReaderAsync(token);
             Guid?                        id     = null;
             if ( await reader.ReadAsync(token) ) { id = reader.GetGuid(0); }

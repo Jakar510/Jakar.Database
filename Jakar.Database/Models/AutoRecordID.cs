@@ -73,9 +73,9 @@ public readonly struct AutoRecordID<TSelf>( long id ) : IEquatable<AutoRecordID<
 
 
     public UInt128 GetHash() => key.Hash128();
-    [Pure] public PostgresParameters ToDynamicParameters()
+    [Pure] public CommandParameters ToDynamicParameters()
     {
-        PostgresParameters parameters = PostgresParameters.Create<TSelf>();
+        CommandParameters parameters = CommandParameters.Create<TSelf>();
         parameters.Add(nameof(IUniqueID.ID), Value);
         return parameters;
     }

@@ -20,9 +20,9 @@ public abstract record UserSubscription<TSelf> : OwnedTableRecord<TSelf>, IUserS
     protected UserSubscription( DateTimeOffset? subscriptionExpires, RecordID<TSelf> ID, RecordID<UserRecord> UserID, DateTimeOffset DateCreated, DateTimeOffset? LastModified = null ) : base(in UserID, in ID, in DateCreated, in LastModified) => SubscriptionExpires = subscriptionExpires;
 
 
-    [Pure] public override PostgresParameters ToDynamicParameters()
+    [Pure] public override CommandParameters ToDynamicParameters()
     {
-        PostgresParameters parameters = base.ToDynamicParameters();
+        CommandParameters parameters = base.ToDynamicParameters();
         parameters.Add(nameof(SubscriptionExpires), SubscriptionExpires);
         return parameters;
     }

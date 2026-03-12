@@ -116,52 +116,45 @@ public class MigrationManager
 
     public virtual async ValueTask<ImmutableArray<MigrationRecord>> AllMigrations( CancellationToken token )
     {
-        await using NpgsqlConnection connection = await _db.ConnectAsync(token);
-        return await AllMigrations(connection, null, token);
+        await using DbConnectionContext context = await _db.ConnectAsync(token);
+        return await AllMigrations(context, token);
     }
-    public virtual async ValueTask<ImmutableArray<MigrationRecord>> AllMigrations( NpgsqlConnection connection, NpgsqlTransaction? transaction, CancellationToken token )
+    public virtual async ValueTask<ImmutableArray<MigrationRecord>> AllMigrations( DbConnectionContext context, CancellationToken token )
     {
-        ImmutableArray<MigrationRecord> records = await MigrationRecord.SelectSql.ExecuteAsync<MigrationRecord>(connection, transaction, token).ToImmutableArray(__migrationFactories.Count, token);
+        ImmutableArray<MigrationRecord> records = await context.ExecuteAsync<MigrationRecord>(MigrationRecord.SelectSql, token).ToImmutableArray(__migrationFactories.Count, token);
         return records;
     }
 
 
     public async ValueTask ApplyMigrations( CancellationToken token = default )
     {
-        await using NpgsqlConnection connection = await _db.ConnectAsync(token);
-        await MigrationRecord.TryCreateSql.ExecuteNonQueryAsync(connection, null, token);
-
-        await using NpgsqlTransaction transaction = await connection.BeginTransactionAsync(token);
+        await using DbConnectionContext context = await _db.ConnectAsync(token);
+        await context.ExecuteNonQueryAsync(MigrationRecord.TryCreateSql, token);
+        await context.StartTransactionAsync(_db.TransactionIsolationLevel, token);
 
         try
         {
-            ImmutableArray<MigrationRecord> applied = await AllMigrations(connection, transaction, token);
+            ImmutableArray<MigrationRecord> applied = await AllMigrations(context, token);
             HashSet<MigrationRecord>        pending = new(Records);
             pending.ExceptWith(applied);
 
             // ReSharper disable once LoopCanBeConvertedToQuery
-            foreach ( MigrationRecord record in pending.OrderBy(static x => x.MigrationID) ) { await Apply(connection, transaction, record, token); }
+            foreach ( MigrationRecord record in pending.OrderBy(static x => x.MigrationID) ) { await Apply(context, record, token); }
 
-            await transaction.CommitAsync(token);
+            await context.CommitAsync(token);
         }
-
-        // catch ( DbSqlException e ) when ( !string.IsNullOrWhiteSpace(e.RollbackID) )
-        // {
-        //     await transaction.RollbackAsync(e.RollbackID, token);
-        //     throw;
-        // }
         catch ( Exception )
         {
-            await transaction.RollbackAsync(token);
+            await context.RollbackAsync(token);
             throw;
         }
     }
-    public virtual async Task Apply( NpgsqlConnection connection, NpgsqlTransaction transaction, MigrationRecord self, CancellationToken token )
+    public virtual async Task Apply( DbConnectionContext context, MigrationRecord self, CancellationToken token )
     {
         try
         {
             SqlCommand command = SqlCommand.Create<MigrationRecord>(self.SQL);
-            await command.ExecuteNonQueryAsync(connection, transaction, token);
+            await context.ExecuteNonQueryAsync(command, token);
             self.AppliedOn = DateTimeOffset.UtcNow;
         }
         catch ( Exception e ) { throw new DbSqlException(self.SQL, e); }
@@ -170,8 +163,8 @@ public class MigrationManager
 
         try
         {
-            await migrationRecord.ExecuteNonQueryAsync(connection, transaction, token);
-            await transaction.SaveAsync(self.RollbackID, token);
+            await context.ExecuteNonQueryAsync(migrationRecord, token);
+            await context.SaveAsync(self.RollbackID, token);
         }
         catch ( Exception e ) { throw new DbSqlException(migrationRecord, e) { RollbackID = self.RollbackID }; }
     }

@@ -97,27 +97,27 @@ public static class TableLinq
 
     extension<TSelf>( IAsyncEnumerable<TSelf> self )
     {
-        public async IAsyncEnumerable<TSelf> Where( Func<NpgsqlConnection, NpgsqlTransaction?, TSelf, CancellationToken, bool> func, NpgsqlConnection connection, NpgsqlTransaction? transaction, [EnumeratorCancellation] CancellationToken token = default )
+        public async IAsyncEnumerable<TSelf> Where( Func<DbConnectionContext, TSelf, CancellationToken, bool> func, DbConnectionContext context, [EnumeratorCancellation] CancellationToken token = default )
         {
             await foreach ( TSelf record in self.WithCancellation(token) )
             {
-                if ( func(connection, transaction, record, token) ) { yield return record; }
+                if ( func(context, record, token) ) { yield return record; }
             }
         }
-        public async IAsyncEnumerable<TSelf> Where( Func<NpgsqlConnection, NpgsqlTransaction?, TSelf, CancellationToken, ValueTask<bool>> func, NpgsqlConnection connection, NpgsqlTransaction? transaction, [EnumeratorCancellation] CancellationToken token = default )
+        public async IAsyncEnumerable<TSelf> Where( Func<DbConnectionContext, TSelf, CancellationToken, ValueTask<bool>> func, DbConnectionContext context, [EnumeratorCancellation] CancellationToken token = default )
         {
             await foreach ( TSelf record in self.WithCancellation(token) )
             {
-                if ( await func(connection, transaction, record, token) ) { yield return record; }
+                if ( await func(context, record, token) ) { yield return record; }
             }
         }
-        public async IAsyncEnumerable<TResult> Select<TResult>( Func<NpgsqlConnection, NpgsqlTransaction?, TSelf, CancellationToken, TResult> func, NpgsqlConnection connection, NpgsqlTransaction? transaction, [EnumeratorCancellation] CancellationToken token = default )
+        public async IAsyncEnumerable<TResult> Select<TResult>( Func<DbConnectionContext, TSelf, CancellationToken, TResult> func, DbConnectionContext context, [EnumeratorCancellation] CancellationToken token = default )
         {
-            await foreach ( TSelf record in self.WithCancellation(token) ) { yield return func(connection, transaction, record, token); }
+            await foreach ( TSelf record in self.WithCancellation(token) ) { yield return func(context, record, token); }
         }
-        public async IAsyncEnumerable<TResult> Select<TResult>( Func<NpgsqlConnection, NpgsqlTransaction?, TSelf, CancellationToken, ValueTask<TResult>> func, NpgsqlConnection connection, NpgsqlTransaction? transaction, [EnumeratorCancellation] CancellationToken token = default )
+        public async IAsyncEnumerable<TResult> Select<TResult>( Func<DbConnectionContext, TSelf, CancellationToken, ValueTask<TResult>> func, DbConnectionContext context, [EnumeratorCancellation] CancellationToken token = default )
         {
-            await foreach ( TSelf record in self.WithCancellation(token) ) { yield return await func(connection, transaction, record, token); }
+            await foreach ( TSelf record in self.WithCancellation(token) ) { yield return await func(context, record, token); }
         }
     }
 }

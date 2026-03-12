@@ -75,17 +75,17 @@ public abstract partial class Database
     /// <summary> Only to be used for <see cref="IEmailTokenService"/> </summary>
     /// <exception cref="OutOfRangeException"> </exception>
     public ValueTask<ErrorOrResult<SessionToken>> Authenticate( ILoginRequest request, ClaimType types = DEFAULT_CLAIM_TYPES, CancellationToken token = default ) => this.TryCall(Authenticate, request, types, token);
-    protected virtual async ValueTask<ErrorOrResult<SessionToken>> Authenticate( NpgsqlConnection connection, NpgsqlTransaction? transaction, ILoginRequest request, ClaimType types = DEFAULT_CLAIM_TYPES, CancellationToken token = default )
+    protected virtual async ValueTask<ErrorOrResult<SessionToken>> Authenticate( DbConnectionContext context, ILoginRequest request, ClaimType types = DEFAULT_CLAIM_TYPES, CancellationToken token = default )
     {
-        UserRecord? record = await Users.Get(connection, transaction, nameof(UserRecord.UserName), request.UserLogin, token);
+        UserRecord? record = await Users.Get(context, nameof(UserRecord.UserName), request.UserLogin, token);
         if ( record is null ) { return Error.Unauthorized(request.UserLogin); }
 
-        ErrorOrResult<SubscriptionInfo> subscription = await ValidateSubscription(connection, transaction, record, token);
+        ErrorOrResult<SubscriptionInfo> subscription = await ValidateSubscription(context, record, token);
 
         if ( subscription.TryGetValue(out Errors? errors) )
         {
             record = record.MarkBadLogin();
-            await Users.Update(connection, transaction, record, token);
+            await Users.Update(context, record, token);
 
             return errors;
         }
@@ -93,7 +93,7 @@ public abstract partial class Database
         if ( record.IsDisabled )
         {
             record = record.MarkBadLogin();
-            await Users.Update(connection, transaction, record, token);
+            await Users.Update(context, record, token);
 
             return Error.Disabled();
         }
@@ -101,31 +101,31 @@ public abstract partial class Database
         if ( record.IsLocked )
         {
             record = record.MarkBadLogin();
-            await Users.Update(connection, transaction, record, token);
+            await Users.Update(context, record, token);
 
             return Error.Locked();
         }
 
-        if ( VerifyPassword(ref record, request) ) { return await GetToken(connection, transaction, record, types, token); }
+        if ( VerifyPassword(ref record, request) ) { return await GetToken(context, record, types, token); }
 
         record = record.MarkBadLogin();
-        await Users.Update(connection, transaction, record, token);
+        await Users.Update(context, record, token);
         return Error.Unauthorized(request.UserLogin);
     }
 
 
     public ValueTask<ErrorOrResult<UserModel>> TryGetUserModel( ILoginRequest request, ClaimType types = DEFAULT_CLAIM_TYPES, CancellationToken token = default ) => this.TryCall(TryGetUserModel, request, types, token);
-    protected virtual async ValueTask<ErrorOrResult<UserModel>> TryGetUserModel( NpgsqlConnection connection, NpgsqlTransaction? transaction, ILoginRequest request, ClaimType types = DEFAULT_CLAIM_TYPES, CancellationToken token = default )
+    protected virtual async ValueTask<ErrorOrResult<UserModel>> TryGetUserModel( DbConnectionContext context, ILoginRequest request, ClaimType types = DEFAULT_CLAIM_TYPES, CancellationToken token = default )
     {
-        UserRecord? record = await Users.Get(connection, transaction, nameof(UserRecord.UserName), request.UserLogin, token);
+        UserRecord? record = await Users.Get(context, nameof(UserRecord.UserName), request.UserLogin, token);
         if ( record is null ) { return Error.Unauthorized(request.UserLogin); }
 
-        ErrorOrResult<SubscriptionInfo> subscription = await ValidateSubscription(connection, transaction, record, token);
+        ErrorOrResult<SubscriptionInfo> subscription = await ValidateSubscription(context, record, token);
 
         if ( subscription.TryGetValue(out Errors? errors) )
         {
             record = record.MarkBadLogin();
-            await Users.Update(connection, transaction, record, token);
+            await Users.Update(context, record, token);
 
             return errors;
         }
@@ -133,7 +133,7 @@ public abstract partial class Database
         if ( record.IsDisabled )
         {
             record = record.MarkBadLogin();
-            await Users.Update(connection, transaction, record, token);
+            await Users.Update(context, record, token);
 
             return Error.Disabled();
         }
@@ -141,7 +141,7 @@ public abstract partial class Database
         if ( record.IsLocked )
         {
             record = record.MarkBadLogin();
-            await Users.Update(connection, transaction, record, token);
+            await Users.Update(context, record, token);
 
             return Error.Locked();
         }
@@ -149,12 +149,12 @@ public abstract partial class Database
 
         if ( VerifyPassword(ref record, request) )
         {
-            UserModel model = await record.ToUserModel(connection, transaction, this, token);
+            UserModel model = await record.ToUserModel(context, this, token);
             return model;
         }
 
         record = record.MarkBadLogin();
-        await Users.Update(connection, transaction, record, token);
+        await Users.Update(context, record, token);
         return Error.Unauthorized(request.UserLogin);
     }
 
@@ -172,10 +172,10 @@ public abstract partial class Database
 
 
     public ValueTask<SessionToken> GetToken( UserRecord user, ClaimType types = default, CancellationToken token = default ) => this.TryCall(GetToken, user, types, token);
-    public virtual async ValueTask<SessionToken> GetToken( NpgsqlConnection connection, NpgsqlTransaction? transaction, UserRecord record, ClaimType types = DEFAULT_CLAIM_TYPES, CancellationToken token = default )
+    public virtual async ValueTask<SessionToken> GetToken( DbConnectionContext context, UserRecord record, ClaimType types = DEFAULT_CLAIM_TYPES, CancellationToken token = default )
     {
-        Claim[]                         claims         = await record.GetUserClaims(connection, transaction, this, types, token);
-        ErrorOrResult<SubscriptionInfo> subscription   = await ValidateSubscription(connection, transaction, record, token);
+        Claim[]                         claims         = await record.GetUserClaims(context, this, types, token);
+        ErrorOrResult<SubscriptionInfo> subscription   = await ValidateSubscription(context, record, token);
         DateTime                        refreshExpires = GetExpiration(subscription.Value.Expires, RefreshTokenExpirationTime);
         SigningCredentials              credentials    = await GetSigningCredentials(token);
 
@@ -200,7 +200,7 @@ public abstract partial class Database
                                                              });
 
         record = record.WithRefreshToken(refresh, refreshExpires);
-        await Users.Update(connection, transaction, record, token);
+        await Users.Update(context, record, token);
 
         return new SessionToken
                {
@@ -214,22 +214,22 @@ public abstract partial class Database
 
 
     public ValueTask<ErrorOrResult<SessionToken>> Refresh( string refreshToken, ClaimType types = DEFAULT_CLAIM_TYPES, CancellationToken token = default ) => this.TryCall(Refresh, refreshToken, types, token);
-    public virtual async ValueTask<ErrorOrResult<SessionToken>> Refresh( NpgsqlConnection connection, NpgsqlTransaction? transaction, string refreshToken, ClaimType types = DEFAULT_CLAIM_TYPES, CancellationToken token = default )
+    public virtual async ValueTask<ErrorOrResult<SessionToken>> Refresh( DbConnectionContext context, string refreshToken, ClaimType types = DEFAULT_CLAIM_TYPES, CancellationToken token = default )
     {
-        ErrorOrResult<UserRecord> result = await VerifyLogin(connection, transaction, refreshToken, types, token);
+        ErrorOrResult<UserRecord> result = await VerifyLogin(context, refreshToken, types, token);
         if ( !result.TryGetValue(out UserRecord? record, out Errors? error) ) { return error; }
 
-        ErrorOrResult<SubscriptionInfo> subscription = await ValidateSubscription(connection, transaction, record, token);
+        ErrorOrResult<SubscriptionInfo> subscription = await ValidateSubscription(context, record, token);
 
         if ( !CheckRefreshToken(ref record, refreshToken) )
         {
             record = record.MarkBadLogin();
-            await Users.Update(connection, transaction, record, token);
+            await Users.Update(context, record, token);
             return Error.Unauthorized(record.UserName);
         }
 
 
-        Claim[] claims = await record.GetUserClaims(connection, transaction, this, types | DEFAULT_CLAIM_TYPES, token);
+        Claim[] claims = await record.GetUserClaims(context, this, types | DEFAULT_CLAIM_TYPES, token);
 
         SecurityTokenDescriptor descriptor = new()
                                              {
@@ -256,12 +256,12 @@ public abstract partial class Database
 
 
     public ValueTask<ErrorOrResult<SessionToken>> Verify( string jsonToken, ClaimType types = DEFAULT_CLAIM_TYPES, CancellationToken token = default ) => this.TryCall(Verify, jsonToken, types, token);
-    public virtual async ValueTask<ErrorOrResult<SessionToken>> Verify( NpgsqlConnection connection, NpgsqlTransaction? transaction, string jsonToken, ClaimType types = DEFAULT_CLAIM_TYPES, CancellationToken token = default )
+    public virtual async ValueTask<ErrorOrResult<SessionToken>> Verify( DbConnectionContext context, string jsonToken, ClaimType types = DEFAULT_CLAIM_TYPES, CancellationToken token = default )
     {
-        ErrorOrResult<UserRecord> result = await VerifyLogin(connection, transaction, jsonToken, types, token);
+        ErrorOrResult<UserRecord> result = await VerifyLogin(context, jsonToken, types, token);
 
         return result.TryGetValue(out UserRecord? record, out Errors? error)
-                   ? await GetToken(connection, transaction, record, types, token)
+                   ? await GetToken(context, record, types, token)
                    : error;
     }
 

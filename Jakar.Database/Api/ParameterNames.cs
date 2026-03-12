@@ -1,7 +1,7 @@
 ﻿namespace Jakar.Database;
 
 
-public ref struct ParameterNames( PostgresParameters self ) : IValueEnumerator<ParameterNames, string>
+public ref struct ParameterNames( CommandParameters self ) : IValueEnumerator<ParameterNames, string>
 {
     private int                 __index = -1;
     private ArrayBuffer<string> __array;

@@ -1,10 +1,10 @@
 ﻿namespace Jakar.Database;
 
 
-public ref struct IndexedEnumerator( PostgresParameters self )
+public ref struct IndexedEnumerator( CommandParameters self )
 {
     private int                __index      = -2;
-    private PostgresParameters __parameters = self;
+    private CommandParameters __parameters = self;
     public  Set                Current { get; private set; }
 
     public bool MoveNext()
@@ -45,11 +45,11 @@ public ref struct IndexedEnumerator( PostgresParameters self )
 
 
 
-    public readonly ref struct Set( int index, ReadOnlySpan<Parameter> span )
+    public readonly ref struct Set( int index, ReadOnlySpan<SqlParameter> span )
     {
         public readonly int                     Index = index;
-        public readonly ReadOnlySpan<Parameter> Span  = span;
-        public void Deconstruct( out int index, out ReadOnlySpan<Parameter> span )
+        public readonly ReadOnlySpan<SqlParameter> Span  = span;
+        public void Deconstruct( out int index, out ReadOnlySpan<SqlParameter> span )
         {
             index = Index;
             span  = Span;

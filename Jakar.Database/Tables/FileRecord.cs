@@ -192,9 +192,9 @@ public sealed record FileRecord : PairRecord<FileRecord>, ITableRecord<FileRecor
         row[MetaData[nameof(FullPath)].DataColumn]        = FullPath;
         return base.Import(row, token);
     }
-    [Pure] public override PostgresParameters ToDynamicParameters()
+    [Pure] public override CommandParameters ToDynamicParameters()
     {
-        PostgresParameters parameters = base.ToDynamicParameters();
+        CommandParameters parameters = base.ToDynamicParameters();
         parameters.Add(nameof(FileName),        FileName);
         parameters.Add(nameof(FileDescription), FileDescription);
         parameters.Add(nameof(FileType),        FileType);

@@ -57,9 +57,9 @@ public sealed record RecoveryCodeRecord : OwnedTableRecord<RecoveryCodeRecord>, 
         row[MetaData[nameof(Code)].DataColumn] = Code;
         return base.Import(row, token);
     }
-    [Pure] public override PostgresParameters ToDynamicParameters()
+    [Pure] public override CommandParameters ToDynamicParameters()
     {
-        PostgresParameters parameters = base.ToDynamicParameters();
+        CommandParameters parameters = base.ToDynamicParameters();
         parameters.Add(nameof(Code), Code);
         return parameters;
     }

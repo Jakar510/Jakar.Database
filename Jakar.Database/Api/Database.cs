@@ -1,10 +1,6 @@
 ﻿// Jakar.Extensions :: Jakar.Database
 // 08/14/2022  8:39 PM
 
-using IsolationLevel = System.Data.IsolationLevel;
-
-
-
 namespace Jakar.Database;
 
 
@@ -28,18 +24,15 @@ public abstract partial class Database : Randoms, IConnectableDbRoot, IHealthChe
     protected          ActivitySource?                  _activitySource;
     protected          Meter?                           _meter;
     protected          string?                          _className;
-    public             MigrationManager                 MigrationManager { get; }
-    public static      Database?                        Current          { get; set; }
-    public static      DataProtector                    DataProtector    { get; set; } = new(RSAEncryptionPadding.OaepSHA1);
-
-    public string ClassName =>
-        _className ??= GetType().GetFullName();
-
-    protected internal SecuredString?               ConnectionString          { get; set; }
-    ref readonly       DbOptions IConnectableDbRoot.Options                   => ref Options;
-    public virtual     PasswordValidator            PasswordValidator         => DbOptions.PasswordRequirements.GetValidator();
-    public             IsolationLevel               TransactionIsolationLevel { get; set; } = IsolationLevel.RepeatableRead;
-    public             AppVersion                   Version                   => Options.AppInformation.Version;
+    public             MigrationManager                 MigrationManager          { get; }
+    public static      Database?                        Current                   { get; set; }
+    public static      DataProtector                    DataProtector             { get; set; } = new(RSAEncryptionPadding.OaepSHA1);
+    public virtual     IsolationLevel                   TransactionIsolationLevel => IsolationLevel.RepeatableRead;
+    public             string                           ClassName                 => _className ??= GetType().GetFullName();
+    protected internal SecuredString?                   ConnectionString          { get; set; }
+    ref readonly       DbOptions IConnectableDbRoot.    Options                   => ref Options;
+    public virtual     PasswordValidator                PasswordValidator         => DbOptions.PasswordRequirements.GetValidator();
+    public             AppVersion                       Version                   => Options.AppInformation.Version;
 
 
     static Database()
@@ -95,17 +88,17 @@ public abstract partial class Database : Randoms, IConnectableDbRoot, IHealthChe
     public async ValueTask<bool> HasAccess<TRight>( CancellationToken token, params TRight[] rights )
         where TRight : unmanaged, Enum
     {
-        await using NpgsqlConnection connection   = await ConnectAsync(token);
-        UserRecord?                  loggedInUser = LoggedInUser.Value;
+        await using DbConnectionContext context      = await ConnectAsync(token);
+        UserRecord?                     loggedInUser = LoggedInUser.Value;
         if ( loggedInUser is null ) { return false; }
 
-        bool result = await HasPermission(connection, null, loggedInUser, token, rights);
+        bool result = await HasPermission(context, loggedInUser, token, rights);
         return result;
     }
-    public async ValueTask<bool> HasPermission<TRight>( NpgsqlConnection connection, NpgsqlTransaction? transaction, UserRecord user, CancellationToken token, params TRight[] rights )
+    public async ValueTask<bool> HasPermission<TRight>( DbConnectionContext context, UserRecord user, CancellationToken token, params TRight[] rights )
         where TRight : unmanaged, Enum
     {
-        HashSet<TRight> permissions = await CurrentPermissions<TRight>(connection, transaction, user, token);
+        HashSet<TRight> permissions = await CurrentPermissions<TRight>(context, user, token);
 
         foreach ( TRight right in rights.AsSpan() )
         {
@@ -114,15 +107,15 @@ public abstract partial class Database : Randoms, IConnectableDbRoot, IHealthChe
 
         return true;
     }
-    public async ValueTask<HashSet<TRight>> CurrentPermissions<TRight>( NpgsqlConnection connection, NpgsqlTransaction? transaction, UserRecord user, CancellationToken token )
+    public async ValueTask<HashSet<TRight>> CurrentPermissions<TRight>( DbConnectionContext context, UserRecord user, CancellationToken token )
         where TRight : unmanaged, Enum
     {
         HashSet<IUserRights> models = new(DEFAULT_CAPACITY) { user };
         HashSet<TRight>      rights = new(Permissions<TRight>.EnumValues.Length);
 
-        await foreach ( GroupRecord record in user.GetGroups(connection, transaction, this, token) ) { models.Add(record); }
+        await foreach ( GroupRecord record in user.GetGroups(context, this, token) ) { models.Add(record); }
 
-        await foreach ( RoleRecord record in user.GetRoles(connection, transaction, this, token) ) { models.Add(record); }
+        await foreach ( RoleRecord record in user.GetRoles(context, this, token) ) { models.Add(record); }
 
         using Permissions<TRight> results = Permissions<TRight>.Create(models);
 
@@ -145,15 +138,16 @@ public abstract partial class Database : Randoms, IConnectableDbRoot, IHealthChe
     }
     protected async ValueTask InitDataProtector( LocalFile pem, SecuredStringResolverOptions password, CancellationToken token = default ) => DataProtector = await DataProtector.WithKeyAsync(pem, await password.GetSecuredStringAsync(Configuration, token), token);
 
-    protected virtual MigrationManager CreateMigrationManager()                    => new(this);
-    protected virtual NpgsqlConnection CreateConnection( in SecuredString secure ) => new(secure.ToString());
-    public async ValueTask<NpgsqlConnection> ConnectAsync( CancellationToken token )
+    protected virtual MigrationManager CreateMigrationManager() => new(this);
+    internal async Task<DbConnection> CreateConnection( CancellationToken token )
     {
         ConnectionString ??= await Options.GetConnectionStringAsync(Configuration, token);
-        NpgsqlConnection connection = CreateConnection(ConnectionString);
+        DbConnection connection = CreateConnection(ConnectionString);
         await connection.OpenAsync(token);
         return connection;
     }
+    protected abstract                 DbConnection                   CreateConnection( in SecuredString secure );
+    [MustDisposeResource] public async ValueTask<DbConnectionContext> ConnectAsync( CancellationToken    token, IsolationLevel? level = null ) => await DbConnectionContext.CreateAsync(this, token, level);
 
 
     protected virtual DbTable<TSelf> Create<TSelf>()
@@ -175,7 +169,7 @@ public abstract partial class Database : Randoms, IConnectableDbRoot, IHealthChe
     {
         try
         {
-            await using NpgsqlConnection connection = await ConnectAsync(token);
+            await using DbConnectionContext connection = await ConnectAsync(token);
 
             return connection.State switch
                    {
@@ -194,34 +188,34 @@ public abstract partial class Database : Randoms, IConnectableDbRoot, IHealthChe
 
     public ValueTask<ErrorOrResult<SessionToken>> Register<TRequest>( TRequest request, string rights, ClaimType types = default, CancellationToken token = default )
         where TRequest : ILoginRequest<UserModel> => this.TryCall(Register, request, rights, types, token);
-    public virtual async ValueTask<ErrorOrResult<SessionToken>> Register<TRequest>( NpgsqlConnection connection, NpgsqlTransaction? transaction, TRequest request, string rights, ClaimType types = default, CancellationToken token = default )
+    public virtual async ValueTask<ErrorOrResult<SessionToken>> Register<TRequest>( DbConnectionContext context, TRequest request, string rights, ClaimType types = default, CancellationToken token = default )
         where TRequest : ILoginRequest<UserModel>
     {
-        UserRecord? record = await Users.Get(connection, transaction, UserRecord.GetDynamicParameters(request), token);
+        UserRecord? record = await Users.Get(context, UserRecord.GetDynamicParameters(request), token);
         if ( record is not null ) { return Error.NotFound(request.UserLogin); }
 
         if ( !PasswordValidator.Validate(request.UserPassword, out PasswordValidator.Results results) ) { return Error.Unauthorized(in results); }
 
         record = UserRecord.Create(request, rights);
-        record = await Users.Insert(connection, transaction, record, token);
-        return await GetToken(connection, transaction, record, types, token);
+        record = await Users.Insert(context, record, token);
+        return await GetToken(context, record, types, token);
     }
 
 
-    public virtual async IAsyncEnumerable<TSelf> Where<TSelf>( NpgsqlConnection connection, NpgsqlTransaction? transaction, string sql, PostgresParameters parameters, [EnumeratorCancellation] CancellationToken token = default )
+    public virtual async IAsyncEnumerable<TSelf> Where<TSelf>( DbConnectionContext context, string sql, CommandParameters parameters, [EnumeratorCancellation] CancellationToken token = default )
         where TSelf : TableRecord<TSelf>, ITableRecord<TSelf>, IDateCreated
     {
-        SqlCommand                   command = SqlCommand.Create(sql, parameters);
-        await using NpgsqlCommand    cmd     = command.ToCommand(connection, transaction);
+        SqlCommand               command = SqlCommand.Create(sql, parameters);
+        await using DbCommand    cmd     = command.ToCommand(context);
         await using DbDataReader reader  = await cmd.ExecuteReaderAsync(token);
         await foreach ( TSelf record in reader.CreateAsync<TSelf>(token) ) { yield return record; }
     }
-    public virtual async IAsyncEnumerable<TValue> Where<TSelf, TValue>( NpgsqlConnection connection, NpgsqlTransaction? transaction, string sql, PostgresParameters parameters, [EnumeratorCancellation] CancellationToken token = default )
+    public virtual async IAsyncEnumerable<TValue> Where<TSelf, TValue>( DbConnectionContext context, string sql, CommandParameters parameters, [EnumeratorCancellation] CancellationToken token = default )
         where TValue : struct
         where TSelf : TableRecord<TSelf>, ITableRecord<TSelf>
     {
-        SqlCommand                   command = SqlCommand.Create(sql, parameters);
-        await using NpgsqlCommand    cmd     = command.ToCommand(connection, transaction);
+        SqlCommand               command = SqlCommand.Create(sql, parameters);
+        await using DbCommand    cmd     = command.ToCommand(context);
         await using DbDataReader reader  = await cmd.ExecuteReaderAsync(token);
         while ( await reader.ReadAsync(token) ) { yield return reader.GetFieldValue<TValue>(0); }
     }

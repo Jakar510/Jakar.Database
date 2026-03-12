@@ -18,7 +18,7 @@ public readonly ref struct SqlInterpolatedStringHandler<TSelf>( int literalLengt
     where TSelf : TableRecord<TSelf>, ITableRecord<TSelf>
 {
     internal readonly StringBuilder      Sb          = new(literalLength);
-    internal readonly PostgresParameters Parameters  = PostgresParameters.Create<TSelf>(formattedCount);
+    internal readonly CommandParameters Parameters  = CommandParameters.Create<TSelf>(formattedCount);
     internal readonly Stack<string>      ColumnNames = new(formattedCount);
 
 
@@ -137,7 +137,7 @@ public readonly ref struct SqlInterpolatedStringHandler<TSelf>( int literalLengt
                     Sb.Append(n.Value);
                     return;
 
-                case PostgresParameters n:
+                case CommandParameters n:
                     Parameters.With(n);
 
                     return;
@@ -189,6 +189,95 @@ public readonly ref struct SqlInterpolatedStringHandler<TSelf>( int literalLengt
                     Sb.Append(n);
                     return;
 
+                case IEnumerable<string> n:
+                    AppendQuoted(n, indentLevel);
+                    return;
+
+                case IEnumerable<Int128> n:
+                    AppendMany(n, format, indentLevel);
+                    return;
+
+                case IEnumerable<UInt128> n:
+                    AppendMany(n, format, indentLevel);
+                    return;
+
+                case IEnumerable<byte> n:
+                    AppendMany(n, format, indentLevel);
+                    return;
+
+                case IEnumerable<sbyte> n:
+                    AppendMany(n, format, indentLevel);
+                    return;
+
+                case IEnumerable<short> n:
+                    AppendMany(n, format, indentLevel);
+                    return;
+
+                case IEnumerable<int> n:
+                    AppendMany(n, format, indentLevel);
+                    return;
+
+                case IEnumerable<long> n:
+                    AppendMany(n, format, indentLevel);
+                    return;
+
+                case IEnumerable<uint> n:
+                    AppendMany(n, format, indentLevel);
+                    return;
+
+                case IEnumerable<ushort> n:
+                    AppendMany(n, format, indentLevel);
+                    return;
+
+                case IEnumerable<ulong> n:
+                    AppendMany(n, format, indentLevel);
+                    return;
+
+                case IEnumerable<float> n:
+                    AppendMany(n, format, indentLevel);
+                    return;
+
+                case IEnumerable<double> n:
+                    AppendMany(n, format, indentLevel);
+                    return;
+
+                case IEnumerable<decimal> n:
+                    AppendMany(n, format, indentLevel);
+                    return;
+
+                case IEnumerable<char> n:
+                    AppendMany(n, format, indentLevel, true);
+                    return;
+
+                case IEnumerable<IRecordID> n:
+                    AppendMany(n, format, indentLevel, true);
+                    return;
+
+                case IEnumerable<Guid> n:
+                    AppendMany(n, format, indentLevel, true);
+                    return;
+
+                case IEnumerable<DateTime> n:
+                    AppendMany(n, format, indentLevel, true);
+                    return;
+
+                case IEnumerable<DateTimeOffset> n:
+                    AppendMany(n, format, indentLevel, true);
+                    return;
+
+                case IEnumerable<DateOnly> n:
+                    AppendMany(n, format, indentLevel, true);
+                    return;
+
+                case IEnumerable<TimeSpan> n:
+                    AppendMany(n, format, indentLevel, true);
+                    return;
+
+                case IEnumerable<TimeOnly> n:
+                    AppendMany(n, format, indentLevel, true);
+                    return;
+
+
                 case ISpanFormattable x:
                     AppendSingle(x, format);
                     return;
@@ -210,113 +299,6 @@ public readonly ref struct SqlInterpolatedStringHandler<TSelf>( int literalLengt
     }
 
 
-    public void AppendFormatted<TValue>( IEnumerable<TValue> value, string? format = null )
-    {
-        ParseFormat(ref format, out ushort indentLevel);
-
-        switch ( value )
-        {
-            case null:
-            case DBNull:
-                Sb.Append("NULL");
-                return;
-
-            case StringBuilder n:
-                Sb.Append(n);
-                return;
-
-            case IEnumerable<string> n:
-                AppendQuoted(n, indentLevel);
-                return;
-
-            case IEnumerable<Int128> n:
-                AppendMany(n, format, indentLevel);
-                return;
-
-            case IEnumerable<UInt128> n:
-                AppendMany(n, format, indentLevel);
-                return;
-
-            case IEnumerable<byte> n:
-                AppendMany(n, format, indentLevel);
-                return;
-
-            case IEnumerable<sbyte> n:
-                AppendMany(n, format, indentLevel);
-                return;
-
-            case IEnumerable<short> n:
-                AppendMany(n, format, indentLevel);
-                return;
-
-            case IEnumerable<int> n:
-                AppendMany(n, format, indentLevel);
-                return;
-
-            case IEnumerable<long> n:
-                AppendMany(n, format, indentLevel);
-                return;
-
-            case IEnumerable<uint> n:
-                AppendMany(n, format, indentLevel);
-                return;
-
-            case IEnumerable<ushort> n:
-                AppendMany(n, format, indentLevel);
-                return;
-
-            case IEnumerable<ulong> n:
-                AppendMany(n, format, indentLevel);
-                return;
-
-            case IEnumerable<float> n:
-                AppendMany(n, format, indentLevel);
-                return;
-
-            case IEnumerable<double> n:
-                AppendMany(n, format, indentLevel);
-                return;
-
-            case IEnumerable<decimal> n:
-                AppendMany(n, format, indentLevel);
-                return;
-
-            case IEnumerable<char> n:
-                AppendMany(n, format, indentLevel, true);
-                return;
-
-            case IEnumerable<IRecordID> n:
-                AppendMany(n, format, indentLevel, true);
-                return;
-
-            case IEnumerable<Guid> n:
-                AppendMany(n, format, indentLevel, true);
-                return;
-
-            case IEnumerable<DateTime> n:
-                AppendMany(n, format, indentLevel, true);
-                return;
-
-            case IEnumerable<DateTimeOffset> n:
-                AppendMany(n, format, indentLevel, true);
-                return;
-
-            case IEnumerable<DateOnly> n:
-                AppendMany(n, format, indentLevel, true);
-                return;
-
-            case IEnumerable<TimeSpan> n:
-                AppendMany(n, format, indentLevel, true);
-                return;
-
-            case IEnumerable<TimeOnly> n:
-                AppendMany(n, format, indentLevel, true);
-                return;
-
-            default:
-                return;
-        }
-    }
     public void AppendFormatted<TValue>( ReadOnlySpan<TValue> value, string? format = null )
         where TValue : ISpanFormattable
     {
@@ -490,7 +472,7 @@ public readonly ref struct SqlInterpolatedStringHandler<TSelf>( int literalLengt
 
     public override string ToString() => Sb.ToString();
 
-    public (string SQL, ImmutableArray<Parameter> Parameters) Build() => new(ToString(), [..Parameters.Values]);
+    public (string SQL, ImmutableArray<SqlParameter> Parameters) Build() => new(ToString(), [..Parameters.Values]);
 
     public SqlCommand ToSqlCommand( CommandType? commandType = null, CommandFlags flags = CommandFlags.None ) => SqlCommand.Create(ToString(), Parameters, commandType, flags);
 

@@ -2,7 +2,6 @@
 // 05/31/2024  23:05
 
 
-using System.Net.Sockets;
 using Microsoft.Data.SqlClient;
 
 
@@ -10,66 +9,179 @@ using Microsoft.Data.SqlClient;
 namespace Jakar.Database;
 
 
-public class DbConnectionContext( DbConnection connection, DatabaseType type ) : IAsyncDisposable
+public class DbConnectionContext : IAsyncDisposable
 {
-    public readonly DatabaseType   Type       = type;
-    public readonly DbConnection   Connection = connection;
-    public          DbTransaction? Transaction;
+    protected readonly Database        _database;
+    protected          DbConnection?   _connection;
+    public             bool            HasTransaction { [MemberNotNullWhen(true, nameof(Transaction))] get => Transaction is not null; }
+    public             bool            IsPostgres     { [MemberNotNullWhen(true, nameof(Postgres))] get => _connection is NpgsqlConnection; }
+    public             bool            IsSqlServer    { [MemberNotNullWhen(true, nameof(SqlServer))] get => _connection is SqlConnection; }
+    public             ConnectionState State          => _connection?.State ?? ConnectionState.Closed;
 
 
-    public bool IsPostgres  { [MemberNotNullWhen(true, nameof(Postgres))] get => Connection is NpgsqlConnection; }
-    public bool IsSqlServer { [MemberNotNullWhen(true, nameof(SqlServer))] get => Connection is SqlConnection; }
-
-    public (NpgsqlConnection connection, NpgsqlTransaction? transaction)? Postgres => Connection is NpgsqlConnection connection
+    public (NpgsqlConnection connection, NpgsqlTransaction? transaction)? Postgres => _connection is NpgsqlConnection connection
                                                                                           ? ( connection, Transaction as NpgsqlTransaction )
                                                                                           : null;
 
-    public (SqlConnection connection, SqlTransaction? transaction)? SqlServer => Connection is SqlConnection connection
+    public (SqlConnection connection, SqlTransaction? transaction)? SqlServer => _connection is SqlConnection connection
                                                                                      ? ( connection, Transaction as SqlTransaction )
                                                                                      : null;
 
 
-    public DbConnectionContext( NpgsqlConnection connection ) : this(connection, DatabaseType.PostgreSQL) { }
-    public DbConnectionContext( SqlConnection    connection ) : this(connection, DatabaseType.PostgreSQL) { }
+    public DbTransaction? Transaction { get; protected set; }
+
+    public DatabaseType Type => _connection switch
+                                {
+                                    null             => DatabaseType.NotSet,
+                                    NpgsqlConnection => DatabaseType.PostgreSQL,
+                                    SqlConnection    => DatabaseType.MicrosoftSql,
+                                    _                => throw new ExpectedValueTypeException(_connection, typeof(NpgsqlConnection), typeof(SqlConnection))
+                                };
+
+    public string? ServerVersion => _connection?.ServerVersion;
 
 
-    public static implicit operator DbConnectionContext( NpgsqlConnection connection ) => new(connection);
-
-
-    public async ValueTask                OpenAsync( CancellationToken        token )                          => await Connection.OpenAsync(token);
-    public async ValueTask<DbTransaction> BeginTransaction( CancellationToken token )                          => Transaction ??= await Connection.BeginTransactionAsync(token);
-    public async ValueTask<DbTransaction> BeginTransaction( IsolationLevel    level, CancellationToken token ) => Transaction ??= await Connection.BeginTransactionAsync(level, token);
-
-
-    public async ValueTask BulkInsertAsync<TSelf>( TSelf[] records, string tableName, CancellationToken token = default )
-        where TSelf : TableRecord<TSelf>, ITableRecord<TSelf>
+    [MustDisposeResource] internal DbConnectionContext( Database database ) => _database = database;
+    public async ValueTask DisposeAsync()
     {
-        if ( Connection is not SqlConnection sqlConnection ) { throw new NotSupportedException("Connection must be SqlConnection"); }
-
-        using SqlBulkCopy bulk = new(sqlConnection, SqlBulkCopyOptions.Default, Transaction as SqlTransaction);
-
-        bulk.DestinationTableName = tableName;
-        bulk.BatchSize            = records.Length;
-
-        using DataTable data = TSelf.MetaData.DataTable;
-        data.BeginLoadData();
-
-        foreach ( TSelf record in records )
+        if ( _connection is not null )
         {
-            DataRow row = data.NewRow();
-            await record.Import(row, token);
+            await _connection.DisposeAsync();
+            _connection = null;
         }
 
-        data.EndLoadData();
-
-        await bulk.WriteToServerAsync(data, token);
+        if ( Transaction is not null ) { await Transaction.DisposeAsync(); }
     }
 
 
-    public async ValueTask DisposeAsync()
+    public static async ValueTask<DbConnectionContext> CreateAsync( Database database, CancellationToken token, IsolationLevel? traIsolationLevel = null )
     {
-        await Connection.DisposeAsync();
-        if ( Transaction != null ) { await Transaction.DisposeAsync(); }
+        DbConnectionContext context = new(database);
+        await context.EnsureConnection(token);
+        if ( traIsolationLevel.HasValue ) { await context.StartTransactionAsync(traIsolationLevel.Value, token); }
+
+        return context;
+    }
+    [HandlesResourceDisposal] public async ValueTask<DbConnection> EnsureConnection( CancellationToken token )
+    {
+        DbConnection connection = _connection ??= await _database.CreateConnection(token);
+        if ( connection.State is ConnectionState.Closed ) { await connection.OpenAsync(token); }
+
+        return connection;
+    }
+
+
+    public async ValueTask<DbConnectionContext> StartTransactionAsync( IsolationLevel level, CancellationToken token )
+    {
+        DbConnection connection = await EnsureConnection(token);
+        Transaction ??= await connection.BeginTransactionAsync(level, token);
+        return this;
+    }
+    public async ValueTask CompleteAsync( bool wasSuccessful, CancellationToken token )
+    {
+        if ( wasSuccessful ) { await CommitAsync(token); }
+        else { await RollbackAsync(token); }
+    }
+    public async ValueTask CompleteAsync( bool wasSuccessful, string savePoint, CancellationToken token )
+    {
+        if ( wasSuccessful ) { await CommitAsync(token); }
+        else { await RollbackAsync(savePoint, token); }
+    }
+    public async ValueTask CommitAsync( CancellationToken token )
+    {
+        if ( Transaction is not null ) { await Transaction.RollbackAsync(token); }
+    }
+    public async ValueTask RollbackAsync( CancellationToken token )
+    {
+        if ( Transaction is not null ) { await Transaction.RollbackAsync(token); }
+    }
+    public async ValueTask RollbackAsync( string savePoint, CancellationToken token )
+    {
+        if ( Transaction is not null ) { await Transaction.RollbackAsync(savePoint, token); }
+    }
+    public async ValueTask SaveAsync( string rollbackID, CancellationToken token )
+    {
+        if ( Transaction is not null ) { await Transaction.RollbackAsync(rollbackID, token); }
+    }
+
+
+    public virtual async IAsyncEnumerable<TValue> QueryAsync<TValue>( SqlCommand command, [EnumeratorCancellation] CancellationToken token )
+    {
+        await using DbCommand    dbCommand = command.ToCommand(this);
+        await using DbDataReader reader    = await dbCommand.ExecuteReaderAsync(token);
+        while ( await reader.ReadAsync(token) ) { yield return reader.GetFieldValue<TValue>(0); }
+    }
+
+
+    public async ValueTask<int> Execute( string sql, CommandParameters parameters, CancellationToken token )
+    {
+        SqlCommand            command = SqlCommand.Create(sql, parameters);
+        await using DbCommand cmd     = command.ToCommand(this);
+        return await cmd.ExecuteNonQueryAsync(token);
+    }
+    public async ValueTask ExecuteNonQueryAsync( SqlCommand sql, CancellationToken token )
+    {
+        await using DbCommand command = sql.ToCommand(this);
+        await command.ExecuteNonQueryAsync(token);
+    }
+    public async IAsyncEnumerable<TSelf> ExecuteAsync<TSelf>( SqlCommand sql, [EnumeratorCancellation] CancellationToken token )
+        where TSelf : TableRecord<TSelf>, ITableRecord<TSelf>
+    {
+        await using DbCommand    command = sql.ToCommand(this);
+        await using DbDataReader reader  = await command.ExecuteReaderAsync(token);
+        while ( await reader.ReadAsync(token) ) { yield return TSelf.Create(reader); }
+    }
+
+
+    public virtual async ValueTask<string?> GetServerVersion( CancellationToken token = default )
+    {
+        await using DbConnection connection = await EnsureConnection(token);
+        return connection.ServerVersion;
+    }
+    public async ValueTask Schema( Func<DataTable, CancellationToken, ValueTask> func, CancellationToken token = default )
+    {
+        using DataTable schema = await Schema(token);
+        await func(schema, token);
+    }
+    public async ValueTask Schema( Func<DataTable, CancellationToken, ValueTask> func, PostgresCollectionType collectionName, CancellationToken token = default )
+    {
+        using DataTable schema = await Schema(collectionName, token);
+        await func(schema, token);
+    }
+    public async ValueTask Schema( Func<DataTable, CancellationToken, ValueTask> func, PostgresCollectionType collectionName, string?[] restrictionValues, CancellationToken token = default )
+    {
+        using DataTable schema = await Schema(collectionName, restrictionValues, token);
+        await func(schema, token);
+    }
+    public async ValueTask<TResult> Schema<TResult>( Func<DataTable, CancellationToken, ValueTask<TResult>> func, CancellationToken token = default )
+    {
+        using DataTable schema = await Schema(token);
+        return await func(schema, token);
+    }
+    public async ValueTask<TResult> Schema<TResult>( Func<DataTable, CancellationToken, ValueTask<TResult>> func, PostgresCollectionType collectionName, CancellationToken token = default )
+    {
+        using DataTable schema = await Schema(collectionName, token);
+        return await func(schema, token);
+    }
+    public async ValueTask<TResult> Schema<TResult>( Func<DataTable, CancellationToken, ValueTask<TResult>> func, PostgresCollectionType collectionName, string?[] restrictionValues, CancellationToken token = default )
+    {
+        using DataTable schema = await Schema(collectionName, restrictionValues, token);
+        return await func(schema, token);
+    }
+    public async ValueTask<DataTable> Schema( CancellationToken token = default )
+    {
+        DbConnection connection = await EnsureConnection(token);
+        return await connection.GetSchemaAsync(token);
+    }
+    public async ValueTask<DataTable> Schema( PostgresCollectionType collectionName, CancellationToken token = default )
+    {
+        DbConnection connection = await EnsureConnection(token);
+        return await connection.GetSchemaAsync(collectionName.GetCollectionTypeName(), token);
+    }
+    public async ValueTask<DataTable> Schema( PostgresCollectionType collectionName, string?[] restrictionValues, CancellationToken token = default )
+    {
+        DbConnection connection = await EnsureConnection(token);
+        return await connection.GetSchemaAsync(collectionName.GetCollectionTypeName(), restrictionValues, token);
     }
 
 
@@ -81,18 +193,26 @@ public class DbConnectionContext( DbConnection connection, DatabaseType type ) :
     /// <param name="token"> An optional token to cancel the asynchronous operation. The default value is None. </param>
     /// <returns> A <see cref="NpgsqlBinaryImporter"/> which can be used to write rows and columns </returns>
     /// <remarks> See https://www.postgresql.org/docs/current/static/sql-copy.html. </remarks>
-    public async ValueTask<NpgsqlBinaryImporter?> BeginBinaryImportAsync( string copyFromCommand, CancellationToken token = default ) => Connection is NpgsqlConnection connection
-                                                                                                                                             ? await connection.BeginBinaryImportAsync(copyFromCommand, token)
-                                                                                                                                             : null;
+    public async ValueTask<NpgsqlBinaryImporter> BeginBinaryImportAsync( string copyFromCommand, CancellationToken token = default )
+    {
+        DbConnection connection = await EnsureConnection(token);
+        if ( connection is NpgsqlConnection postgres ) { return await postgres.BeginBinaryImportAsync(copyFromCommand, token); }
+
+        throw new NotSupportedException($"{nameof(BeginBinaryImportAsync)} Only supported with PostgreSql");
+    }
 
     /// <summary> Begins a binary COPY TO STDOUT operation, a high-performance data export mechanism from a PostgreSQL table. </summary>
     /// <param name="copyToCommand"> A COPY TO STDOUT SQL command </param>
     /// <param name="token"> An optional token to cancel the asynchronous operation. The default value is None. </param>
     /// <returns> A <see cref="NpgsqlBinaryExporter"/> which can be used to read rows and columns </returns>
     /// <remarks> See https://www.postgresql.org/docs/current/static/sql-copy.html. </remarks>
-    public async ValueTask<NpgsqlBinaryExporter?> BeginBinaryExportAsync( string copyToCommand, CancellationToken token = default ) => Connection is NpgsqlConnection connection
-                                                                                                                                           ? await connection.BeginBinaryExportAsync(copyToCommand, token)
-                                                                                                                                           : null;
+    public async ValueTask<NpgsqlBinaryExporter> BeginBinaryExportAsync( string copyToCommand, CancellationToken token = default )
+    {
+        DbConnection connection = await EnsureConnection(token);
+        if ( connection is NpgsqlConnection postgres ) { return await postgres.BeginBinaryExportAsync(copyToCommand, token); }
+
+        throw new NotSupportedException($"{nameof(BeginBinaryExportAsync)} Only supported with PostgreSql");
+    }
 
     /// <summary>
     ///     Begins a textual COPY FROM STDIN operation, a data import mechanism to a PostgreSQL table. It is the user's responsibility to send the textual input according to the format specified in
@@ -104,9 +224,13 @@ public class DbConnectionContext( DbConnection connection, DatabaseType type ) :
     /// <param name="token"> An optional token to cancel the asynchronous operation. The default value is None. </param>
     /// <returns> A TextWriter that can be used to send textual data. </returns>
     /// <remarks> See https://www.postgresql.org/docs/current/static/sql-copy.html. </remarks>
-    public async ValueTask<NpgsqlCopyTextWriter?> BeginTextImportAsync( string copyFromCommand, CancellationToken token = default ) => Connection is NpgsqlConnection connection
-                                                                                                                                           ? await connection.BeginTextImportAsync(copyFromCommand, token)
-                                                                                                                                           : null;
+    public async ValueTask<NpgsqlCopyTextWriter> BeginTextImportAsync( string copyFromCommand, CancellationToken token = default )
+    {
+        DbConnection connection = await EnsureConnection(token);
+        if ( connection is NpgsqlConnection postgres ) { return await postgres.BeginTextImportAsync(copyFromCommand, token); }
+
+        throw new NotSupportedException($"{nameof(BeginTextImportAsync)} Only supported with PostgreSql");
+    }
 
     /// <summary>
     ///     Begins a textual COPY TO STDOUT operation, a data export mechanism from a PostgreSQL table. It is the user's responsibility to parse the textual input according to the format specified in
@@ -118,9 +242,13 @@ public class DbConnectionContext( DbConnection connection, DatabaseType type ) :
     /// <param name="token"> An optional token to cancel the asynchronous operation. The default value is None. </param>
     /// <returns> A TextReader that can be used to read textual data. </returns>
     /// <remarks> See https://www.postgresql.org/docs/current/static/sql-copy.html. </remarks>
-    public async ValueTask<NpgsqlCopyTextReader?> BeginTextExportAsync( string copyToCommand, CancellationToken token = default ) => Connection is NpgsqlConnection connection
-                                                                                                                                         ? await connection.BeginTextExportAsync(copyToCommand, token)
-                                                                                                                                         : null;
+    public async ValueTask<NpgsqlCopyTextReader> BeginTextExportAsync( string copyToCommand, CancellationToken token = default )
+    {
+        DbConnection connection = await EnsureConnection(token);
+        if ( connection is NpgsqlConnection postgres ) { return await postgres.BeginTextExportAsync(copyToCommand, token); }
+
+        throw new NotSupportedException($"{nameof(BeginTextExportAsync)} Only supported with PostgreSql");
+    }
 
     /// <summary>
     ///     Begins a raw binary COPY operation (TO STDOUT or FROM STDIN), a high-performance data export/import mechanism to a PostgreSQL table. Note that unlike the other COPY API methods,
@@ -132,57 +260,67 @@ public class DbConnectionContext( DbConnection connection, DatabaseType type ) :
     /// <param name="token"> An optional token to cancel the asynchronous operation. The default value is None. </param>
     /// <returns> A <see cref="NpgsqlRawCopyStream"/> that can be used to read or write raw binary data. </returns>
     /// <remarks> See https://www.postgresql.org/docs/current/static/sql-copy.html. </remarks>
-    public async ValueTask<NpgsqlRawCopyStream?> BeginRawBinaryCopyAsync( string copyCommand, CancellationToken token = default ) => Connection is NpgsqlConnection connection
-                                                                                                                                         ? await connection.BeginRawBinaryCopyAsync(copyCommand, token)
-                                                                                                                                         : null;
+    public async ValueTask<NpgsqlRawCopyStream> BeginRawBinaryCopyAsync( string copyCommand, CancellationToken token = default )
+    {
+        DbConnection connection = await EnsureConnection(token);
+        if ( connection is NpgsqlConnection postgres ) { return await postgres.BeginRawBinaryCopyAsync(copyCommand, token); }
+
+        throw new NotSupportedException($"{nameof(BeginRawBinaryCopyAsync)} Only supported with PostgreSql");
+    }
+
+
+    public virtual async ValueTask<ImmutableArray<TSelf>> ImportAsync<TSelf>( [HandlesResourceDisposal] ArrayBuffer<TSelf> records, [EnumeratorCancellation] CancellationToken token = default )
+        where TSelf : TableRecord<TSelf>, ITableRecord<TSelf>
+    {
+        using ArrayBuffer<TSelf> array      = records;
+        DbConnection             connection = await EnsureConnection(token);
+
+        return connection switch
+               {
+                   SqlConnection sqlServer   => await ImportAsync(sqlServer, array, token),
+                   NpgsqlConnection postgres => await ImportAsync(postgres,  array, token),
+                   _                         => throw new NotSupportedException("Connection must be to Microsoft Sql Server or PostgreSql")
+               };
+    }
+    protected virtual async ValueTask<ImmutableArray<TSelf>> ImportAsync<TSelf>( NpgsqlConnection connection, ArrayBuffer<TSelf> records, [EnumeratorCancellation] CancellationToken token = default )
+        where TSelf : TableRecord<TSelf>, ITableRecord<TSelf>
+    {
+        await using NpgsqlBinaryImporter import = await connection.BeginBinaryImportAsync(SqlCommand.GetCopy<TSelf>().SQL, token);
+        foreach ( TSelf record in records.Array ) { await record.Import(import, token); }
+
+        await import.CompleteAsync(token);
+        return [..records.Span];
+    }
+    protected virtual async ValueTask<ImmutableArray<TSelf>> ImportAsync<TSelf>( SqlConnection connection, ArrayBuffer<TSelf> records, CancellationToken token = default )
+        where TSelf : TableRecord<TSelf>, ITableRecord<TSelf>
+    {
+        using SqlBulkCopy bulk = new(connection, SqlBulkCopyOptions.Default, Transaction as SqlTransaction);
+
+        bulk.DestinationTableName = TSelf.TableName;
+        int recordCount = 0;
+
+        using DataTable data = TSelf.MetaData.DataTable;
+        data.BeginLoadData();
+
+        foreach ( TSelf record in records.Array )
+        {
+            DataRow row = data.NewRow();
+            await record.Import(row, token);
+            recordCount++;
+        }
+
+        bulk.BatchSize = recordCount;
+        data.EndLoadData();
+
+        await bulk.WriteToServerAsync(data, token);
+        return [..records.Span];
+    }
 
     #endregion
 
 
 
     #region Wait
-
-    /// <summary>
-    ///     Waits until an asynchronous PostgreSQL messages (e.g. a notification) arrives, and exits immediately. The asynchronous message is delivered via the normal events (
-    ///     <see
-    ///         cref="NpgsqlConnection.Notification"/>
-    ///     ,
-    ///     <see
-    ///         cref="NpgsqlConnection.Notice"/>
-    ///     ).
-    /// </summary>
-    /// <param name="timeout"> The time-out value, in milliseconds, passed to <see cref="Socket.ReceiveTimeout"/>. The default value is 0, which indicates an infinite time-out period. Specifying -1 also indicates an infinite time-out period. </param>
-    /// <returns> true if an asynchronous message was received, false if timed out. </returns>
-    public bool Wait( int timeout )
-    {
-        if ( Connection is NpgsqlConnection connection ) { connection.Wait(timeout); }
-
-        return false;
-    }
-
-    /// <summary>
-    ///     Waits until an asynchronous PostgreSQL messages (e.g. a notification) arrives, and exits immediately. The asynchronous message is delivered via the normal events (
-    ///     <see
-    ///         cref="NpgsqlConnection.Notification"/>
-    ///     ,
-    ///     <see
-    ///         cref="NpgsqlConnection.Notice"/>
-    ///     ).
-    /// </summary>
-    /// <param name="timeout"> The time-out value is passed to <see cref="Socket.ReceiveTimeout"/>. </param>
-    /// <returns> true if an asynchronous message was received, false if timed out. </returns>
-    public bool Wait( TimeSpan timeout ) => Wait((int)timeout.TotalMilliseconds);
-
-    /// <summary>
-    ///     Waits until an asynchronous PostgreSQL messages (e.g. a notification) arrives, and exits immediately. The asynchronous message is delivered via the normal events (
-    ///     <see
-    ///         cref="NpgsqlConnection.Notification"/>
-    ///     ,
-    ///     <see
-    ///         cref="NpgsqlConnection.Notice"/>
-    ///     ).
-    /// </summary>
-    public void Wait() => Wait(0);
 
     /// <summary>
     ///     Waits asynchronously until an asynchronous PostgreSQL messages (e.g. a notification) arrives, and exits immediately. The asynchronous message is delivered via the normal events (
@@ -198,7 +336,8 @@ public class DbConnectionContext( DbConnection connection, DatabaseType type ) :
     /// <returns> true if an asynchronous message was received, false if timed out. </returns>
     public async ValueTask<bool> WaitAsync( int timeout, CancellationToken token = default )
     {
-        if ( Connection is NpgsqlConnection connection ) { return await connection.WaitAsync(timeout, token); }
+        DbConnection connection = await EnsureConnection(token);
+        if ( connection is NpgsqlConnection x ) { return await x.WaitAsync(timeout, token); }
 
         return false;
     }

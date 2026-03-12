@@ -92,9 +92,9 @@ public readonly struct RecordID<TSelf>( Guid id ) : IRecordID, IEqualComparable<
 
     public static Guid    GetValue( RecordID<TSelf> id ) => id.Value;
     public        UInt128 GetHash()                      => key.Hash128();
-    [Pure] public PostgresParameters ToDynamicParameters()
+    [Pure] public CommandParameters ToDynamicParameters()
     {
-        PostgresParameters parameters = PostgresParameters.Create<TSelf>();
+        CommandParameters parameters = CommandParameters.Create<TSelf>();
         parameters.Add(nameof(IUniqueID.ID), Value);
         return parameters;
     }

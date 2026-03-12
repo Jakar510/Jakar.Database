@@ -5,688 +5,606 @@ public static partial class DbExtensions
 {
     extension( IConnectableDb self )
     {
-        public async IAsyncEnumerable<TResult> TryCall<TResult>( Func<NpgsqlConnection, NpgsqlTransaction?, CancellationToken, IAsyncEnumerable<TResult>> func, [EnumeratorCancellation] CancellationToken token = default )
+        public async IAsyncEnumerable<TResult> TryCall<TResult>( Func<DbConnectionContext, CancellationToken, IAsyncEnumerable<TResult>> func, [EnumeratorCancellation] CancellationToken token = default )
         {
-            await using NpgsqlConnection  conn        = await self.ConnectAsync(token);
-            await using NpgsqlTransaction transaction = await conn.BeginTransactionAsync(self.TransactionIsolationLevel, token);
-            IAsyncEnumerable<TResult>     result;
+            await using DbConnectionContext context = await self.ConnectAsync(token, self.TransactionIsolationLevel);
+            IAsyncEnumerable<TResult>       result;
 
             try
             {
-                result = func(conn, transaction, token);
+                result = func(context, token);
 
-                await transaction.CommitAsync(token);
+                await context.CommitAsync(token);
             }
             catch ( DbSqlException e ) when ( !string.IsNullOrWhiteSpace(e.RollbackID) )
             {
-                await transaction.RollbackAsync(e.RollbackID, token);
+                await context.RollbackAsync(e.RollbackID, token);
                 throw;
             }
             catch ( Exception )
             {
-                await transaction.RollbackAsync(token);
+                await context.RollbackAsync(token);
                 throw;
             }
 
             await foreach ( TResult item in result.WithCancellation(token) ) { yield return item; }
         }
-        public async IAsyncEnumerable<TResult> TryCall<TArg1, TResult>( Func<NpgsqlConnection, NpgsqlTransaction?, TArg1, CancellationToken, IAsyncEnumerable<TResult>> func, TArg1 arg1, [EnumeratorCancellation] CancellationToken token )
+        public async IAsyncEnumerable<TResult> TryCall<TArg1, TResult>( Func<DbConnectionContext, TArg1, CancellationToken, IAsyncEnumerable<TResult>> func, TArg1 arg1, [EnumeratorCancellation] CancellationToken token )
         {
-            await using NpgsqlConnection  conn        = await self.ConnectAsync(token);
-            await using NpgsqlTransaction transaction = await conn.BeginTransactionAsync(self.TransactionIsolationLevel, token);
-            IAsyncEnumerable<TResult>     result;
+            await using DbConnectionContext context = await self.ConnectAsync(token, self.TransactionIsolationLevel);
+            IAsyncEnumerable<TResult>       result;
 
             try
             {
-                result = func(conn, transaction, arg1, token);
+                result = func(context, arg1, token);
 
-                await transaction.CommitAsync(token);
+                await context.CommitAsync(token);
             }
             catch ( DbSqlException e ) when ( !string.IsNullOrWhiteSpace(e.RollbackID) )
             {
-                await transaction.RollbackAsync(e.RollbackID, token);
+                await context.RollbackAsync(e.RollbackID, token);
                 throw;
             }
             catch ( Exception )
             {
-                await transaction.RollbackAsync(token);
+                await context.RollbackAsync(token);
                 throw;
             }
 
             await foreach ( TResult item in result.WithCancellation(token) ) { yield return item; }
         }
-        public async IAsyncEnumerable<TResult> TryCall<TArg1, TArg2, TResult>( Func<NpgsqlConnection, NpgsqlTransaction?, TArg1, TArg2, CancellationToken, IAsyncEnumerable<TResult>> func, TArg1 arg1, TArg2 arg2, [EnumeratorCancellation] CancellationToken token )
+        public async IAsyncEnumerable<TResult> TryCall<TArg1, TArg2, TResult>( Func<DbConnectionContext, TArg1, TArg2, CancellationToken, IAsyncEnumerable<TResult>> func, TArg1 arg1, TArg2 arg2, [EnumeratorCancellation] CancellationToken token )
         {
-            await using NpgsqlConnection  conn        = await self.ConnectAsync(token);
-            await using NpgsqlTransaction transaction = await conn.BeginTransactionAsync(self.TransactionIsolationLevel, token);
-            IAsyncEnumerable<TResult>     result;
+            await using DbConnectionContext context = await self.ConnectAsync(token, self.TransactionIsolationLevel);
+            IAsyncEnumerable<TResult>       result;
 
             try
             {
-                result = func(conn, transaction, arg1, arg2, token);
+                result = func(context, arg1, arg2, token);
 
-                await transaction.CommitAsync(token);
+                await context.CommitAsync(token);
             }
             catch ( DbSqlException e ) when ( !string.IsNullOrWhiteSpace(e.RollbackID) )
             {
-                await transaction.RollbackAsync(e.RollbackID, token);
+                await context.RollbackAsync(e.RollbackID, token);
                 throw;
             }
             catch ( Exception )
             {
-                await transaction.RollbackAsync(token);
+                await context.RollbackAsync(token);
                 throw;
             }
 
             await foreach ( TResult item in result.WithCancellation(token) ) { yield return item; }
         }
-        public async IAsyncEnumerable<TResult> TryCall<TArg1, TArg2, TArg3, TResult>( Func<NpgsqlConnection, NpgsqlTransaction?, TArg1, TArg2, TArg3, CancellationToken, IAsyncEnumerable<TResult>> func, TArg1 arg1, TArg2 arg2, TArg3 arg3, [EnumeratorCancellation] CancellationToken token )
+        public async IAsyncEnumerable<TResult> TryCall<TArg1, TArg2, TArg3, TResult>( Func<DbConnectionContext, TArg1, TArg2, TArg3, CancellationToken, IAsyncEnumerable<TResult>> func, TArg1 arg1, TArg2 arg2, TArg3 arg3, [EnumeratorCancellation] CancellationToken token )
         {
-            await using NpgsqlConnection  conn        = await self.ConnectAsync(token);
-            await using NpgsqlTransaction transaction = await conn.BeginTransactionAsync(self.TransactionIsolationLevel, token);
-            IAsyncEnumerable<TResult>     result;
+            await using DbConnectionContext context = await self.ConnectAsync(token, self.TransactionIsolationLevel);
+            IAsyncEnumerable<TResult>       result;
 
             try
             {
-                result = func(conn, transaction, arg1, arg2, arg3, token);
+                result = func(context, arg1, arg2, arg3, token);
 
-                await transaction.CommitAsync(token);
+                await context.CommitAsync(token);
             }
             catch ( DbSqlException e ) when ( !string.IsNullOrWhiteSpace(e.RollbackID) )
             {
-                await transaction.RollbackAsync(e.RollbackID, token);
+                await context.RollbackAsync(e.RollbackID, token);
                 throw;
             }
             catch ( Exception )
             {
-                await transaction.RollbackAsync(token);
+                await context.RollbackAsync(token);
                 throw;
             }
 
             await foreach ( TResult item in result.WithCancellation(token) ) { yield return item; }
         }
-        public async IAsyncEnumerable<TResult> TryCall<TArg1, TArg2, TArg3, TArg4, TResult>( Func<NpgsqlConnection, NpgsqlTransaction?, TArg1, TArg2, TArg3, TArg4, CancellationToken, IAsyncEnumerable<TResult>> func, TArg1 arg1, TArg2 arg2, TArg3 arg3, TArg4 arg4, [EnumeratorCancellation] CancellationToken token )
+        public async IAsyncEnumerable<TResult> TryCall<TArg1, TArg2, TArg3, TArg4, TResult>( Func<DbConnectionContext, TArg1, TArg2, TArg3, TArg4, CancellationToken, IAsyncEnumerable<TResult>> func, TArg1 arg1, TArg2 arg2, TArg3 arg3, TArg4 arg4, [EnumeratorCancellation] CancellationToken token )
         {
-            await using NpgsqlConnection  conn        = await self.ConnectAsync(token);
-            await using NpgsqlTransaction transaction = await conn.BeginTransactionAsync(self.TransactionIsolationLevel, token);
-            IAsyncEnumerable<TResult>     result;
+            await using DbConnectionContext context = await self.ConnectAsync(token, self.TransactionIsolationLevel);
+            IAsyncEnumerable<TResult>       result;
 
             try
             {
-                result = func(conn, transaction, arg1, arg2, arg3, arg4, token);
+                result = func(context, arg1, arg2, arg3, arg4, token);
 
-                await transaction.CommitAsync(token);
+                await context.CommitAsync(token);
             }
             catch ( DbSqlException e ) when ( !string.IsNullOrWhiteSpace(e.RollbackID) )
             {
-                await transaction.RollbackAsync(e.RollbackID, token);
+                await context.RollbackAsync(e.RollbackID, token);
                 throw;
             }
             catch ( Exception )
             {
-                await transaction.RollbackAsync(token);
+                await context.RollbackAsync(token);
                 throw;
             }
 
             await foreach ( TResult item in result.WithCancellation(token) ) { yield return item; }
         }
-        public async IAsyncEnumerable<TResult> TryCall<TArg1, TArg2, TArg3, TArg4, TArg5, TResult>( Func<NpgsqlConnection, NpgsqlTransaction?, TArg1, TArg2, TArg3, TArg4, TArg5, CancellationToken, IAsyncEnumerable<TResult>> func, TArg1 arg1, TArg2 arg2, TArg3 arg3, TArg4 arg4, TArg5 arg5, [EnumeratorCancellation] CancellationToken token )
+        public async IAsyncEnumerable<TResult> TryCall<TArg1, TArg2, TArg3, TArg4, TArg5, TResult>( Func<DbConnectionContext, TArg1, TArg2, TArg3, TArg4, TArg5, CancellationToken, IAsyncEnumerable<TResult>> func, TArg1 arg1, TArg2 arg2, TArg3 arg3, TArg4 arg4, TArg5 arg5, [EnumeratorCancellation] CancellationToken token )
         {
-            await using NpgsqlConnection  conn        = await self.ConnectAsync(token);
-            await using NpgsqlTransaction transaction = await conn.BeginTransactionAsync(self.TransactionIsolationLevel, token);
-            IAsyncEnumerable<TResult>     result;
+            await using DbConnectionContext context = await self.ConnectAsync(token, self.TransactionIsolationLevel);
+            IAsyncEnumerable<TResult>       result;
 
             try
             {
-                result = func(conn, transaction, arg1, arg2, arg3, arg4, arg5, token);
+                result = func(context, arg1, arg2, arg3, arg4, arg5, token);
 
-                await transaction.CommitAsync(token);
+                await context.CommitAsync(token);
             }
             catch ( DbSqlException e ) when ( !string.IsNullOrWhiteSpace(e.RollbackID) )
             {
-                await transaction.RollbackAsync(e.RollbackID, token);
+                await context.RollbackAsync(e.RollbackID, token);
                 throw;
             }
             catch ( Exception )
             {
-                await transaction.RollbackAsync(token);
+                await context.RollbackAsync(token);
                 throw;
             }
 
             await foreach ( TResult item in result.WithCancellation(token) ) { yield return item; }
         }
-        public async IAsyncEnumerable<TResult> TryCall<TArg1, TArg2, TArg3, TArg4, TArg5, TArg6, TResult>( Func<NpgsqlConnection, NpgsqlTransaction?, TArg1, TArg2, TArg3, TArg4, TArg5, TArg6, CancellationToken, IAsyncEnumerable<TResult>> func, TArg1 arg1, TArg2 arg2, TArg3 arg3, TArg4 arg4, TArg5 arg5, TArg6 arg6, [EnumeratorCancellation] CancellationToken token )
+        public async IAsyncEnumerable<TResult> TryCall<TArg1, TArg2, TArg3, TArg4, TArg5, TArg6, TResult>( Func<DbConnectionContext, TArg1, TArg2, TArg3, TArg4, TArg5, TArg6, CancellationToken, IAsyncEnumerable<TResult>> func, TArg1 arg1, TArg2 arg2, TArg3 arg3, TArg4 arg4, TArg5 arg5, TArg6 arg6, [EnumeratorCancellation] CancellationToken token )
         {
-            await using NpgsqlConnection  conn        = await self.ConnectAsync(token);
-            await using NpgsqlTransaction transaction = await conn.BeginTransactionAsync(self.TransactionIsolationLevel, token);
-            IAsyncEnumerable<TResult>     result;
+            await using DbConnectionContext context = await self.ConnectAsync(token, self.TransactionIsolationLevel);
+            IAsyncEnumerable<TResult>       result;
 
             try
             {
-                result = func(conn, transaction, arg1, arg2, arg3, arg4, arg5, arg6, token);
+                result = func(context, arg1, arg2, arg3, arg4, arg5, arg6, token);
 
-                await transaction.CommitAsync(token);
+                await context.CommitAsync(token);
             }
             catch ( DbSqlException e ) when ( !string.IsNullOrWhiteSpace(e.RollbackID) )
             {
-                await transaction.RollbackAsync(e.RollbackID, token);
+                await context.RollbackAsync(e.RollbackID, token);
                 throw;
             }
             catch ( Exception )
             {
-                await transaction.RollbackAsync(token);
+                await context.RollbackAsync(token);
                 throw;
             }
 
             await foreach ( TResult item in result.WithCancellation(token) ) { yield return item; }
         }
-        public async IAsyncEnumerable<TResult> TryCall<TArg1, TArg2, TArg3, TArg4, TArg5, TArg6, TArg7, TResult>( Func<NpgsqlConnection, NpgsqlTransaction?, TArg1, TArg2, TArg3, TArg4, TArg5, TArg6, TArg7, CancellationToken, IAsyncEnumerable<TResult>> func,
-                                                                                                                  TArg1                                                                                                                                    arg1,
-                                                                                                                  TArg2                                                                                                                                    arg2,
-                                                                                                                  TArg3                                                                                                                                    arg3,
-                                                                                                                  TArg4                                                                                                                                    arg4,
-                                                                                                                  TArg5                                                                                                                                    arg5,
-                                                                                                                  TArg6                                                                                                                                    arg6,
-                                                                                                                  TArg7                                                                                                                                    arg7,
-                                                                                                                  [EnumeratorCancellation] CancellationToken                                                                                               token
+        public async IAsyncEnumerable<TResult> TryCall<TArg1, TArg2, TArg3, TArg4, TArg5, TArg6, TArg7, TResult>( Func<DbConnectionContext, TArg1, TArg2, TArg3, TArg4, TArg5, TArg6, TArg7, CancellationToken, IAsyncEnumerable<TResult>> func, TArg1 arg1, TArg2 arg2, TArg3 arg3, TArg4 arg4, TArg5 arg5, TArg6 arg6, TArg7 arg7, [EnumeratorCancellation] CancellationToken token )
+        {
+            await using DbConnectionContext context = await self.ConnectAsync(token, self.TransactionIsolationLevel);
+            IAsyncEnumerable<TResult>       result;
+
+            try
+            {
+                result = func(context, arg1, arg2, arg3, arg4, arg5, arg6, arg7, token);
+
+                await context.CommitAsync(token);
+            }
+            catch ( DbSqlException e ) when ( !string.IsNullOrWhiteSpace(e.RollbackID) )
+            {
+                await context.RollbackAsync(e.RollbackID, token);
+                throw;
+            }
+            catch ( Exception )
+            {
+                await context.RollbackAsync(token);
+                throw;
+            }
+
+            await foreach ( TResult item in result.WithCancellation(token) ) { yield return item; }
+        }
+        public async IAsyncEnumerable<TResult> TryCall<TArg1, TArg2, TArg3, TArg4, TArg5, TArg6, TArg7, TArg8, TResult>( Func<DbConnectionContext, TArg1, TArg2, TArg3, TArg4, TArg5, TArg6, TArg7, TArg8, CancellationToken, IAsyncEnumerable<TResult>> func,
+                                                                                                                         TArg1                                                                                                                           arg1,
+                                                                                                                         TArg2                                                                                                                           arg2,
+                                                                                                                         TArg3                                                                                                                           arg3,
+                                                                                                                         TArg4                                                                                                                           arg4,
+                                                                                                                         TArg5                                                                                                                           arg5,
+                                                                                                                         TArg6                                                                                                                           arg6,
+                                                                                                                         TArg7                                                                                                                           arg7,
+                                                                                                                         TArg8                                                                                                                           arg8,
+                                                                                                                         [EnumeratorCancellation] CancellationToken                                                                                      token
         )
         {
-            await using NpgsqlConnection  conn        = await self.ConnectAsync(token);
-            await using NpgsqlTransaction transaction = await conn.BeginTransactionAsync(self.TransactionIsolationLevel, token);
-            IAsyncEnumerable<TResult>     result;
+            await using DbConnectionContext context = await self.ConnectAsync(token, self.TransactionIsolationLevel);
+            IAsyncEnumerable<TResult>       result;
 
             try
             {
-                result = func(conn, transaction, arg1, arg2, arg3, arg4, arg5, arg6, arg7, token);
+                result = func(context, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, token);
 
-                await transaction.CommitAsync(token);
+                await context.CommitAsync(token);
             }
             catch ( DbSqlException e ) when ( !string.IsNullOrWhiteSpace(e.RollbackID) )
             {
-                await transaction.RollbackAsync(e.RollbackID, token);
+                await context.RollbackAsync(e.RollbackID, token);
                 throw;
             }
             catch ( Exception )
             {
-                await transaction.RollbackAsync(token);
+                await context.RollbackAsync(token);
                 throw;
             }
 
             await foreach ( TResult item in result.WithCancellation(token) ) { yield return item; }
         }
-        public async IAsyncEnumerable<TResult> TryCall<TArg1, TArg2, TArg3, TArg4, TArg5, TArg6, TArg7, TArg8, TResult>( Func<NpgsqlConnection, NpgsqlTransaction?, TArg1, TArg2, TArg3, TArg4, TArg5, TArg6, TArg7, TArg8, CancellationToken, IAsyncEnumerable<TResult>> func,
-                                                                                                                         TArg1                                                                                                                                           arg1,
-                                                                                                                         TArg2                                                                                                                                           arg2,
-                                                                                                                         TArg3                                                                                                                                           arg3,
-                                                                                                                         TArg4                                                                                                                                           arg4,
-                                                                                                                         TArg5                                                                                                                                           arg5,
-                                                                                                                         TArg6                                                                                                                                           arg6,
-                                                                                                                         TArg7                                                                                                                                           arg7,
-                                                                                                                         TArg8                                                                                                                                           arg8,
-                                                                                                                         [EnumeratorCancellation] CancellationToken                                                                                                      token
-        )
+
+
+        public async ValueTask TryCall( Func<DbConnectionContext, CancellationToken, ValueTask> func, CancellationToken token = default )
         {
-            await using NpgsqlConnection  conn        = await self.ConnectAsync(token);
-            await using NpgsqlTransaction transaction = await conn.BeginTransactionAsync(self.TransactionIsolationLevel, token);
-            IAsyncEnumerable<TResult>     result;
+            await using DbConnectionContext context = await self.ConnectAsync(token, self.TransactionIsolationLevel);
 
             try
             {
-                result = func(conn,
-                              transaction,
-                              arg1,
-                              arg2,
-                              arg3,
-                              arg4,
-                              arg5,
-                              arg6,
-                              arg7,
-                              arg8,
-                              token);
-
-                await transaction.CommitAsync(token);
+                await func(context, token);
+                await context.CommitAsync(token);
             }
             catch ( DbSqlException e ) when ( !string.IsNullOrWhiteSpace(e.RollbackID) )
             {
-                await transaction.RollbackAsync(e.RollbackID, token);
+                await context.RollbackAsync(e.RollbackID, token);
                 throw;
             }
             catch ( Exception )
             {
-                await transaction.RollbackAsync(token);
+                await context.RollbackAsync(token);
                 throw;
             }
-
-            await foreach ( TResult item in result.WithCancellation(token) ) { yield return item; }
         }
-        public async ValueTask TryCall( Func<NpgsqlConnection, NpgsqlTransaction?, CancellationToken, ValueTask> func, CancellationToken token = default )
+        public async ValueTask TryCall<TArg1>( Func<DbConnectionContext, TArg1, CancellationToken, ValueTask> func, TArg1 arg1, CancellationToken token = default )
         {
-            await using NpgsqlConnection  conn        = await self.ConnectAsync(token);
-            await using NpgsqlTransaction transaction = await conn.BeginTransactionAsync(self.TransactionIsolationLevel, token);
+            await using DbConnectionContext context = await self.ConnectAsync(token, self.TransactionIsolationLevel);
 
             try
             {
-                await func(conn, transaction, token);
-                await transaction.CommitAsync(token);
+                await func(context, arg1, token);
+                await context.CommitAsync(token);
             }
             catch ( DbSqlException e ) when ( !string.IsNullOrWhiteSpace(e.RollbackID) )
             {
-                await transaction.RollbackAsync(e.RollbackID, token);
+                await context.RollbackAsync(e.RollbackID, token);
                 throw;
             }
             catch ( Exception )
             {
-                await transaction.RollbackAsync(token);
+                await context.RollbackAsync(token);
                 throw;
             }
         }
-        public async ValueTask TryCall<TArg1>( Func<NpgsqlConnection, NpgsqlTransaction?, TArg1, CancellationToken, ValueTask> func, TArg1 arg1, CancellationToken token = default )
+        public async ValueTask TryCall<TArg1, TArg2>( Func<DbConnectionContext, TArg1, TArg2, CancellationToken, ValueTask> func, TArg1 arg1, TArg2 arg2, CancellationToken token = default )
         {
-            await using NpgsqlConnection  conn        = await self.ConnectAsync(token);
-            await using NpgsqlTransaction transaction = await conn.BeginTransactionAsync(self.TransactionIsolationLevel, token);
+            await using DbConnectionContext context = await self.ConnectAsync(token, self.TransactionIsolationLevel);
 
             try
             {
-                await func(conn, transaction, arg1, token);
-                await transaction.CommitAsync(token);
+                await func(context, arg1, arg2, token);
+                await context.CommitAsync(token);
             }
             catch ( DbSqlException e ) when ( !string.IsNullOrWhiteSpace(e.RollbackID) )
             {
-                await transaction.RollbackAsync(e.RollbackID, token);
+                await context.RollbackAsync(e.RollbackID, token);
                 throw;
             }
             catch ( Exception )
             {
-                await transaction.RollbackAsync(token);
+                await context.RollbackAsync(token);
                 throw;
             }
         }
-        public async ValueTask TryCall<TArg1, TArg2>( Func<NpgsqlConnection, NpgsqlTransaction?, TArg1, TArg2, CancellationToken, ValueTask> func, TArg1 arg1, TArg2 arg2, CancellationToken token = default )
+        public async ValueTask TryCall<TArg1, TArg2, TArg3>( Func<DbConnectionContext, TArg1, TArg2, TArg3, CancellationToken, ValueTask> func, TArg1 arg1, TArg2 arg2, TArg3 arg3, CancellationToken token = default )
         {
-            await using NpgsqlConnection  conn        = await self.ConnectAsync(token);
-            await using NpgsqlTransaction transaction = await conn.BeginTransactionAsync(self.TransactionIsolationLevel, token);
+            await using DbConnectionContext context = await self.ConnectAsync(token, self.TransactionIsolationLevel);
 
             try
             {
-                await func(conn, transaction, arg1, arg2, token);
-                await transaction.CommitAsync(token);
+                await func(context, arg1, arg2, arg3, token);
+                await context.CommitAsync(token);
             }
             catch ( DbSqlException e ) when ( !string.IsNullOrWhiteSpace(e.RollbackID) )
             {
-                await transaction.RollbackAsync(e.RollbackID, token);
+                await context.RollbackAsync(e.RollbackID, token);
                 throw;
             }
             catch ( Exception )
             {
-                await transaction.RollbackAsync(token);
+                await context.RollbackAsync(token);
                 throw;
             }
         }
-        public async ValueTask TryCall<TArg1, TArg2, TArg3>( Func<NpgsqlConnection, NpgsqlTransaction?, TArg1, TArg2, TArg3, CancellationToken, ValueTask> func, TArg1 arg1, TArg2 arg2, TArg3 arg3, CancellationToken token = default )
+        public async ValueTask TryCall<TArg1, TArg2, TArg3, TArg4>( Func<DbConnectionContext, TArg1, TArg2, TArg3, TArg4, CancellationToken, ValueTask> func, TArg1 arg1, TArg2 arg2, TArg3 arg3, TArg4 arg4, CancellationToken token )
         {
-            await using NpgsqlConnection  conn        = await self.ConnectAsync(token);
-            await using NpgsqlTransaction transaction = await conn.BeginTransactionAsync(self.TransactionIsolationLevel, token);
+            await using DbConnectionContext context = await self.ConnectAsync(token, self.TransactionIsolationLevel);
 
             try
             {
-                await func(conn, transaction, arg1, arg2, arg3, token);
-                await transaction.CommitAsync(token);
+                await func(context, arg1, arg2, arg3, arg4, token);
+                await context.CommitAsync(token);
             }
             catch ( DbSqlException e ) when ( !string.IsNullOrWhiteSpace(e.RollbackID) )
             {
-                await transaction.RollbackAsync(e.RollbackID, token);
+                await context.RollbackAsync(e.RollbackID, token);
                 throw;
             }
             catch ( Exception )
             {
-                await transaction.RollbackAsync(token);
+                await context.RollbackAsync(token);
                 throw;
             }
         }
-        public async ValueTask TryCall<TArg1, TArg2, TArg3, TArg4>( Func<NpgsqlConnection, NpgsqlTransaction?, TArg1, TArg2, TArg3, TArg4, CancellationToken, ValueTask> func, TArg1 arg1, TArg2 arg2, TArg3 arg3, TArg4 arg4, CancellationToken token )
+        public async ValueTask TryCall<TArg1, TArg2, TArg3, TArg4, TArg5>( Func<DbConnectionContext, TArg1, TArg2, TArg3, TArg4, TArg5, CancellationToken, ValueTask> func, TArg1 arg1, TArg2 arg2, TArg3 arg3, TArg4 arg4, TArg5 arg5, CancellationToken token )
         {
-            await using NpgsqlConnection  conn        = await self.ConnectAsync(token);
-            await using NpgsqlTransaction transaction = await conn.BeginTransactionAsync(self.TransactionIsolationLevel, token);
+            await using DbConnectionContext context = await self.ConnectAsync(token, self.TransactionIsolationLevel);
 
             try
             {
-                await func(conn, transaction, arg1, arg2, arg3, arg4, token);
-                await transaction.CommitAsync(token);
+                await func(context, arg1, arg2, arg3, arg4, arg5, token);
+                await context.CommitAsync(token);
             }
             catch ( DbSqlException e ) when ( !string.IsNullOrWhiteSpace(e.RollbackID) )
             {
-                await transaction.RollbackAsync(e.RollbackID, token);
+                await context.RollbackAsync(e.RollbackID, token);
                 throw;
             }
             catch ( Exception )
             {
-                await transaction.RollbackAsync(token);
+                await context.RollbackAsync(token);
                 throw;
             }
         }
-        public async ValueTask TryCall<TArg1, TArg2, TArg3, TArg4, TArg5>( Func<NpgsqlConnection, NpgsqlTransaction?, TArg1, TArg2, TArg3, TArg4, TArg5, CancellationToken, ValueTask> func, TArg1 arg1, TArg2 arg2, TArg3 arg3, TArg4 arg4, TArg5 arg5, CancellationToken token )
+        public async ValueTask TryCall<TArg1, TArg2, TArg3, TArg4, TArg5, TArg6>( Func<DbConnectionContext, TArg1, TArg2, TArg3, TArg4, TArg5, TArg6, CancellationToken, ValueTask> func, TArg1 arg1, TArg2 arg2, TArg3 arg3, TArg4 arg4, TArg5 arg5, TArg6 arg6, CancellationToken token )
         {
-            await using NpgsqlConnection  conn        = await self.ConnectAsync(token);
-            await using NpgsqlTransaction transaction = await conn.BeginTransactionAsync(self.TransactionIsolationLevel, token);
+            await using DbConnectionContext context = await self.ConnectAsync(token, self.TransactionIsolationLevel);
 
             try
             {
-                await func(conn, transaction, arg1, arg2, arg3, arg4, arg5, token);
-                await transaction.CommitAsync(token);
+                await func(context, arg1, arg2, arg3, arg4, arg5, arg6, token);
+                await context.CommitAsync(token);
             }
             catch ( DbSqlException e ) when ( !string.IsNullOrWhiteSpace(e.RollbackID) )
             {
-                await transaction.RollbackAsync(e.RollbackID, token);
+                await context.RollbackAsync(e.RollbackID, token);
                 throw;
             }
             catch ( Exception )
             {
-                await transaction.RollbackAsync(token);
+                await context.RollbackAsync(token);
                 throw;
             }
         }
-        public async ValueTask TryCall<TArg1, TArg2, TArg3, TArg4, TArg5, TArg6>( Func<NpgsqlConnection, NpgsqlTransaction?, TArg1, TArg2, TArg3, TArg4, TArg5, TArg6, CancellationToken, ValueTask> func, TArg1 arg1, TArg2 arg2, TArg3 arg3, TArg4 arg4, TArg5 arg5, TArg6 arg6, CancellationToken token )
+        public async ValueTask TryCall<TArg1, TArg2, TArg3, TArg4, TArg5, TArg6, TArg7>( Func<DbConnectionContext, TArg1, TArg2, TArg3, TArg4, TArg5, TArg6, TArg7, CancellationToken, ValueTask> func, TArg1 arg1, TArg2 arg2, TArg3 arg3, TArg4 arg4, TArg5 arg5, TArg6 arg6, TArg7 arg7, CancellationToken token )
         {
-            await using NpgsqlConnection  conn        = await self.ConnectAsync(token);
-            await using NpgsqlTransaction transaction = await conn.BeginTransactionAsync(self.TransactionIsolationLevel, token);
+            await using DbConnectionContext context = await self.ConnectAsync(token, self.TransactionIsolationLevel);
 
             try
             {
-                await func(conn, transaction, arg1, arg2, arg3, arg4, arg5, arg6, token);
-                await transaction.CommitAsync(token);
+                await func(context, arg1, arg2, arg3, arg4, arg5, arg6, arg7, token);
+
+                await context.CommitAsync(token);
             }
             catch ( DbSqlException e ) when ( !string.IsNullOrWhiteSpace(e.RollbackID) )
             {
-                await transaction.RollbackAsync(e.RollbackID, token);
+                await context.RollbackAsync(e.RollbackID, token);
                 throw;
             }
             catch ( Exception )
             {
-                await transaction.RollbackAsync(token);
+                await context.RollbackAsync(token);
                 throw;
             }
         }
-        public async ValueTask TryCall<TArg1, TArg2, TArg3, TArg4, TArg5, TArg6, TArg7>( Func<NpgsqlConnection, NpgsqlTransaction?, TArg1, TArg2, TArg3, TArg4, TArg5, TArg6, TArg7, CancellationToken, ValueTask> func, TArg1 arg1, TArg2 arg2, TArg3 arg3, TArg4 arg4, TArg5 arg5, TArg6 arg6, TArg7 arg7, CancellationToken token )
+        public async ValueTask TryCall<TArg1, TArg2, TArg3, TArg4, TArg5, TArg6, TArg7, TArg8>( Func<DbConnectionContext, TArg1, TArg2, TArg3, TArg4, TArg5, TArg6, TArg7, TArg8, CancellationToken, ValueTask> func, TArg1 arg1, TArg2 arg2, TArg3 arg3, TArg4 arg4, TArg5 arg5, TArg6 arg6, TArg7 arg7, TArg8 arg8, CancellationToken token )
         {
-            await using NpgsqlConnection  conn        = await self.ConnectAsync(token);
-            await using NpgsqlTransaction transaction = await conn.BeginTransactionAsync(self.TransactionIsolationLevel, token);
+            await using DbConnectionContext context = await self.ConnectAsync(token, self.TransactionIsolationLevel);
 
             try
             {
-                await func(conn, transaction, arg1, arg2, arg3, arg4, arg5, arg6, arg7, token);
+                await func(context, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, token);
 
-                await transaction.CommitAsync(token);
+                await context.CommitAsync(token);
             }
             catch ( DbSqlException e ) when ( !string.IsNullOrWhiteSpace(e.RollbackID) )
             {
-                await transaction.RollbackAsync(e.RollbackID, token);
+                await context.RollbackAsync(e.RollbackID, token);
                 throw;
             }
             catch ( Exception )
             {
-                await transaction.RollbackAsync(token);
+                await context.RollbackAsync(token);
                 throw;
             }
         }
-        public async ValueTask TryCall<TArg1, TArg2, TArg3, TArg4, TArg5, TArg6, TArg7, TArg8>( Func<NpgsqlConnection, NpgsqlTransaction?, TArg1, TArg2, TArg3, TArg4, TArg5, TArg6, TArg7, TArg8, CancellationToken, ValueTask> func,
-                                                                                                TArg1                                                                                                                           arg1,
-                                                                                                TArg2                                                                                                                           arg2,
-                                                                                                TArg3                                                                                                                           arg3,
-                                                                                                TArg4                                                                                                                           arg4,
-                                                                                                TArg5                                                                                                                           arg5,
-                                                                                                TArg6                                                                                                                           arg6,
-                                                                                                TArg7                                                                                                                           arg7,
-                                                                                                TArg8                                                                                                                           arg8,
-                                                                                                CancellationToken                                                                                                               token
-        )
+
+
+        public async ValueTask<TResult> TryCall<TResult>( Func<DbConnectionContext, CancellationToken, ValueTask<TResult>> func, CancellationToken token = default )
         {
-            await using NpgsqlConnection  conn        = await self.ConnectAsync(token);
-            await using NpgsqlTransaction transaction = await conn.BeginTransactionAsync(self.TransactionIsolationLevel, token);
+            await using DbConnectionContext context = await self.ConnectAsync(token, self.TransactionIsolationLevel);
 
             try
             {
-                await func(conn,
-                           transaction,
-                           arg1,
-                           arg2,
-                           arg3,
-                           arg4,
-                           arg5,
-                           arg6,
-                           arg7,
-                           arg8,
-                           token);
-
-                await transaction.CommitAsync(token);
-            }
-            catch ( DbSqlException e ) when ( !string.IsNullOrWhiteSpace(e.RollbackID) )
-            {
-                await transaction.RollbackAsync(e.RollbackID, token);
-                throw;
-            }
-            catch ( Exception )
-            {
-                await transaction.RollbackAsync(token);
-                throw;
-            }
-        }
-        public async ValueTask<TResult> TryCall<TResult>( Func<NpgsqlConnection, NpgsqlTransaction?, CancellationToken, ValueTask<TResult>> func, CancellationToken token = default )
-        {
-            await using NpgsqlConnection  conn        = await self.ConnectAsync(token);
-            await using NpgsqlTransaction transaction = await conn.BeginTransactionAsync(self.TransactionIsolationLevel, token);
-
-            try
-            {
-                TResult result = await func(conn, transaction, token);
-                await transaction.CommitAsync(token);
+                TResult result = await func(context, token);
+                await context.CommitAsync(token);
                 return result;
             }
             catch ( DbSqlException e ) when ( !string.IsNullOrWhiteSpace(e.RollbackID) )
             {
-                await transaction.RollbackAsync(e.RollbackID, token);
+                await context.RollbackAsync(e.RollbackID, token);
                 throw;
             }
             catch ( Exception )
             {
-                await transaction.RollbackAsync(token);
+                await context.RollbackAsync(token);
                 throw;
             }
         }
-        public async ValueTask<TResult> TryCall<TArg1, TResult>( Func<NpgsqlConnection, NpgsqlTransaction?, TArg1, CancellationToken, ValueTask<TResult>> func, TArg1 arg1, CancellationToken token = default )
+        public async ValueTask<TResult> TryCall<TArg1, TResult>( Func<DbConnectionContext, TArg1, CancellationToken, ValueTask<TResult>> func, TArg1 arg1, CancellationToken token = default )
         {
-            await using NpgsqlConnection  conn        = await self.ConnectAsync(token);
-            await using NpgsqlTransaction transaction = await conn.BeginTransactionAsync(self.TransactionIsolationLevel, token);
+            await using DbConnectionContext context = await self.ConnectAsync(token, self.TransactionIsolationLevel);
 
             try
             {
-                TResult result = await func(conn, transaction, arg1, token);
-                await transaction.CommitAsync(token);
+                TResult result = await func(context, arg1, token);
+                await context.CommitAsync(token);
                 return result;
             }
             catch ( DbSqlException e ) when ( !string.IsNullOrWhiteSpace(e.RollbackID) )
             {
-                await transaction.RollbackAsync(e.RollbackID, token);
+                await context.RollbackAsync(e.RollbackID, token);
                 throw;
             }
             catch ( Exception )
             {
-                await transaction.RollbackAsync(token);
+                await context.RollbackAsync(token);
                 throw;
             }
         }
-        public async ValueTask<TResult> TryCall<TArg1, TArg2, TResult>( Func<NpgsqlConnection, NpgsqlTransaction?, TArg1, TArg2, CancellationToken, ValueTask<TResult>> func, TArg1 arg1, TArg2 arg2, CancellationToken token = default )
+        public async ValueTask<TResult> TryCall<TArg1, TArg2, TResult>( Func<DbConnectionContext, TArg1, TArg2, CancellationToken, ValueTask<TResult>> func, TArg1 arg1, TArg2 arg2, CancellationToken token = default )
         {
-            await using NpgsqlConnection  conn        = await self.ConnectAsync(token);
-            await using NpgsqlTransaction transaction = await conn.BeginTransactionAsync(self.TransactionIsolationLevel, token);
+            await using DbConnectionContext context = await self.ConnectAsync(token, self.TransactionIsolationLevel);
 
             try
             {
-                TResult result = await func(conn, transaction, arg1, arg2, token);
-                await transaction.CommitAsync(token);
+                TResult result = await func(context, arg1, arg2, token);
+                await context.CommitAsync(token);
                 return result;
             }
             catch ( DbSqlException e ) when ( !string.IsNullOrWhiteSpace(e.RollbackID) )
             {
-                await transaction.RollbackAsync(e.RollbackID, token);
+                await context.RollbackAsync(e.RollbackID, token);
                 throw;
             }
             catch ( Exception )
             {
-                await transaction.RollbackAsync(token);
+                await context.RollbackAsync(token);
                 throw;
             }
         }
-        public async ValueTask<TResult> TryCall<TArg1, TArg2, TArg3, TResult>( Func<NpgsqlConnection, NpgsqlTransaction?, TArg1, TArg2, TArg3, CancellationToken, ValueTask<TResult>> func, TArg1 arg1, TArg2 arg2, TArg3 arg3, CancellationToken token )
+        public async ValueTask<TResult> TryCall<TArg1, TArg2, TArg3, TResult>( Func<DbConnectionContext, TArg1, TArg2, TArg3, CancellationToken, ValueTask<TResult>> func, TArg1 arg1, TArg2 arg2, TArg3 arg3, CancellationToken token )
         {
-            await using NpgsqlConnection  conn        = await self.ConnectAsync(token);
-            await using NpgsqlTransaction transaction = await conn.BeginTransactionAsync(self.TransactionIsolationLevel, token);
+            await using DbConnectionContext context = await self.ConnectAsync(token, self.TransactionIsolationLevel);
 
             try
             {
-                TResult result = await func(conn, transaction, arg1, arg2, arg3, token);
-                await transaction.CommitAsync(token);
+                TResult result = await func(context, arg1, arg2, arg3, token);
+                await context.CommitAsync(token);
                 return result;
             }
             catch ( DbSqlException e ) when ( !string.IsNullOrWhiteSpace(e.RollbackID) )
             {
-                await transaction.RollbackAsync(e.RollbackID, token);
+                await context.RollbackAsync(e.RollbackID, token);
                 throw;
             }
             catch ( Exception )
             {
-                await transaction.RollbackAsync(token);
+                await context.RollbackAsync(token);
                 throw;
             }
         }
-        public async ValueTask<TResult> TryCall<TArg1, TArg2, TArg3, TArg4, TResult>( Func<NpgsqlConnection, NpgsqlTransaction?, TArg1, TArg2, TArg3, TArg4, CancellationToken, ValueTask<TResult>> func, TArg1 arg1, TArg2 arg2, TArg3 arg3, TArg4 arg4, CancellationToken token )
+        public async ValueTask<TResult> TryCall<TArg1, TArg2, TArg3, TArg4, TResult>( Func<DbConnectionContext, TArg1, TArg2, TArg3, TArg4, CancellationToken, ValueTask<TResult>> func, TArg1 arg1, TArg2 arg2, TArg3 arg3, TArg4 arg4, CancellationToken token )
         {
-            await using NpgsqlConnection  conn        = await self.ConnectAsync(token);
-            await using NpgsqlTransaction transaction = await conn.BeginTransactionAsync(self.TransactionIsolationLevel, token);
+            await using DbConnectionContext context = await self.ConnectAsync(token, self.TransactionIsolationLevel);
 
             try
             {
-                TResult result = await func(conn, transaction, arg1, arg2, arg3, arg4, token);
-                await transaction.CommitAsync(token);
+                TResult result = await func(context, arg1, arg2, arg3, arg4, token);
+                await context.CommitAsync(token);
                 return result;
             }
             catch ( DbSqlException e ) when ( !string.IsNullOrWhiteSpace(e.RollbackID) )
             {
-                await transaction.RollbackAsync(e.RollbackID, token);
+                await context.RollbackAsync(e.RollbackID, token);
                 throw;
             }
             catch ( Exception )
             {
-                await transaction.RollbackAsync(token);
+                await context.RollbackAsync(token);
                 throw;
             }
         }
-        public async ValueTask<TResult> TryCall<TArg1, TArg2, TArg3, TArg4, TArg5, TResult>( Func<NpgsqlConnection, NpgsqlTransaction?, TArg1, TArg2, TArg3, TArg4, TArg5, CancellationToken, ValueTask<TResult>> func, TArg1 arg1, TArg2 arg2, TArg3 arg3, TArg4 arg4, TArg5 arg5, CancellationToken token )
+        public async ValueTask<TResult> TryCall<TArg1, TArg2, TArg3, TArg4, TArg5, TResult>( Func<DbConnectionContext, TArg1, TArg2, TArg3, TArg4, TArg5, CancellationToken, ValueTask<TResult>> func, TArg1 arg1, TArg2 arg2, TArg3 arg3, TArg4 arg4, TArg5 arg5, CancellationToken token )
         {
-            await using NpgsqlConnection  conn        = await self.ConnectAsync(token);
-            await using NpgsqlTransaction transaction = await conn.BeginTransactionAsync(self.TransactionIsolationLevel, token);
+            await using DbConnectionContext context = await self.ConnectAsync(token, self.TransactionIsolationLevel);
 
             try
             {
-                TResult result = await func(conn, transaction, arg1, arg2, arg3, arg4, arg5, token);
-                await transaction.CommitAsync(token);
+                TResult result = await func(context, arg1, arg2, arg3, arg4, arg5, token);
+                await context.CommitAsync(token);
                 return result;
             }
             catch ( DbSqlException e ) when ( !string.IsNullOrWhiteSpace(e.RollbackID) )
             {
-                await transaction.RollbackAsync(e.RollbackID, token);
+                await context.RollbackAsync(e.RollbackID, token);
                 throw;
             }
             catch ( Exception )
             {
-                await transaction.RollbackAsync(token);
+                await context.RollbackAsync(token);
                 throw;
             }
         }
-        public async ValueTask<TResult> TryCall<TArg1, TArg2, TArg3, TArg4, TArg5, TArg6, TResult>( Func<NpgsqlConnection, NpgsqlTransaction?, TArg1, TArg2, TArg3, TArg4, TArg5, TArg6, CancellationToken, ValueTask<TResult>> func, TArg1 arg1, TArg2 arg2, TArg3 arg3, TArg4 arg4, TArg5 arg5, TArg6 arg6, CancellationToken token )
+        public async ValueTask<TResult> TryCall<TArg1, TArg2, TArg3, TArg4, TArg5, TArg6, TResult>( Func<DbConnectionContext, TArg1, TArg2, TArg3, TArg4, TArg5, TArg6, CancellationToken, ValueTask<TResult>> func, TArg1 arg1, TArg2 arg2, TArg3 arg3, TArg4 arg4, TArg5 arg5, TArg6 arg6, CancellationToken token )
         {
-            await using NpgsqlConnection  conn        = await self.ConnectAsync(token);
-            await using NpgsqlTransaction transaction = await conn.BeginTransactionAsync(self.TransactionIsolationLevel, token);
+            await using DbConnectionContext context = await self.ConnectAsync(token, self.TransactionIsolationLevel);
 
             try
             {
-                TResult result = await func(conn, transaction, arg1, arg2, arg3, arg4, arg5, arg6, token);
-                await transaction.CommitAsync(token);
+                TResult result = await func(context, arg1, arg2, arg3, arg4, arg5, arg6, token);
+                await context.CommitAsync(token);
                 return result;
             }
             catch ( DbSqlException e ) when ( !string.IsNullOrWhiteSpace(e.RollbackID) )
             {
-                await transaction.RollbackAsync(e.RollbackID, token);
+                await context.RollbackAsync(e.RollbackID, token);
                 throw;
             }
             catch ( Exception )
             {
-                await transaction.RollbackAsync(token);
+                await context.RollbackAsync(token);
                 throw;
             }
         }
-        public async ValueTask<TResult> TryCall<TArg1, TArg2, TArg3, TArg4, TArg5, TArg6, TArg7, TResult>( Func<NpgsqlConnection, NpgsqlTransaction?, TArg1, TArg2, TArg3, TArg4, TArg5, TArg6, TArg7, CancellationToken, ValueTask<TResult>> func, TArg1 arg1, TArg2 arg2, TArg3 arg3, TArg4 arg4, TArg5 arg5, TArg6 arg6, TArg7 arg7, CancellationToken token )
+        public async ValueTask<TResult> TryCall<TArg1, TArg2, TArg3, TArg4, TArg5, TArg6, TArg7, TResult>( Func<DbConnectionContext, TArg1, TArg2, TArg3, TArg4, TArg5, TArg6, TArg7, CancellationToken, ValueTask<TResult>> func, TArg1 arg1, TArg2 arg2, TArg3 arg3, TArg4 arg4, TArg5 arg5, TArg6 arg6, TArg7 arg7, CancellationToken token )
         {
-            await using NpgsqlConnection  conn        = await self.ConnectAsync(token);
-            await using NpgsqlTransaction transaction = await conn.BeginTransactionAsync(self.TransactionIsolationLevel, token);
+            await using DbConnectionContext context = await self.ConnectAsync(token, self.TransactionIsolationLevel);
 
             try
             {
-                TResult result = await func(conn, transaction, arg1, arg2, arg3, arg4, arg5, arg6, arg7, token);
+                TResult result = await func(context, arg1, arg2, arg3, arg4, arg5, arg6, arg7, token);
 
-                await transaction.CommitAsync(token);
+                await context.CommitAsync(token);
                 return result;
             }
             catch ( DbSqlException e ) when ( !string.IsNullOrWhiteSpace(e.RollbackID) )
             {
-                await transaction.RollbackAsync(e.RollbackID, token);
+                await context.RollbackAsync(e.RollbackID, token);
                 throw;
             }
             catch ( Exception )
             {
-                await transaction.RollbackAsync(token);
+                await context.RollbackAsync(token);
                 throw;
             }
         }
-        public async ValueTask<TResult> TryCall<TArg1, TArg2, TArg3, TArg4, TArg5, TArg6, TArg7, TArg8, TResult>( Func<NpgsqlConnection, NpgsqlTransaction?, TArg1, TArg2, TArg3, TArg4, TArg5, TArg6, TArg7, TArg8, CancellationToken, ValueTask<TResult>> func,
-                                                                                                                  TArg1                                                                                                                                    arg1,
-                                                                                                                  TArg2                                                                                                                                    arg2,
-                                                                                                                  TArg3                                                                                                                                    arg3,
-                                                                                                                  TArg4                                                                                                                                    arg4,
-                                                                                                                  TArg5                                                                                                                                    arg5,
-                                                                                                                  TArg6                                                                                                                                    arg6,
-                                                                                                                  TArg7                                                                                                                                    arg7,
-                                                                                                                  TArg8                                                                                                                                    arg8,
-                                                                                                                  CancellationToken                                                                                                                        token
-        )
+        public async ValueTask<TResult> TryCall<TArg1, TArg2, TArg3, TArg4, TArg5, TArg6, TArg7, TArg8, TResult>( Func<DbConnectionContext, TArg1, TArg2, TArg3, TArg4, TArg5, TArg6, TArg7, TArg8, CancellationToken, ValueTask<TResult>> func, TArg1 arg1, TArg2 arg2, TArg3 arg3, TArg4 arg4, TArg5 arg5, TArg6 arg6, TArg7 arg7, TArg8 arg8, CancellationToken token )
         {
-            await using NpgsqlConnection  conn        = await self.ConnectAsync(token);
-            await using NpgsqlTransaction transaction = await conn.BeginTransactionAsync(self.TransactionIsolationLevel, token);
+            await using DbConnectionContext context = await self.ConnectAsync(token, self.TransactionIsolationLevel);
 
             try
             {
-                TResult result = await func(conn,
-                                            transaction,
-                                            arg1,
-                                            arg2,
-                                            arg3,
-                                            arg4,
-                                            arg5,
-                                            arg6,
-                                            arg7,
-                                            arg8,
-                                            token);
+                TResult result = await func(context, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, token);
 
-                await transaction.CommitAsync(token);
+                await context.CommitAsync(token);
                 return result;
             }
             catch ( DbSqlException e ) when ( !string.IsNullOrWhiteSpace(e.RollbackID) )
             {
-                await transaction.RollbackAsync(e.RollbackID, token);
+                await context.RollbackAsync(e.RollbackID, token);
                 throw;
             }
             catch ( Exception )
             {
-                await transaction.RollbackAsync(token);
+                await context.RollbackAsync(token);
                 throw;
             }
         }

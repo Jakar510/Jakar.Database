@@ -25,7 +25,7 @@ public sealed class AsyncKeyGenerator<TSelf>( DbTable<TSelf> table, Cancellation
 
 
     public ValueTask<bool> MoveNextAsync() => table.Call(MoveNextAsync, __token);
-    public async ValueTask<bool> MoveNextAsync( NpgsqlConnection connection, NpgsqlTransaction? transaction, CancellationToken token )
+    public async ValueTask<bool> MoveNextAsync( DbConnectionContext context, CancellationToken token )
     {
         if ( token.IsCancellationRequested )
         {
@@ -35,7 +35,7 @@ public sealed class AsyncKeyGenerator<TSelf>( DbTable<TSelf> table, Cancellation
 
         if ( __generator.IsEmpty )
         {
-            IEnumerable<RecordPair<TSelf>> pairs = await table.SortedIDs(connection, transaction, token);
+            IEnumerable<RecordPair<TSelf>> pairs = await table.SortedIDs(context, token);
             __generator = KeyGenerator<TSelf>.Create(pairs);
         }
 

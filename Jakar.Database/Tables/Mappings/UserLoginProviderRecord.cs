@@ -89,9 +89,9 @@ public sealed record UserLoginProviderRecord : OwnedTableRecord<UserLoginProvide
         row[MetaData[nameof(Value)].DataColumn]               = Value;
         return base.Import(row, token);
     }
-    public override PostgresParameters ToDynamicParameters()
+    public override CommandParameters ToDynamicParameters()
     {
-        PostgresParameters parameters = base.ToDynamicParameters();
+        CommandParameters parameters = base.ToDynamicParameters();
         parameters.Add(nameof(LoginProvider),       LoginProvider);
         parameters.Add(nameof(ProviderDisplayName), ProviderDisplayName);
         parameters.Add(nameof(ProviderKey),         ProviderKey);
@@ -103,17 +103,17 @@ public sealed record UserLoginProviderRecord : OwnedTableRecord<UserLoginProvide
     [Pure] public static UserLoginProviderRecord Create( DbDataReader reader ) => new UserLoginProviderRecord(reader).Validate();
 
 
-    public static PostgresParameters GetDynamicParameters( UserRecord user, string value )
+    public static CommandParameters GetDynamicParameters( UserRecord user, string value )
     {
-        PostgresParameters parameters = PostgresParameters.Create<UserRecord>();
+        CommandParameters parameters = CommandParameters.Create<UserRecord>();
         parameters.Add(nameof(UserID), user.ID.Value);
         parameters.Add(nameof(Value),  value);
         return parameters;
     }
-    [Pure] public static PostgresParameters GetDynamicParameters( UserRecord user, UserLoginInfo info ) => GetDynamicParameters(user, info.LoginProvider, info.ProviderKey);
-    [Pure] public static PostgresParameters GetDynamicParameters( UserRecord user, string loginProvider, string providerKey )
+    [Pure] public static CommandParameters GetDynamicParameters( UserRecord user, UserLoginInfo info ) => GetDynamicParameters(user, info.LoginProvider, info.ProviderKey);
+    [Pure] public static CommandParameters GetDynamicParameters( UserRecord user, string loginProvider, string providerKey )
     {
-        PostgresParameters parameters = GetDynamicParameters(user);
+        CommandParameters parameters = GetDynamicParameters(user);
         parameters.Add(nameof(ProviderKey),   providerKey);
         parameters.Add(nameof(LoginProvider), loginProvider);
         return parameters;

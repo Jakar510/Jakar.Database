@@ -13,29 +13,29 @@ public partial class DbTable<TSelf>
     public ValueTask Update( IAsyncEnumerable<TSelf> records, CancellationToken token = default ) => this.TryCall(Update, records, token);
 
 
-    public virtual async ValueTask Update( NpgsqlConnection connection, NpgsqlTransaction? transaction, ImmutableArray<TSelf> records, CancellationToken token = default )
+    public virtual async ValueTask Update( DbConnectionContext context, ImmutableArray<TSelf> records, CancellationToken token = default )
     {
-        foreach ( TSelf record in records ) { await Update(connection, transaction, record, token); }
+        foreach ( TSelf record in records ) { await Update(context, record, token); }
     }
-    public virtual async ValueTask Update( NpgsqlConnection connection, NpgsqlTransaction? transaction, IEnumerable<TSelf> records, CancellationToken token = default )
+    public virtual async ValueTask Update( DbConnectionContext context, IEnumerable<TSelf> records, CancellationToken token = default )
     {
-        foreach ( TSelf record in records ) { await Update(connection, transaction, record, token); }
-    }
-
-
-    public virtual async ValueTask Update( NpgsqlConnection connection, NpgsqlTransaction? transaction, IAsyncEnumerable<TSelf> records, CancellationToken token = default )
-    {
-        await foreach ( TSelf record in records.WithCancellation(token) ) { await Update(connection, transaction, record, token); }
+        foreach ( TSelf record in records ) { await Update(context, record, token); }
     }
 
 
-    [MethodImpl(MethodImplOptions.AggressiveOptimization)] public virtual async ValueTask Update( NpgsqlConnection connection, NpgsqlTransaction? transaction, TSelf record, CancellationToken token = default )
+    public virtual async ValueTask Update( DbConnectionContext context, IAsyncEnumerable<TSelf> records, CancellationToken token = default )
+    {
+        await foreach ( TSelf record in records.WithCancellation(token) ) { await Update(context, record, token); }
+    }
+
+
+    [MethodImpl(MethodImplOptions.AggressiveOptimization)] public virtual async ValueTask Update( DbConnectionContext context, TSelf record, CancellationToken token = default )
     {
         SqlCommand command = SqlCommand.GetUpdate<TSelf>(record);
 
         try
         {
-            await using NpgsqlCommand cmd = command.ToCommand(connection, transaction);
+            await using DbCommand cmd = command.ToCommand(context);
             await cmd.ExecuteNonQueryAsync(token);
         }
         catch ( Exception e ) { throw new DbSqlException(command.SQL, e, command.Parameters); }

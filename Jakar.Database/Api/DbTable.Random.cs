@@ -12,13 +12,13 @@ public partial class DbTable<TSelf>
     public IAsyncEnumerable<TSelf>         Random( UserRecord        user,  int                                        count, [EnumeratorCancellation] CancellationToken token = default ) => this.Call(Random, user,  count, token);
 
 
-    [MethodImpl(MethodImplOptions.AggressiveOptimization)] public virtual async ValueTask<ErrorOrResult<TSelf>> Random( NpgsqlConnection connection, NpgsqlTransaction? transaction, CancellationToken token = default )
+    [MethodImpl(MethodImplOptions.AggressiveOptimization)] public virtual async ValueTask<ErrorOrResult<TSelf>> Random( DbConnectionContext context, CancellationToken token = default )
     {
         SqlCommand command = SqlCommand.GetRandom<TSelf>();
 
         try
         {
-            await using NpgsqlCommand    cmd    = command.ToCommand(connection, transaction);
+            await using DbCommand    cmd    = command.ToCommand(context);
             await using DbDataReader reader = await cmd.ExecuteReaderAsync(token);
             return await reader.FirstAsync<TSelf>(token);
         }
@@ -26,16 +26,16 @@ public partial class DbTable<TSelf>
     }
 
 
-    [MethodImpl(MethodImplOptions.AggressiveOptimization)] public virtual IAsyncEnumerable<TSelf> Random( NpgsqlConnection connection, NpgsqlTransaction? transaction, UserRecord user, int count, [EnumeratorCancellation] CancellationToken token = default )
+    [MethodImpl(MethodImplOptions.AggressiveOptimization)] public virtual IAsyncEnumerable<TSelf> Random( DbConnectionContext context, UserRecord user, int count, [EnumeratorCancellation] CancellationToken token = default )
     {
         SqlCommand sql = SqlCommand.GetRandom<TSelf>(user, count);
-        return Where(connection, transaction, sql, token);
+        return Where(context, sql, token);
     }
 
 
-    [MethodImpl(MethodImplOptions.AggressiveOptimization)] public virtual IAsyncEnumerable<TSelf> Random( NpgsqlConnection connection, NpgsqlTransaction? transaction, int count, [EnumeratorCancellation] CancellationToken token = default )
+    [MethodImpl(MethodImplOptions.AggressiveOptimization)] public virtual IAsyncEnumerable<TSelf> Random( DbConnectionContext context, int count, [EnumeratorCancellation] CancellationToken token = default )
     {
         SqlCommand sql = SqlCommand.GetRandom<TSelf>(count);
-        return Where(connection, transaction, sql, token);
+        return Where(context, sql, token);
     }
 }

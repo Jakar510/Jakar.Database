@@ -19,7 +19,7 @@ try
     RecordID<RoleRecord>   id         = RecordID<RoleRecord>.New();
     RecordPair<RoleRecord> pair       = new(id, date);
     RoleRecord             record     = new(ADMIN, ADMIN, Randoms.RandomString(10), new UserRights(""), id, userID, date);
-    PostgresParameters     parameters = PostgresParameters.Create<RoleRecord>();
+    CommandParameters     parameters = CommandParameters.Create<RoleRecord>();
     parameters.Add(nameof(RoleRecord.NameOfRole),     ADMIN);
     parameters.Add(nameof(RoleRecord.NormalizedName), "Admin");
 

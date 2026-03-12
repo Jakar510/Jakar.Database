@@ -90,9 +90,7 @@ public sealed class DatabaseTests : Assert
                      That(user.ID.Value, Is.Not.EqualTo(Guid.Empty));
                      That(user.ID.Value, Is.Not.EqualTo(Guid.AllBitsSet));
 
-                     That(admin.Rights.Value,
-                          Is.EqualTo(Permissions<TestDatabase.TestRight>.SA()
-                                                                        .ToString()));
+                     That(admin.Rights.Value, Is.EqualTo(Permissions<TestDatabase.TestRight>.SA().ToString()));
                  });
     }
 
@@ -197,18 +195,17 @@ public sealed class DatabaseTests : Assert
 
     private static async ValueTask<ImmutableArray<UserRoleRecord>> Add_Roles( Database db, UserRecord user, RoleRecord[] roles, CancellationToken token = default )
     {
-        await using NpgsqlConnection  connection  = await db.ConnectAsync(token);
-        await using NpgsqlTransaction transaction = await connection.BeginTransactionAsync(token);
+        await using DbConnectionContext context = await db.ConnectAsync(token);
 
         try
         {
             ImmutableArray<UserRoleRecord> records = UserRoleRecord.Create(user, roles.AsSpan());
-            await UserRoleRecord.TryAdd(connection, transaction, records, token);
+            await UserRoleRecord.TryAdd(context, records, token);
             return records;
         }
         catch ( Exception )
         {
-            await transaction.RollbackAsync(token);
+            await context.RollbackAsync(token);
             throw;
         }
     }
@@ -223,38 +220,36 @@ public sealed class DatabaseTests : Assert
 
     private static async ValueTask<ImmutableArray<UserGroupRecord>> Add_Groups( Database db, UserRecord user, GroupRecord[] groups, CancellationToken token = default )
     {
-        await using NpgsqlConnection  connection  = await db.ConnectAsync(token);
-        await using NpgsqlTransaction transaction = await connection.BeginTransactionAsync(token);
+        await using DbConnectionContext context = await db.ConnectAsync(token);
 
         try
         {
             ImmutableArray<UserGroupRecord> records = UserGroupRecord.Create(user, groups.AsSpan());
-            await UserGroupRecord.TryAdd(connection, transaction, records, token);
+            await UserGroupRecord.TryAdd(context, records, token);
             return records;
         }
         catch ( Exception )
         {
-            await transaction.RollbackAsync(token);
+            await context.RollbackAsync(token);
             throw;
         }
     }
 
     private static async ValueTask<(AddressRecord, UserAddressRecord)> Add_Address( Database db, UserRecord user, CancellationToken token = default )
     {
-        await using NpgsqlConnection  connection  = await db.ConnectAsync(token);
-        await using NpgsqlTransaction transaction = await connection.BeginTransactionAsync(token);
+        await using DbConnectionContext context = await db.ConnectAsync(token);
 
         try
         {
             AddressRecord address = AddressRecord.Create("address line one", "", "city", "state", "postal", "country");
-            address = await db.Addresses.Insert(connection, transaction, address, token);
+            address = await db.Addresses.Insert(context, address, token);
             UserAddressRecord link = UserAddressRecord.Create(user, address);
-            await UserAddressRecord.TryAdd(connection, transaction, link, token);
+            await UserAddressRecord.TryAdd(context, link, token);
             return ( address, link );
         }
         catch ( Exception )
         {
-            await transaction.RollbackAsync(token);
+            await context.RollbackAsync(token);
             throw;
         }
     }
@@ -284,27 +279,25 @@ public sealed class DatabaseTests : Assert
     private static async ValueTask<UserLoginProviderRecord> Add_UserLoginProvider( Database db, UserRecord user, CancellationToken token = default )
     {
         UserLoginProviderRecord record = new("login provider", "provider display name", "provider key", "value", RecordID<UserLoginProviderRecord>.New(), user, DateTimeOffset.UtcNow);
-
         return await db.UserLoginProviders.Insert(record, token);
     }
 
     private static async ValueTask<(ImmutableArray<RecoveryCodeRecord>, ImmutableArray<UserRecoveryCodeRecord>)> Add_RecoveryCodes( Database db, UserRecord user, CancellationToken token = default )
     {
-        await using NpgsqlConnection  connection  = await db.ConnectAsync(token);
-        await using NpgsqlTransaction transaction = await connection.BeginTransactionAsync(token);
+        await using DbConnectionContext context = await db.ConnectAsync(token);
 
         try
         {
             RecoveryCodeRecord.Codes               codes   = RecoveryCodeRecord.Create(user, 10);
-            ImmutableArray<RecoveryCodeRecord>     records = await db.RecoveryCodes.Insert(connection, transaction, codes.Values, token);
+            ImmutableArray<RecoveryCodeRecord>     records = await db.RecoveryCodes.Insert(context, codes.Values, token);
             ImmutableArray<UserRecoveryCodeRecord> links   = UserRecoveryCodeRecord.Create(user, records.AsSpan());
-            await UserRecoveryCodeRecord.TryAdd(connection, transaction, links, token);
-            await transaction.CommitAsync(token);
+            await UserRecoveryCodeRecord.TryAdd(context, links, token);
+            await context.CommitAsync(token);
             return ( records, links );
         }
         catch ( Exception )
         {
-            await transaction.RollbackAsync(token);
+            await context.RollbackAsync(token);
             throw;
         }
     }

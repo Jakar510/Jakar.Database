@@ -123,9 +123,9 @@ public sealed record GroupRecord : OwnedTableRecord<GroupRecord>, ITableRecord<G
         row[MetaData[nameof(NormalizedName)].DataColumn] = NormalizedName;
         return base.Import(row, token);
     }
-    [Pure] public override PostgresParameters ToDynamicParameters()
+    [Pure] public override CommandParameters ToDynamicParameters()
     {
-        PostgresParameters parameters = base.ToDynamicParameters();
+        CommandParameters parameters = base.ToDynamicParameters();
         parameters.Add(nameof(NormalizedName), NormalizedName);
         parameters.Add(nameof(NameOfGroup),    NameOfGroup);
         parameters.Add(nameof(UserID),         UserID);
@@ -134,8 +134,8 @@ public sealed record GroupRecord : OwnedTableRecord<GroupRecord>, ITableRecord<G
     }
 
 
-    [Pure] public async ValueTask<ErrorOrResult<UserRecord>> GetOwner( NpgsqlConnection connection, NpgsqlTransaction? transaction, Database db, CancellationToken token ) => await db.Users.Get(connection, transaction, UserID, token);
-    [Pure] public       IAsyncEnumerable<UserRecord>         GetUsers( NpgsqlConnection connection, NpgsqlTransaction? transaction, Database db, CancellationToken token ) => UserGroupRecord.Where(connection, transaction, db.Users, ID, token);
+    [Pure] public async ValueTask<ErrorOrResult<UserRecord>> GetOwner( DbConnectionContext context, Database db, CancellationToken token ) => await db.Users.Get(context, UserID, token);
+    [Pure] public       IAsyncEnumerable<UserRecord>         GetUsers( DbConnectionContext context, Database db, CancellationToken token ) => UserGroupRecord.Where(context, db.Users, ID, token);
 
 
     public static bool operator >( GroupRecord  left, GroupRecord right ) => left.CompareTo(right) > 0;

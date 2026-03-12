@@ -9,7 +9,8 @@ public interface IConnectableDb : IAsyncDisposable
 {
     public IsolationLevel TransactionIsolationLevel { get; }
 
-    public ValueTask<NpgsqlConnection> ConnectAsync( CancellationToken token );
+
+    public ValueTask<DbConnectionContext> ConnectAsync( CancellationToken token, IsolationLevel? level = null );
 }
 
 
@@ -17,9 +18,9 @@ public interface IConnectableDb : IAsyncDisposable
 public interface IConnectableDbRoot : IConnectableDb
 {
     public ref readonly DbOptions Options { get; }
-    public IAsyncEnumerable<TSelf> Where<TSelf>( NpgsqlConnection connection, NpgsqlTransaction? transaction, string sql, PostgresParameters parameters, [EnumeratorCancellation] CancellationToken token = default )
+    public IAsyncEnumerable<TSelf> Where<TSelf>( DbConnectionContext context, string sql, CommandParameters parameters, [EnumeratorCancellation] CancellationToken token = default )
         where TSelf : TableRecord<TSelf>, ITableRecord<TSelf>, IDateCreated;
-    public IAsyncEnumerable<TValue> Where<TSelf, TValue>( NpgsqlConnection connection, NpgsqlTransaction? transaction, string sql, PostgresParameters parameters, [EnumeratorCancellation] CancellationToken token = default )
+    public IAsyncEnumerable<TValue> Where<TSelf, TValue>( DbConnectionContext context, string sql, CommandParameters parameters, [EnumeratorCancellation] CancellationToken token = default )
         where TValue : struct
         where TSelf : TableRecord<TSelf>, ITableRecord<TSelf>;
 }

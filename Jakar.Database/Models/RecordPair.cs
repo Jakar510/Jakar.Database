@@ -58,9 +58,9 @@ public readonly struct RecordPair<TSelf>( RecordID<TSelf> id, DateTimeOffset dat
         await importer.WriteAsync(DateCreated, NpgsqlDbType.TimestampTz, token);
     }
 
-    [Pure] public PostgresParameters ToDynamicParameters()
+    [Pure] public CommandParameters ToDynamicParameters()
     {
-        PostgresParameters parameters = PostgresParameters.Create<TSelf>();
+        CommandParameters parameters = CommandParameters.Create<TSelf>();
         parameters.Add(nameof(ID),          ID);
         parameters.Add(nameof(DateCreated), DateCreated);
         return parameters;

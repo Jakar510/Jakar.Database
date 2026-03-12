@@ -86,9 +86,9 @@ public sealed record RoleRecord : OwnedTableRecord<RoleRecord>, ITableRecord<Rol
                 throw new InvalidOperationException($"Unknown column: {propertyName}");
         }
     }
-    [Pure] public override PostgresParameters ToDynamicParameters()
+    [Pure] public override CommandParameters ToDynamicParameters()
     {
-        PostgresParameters parameters = base.ToDynamicParameters();
+        CommandParameters parameters = base.ToDynamicParameters();
         parameters.Add(nameof(NameOfRole),       NameOfRole);
         parameters.Add(nameof(NormalizedName),   NormalizedName);
         parameters.Add(nameof(ConcurrencyStamp), ConcurrencyStamp);
@@ -102,7 +102,7 @@ public sealed record RoleRecord : OwnedTableRecord<RoleRecord>, ITableRecord<Rol
     [Pure] public static RoleRecord Create( DbDataReader reader ) => new RoleRecord(reader).Validate();
 
 
-    [Pure] public IAsyncEnumerable<UserRecord> GetUsers( NpgsqlConnection connection, NpgsqlTransaction? transaction, Database db, CancellationToken token ) => UserRoleRecord.Where(connection, transaction, db.Users, this, token);
+    [Pure] public IAsyncEnumerable<UserRecord> GetUsers( DbConnectionContext context, Database db, CancellationToken token ) => UserRoleRecord.Where(context, db.Users, this, token);
 
 
     [Pure] public IdentityRole ToIdentityRole() => new()

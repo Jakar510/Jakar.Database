@@ -4,9 +4,9 @@
 namespace Jakar.Database;
 
 
-public class DbSqlException( string sql, Exception? inner = null, PostgresParameters? parameters = null, string? message = null ) : Exception(message, inner)
+public class DbSqlException( string sql, Exception? inner = null, CommandParameters? parameters = null, string? message = null ) : Exception(message, inner)
 {
-    public readonly PostgresParameters? Parameters = parameters;
+    public readonly CommandParameters? Parameters = parameters;
     public readonly string?             SQL        = sql;
     public          string?             RollbackID { get; init; }
     public override string              Message    => field ??= GetMessage(base.Message, SQL, Parameters);
@@ -15,7 +15,7 @@ public class DbSqlException( string sql, Exception? inner = null, PostgresParame
     public DbSqlException( SqlCommand command, Exception? inner = null ) : this(command.SQL, inner, command.Parameters) { }
 
 
-    public static string GetMessage( string? title, string? sql, in PostgresParameters? dynamicParameters )
+    public static string GetMessage( string? title, string? sql, in CommandParameters? dynamicParameters )
     {
         title ??= "An error occurred with the following sql statement";
         string parameters;

@@ -9,7 +9,7 @@ using ZLinq.Linq;
 namespace Jakar.Database;
 
 
-public readonly record struct Parameter( object? Value, string ParameterName, string SourceColumn, PostgresType DbType, bool IsNullable, ParameterDirection Direction, DataRowVersion SourceVersion )
+public readonly record struct SqlParameter( object? Value, string ParameterName, string SourceColumn, PostgresType DbType, bool IsNullable, ParameterDirection Direction, DataRowVersion SourceVersion )
 {
     public readonly object?            Value         = Value ?? DBNull.Value;
     public readonly string             ParameterName = ParameterName.SqlName();
@@ -27,23 +27,23 @@ public readonly record struct Parameter( object? Value, string ParameterName, st
                                                         SourceVersion = SourceVersion,
                                                         Direction     = Direction,
                                                     };
-    public SqlParameter ToSqlParameter() => new(ParameterName, DbType.ToSqlDbType(), 0, SourceColumn)
-                                            {
-                                                Value         = Value,
-                                                IsNullable    = IsNullable,
-                                                SourceVersion = SourceVersion,
-                                                Direction     = Direction,
-                                            };
+    public Microsoft.Data.SqlClient.SqlParameter ToSqlParameter() => new(ParameterName, DbType.ToSqlDbType(), 0, SourceColumn)
+                                                                     {
+                                                                         Value         = Value,
+                                                                         IsNullable    = IsNullable,
+                                                                         SourceVersion = SourceVersion,
+                                                                         Direction     = Direction,
+                                                                     };
 }
 
 
 
-public readonly struct PostgresParameters() : IEquatable<PostgresParameters>
+public readonly struct CommandParameters() : IEquatable<CommandParameters>
 {
     // internal readonly List<SqlParameter>                    parameters = [];
     // internal readonly List<ImmutableArray<SqlParameter>>    Extras     = [];
-    private readonly List<Parameter>                 __parameters = [];
-    private readonly List<ImmutableArray<Parameter>> __extras     = [];
+    private readonly List<SqlParameter>                 __parameters = [];
+    private readonly List<ImmutableArray<SqlParameter>> __extras     = [];
 
 
     public bool IsEmpty { [MemberNotNullWhen(true, nameof(Table))] get => Table is not null; }
@@ -56,21 +56,21 @@ public readonly struct PostgresParameters() : IEquatable<PostgresParameters>
             __parameters.EnsureCapacity(value.ColumnCount);
         }
     }
-    public ReadOnlySpan<Parameter>                 Values                   => __parameters.AsSpan();
-    public ReadOnlySpan<ImmutableArray<Parameter>> Extras                   => __extras.AsSpan();
-    public ReadOnlySpan<Parameter>                 ExtraValues( int index ) => Extras[index].AsSpan();
-    public int                                     Count                    => __parameters.Count;
-    public int                                     ParameterCount           => __parameters.Count + Extras.Sum(static x => x.Length);
-    public ArrayBuffer<Parameter> Parameters
+    public ReadOnlySpan<SqlParameter>                 Values                   => __parameters.AsSpan();
+    public ReadOnlySpan<ImmutableArray<SqlParameter>> Extras                   => __extras.AsSpan();
+    public ReadOnlySpan<SqlParameter>                 ExtraValues( int index ) => Extras[index].AsSpan();
+    public int                                        Count                    => __parameters.Count;
+    public int                                        ParameterCount           => __parameters.Count + Extras.Sum(static x => x.Length);
+    public ArrayBuffer<SqlParameter> Parameters
     {
         [Pure] [MustDisposeResource] get
         {
-            ArrayBuffer<Parameter> buffer = new(ParameterCount);
-            foreach ( ref readonly Parameter parameter in Values ) { buffer.Add(in parameter); }
+            ArrayBuffer<SqlParameter> buffer = new(ParameterCount);
+            foreach ( ref readonly SqlParameter parameter in Values ) { buffer.Add(in parameter); }
 
-            foreach ( ref readonly ImmutableArray<Parameter> array in Extras )
+            foreach ( ref readonly ImmutableArray<SqlParameter> array in Extras )
             {
-                foreach ( ref readonly Parameter parameter in array.AsSpan() ) { buffer.Add(in parameter); }
+                foreach ( ref readonly SqlParameter parameter in array.AsSpan() ) { buffer.Add(in parameter); }
             }
 
             return buffer;
@@ -90,63 +90,63 @@ public readonly struct PostgresParameters() : IEquatable<PostgresParameters>
     public KeyValuePairs KeyValuePairs( int indentLevel, string separator = "AND" ) => new(this, indentLevel, separator);
 
 
-    public static PostgresParameters Create<TSelf>()
+    public static CommandParameters Create<TSelf>()
         where TSelf : TableRecord<TSelf>, ITableRecord<TSelf> => new() { Table = TSelf.MetaData };
-    public static PostgresParameters Create<TSelf>( TSelf _ )
+    public static CommandParameters Create<TSelf>( TSelf _ )
         where TSelf : TableRecord<TSelf>, ITableRecord<TSelf> => new() { Table = TSelf.MetaData };
-    public static PostgresParameters Create<TSelf>( IEnumerable<TSelf> records )
+    public static CommandParameters Create<TSelf>( IEnumerable<TSelf> records )
         where TSelf : TableRecord<TSelf>, ITableRecord<TSelf>
     {
-        PostgresParameters parameters = new() { Table = TSelf.MetaData };
+        CommandParameters parameters = new() { Table = TSelf.MetaData };
         foreach ( TSelf record in records ) { parameters.With(record.ToDynamicParameters()); }
 
         return parameters;
     }
-    public static PostgresParameters Create<TSelf>( params ReadOnlySpan<TSelf> records )
+    public static CommandParameters Create<TSelf>( params ReadOnlySpan<TSelf> records )
         where TSelf : TableRecord<TSelf>, ITableRecord<TSelf>
     {
-        PostgresParameters parameters = Create<TSelf>(records.Length);
+        CommandParameters parameters = Create<TSelf>(records.Length);
         foreach ( TSelf record in records ) { parameters.With(record.ToDynamicParameters()); }
 
         return parameters;
     }
-    public static PostgresParameters Create<TSelf>( params ReadOnlySpan<Parameter> records )
+    public static CommandParameters Create<TSelf>( params ReadOnlySpan<SqlParameter> records )
         where TSelf : TableRecord<TSelf>, ITableRecord<TSelf>
     {
-        PostgresParameters parameters = Create<TSelf>(records.Length);
-        foreach ( ref readonly Parameter record in records ) { parameters.Add(in record); }
+        CommandParameters parameters = Create<TSelf>(records.Length);
+        foreach ( ref readonly SqlParameter record in records ) { parameters.Add(in record); }
 
         return parameters;
     }
-    public static PostgresParameters Create<TSelf>( int capacity )
+    public static CommandParameters Create<TSelf>( int capacity )
         where TSelf : TableRecord<TSelf>, ITableRecord<TSelf>
     {
-        PostgresParameters parameters = new() { Table = TSelf.MetaData };
+        CommandParameters parameters = new() { Table = TSelf.MetaData };
         parameters.__parameters.EnsureCapacity(capacity);
         return parameters;
     }
 
 
-    public ValueEnumerable<Where<FromSpan<Parameter>, Parameter>, Parameter> ColumnsFor( string propertyName ) => Values.AsValueEnumerable().Where(x => string.Equals(x.SourceColumn, propertyName.SqlName(), StringComparison.InvariantCulture));
+    public ValueEnumerable<Where<FromSpan<SqlParameter>, SqlParameter>, SqlParameter> ColumnsFor( string propertyName ) => Values.AsValueEnumerable().Where(x => string.Equals(x.SourceColumn, propertyName.SqlName(), StringComparison.InvariantCulture));
 
-    public PostgresParameters With( in PostgresParameters other ) => With([..other.__parameters]);
-    public PostgresParameters With( in ImmutableArray<Parameter> other )
+    public CommandParameters With( in CommandParameters other ) => With([..other.__parameters]);
+    public CommandParameters With( in ImmutableArray<SqlParameter> other )
     {
         __extras.Add(other);
         return this;
     }
 
 
-    public PostgresParameters Add<TSelf>( string propertyName, IRecordID value, [CallerArgumentExpression(nameof(value))] string parameterName = EMPTY, ParameterDirection direction = ParameterDirection.Input, DataRowVersion sourceVersion = DataRowVersion.Default )
+    public CommandParameters Add<TSelf>( string propertyName, IRecordID value, [CallerArgumentExpression(nameof(value))] string parameterName = EMPTY, ParameterDirection direction = ParameterDirection.Input, DataRowVersion sourceVersion = DataRowVersion.Default )
         where TSelf : PairRecord<TSelf>, ITableRecord<TSelf> => Add(Table[propertyName].ToParameter(value.ID, parameterName, direction, sourceVersion));
-    public PostgresParameters Add<TSelf>( string propertyName, RecordID<TSelf> value, [CallerArgumentExpression(nameof(value))] string parameterName = EMPTY, ParameterDirection direction = ParameterDirection.Input, DataRowVersion sourceVersion = DataRowVersion.Default )
+    public CommandParameters Add<TSelf>( string propertyName, RecordID<TSelf> value, [CallerArgumentExpression(nameof(value))] string parameterName = EMPTY, ParameterDirection direction = ParameterDirection.Input, DataRowVersion sourceVersion = DataRowVersion.Default )
         where TSelf : PairRecord<TSelf>, ITableRecord<TSelf> => Add(Table[propertyName].ToParameter(value.Value, parameterName, direction, sourceVersion));
-    public PostgresParameters Add<T>( string propertyName, T? value, [CallerArgumentExpression(nameof(value))] string parameterName = EMPTY, ParameterDirection direction = ParameterDirection.Input, DataRowVersion sourceVersion = DataRowVersion.Default )
+    public CommandParameters Add<T>( string propertyName, T? value, [CallerArgumentExpression(nameof(value))] string parameterName = EMPTY, ParameterDirection direction = ParameterDirection.Input, DataRowVersion sourceVersion = DataRowVersion.Default )
         where T : struct, Enum => Add(Table[propertyName].ToParameter(value, parameterName, direction, sourceVersion));
-    public PostgresParameters Add( string propertyName, object? value, [CallerArgumentExpression(nameof(value))] string parameterName = EMPTY, ParameterDirection direction = ParameterDirection.Input, DataRowVersion sourceVersion = DataRowVersion.Default ) => Add(Table[propertyName].ToParameter(value, parameterName, direction, sourceVersion));
-    public PostgresParameters Add( in Parameter parameter )
+    public CommandParameters Add( string propertyName, object? value, [CallerArgumentExpression(nameof(value))] string parameterName = EMPTY, ParameterDirection direction = ParameterDirection.Input, DataRowVersion sourceVersion = DataRowVersion.Default ) => Add(Table[propertyName].ToParameter(value, parameterName, direction, sourceVersion));
+    public CommandParameters Add( in SqlParameter parameter )
     {
-        foreach ( ref readonly Parameter value in Values )
+        foreach ( ref readonly SqlParameter value in Values )
         {
             if ( !string.Equals(value.ParameterName, parameter.ParameterName, StringComparison.InvariantCulture) ) { continue; }
 
@@ -173,8 +173,8 @@ public readonly struct PostgresParameters() : IEquatable<PostgresParameters>
     }
 
 
-    public          bool Equals( PostgresParameters      other )                          => __parameters.Equals(other.__parameters);
-    public override bool Equals( object?                 obj )                            => obj is PostgresParameters other && Equals(other);
-    public static   bool operator ==( PostgresParameters left, PostgresParameters right ) => left.Equals(right);
-    public static   bool operator !=( PostgresParameters left, PostgresParameters right ) => !left.Equals(right);
+    public          bool Equals( CommandParameters      other )                         => GetHash128() == other.GetHash128();
+    public override bool Equals( object?                obj )                           => obj is CommandParameters other && Equals(other);
+    public static   bool operator ==( CommandParameters left, CommandParameters right ) => left.Equals(right);
+    public static   bool operator !=( CommandParameters left, CommandParameters right ) => !left.Equals(right);
 }

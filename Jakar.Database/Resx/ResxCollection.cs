@@ -30,11 +30,11 @@ public sealed class ResxCollection : IResxCollection
 
 
     public ValueTask Init( IConnectableDb db, IResxProvider provider, CancellationToken token = default ) => db.Call(Init, provider, token);
-    public async ValueTask Init( NpgsqlConnection connection, NpgsqlTransaction? transaction, IResxProvider provider, CancellationToken token = default )
+    public async ValueTask Init( DbConnectionContext context, IResxProvider provider, CancellationToken token = default )
     {
         __rows.Clear();
         SqlCommand command = provider.Get;
-        await foreach ( ResxRowRecord record in command.ExecuteAsync<ResxRowRecord>(connection, transaction, token) ) { __rows.Add(record); }
+        await foreach ( ResxRowRecord record in context.ExecuteAsync<ResxRowRecord>(command, token) ) { __rows.Add(record); }
     }
 
 

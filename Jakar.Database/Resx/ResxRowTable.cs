@@ -173,9 +173,9 @@ public sealed record ResxRowRecord : TableRecord<ResxRowRecord>, ITableRecord<Re
         row[MetaData[nameof(Arabic)].DataColumn]     = Arabic;
         return base.Import(row, token);
     }
-    public override PostgresParameters ToDynamicParameters()
+    public override CommandParameters ToDynamicParameters()
     {
-        PostgresParameters parameters = base.ToDynamicParameters();
+        CommandParameters parameters = base.ToDynamicParameters();
         parameters.Add(nameof(KeyID),      KeyID);
         parameters.Add(nameof(Key),        Key);
         parameters.Add(nameof(Neutral),    Neutral);

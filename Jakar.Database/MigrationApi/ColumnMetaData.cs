@@ -1,8 +1,4 @@
-﻿using Microsoft.Data.SqlClient;
-
-
-
-namespace Jakar.Database;
+﻿namespace Jakar.Database;
 
 
 [SuppressMessage("ReSharper", "InconsistentNaming")]
@@ -148,17 +144,17 @@ public sealed class ColumnMetaData
     public static bool   IsDbKey( MemberInfo                    property ) => property.GetCustomAttribute<KeyAttribute>() is not null || property.GetCustomAttribute<System.ComponentModel.DataAnnotations.KeyAttribute>() is not null;
 
 
-    public SqlParameter ToSqlParameter( object? value, [CallerArgumentExpression(nameof(value))] string parameterName = EMPTY, ParameterDirection direction = ParameterDirection.Input, DataRowVersion sourceVersion = DataRowVersion.Default )
+    public Microsoft.Data.SqlClient.SqlParameter ToSqlParameter( object? value, [CallerArgumentExpression(nameof(value))] string parameterName = EMPTY, ParameterDirection direction = ParameterDirection.Input, DataRowVersion sourceVersion = DataRowVersion.Default )
     {
         if ( parameterName.Contains('.') ) { parameterName = parameterNameCache.GetOrAdd(parameterName, static x => x.Split('.')[^1]); }
 
-        SqlParameter parameter = new(parameterName.SqlName(), SqlDbType, 0, ColumnName)
-                                 {
-                                     IsNullable    = IsNullable,
-                                     SourceVersion = sourceVersion,
-                                     Direction     = direction,
-                                     Value         = value ?? DBNull.Value
-                                 };
+        Microsoft.Data.SqlClient.SqlParameter parameter = new(parameterName.SqlName(), SqlDbType, 0, ColumnName)
+                                                          {
+                                                              IsNullable    = IsNullable,
+                                                              SourceVersion = sourceVersion,
+                                                              Direction     = direction,
+                                                              Value         = value ?? DBNull.Value
+                                                          };
 
         return parameter;
     }
@@ -176,11 +172,11 @@ public sealed class ColumnMetaData
 
         return parameter;
     }
-    public Parameter ToParameter( object? value, [CallerArgumentExpression(nameof(value))] string parameterName = EMPTY, ParameterDirection direction = ParameterDirection.Input, DataRowVersion sourceVersion = DataRowVersion.Default )
+    public SqlParameter ToParameter( object? value, [CallerArgumentExpression(nameof(value))] string parameterName = EMPTY, ParameterDirection direction = ParameterDirection.Input, DataRowVersion sourceVersion = DataRowVersion.Default )
     {
         if ( parameterName.Contains('.') ) { parameterName = parameterNameCache.GetOrAdd(parameterName, static x => x.Split('.')[^1]); }
 
-        Parameter parameter = new(value, parameterName.SqlName(), ColumnName, DbType, IsNullable, direction, sourceVersion);
+        SqlParameter parameter = new(value, parameterName.SqlName(), ColumnName, DbType, IsNullable, direction, sourceVersion);
         return parameter;
     }
 

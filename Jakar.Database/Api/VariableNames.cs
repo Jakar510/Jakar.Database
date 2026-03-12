@@ -10,9 +10,9 @@ namespace Jakar.Database;
 
 public readonly struct ColumnNames
 {
-    internal readonly PostgresParameters Parameters;
+    internal readonly CommandParameters Parameters;
     internal readonly StringBuilder      Value;
-    public ColumnNames( PostgresParameters parameters, int indentLevel )
+    public ColumnNames( CommandParameters parameters, int indentLevel )
     {
         Parameters = parameters;
         StringBuilder sb = Value = new StringBuilder();
@@ -25,18 +25,18 @@ public readonly struct ColumnNames
 
 public readonly struct KeyValuePairs
 {
-    internal readonly PostgresParameters Parameters;
+    internal readonly CommandParameters Parameters;
     internal readonly StringBuilder      Value;
-    public KeyValuePairs( PostgresParameters parameters, int indentLevel, string separator )
+    public KeyValuePairs( CommandParameters parameters, int indentLevel, string separator )
     {
         Parameters = parameters;
         StringBuilder sb = Value = new StringBuilder(parameters.KeyValuePairLength(indentLevel));
 
         int                          index  = 0;
         int                          count  = parameters.Count;
-        using ArrayBuffer<Parameter> buffer = parameters.Parameters;
+        using ArrayBuffer<SqlParameter> buffer = parameters.Parameters;
 
-        foreach ( ref readonly Parameter parameter in buffer.Values )
+        foreach ( ref readonly SqlParameter parameter in buffer.Values )
         {
             sb.Append(' ', indentLevel * 4).Append(parameter.SourceColumn).Append(" = @").Append(parameter.ParameterName);
 
@@ -53,16 +53,16 @@ public readonly struct KeyValuePairs
 
 public readonly struct VariableNames
 {
-    internal readonly PostgresParameters Parameters;
+    internal readonly CommandParameters Parameters;
     internal readonly StringBuilder      Value;
-    public VariableNames( PostgresParameters parameters, int indentLevel )
+    public VariableNames( CommandParameters parameters, int indentLevel )
     {
         Parameters = parameters;
         StringBuilder sb = Value = new StringBuilder(parameters.VariableNameLength);
 
         if ( !parameters.IsGrouped )
         {
-            foreach ( ref readonly Parameter parameter in parameters.Values ) { sb.Append(' ', indentLevel * 4).Append('@').Append(parameter.ParameterName).Append(",\n"); }
+            foreach ( ref readonly SqlParameter parameter in parameters.Values ) { sb.Append(' ', indentLevel * 4).Append('@').Append(parameter.ParameterName).Append(",\n"); }
         }
         else
         {
@@ -70,22 +70,22 @@ public readonly struct VariableNames
             {
                 sb.Append(' ', indentLevel * 4).Append('(');
                 indentLevel++;
-                foreach ( ref readonly Parameter parameter in parameters.Values ) { sb.Append(' ', indentLevel * 4).Append('@').Append(parameter.ParameterName).Append(",\n"); }
+                foreach ( ref readonly SqlParameter parameter in parameters.Values ) { sb.Append(' ', indentLevel * 4).Append('@').Append(parameter.ParameterName).Append(",\n"); }
 
                 sb.Append("),\n");
                 indentLevel--;
             }
 
-            ReadOnlySpan<ImmutableArray<Parameter>> span = parameters.Extras;
+            ReadOnlySpan<ImmutableArray<SqlParameter>> span = parameters.Extras;
 
             for ( int i = 0; i < span.Length; i++ )
             {
-                ref readonly ImmutableArray<Parameter> array = ref span[i];
+                ref readonly ImmutableArray<SqlParameter> array = ref span[i];
                 sb.Append(' ', indentLevel * 4).Append("(\n");
 
                 indentLevel++;
 
-                foreach ( ref readonly Parameter parameter in array.AsSpan() )
+                foreach ( ref readonly SqlParameter parameter in array.AsSpan() )
                 {
                     sb.Append(' ', indentLevel * 4).Append('@').Append(parameter.ParameterName);
                     if ( i < span.Length ) { sb.Append(",\n"); }

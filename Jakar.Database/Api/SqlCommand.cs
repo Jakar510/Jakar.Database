@@ -12,12 +12,12 @@ public readonly struct SqlCommand : IEquatable<SqlCommand>
 {
     public const    string             SPACER = ",\n      ";
     public readonly string             SQL;
-    public readonly PostgresParameters Parameters;
+    public readonly CommandParameters Parameters;
     public readonly CommandType?       CommandType;
     public readonly CommandFlags       Flags;
 
 
-    private SqlCommand( string sql, PostgresParameters parameters, CommandType? commandType = null, CommandFlags flags = CommandFlags.None )
+    private SqlCommand( string sql, CommandParameters parameters, CommandType? commandType = null, CommandFlags flags = CommandFlags.None )
     {
         SQL         = sql;
         Parameters  = parameters;
@@ -27,9 +27,25 @@ public readonly struct SqlCommand : IEquatable<SqlCommand>
 
 
     public static implicit operator string( SqlCommand             sql ) => sql.SQL;
-    public static implicit operator PostgresParameters( SqlCommand sql ) => sql.Parameters;
+    public static implicit operator CommandParameters( SqlCommand sql ) => sql.Parameters;
 
 
+    [Pure] [MustDisposeResource] public DbCommand ToCommand( DbConnectionContext context )
+    {
+        if ( context.IsPostgres )
+        {
+            (NpgsqlConnection connection, NpgsqlTransaction? transaction) postgres = context.Postgres.Value;
+            return ToCommand(postgres.connection, postgres.transaction);
+        }
+
+        if ( context.IsSqlServer )
+        {
+            (SqlConnection connection, SqlTransaction? transaction) postgres = context.SqlServer.Value;
+            return ToCommand(postgres.connection, postgres.transaction);
+        }
+
+        throw new InvalidOperationException("Unsupported connection type");
+    }
     [Pure] [MustDisposeResource] public Microsoft.Data.SqlClient.SqlCommand ToCommand( SqlConnection connection, SqlTransaction? transaction = null )
     {
         ArgumentNullException.ThrowIfNull(connection);
@@ -43,11 +59,11 @@ public readonly struct SqlCommand : IEquatable<SqlCommand>
                                                           CommandTimeout = 30,
                                                       };
 
-        foreach ( ref readonly Parameter parameter in Parameters.Parameters ) { command.Parameters.Add(parameter.ToSqlParameter()); }
+        foreach ( ref readonly SqlParameter parameter in Parameters.Parameters ) { command.Parameters.Add(parameter.ToSqlParameter()); }
 
         return command;
     }
-    [Pure] [MustDisposeResource] public NpgsqlCommand ToCommand( NpgsqlConnection connection, NpgsqlTransaction? transaction = null )
+    [Pure] [MustDisposeResource] public DbCommand ToCommand( NpgsqlConnection connection, NpgsqlTransaction? transaction = null )
     {
         ArgumentNullException.ThrowIfNull(connection);
 
@@ -61,44 +77,20 @@ public readonly struct SqlCommand : IEquatable<SqlCommand>
                                     AllResultTypesAreUnknown = false
                                 };
 
-        foreach ( ref readonly Parameter parameter in Parameters.Parameters ) { command.Parameters.Add(parameter.ToPostgresParameter()); }
+        foreach ( ref readonly SqlParameter parameter in Parameters.Parameters ) { command.Parameters.Add(parameter.ToPostgresParameter()); }
 
         return command;
     }
 
 
     public override string ToString() => DbSqlException.GetMessage(nameof(SqlCommand), SQL, Parameters);
-    public async ValueTask ExecuteNonQueryAsync( NpgsqlConnection connection, NpgsqlTransaction? transaction, CancellationToken token )
-    {
-        await using NpgsqlCommand command = ToCommand(connection, transaction);
-        await command.ExecuteNonQueryAsync(token);
-    }
-    public async ValueTask ExecuteNonQueryAsync( SqlConnection connection, SqlTransaction? transaction, CancellationToken token )
-    {
-        await using Microsoft.Data.SqlClient.SqlCommand command = ToCommand(connection, transaction);
-        await command.ExecuteNonQueryAsync(token);
-    }
-    public async IAsyncEnumerable<TSelf> ExecuteAsync<TSelf>( NpgsqlConnection connection, NpgsqlTransaction? transaction, [EnumeratorCancellation] CancellationToken token )
-        where TSelf : TableRecord<TSelf>, ITableRecord<TSelf>
-    {
-        await using NpgsqlCommand    command = ToCommand(connection, transaction);
-        await using NpgsqlDataReader reader  = await command.ExecuteReaderAsync(token);
-        while ( await reader.ReadAsync(token) ) { yield return TSelf.Create(reader); }
-    }
-    public async IAsyncEnumerable<TSelf> ExecuteAsync<TSelf>( SqlConnection connection, SqlTransaction? transaction, [EnumeratorCancellation] CancellationToken token )
-        where TSelf : TableRecord<TSelf>, ITableRecord<TSelf>
-    {
-        await using Microsoft.Data.SqlClient.SqlCommand command = ToCommand(connection, transaction);
-        await using SqlDataReader                       reader  = await command.ExecuteReaderAsync(token);
-        while ( await reader.ReadAsync(token) ) { yield return TSelf.Create(reader); }
-    }
 
 
-    public static SqlCommand Create( string sql, in PostgresParameters parameters, CommandType? commandType = null, CommandFlags flags = CommandFlags.None ) => new(sql, parameters, commandType, flags);
+    public static SqlCommand Create( string sql, in CommandParameters parameters, CommandType? commandType = null, CommandFlags flags = CommandFlags.None ) => new(sql, parameters, commandType, flags);
 
 
-    public static SqlCommand Create<TSelf>( string sql, params ReadOnlySpan<Parameter> parameters )
-        where TSelf : TableRecord<TSelf>, ITableRecord<TSelf> => new(sql, PostgresParameters.Create<TSelf>(parameters));
+    public static SqlCommand Create<TSelf>( string sql, params ReadOnlySpan<SqlParameter> parameters )
+        where TSelf : TableRecord<TSelf>, ITableRecord<TSelf> => new(sql, CommandParameters.Create<TSelf>(parameters));
 
 
     public static SqlCommand Parse<TSelf>( ref SqlInterpolatedStringHandler<TSelf> handler, CommandType? commandType = null, CommandFlags flags = CommandFlags.None )
@@ -123,7 +115,7 @@ public readonly struct SqlCommand : IEquatable<SqlCommand>
                                                                                """);
 
 
-    public static SqlCommand WherePaged<TSelf>( in PostgresParameters parameters, int start, int count )
+    public static SqlCommand WherePaged<TSelf>( in CommandParameters parameters, int start, int count )
         where TSelf : TableRecord<TSelf>, ITableRecord<TSelf> => Parse<TSelf>($"""
                                                                                  SELECT * FROM {TSelf.TableName} 
                                                                                  WHERE
@@ -178,7 +170,7 @@ public readonly struct SqlCommand : IEquatable<SqlCommand>
                                                                               {ids:2}
                                                                                     );
                                                                               """);
-    [OverloadResolutionPriority(0)] public static SqlCommand Get<TSelf>( in PostgresParameters parameters )
+    [OverloadResolutionPriority(0)] public static SqlCommand Get<TSelf>( in CommandParameters parameters )
         where TSelf : TableRecord<TSelf>, ITableRecord<TSelf> => Parse<TSelf>($"""
                                                                                SELECT * FROM {TSelf.TableName}
                                                                                WHERE 
@@ -207,7 +199,7 @@ public readonly struct SqlCommand : IEquatable<SqlCommand>
                                                                                SELECT {nameof(IUniqueID.ID)}, {nameof(IDateCreated.DateCreated)} FROM {TSelf.TableName}
                                                                                ORDER BY {nameof(IDateCreated.DateCreated)} DESC;
                                                                                """);
-    public static SqlCommand GetExists<TSelf>( in PostgresParameters parameters )
+    public static SqlCommand GetExists<TSelf>( in CommandParameters parameters )
         where TSelf : TableRecord<TSelf>, ITableRecord<TSelf> => Parse<TSelf>($"""
                                                                                EXISTS( 
                                                                                SELECT * FROM {TSelf.TableName}
@@ -216,7 +208,7 @@ public readonly struct SqlCommand : IEquatable<SqlCommand>
                                                                                """);
 
 
-    [OverloadResolutionPriority(0)] public static SqlCommand GetDelete<TSelf>( in PostgresParameters parameters )
+    [OverloadResolutionPriority(0)] public static SqlCommand GetDelete<TSelf>( in CommandParameters parameters )
         where TSelf : TableRecord<TSelf>, ITableRecord<TSelf> => Parse<TSelf>($"""
                                                                                DELETE FROM {TSelf.TableName} 
                                                                                WHERE 
@@ -296,7 +288,7 @@ public readonly struct SqlCommand : IEquatable<SqlCommand>
     [OverloadResolutionPriority(3)] public static SqlCommand GetInsert<TSelf>( TSelf record )
         where TSelf : TableRecord<TSelf>, ITableRecord<TSelf>
     {
-        PostgresParameters parameters = record.ToDynamicParameters();
+        CommandParameters parameters = record.ToDynamicParameters();
 
         return Parse<TSelf>($"""
                              INSERT INTO {TSelf.TableName} 
@@ -312,7 +304,7 @@ public readonly struct SqlCommand : IEquatable<SqlCommand>
     [OverloadResolutionPriority(1)] public static SqlCommand GetInsert<TSelf>( IEnumerable<TSelf> records )
         where TSelf : TableRecord<TSelf>, ITableRecord<TSelf>
     {
-        PostgresParameters parameters = PostgresParameters.Create(records);
+        CommandParameters parameters = CommandParameters.Create(records);
 
         return Parse<TSelf>($"""
                              INSERT INTO {TSelf.TableName} 
@@ -328,7 +320,7 @@ public readonly struct SqlCommand : IEquatable<SqlCommand>
     [OverloadResolutionPriority(2)] public static SqlCommand GetInsert<TSelf>( params ReadOnlySpan<TSelf> records )
         where TSelf : TableRecord<TSelf>, ITableRecord<TSelf>
     {
-        PostgresParameters parameters = PostgresParameters.Create(records);
+        CommandParameters parameters = CommandParameters.Create(records);
 
         return Parse<TSelf>($"""
                              INSERT INTO {TSelf.TableName} 
@@ -346,7 +338,7 @@ public readonly struct SqlCommand : IEquatable<SqlCommand>
     public static SqlCommand GetUpdate<TSelf>( TSelf record )
         where TSelf : TableRecord<TSelf>, ITableRecord<TSelf>
     {
-        PostgresParameters parameters = record.ToDynamicParameters();
+        CommandParameters parameters = record.ToDynamicParameters();
 
         return Parse<TSelf>($"""
                              UPDATE {TSelf.TableName} 
@@ -356,10 +348,10 @@ public readonly struct SqlCommand : IEquatable<SqlCommand>
                                   {nameof(IUniqueID.ID)} = @{nameof(IUniqueID.ID)};
                              """);
     }
-    public static SqlCommand GetTryInsert<TSelf>( TSelf record, in PostgresParameters parameters )
+    public static SqlCommand GetTryInsert<TSelf>( TSelf record, in CommandParameters parameters )
         where TSelf : PairRecord<TSelf>, ITableRecord<TSelf>
     {
-        PostgresParameters recordParameters = record.ToDynamicParameters();
+        CommandParameters recordParameters = record.ToDynamicParameters();
 
         return Parse<TSelf>($"""
                              IF NOT EXISTS (
@@ -390,10 +382,10 @@ public readonly struct SqlCommand : IEquatable<SqlCommand>
                              END
                              """);
     }
-    public static SqlCommand InsertOrUpdate<TSelf>( TSelf record, in PostgresParameters parameters )
+    public static SqlCommand InsertOrUpdate<TSelf>( TSelf record, in CommandParameters parameters )
         where TSelf : PairRecord<TSelf>, ITableRecord<TSelf>
     {
-        PostgresParameters recordParameters = record.ToDynamicParameters();
+        CommandParameters recordParameters = record.ToDynamicParameters();
 
         return Parse<TSelf>($"""
                              IF NOT EXISTS 

@@ -399,9 +399,9 @@ public sealed record UserRecord : PairRecord<UserRecord>, ITableRecord<UserRecor
         row[MetaData[nameof(EscalateTo)].DataColumn]             = EscalateTo;
         return base.Import(row, token);
     }
-    public override PostgresParameters ToDynamicParameters()
+    public override CommandParameters ToDynamicParameters()
     {
-        PostgresParameters parameters = base.ToDynamicParameters();
+        CommandParameters parameters = base.ToDynamicParameters();
         parameters.Add(nameof(UserName),               UserName);
         parameters.Add(nameof(FirstName),              FirstName);
         parameters.Add(nameof(LastName),               LastName);
@@ -441,30 +441,30 @@ public sealed record UserRecord : PairRecord<UserRecord>, ITableRecord<UserRecor
     }
 
 
-    public static PostgresParameters GetDynamicParameters( IUserDetails data )
+    public static CommandParameters GetDynamicParameters( IUserDetails data )
     {
-        PostgresParameters parameters = PostgresParameters.Create<UserRecord>();
+        CommandParameters parameters = CommandParameters.Create<UserRecord>();
         parameters.Add(nameof(Email),     data.Email);
         parameters.Add(nameof(FirstName), data.FirstName);
         parameters.Add(nameof(LastName),  data.LastName);
         parameters.Add(nameof(FullName),  data.FullName);
         return parameters;
     }
-    public static PostgresParameters GetDynamicParameters( ILoginRequest request )
+    public static CommandParameters GetDynamicParameters( ILoginRequest request )
     {
-        PostgresParameters parameters = PostgresParameters.Create<UserRecord>();
+        CommandParameters parameters = CommandParameters.Create<UserRecord>();
         parameters.Add(nameof(UserName), request.UserLogin);
         return parameters;
     }
-    public static PostgresParameters GetDynamicParameters( string userName )
+    public static CommandParameters GetDynamicParameters( string userName )
     {
-        PostgresParameters parameters = PostgresParameters.Create<UserRecord>();
+        CommandParameters parameters = CommandParameters.Create<UserRecord>();
         parameters.Add(nameof(UserName), userName);
         return parameters;
     }
-    public static PostgresParameters GetDynamicParameters( RecordID<UserRecord> userID )
+    public static CommandParameters GetDynamicParameters( RecordID<UserRecord> userID )
     {
-        PostgresParameters parameters = PostgresParameters.Create<UserRecord>();
+        CommandParameters parameters = CommandParameters.Create<UserRecord>();
         parameters.Add(nameof(ID), userID);
         return parameters;
     }
@@ -555,10 +555,10 @@ public sealed record UserRecord : PairRecord<UserRecord>, ITableRecord<UserRecor
         where TAddress : class, IAddress<TAddress, Guid>, IEquatable<TAddress> => TSelf.Create(this);
 
 
-    public ValueTask<UserModel> ToUserModel( NpgsqlConnection connection, NpgsqlTransaction? transaction, Database db, CancellationToken token ) => ToUserModel<UserModel>(connection, transaction, db, token);
-    public ValueTask<TSelf> ToUserModel<TSelf>( NpgsqlConnection connection, NpgsqlTransaction? transaction, Database db, CancellationToken token )
-        where TSelf : UserModel<TSelf, Guid, UserAddress, GroupModel, RoleModel>, ICreateUserModel<TSelf, Guid, UserAddress, GroupModel, RoleModel>, IJsonModel<TSelf>, new() => ToUserModel<TSelf, UserAddress, GroupModel, RoleModel>(connection, transaction, db, token);
-    public async ValueTask<TSelf> ToUserModel<TSelf, TAddress, TGroupModel, TRoleModel>( NpgsqlConnection connection, NpgsqlTransaction? transaction, Database db, CancellationToken token )
+    public ValueTask<UserModel> ToUserModel( DbConnectionContext context, Database db, CancellationToken token ) => ToUserModel<UserModel>(context, db, token);
+    public ValueTask<TSelf> ToUserModel<TSelf>( DbConnectionContext context, Database db, CancellationToken token )
+        where TSelf : UserModel<TSelf, Guid, UserAddress, GroupModel, RoleModel>, ICreateUserModel<TSelf, Guid, UserAddress, GroupModel, RoleModel>, IJsonModel<TSelf>, new() => ToUserModel<TSelf, UserAddress, GroupModel, RoleModel>(context, db, token);
+    public async ValueTask<TSelf> ToUserModel<TSelf, TAddress, TGroupModel, TRoleModel>( DbConnectionContext context, Database db, CancellationToken token )
         where TSelf : class, IUserData<Guid, TAddress, TGroupModel, TRoleModel>, ICreateUserModel<TSelf, Guid, TAddress, TGroupModel, TRoleModel>, new()
         where TGroupModel : class, IGroupModel<TGroupModel, Guid>, IEquatable<TGroupModel>
         where TRoleModel : class, IRoleModel<TRoleModel, Guid>, IEquatable<TRoleModel>
@@ -566,25 +566,25 @@ public sealed record UserRecord : PairRecord<UserRecord>, ITableRecord<UserRecor
     {
         TSelf model = TSelf.Create(this);
 
-        await model.Addresses.AddAsync(GetAddresses(connection, transaction, db, token).Select(static x => x.ToAddressModel<TAddress>()), token);
+        await model.Addresses.AddAsync(GetAddresses(context, db, token).Select(static x => x.ToAddressModel<TAddress>()), token);
 
-        await model.Groups.AddAsync(GetGroups(connection, transaction, db, token).Select(static x => x.ToGroupModel<TGroupModel>()), token);
+        await model.Groups.AddAsync(GetGroups(context, db, token).Select(static x => x.ToGroupModel<TGroupModel>()), token);
 
-        await model.Roles.AddAsync(GetRoles(connection, transaction, db, token).Select(static x => x.ToRoleModel<TRoleModel>()), token);
+        await model.Roles.AddAsync(GetRoles(context, db, token).Select(static x => x.ToRoleModel<TRoleModel>()), token);
 
         return model;
     }
 
 
     public ValueTask<bool> RedeemCode( Database db, string code, CancellationToken token ) => db.TryCall(RedeemCode, db, code, token);
-    public async ValueTask<bool> RedeemCode( NpgsqlConnection connection, NpgsqlTransaction? transaction, Database db, string code, CancellationToken token )
+    public async ValueTask<bool> RedeemCode( DbConnectionContext context, Database db, string code, CancellationToken token )
     {
-        await foreach ( RecoveryCodeRecord record in UserRecoveryCodeRecord.Where(connection, transaction, db.RecoveryCodes, ID, token) )
+        await foreach ( RecoveryCodeRecord record in UserRecoveryCodeRecord.Where(context, db.RecoveryCodes, ID, token) )
         {
             if ( RecoveryCodeRecord.IsValid(code, record) )
             {
-                await db.RecoveryCodes.Delete(connection, transaction, record, token);
-                await UserRecoveryCodeRecord.Delete(connection, transaction, ID, record.ID, token);
+                await db.RecoveryCodes.Delete(context, record, token);
+                await UserRecoveryCodeRecord.Delete(context, ID, record.ID, token);
                 return true;
             }
         }
@@ -592,45 +592,45 @@ public sealed record UserRecord : PairRecord<UserRecord>, ITableRecord<UserRecor
         return false;
     }
     public ValueTask<ImmutableArray<string>> ReplaceCodes( Database db, int count = 10, CancellationToken token = default ) => db.TryCall(ReplaceCodes, db, count, token);
-    public async ValueTask<ImmutableArray<string>> ReplaceCodes( NpgsqlConnection connection, NpgsqlTransaction? transaction, Database db, int count = 10, CancellationToken token = default )
+    public async ValueTask<ImmutableArray<string>> ReplaceCodes( DbConnectionContext context, Database db, int count = 10, CancellationToken token = default )
     {
-        IAsyncEnumerable<RecoveryCodeRecord> old        = Codes(connection, transaction, db, token);
+        IAsyncEnumerable<RecoveryCodeRecord> old        = Codes(context, db, token);
         RecoveryCodeRecord.Codes             dictionary = RecoveryCodeRecord.Create(this, count);
         ImmutableArray<string>               codes      = [..dictionary.Keys];
 
 
-        await db.RecoveryCodes.Delete(connection, transaction, old, token);
-        await UserRecoveryCodeRecord.Replace(connection, transaction, this, RecordID<RecoveryCodeRecord>.Create(dictionary.Values), token);
+        await db.RecoveryCodes.Delete(context, old, token);
+        await UserRecoveryCodeRecord.Replace(context, this, RecordID<RecoveryCodeRecord>.Create(dictionary.Values), token);
         return codes;
     }
     public ValueTask<ImmutableArray<string>> ReplaceCodes( Database db, IEnumerable<string> recoveryCodes, CancellationToken token = default ) => db.TryCall(ReplaceCodes, db, recoveryCodes, token);
-    public async ValueTask<ImmutableArray<string>> ReplaceCodes( NpgsqlConnection connection, NpgsqlTransaction? transaction, Database db, IEnumerable<string> recoveryCodes, CancellationToken token = default )
+    public async ValueTask<ImmutableArray<string>> ReplaceCodes( DbConnectionContext context, Database db, IEnumerable<string> recoveryCodes, CancellationToken token = default )
     {
-        IAsyncEnumerable<RecoveryCodeRecord> old        = Codes(connection, transaction, db, token);
+        IAsyncEnumerable<RecoveryCodeRecord> old        = Codes(context, db, token);
         RecoveryCodeRecord.Codes             dictionary = RecoveryCodeRecord.Create(this, recoveryCodes);
         ImmutableArray<string>               codes      = [.. dictionary.Keys];
 
 
-        await db.RecoveryCodes.Delete(connection, transaction, old, token);
-        await UserRecoveryCodeRecord.Replace(connection, transaction, this, RecordID<RecoveryCodeRecord>.Create(dictionary.Values), token);
+        await db.RecoveryCodes.Delete(context, old, token);
+        await UserRecoveryCodeRecord.Replace(context, this, RecordID<RecoveryCodeRecord>.Create(dictionary.Values), token);
         return codes;
     }
 
 
-    public       IAsyncEnumerable<RecoveryCodeRecord> Codes( Database                 db,         CancellationToken  token )                                                                                        => db.TryCall(Codes, db, token);
-    public       IAsyncEnumerable<RecoveryCodeRecord> Codes( NpgsqlConnection         connection, NpgsqlTransaction? transaction, Database      db,    CancellationToken                          token )           => UserRecoveryCodeRecord.Where(connection, transaction, db.RecoveryCodes, this, token);
-    public async ValueTask<bool>                      TryAdd( NpgsqlConnection        connection, NpgsqlTransaction? transaction, AddressRecord value, CancellationToken                          token )           => await UserAddressRecord.TryAdd(connection, transaction, ID, value, token);
-    public       IAsyncEnumerable<AddressRecord>      GetAddresses( NpgsqlConnection  connection, NpgsqlTransaction? transaction, Database      db,    [EnumeratorCancellation] CancellationToken token = default ) => UserAddressRecord.Where(connection, transaction, db.Addresses, ID, token);
-    public async ValueTask<bool>                      HasAddress( NpgsqlConnection    connection, NpgsqlTransaction? transaction, AddressRecord value, CancellationToken                          token )           => await UserAddressRecord.Exists(connection, transaction, ID, value, token);
-    public async ValueTask                            Remove( NpgsqlConnection        connection, NpgsqlTransaction? transaction, AddressRecord value, CancellationToken                          token )           => await UserAddressRecord.Delete(connection, transaction, ID, value, token);
-    public async ValueTask<bool>                      TryAdd( NpgsqlConnection        connection, NpgsqlTransaction? transaction, RoleRecord    value, CancellationToken                          token )           => await UserRoleRecord.TryAdd(connection, transaction, ID, value, token);
-    public       IAsyncEnumerable<RoleRecord>         GetRoles( NpgsqlConnection      connection, NpgsqlTransaction? transaction, Database      db,    CancellationToken                          token = default ) => UserRoleRecord.Where(connection, transaction, db.Roles, ID, token);
-    public async ValueTask<bool>                      HasRole( NpgsqlConnection       connection, NpgsqlTransaction? transaction, RoleRecord    value, CancellationToken                          token )           => await UserRoleRecord.Exists(connection, transaction, ID, value, token);
-    public async ValueTask                            Remove( NpgsqlConnection        connection, NpgsqlTransaction? transaction, RoleRecord    value, CancellationToken                          token )           => await UserRoleRecord.Delete(connection, transaction, ID, value, token);
-    public async ValueTask<bool>                      TryAdd( NpgsqlConnection        connection, NpgsqlTransaction? transaction, GroupRecord   value, CancellationToken                          token )           => await UserGroupRecord.TryAdd(connection, transaction, ID, value, token);
-    public       IAsyncEnumerable<GroupRecord>        GetGroups( NpgsqlConnection     connection, NpgsqlTransaction? transaction, Database      db,    CancellationToken                          token = default ) => UserGroupRecord.Where(connection, transaction, db.Groups, ID, token);
-    public async ValueTask<bool>                      IsPartOfGroup( NpgsqlConnection connection, NpgsqlTransaction? transaction, GroupRecord   value, CancellationToken                          token )           => await UserGroupRecord.Exists(connection, transaction, ID, value, token);
-    public async ValueTask                            Remove( NpgsqlConnection        connection, NpgsqlTransaction? transaction, GroupRecord   value, CancellationToken                          token )           => await UserGroupRecord.Delete(connection, transaction, ID, value, token);
+    public       IAsyncEnumerable<RecoveryCodeRecord> Codes( Database                    db,      CancellationToken token )                                                             => db.TryCall(Codes, db, token);
+    public       IAsyncEnumerable<RecoveryCodeRecord> Codes( DbConnectionContext         context, Database          db,    CancellationToken                          token )           => UserRecoveryCodeRecord.Where(context, db.RecoveryCodes, this, token);
+    public async ValueTask<bool>                      TryAdd( DbConnectionContext        context, AddressRecord     value, CancellationToken                          token )           => await UserAddressRecord.TryAdd(context, ID, value, token);
+    public       IAsyncEnumerable<AddressRecord>      GetAddresses( DbConnectionContext  context, Database          db,    [EnumeratorCancellation] CancellationToken token = default ) => UserAddressRecord.Where(context, db.Addresses, ID, token);
+    public async ValueTask<bool>                      HasAddress( DbConnectionContext    context, AddressRecord     value, CancellationToken                          token )           => await UserAddressRecord.Exists(context, ID, value, token);
+    public async ValueTask                            Remove( DbConnectionContext        context, AddressRecord     value, CancellationToken                          token )           => await UserAddressRecord.Delete(context, ID, value, token);
+    public async ValueTask<bool>                      TryAdd( DbConnectionContext        context, RoleRecord        value, CancellationToken                          token )           => await UserRoleRecord.TryAdd(context, ID, value, token);
+    public       IAsyncEnumerable<RoleRecord>         GetRoles( DbConnectionContext      context, Database          db,    CancellationToken                          token = default ) => UserRoleRecord.Where(context, db.Roles, ID, token);
+    public async ValueTask<bool>                      HasRole( DbConnectionContext       context, RoleRecord        value, CancellationToken                          token )           => await UserRoleRecord.Exists(context, ID, value, token);
+    public async ValueTask                            Remove( DbConnectionContext        context, RoleRecord        value, CancellationToken                          token )           => await UserRoleRecord.Delete(context, ID, value, token);
+    public async ValueTask<bool>                      TryAdd( DbConnectionContext        context, GroupRecord       value, CancellationToken                          token )           => await UserGroupRecord.TryAdd(context, ID, value, token);
+    public       IAsyncEnumerable<GroupRecord>        GetGroups( DbConnectionContext     context, Database          db,    CancellationToken                          token = default ) => UserGroupRecord.Where(context, db.Groups, ID, token);
+    public async ValueTask<bool>                      IsPartOfGroup( DbConnectionContext context, GroupRecord       value, CancellationToken                          token )           => await UserGroupRecord.Exists(context, ID, value, token);
+    public async ValueTask                            Remove( DbConnectionContext        context, GroupRecord       value, CancellationToken                          token )           => await UserGroupRecord.Delete(context, ID, value, token);
 
     #endregion Helpers
 
@@ -638,9 +638,9 @@ public sealed record UserRecord : PairRecord<UserRecord>, ITableRecord<UserRecor
 
     #region Owners
 
-    public async ValueTask<ErrorOrResult<UserRecord>> GetBoss( NpgsqlConnection connection, NpgsqlTransaction? transaction, Database db, CancellationToken token ) =>
+    public async ValueTask<ErrorOrResult<UserRecord>> GetBoss( DbConnectionContext context, Database db, CancellationToken token ) =>
         EscalateTo.HasValue
-            ? await db.Users.Get(connection, transaction, EscalateTo.Value, token)
+            ? await db.Users.Get(context, EscalateTo.Value, token)
             : Error.Gone();
 
 
@@ -655,20 +655,20 @@ public sealed record UserRecord : PairRecord<UserRecord>, ITableRecord<UserRecor
 
     #region Claims
 
-    public async ValueTask<Claim[]> GetUserClaims( NpgsqlConnection connection, NpgsqlTransaction? transaction, Database db, ClaimType types, CancellationToken token )
+    public async ValueTask<Claim[]> GetUserClaims( DbConnectionContext context, Database db, ClaimType types, CancellationToken token )
     {
-        UserModel model = await ToUserModel(connection, transaction, db, token);
+        UserModel model = await ToUserModel(context, db, token);
         return model.GetClaims(types);
     }
-    public static ValueTask<ErrorOrResult<UserRecord>> TryFromClaims( NpgsqlConnection connection, NpgsqlTransaction? transaction, Database db, ClaimsPrincipal principal, ClaimType types, CancellationToken token )
+    public static ValueTask<ErrorOrResult<UserRecord>> TryFromClaims( DbConnectionContext context, Database db, ClaimsPrincipal principal, ClaimType types, CancellationToken token )
     {
         Claim[] array = principal.Claims.ToArray();
-        return TryFromClaims(connection, transaction, db, array.AsValueEnumerable(), types, token);
+        return TryFromClaims(context, db, array.AsValueEnumerable(), types, token);
     }
-    public static ValueTask<ErrorOrResult<UserRecord>> TryFromClaims<TEnumerator>( NpgsqlConnection connection, NpgsqlTransaction? transaction, Database db, ValueEnumerable<TEnumerator, Claim> claims, in ClaimType types, CancellationToken token )
+    public static ValueTask<ErrorOrResult<UserRecord>> TryFromClaims<TEnumerator>( DbConnectionContext context, Database db, ValueEnumerable<TEnumerator, Claim> claims, in ClaimType types, CancellationToken token )
         where TEnumerator : struct, IValueEnumerator<Claim>
     {
-        PostgresParameters parameters = PostgresParameters.Create<UserRecord>();
+        CommandParameters parameters = CommandParameters.Create<UserRecord>();
 
         parameters.Add(nameof(ID), Guid.Parse(claims.Single(static x => x.IsUserID()).Value));
 
@@ -686,11 +686,11 @@ public sealed record UserRecord : PairRecord<UserRecord>, ITableRecord<UserRecor
 
         if ( types.HasFlag(ClaimType.WebSite) ) { parameters.Add(nameof(Website), claims.Single(static x => x.IsWebSite()).Value); }
 
-        return db.Users.Get(connection, transaction, parameters, token);
+        return db.Users.Get(context, parameters, token);
     }
-    public static async IAsyncEnumerable<UserRecord> TryFromClaims( NpgsqlConnection connection, NpgsqlTransaction? transaction, Database db, Claim claim, [EnumeratorCancellation] CancellationToken token = default )
+    public static async IAsyncEnumerable<UserRecord> TryFromClaims( DbConnectionContext context, Database db, Claim claim, [EnumeratorCancellation] CancellationToken token = default )
     {
-        PostgresParameters parameters = PostgresParameters.Create<UserRecord>();
+        CommandParameters parameters = CommandParameters.Create<UserRecord>();
 
         switch ( claim.Type )
         {
@@ -727,7 +727,7 @@ public sealed record UserRecord : PairRecord<UserRecord>, ITableRecord<UserRecor
                 break;
         }
 
-        await foreach ( UserRecord record in db.Users.Where(connection, transaction, parameters, token) ) { yield return record; }
+        await foreach ( UserRecord record in db.Users.Where(context, parameters, token) ) { yield return record; }
     }
 
     #endregion Claims

@@ -27,7 +27,7 @@ public sealed class RecordGenerator<TSelf>( DbTable<TSelf> table ) : IAsyncEnume
 
 
     public ValueTask<bool> MoveNextAsync() => table.Call(MoveNextAsync, __token);
-    public async ValueTask<bool> MoveNextAsync( NpgsqlConnection connection, NpgsqlTransaction? transaction, CancellationToken token = default )
+    public async ValueTask<bool> MoveNextAsync( DbConnectionContext context, CancellationToken token = default )
     {
         if ( token.IsCancellationRequested )
         {
@@ -35,7 +35,7 @@ public sealed class RecordGenerator<TSelf>( DbTable<TSelf> table ) : IAsyncEnume
             return false;
         }
 
-        if ( await __generator.MoveNextAsync(connection, transaction, token) ) { __current = await table.Get(connection, transaction, __generator.Current, token); }
+        if ( await __generator.MoveNextAsync(context, token) ) { __current = await table.Get(context, __generator.Current, token); }
         else
         {
             __current = null;
