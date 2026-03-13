@@ -34,12 +34,9 @@ public interface ITableMetaData : IDisposable
     public string                                   TableName                   { [Pure] get; }
 
 
-    public void   ColumnNames( StringBuilder   sb, ref int indentLevel );
-    public void   VariableNames( StringBuilder sb, ref int indentLevel );
-    public void   KeyValuePairs( StringBuilder sb, ref int indentLevel );
-    public string IndexName( string            propertyName );
-    public bool   ContainsKey( string          propertyName );
-    public bool   TryGetValue( string          propertyName, [MaybeNullWhen(false)] out ColumnMetaData value );
+    public string IndexName( string   propertyName );
+    public bool   ContainsKey( string propertyName );
+    public bool   TryGetValue( string propertyName, [MaybeNullWhen(false)] out ColumnMetaData value );
 
 
     public MigrationRecord SetLastModifiedFunction( long migrationID );
@@ -47,4 +44,5 @@ public interface ITableMetaData : IDisposable
 
 
     public TableMetaDataEnumerator GetEnumerator();
+    public void                    ColumnNames( StringBuilder sb, ref int indentLevel );
 }

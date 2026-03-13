@@ -7,6 +7,7 @@ namespace Jakar.Database;
 public static class PostgresParams
 {
     private static readonly ConcurrentDictionary<(string Original, int MaxLength), string> __paddedCache             = new();
+    private static readonly ConcurrentDictionary<string, string>                           __parameterNameCache      = new(Environment.ProcessorCount, DEFAULT_CAPACITY, StringComparer.InvariantCulture);
     private static readonly ConcurrentDictionary<string, string>                           __indexNameSnakeCaseCache = new(StringComparer.InvariantCultureIgnoreCase);
     private static readonly ConcurrentDictionary<string, string> __nameSnakeCaseCache = new(StringComparer.InvariantCultureIgnoreCase)
                                                                                         {
@@ -46,6 +47,21 @@ public static class PostgresParams
         result = propertyName.ToSnakeCase(CultureInfo.InvariantCulture);
         lookup.TryAdd(propertyName, result);
         return result;
+    }
+
+
+
+    extension( string parameterName )
+    {
+        public string Parameterize()
+        {
+            parameterName = __parameterNameCache.GetOrAdd(parameterName,
+                                                          static x => x.Contains('.')
+                                                                          ? x.Split('.')[^1]
+                                                                          : x);
+
+            return parameterName.SqlName();
+        }
     }
 
 

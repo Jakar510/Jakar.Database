@@ -165,7 +165,7 @@ public class TableMetaData<TSelf> : ITableMetaData
     }
     public void ColumnNames( StringBuilder sb, ref int indentLevel )
     {
-        int length = ( MaxLength_ColumnName + 2 ) * ColumnCount + ColumnCount * 4 * indentLevel;
+        int length = ColumnCount * ( MaxLength_ColumnName + 2 ) + ColumnCount * 4 * indentLevel;
         sb.EnsureCapacity(length);
 
         int index = 0;
@@ -178,41 +178,11 @@ public class TableMetaData<TSelf> : ITableMetaData
     }
 
 
-    public void VariableNames( StringBuilder sb, ref int indentLevel )
-    {
-        int length = ( MaxLength_Variables + 2 ) * ColumnCount + ColumnCount * 4 * indentLevel;
-        sb.EnsureCapacity(length);
-
-        int index = 0;
-
-        foreach ( string columnName in Columns.Select(static x => x.VariableName) )
-        {
-            sb.Append(' ', indentLevel * 4).Append(columnName);
-            if ( index++ < ColumnCount - 1 ) { sb.Append(",\n"); }
-        }
-    }
-
-
-    public void KeyValuePairs( StringBuilder sb, ref int indentLevel )
-    {
-        int length = ( MaxLength_KeyValuePair + 2 ) * ColumnCount + ColumnCount * 4 * indentLevel;
-        sb.EnsureCapacity(length);
-
-        int index = 0;
-
-        foreach ( string columnName in Columns.Select(static x => x.KeyValuePair) )
-        {
-            sb.Append(' ', indentLevel * 4).Append(columnName);
-            if ( index++ < ColumnCount - 1 ) { sb.Append(",\n"); }
-        }
-    }
-
-
     public string IndexName( string propertyName ) => Properties[propertyName].IndexColumnName_Padded(this);
 
 
     public ValueEnumerable<TableMetaDataEnumerator, PropertyColumn> AsValueEnumerable() => new(GetEnumerator());
-    public TableMetaDataEnumerator                                  GetEnumerator()     => new(Properties);
+    public TableMetaDataEnumerator                                  GetEnumerator()     => new(this);
 
 
     private static Func<long, MigrationRecord> CreateIndex( ColumnMetaData column ) => migrationID => CreateIndex(migrationID, column);

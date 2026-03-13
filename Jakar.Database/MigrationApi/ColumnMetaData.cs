@@ -4,27 +4,26 @@
 [SuppressMessage("ReSharper", "InconsistentNaming")]
 public sealed class ColumnMetaData
 {
-    private static readonly ConcurrentDictionary<string, string> parameterNameCache = new(Environment.ProcessorCount, DEFAULT_CAPACITY, StringComparer.InvariantCulture);
-    public readonly         bool                                 IsAlwaysIdentity;
-    public readonly         bool                                 IsDefaultIdentity;
-    public readonly         bool                                 IsFixed;
-    public readonly         bool                                 IsNullable;
-    public readonly         bool                                 IsPrimaryKey;
-    public readonly         bool                                 IsUnique;
-    public readonly         ChecksAttribute?                     Checks;
-    public readonly         DbSizeAttribute?                     Length;
-    public readonly         DefaultsAttribute?                   Defaults;
-    public readonly         ForeignKeyAttribute?                 ForeignKey;
-    public readonly         IndexedAttribute?                    Indexed;
-    public readonly         PostgresType                         DbType;
-    public readonly         string                               ColumnName;
-    public readonly         string                               DataType;
-    public readonly         string                               KeyValuePair;
-    public readonly         string                               PropertyName;
-    public readonly         string                               VariableName;
-    public readonly         Type                                 PropertyType;
-    private                 NpgsqlDbType?                        __postgresDbType;
-    private                 SqlDbType?                           __sqlDbType;
+    public readonly bool                 IsAlwaysIdentity;
+    public readonly bool                 IsDefaultIdentity;
+    public readonly bool                 IsFixed;
+    public readonly bool                 IsNullable;
+    public readonly bool                 IsPrimaryKey;
+    public readonly bool                 IsUnique;
+    public readonly ChecksAttribute?     Checks;
+    public readonly DbSizeAttribute?     Length;
+    public readonly DefaultsAttribute?   Defaults;
+    public readonly ForeignKeyAttribute? ForeignKey;
+    public readonly IndexedAttribute?    Indexed;
+    public readonly PostgresType         DbType;
+    public readonly string               ColumnName;
+    public readonly string               DataType;
+    public readonly string               KeyValuePair;
+    public readonly string               PropertyName;
+    public readonly string               VariableName;
+    public readonly Type                 PropertyType;
+    private         NpgsqlDbType?        __postgresDbType;
+    private         SqlDbType?           __sqlDbType;
 
 
     public DataColumn DataColumn => new(ColumnName, PropertyType)
@@ -146,9 +145,7 @@ public sealed class ColumnMetaData
 
     public Microsoft.Data.SqlClient.SqlParameter ToSqlParameter( object? value, [CallerArgumentExpression(nameof(value))] string parameterName = EMPTY, ParameterDirection direction = ParameterDirection.Input, DataRowVersion sourceVersion = DataRowVersion.Default )
     {
-        if ( parameterName.Contains('.') ) { parameterName = parameterNameCache.GetOrAdd(parameterName, static x => x.Split('.')[^1]); }
-
-        Microsoft.Data.SqlClient.SqlParameter parameter = new(parameterName.SqlName(), SqlDbType, 0, ColumnName)
+        Microsoft.Data.SqlClient.SqlParameter parameter = new(parameterName.Parameterize(), SqlDbType, 0, ColumnName)
                                                           {
                                                               IsNullable    = IsNullable,
                                                               SourceVersion = sourceVersion,
@@ -160,9 +157,7 @@ public sealed class ColumnMetaData
     }
     public NpgsqlParameter ToPostgresParameter( object? value, [CallerArgumentExpression(nameof(value))] string parameterName = EMPTY, ParameterDirection direction = ParameterDirection.Input, DataRowVersion sourceVersion = DataRowVersion.Default )
     {
-        if ( parameterName.Contains('.') ) { parameterName = parameterNameCache.GetOrAdd(parameterName, static x => x.Split('.')[^1]); }
-
-        NpgsqlParameter parameter = new(parameterName.SqlName(), PostgresDbType, 0, ColumnName)
+        NpgsqlParameter parameter = new(parameterName.Parameterize(), PostgresDbType, 0, ColumnName)
                                     {
                                         IsNullable    = IsNullable,
                                         SourceVersion = sourceVersion,
@@ -174,10 +169,8 @@ public sealed class ColumnMetaData
     }
     public SqlParameter ToParameter( object? value, [CallerArgumentExpression(nameof(value))] string parameterName = EMPTY, ParameterDirection direction = ParameterDirection.Input, DataRowVersion sourceVersion = DataRowVersion.Default )
     {
-        if ( parameterName.Contains('.') ) { parameterName = parameterNameCache.GetOrAdd(parameterName, static x => x.Split('.')[^1]); }
-
         Debug.Assert(Index >= 0);
-        SqlParameter parameter = new(value, parameterName.SqlName(), ColumnName, Index, DbType, IsNullable, direction, sourceVersion);
+        SqlParameter parameter = new(value, parameterName.Parameterize(), this, direction, sourceVersion);
         return parameter;
     }
 

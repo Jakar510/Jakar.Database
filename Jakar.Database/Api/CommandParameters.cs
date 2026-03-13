@@ -1,74 +1,11 @@
 ﻿// Jakar.Database :: Jakar.Database
 // 01/28/2026  18:42
 
-using Microsoft.Data.SqlClient;
-using StackExchange.Redis;
 using ZLinq.Linq;
 
 
 
 namespace Jakar.Database;
-
-
-public readonly record struct SqlParameter( object?            Value,
-                                            string             ParameterName,
-                                            string             SourceColumn,
-                                            int                Index,
-                                            PostgresType       DbType,
-                                            bool               IsNullable,
-                                            ParameterDirection Direction,
-                                            DataRowVersion     SourceVersion ) : IComparable<SqlParameter>, IComparable
-{
-    public readonly object?            Value         = Value ?? DBNull.Value;
-    public readonly string             ParameterName = ParameterName.SqlName();
-    public readonly string             SourceColumn  = SourceColumn;
-    public readonly int                Index         = Index;
-    public readonly PostgresType       DbType        = DbType;
-    public readonly bool               IsNullable    = IsNullable;
-    public readonly ParameterDirection Direction     = Direction;
-    public readonly DataRowVersion     SourceVersion = SourceVersion;
-
-
-    public NpgsqlParameter ToPostgresParameter() => new(ParameterName, DbType.ToNpgsqlDbType(), 0, SourceColumn)
-                                                    {
-                                                        Value         = Value,
-                                                        IsNullable    = IsNullable,
-                                                        SourceVersion = SourceVersion,
-                                                        Direction     = Direction,
-                                                    };
-    public Microsoft.Data.SqlClient.SqlParameter ToSqlParameter() => new(ParameterName, DbType.ToSqlDbType(), 0, SourceColumn)
-                                                                     {
-                                                                         Value         = Value,
-                                                                         IsNullable    = IsNullable,
-                                                                         SourceVersion = SourceVersion,
-                                                                         Direction     = Direction,
-                                                                     };
-
-
-    public int CompareTo( SqlParameter other )
-    {
-        int indexComparison = Index.CompareTo(other.Index);
-        if ( indexComparison != 0 ) { return indexComparison; }
-
-        int sourceColumnComparison = string.Compare(SourceColumn, other.SourceColumn, StringComparison.Ordinal);
-        if ( sourceColumnComparison != 0 ) { return sourceColumnComparison; }
-
-        return string.Compare(ParameterName, other.ParameterName, StringComparison.Ordinal);
-    }
-    public int CompareTo( object? obj )
-    {
-        if ( obj is null ) { return 1; }
-
-        return obj is SqlParameter other
-                   ? CompareTo(other)
-                   : throw new ArgumentException($"Object must be of type {nameof(SqlParameter)}");
-    }
-    public static bool operator <( SqlParameter  left, SqlParameter right ) => left.CompareTo(right) < 0;
-    public static bool operator >( SqlParameter  left, SqlParameter right ) => left.CompareTo(right) > 0;
-    public static bool operator <=( SqlParameter left, SqlParameter right ) => left.CompareTo(right) <= 0;
-    public static bool operator >=( SqlParameter left, SqlParameter right ) => left.CompareTo(right) >= 0;
-}
-
 
 
 public readonly struct CommandParameters() : IEquatable<CommandParameters>
@@ -165,7 +102,7 @@ public readonly struct CommandParameters() : IEquatable<CommandParameters>
     }
 
 
-    public ValueEnumerable<Where<FromSpan<SqlParameter>, SqlParameter>, SqlParameter> ColumnsFor( string propertyName ) => Values.AsValueEnumerable().Where(x => string.Equals(x.SourceColumn, propertyName.SqlName(), StringComparison.InvariantCulture));
+    public ValueEnumerable<Where<FromSpan<SqlParameter>, SqlParameter>, SqlParameter> ColumnsFor( string propertyName ) => Values.AsValueEnumerable().Where(x => string.Equals(x.Column.PropertyName, propertyName, StringComparison.InvariantCulture));
 
 
     public CommandParameters With( in CommandParameters other )

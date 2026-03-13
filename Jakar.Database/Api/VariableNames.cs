@@ -1,6 +1,7 @@
 ﻿// Jakar.Database :: Jakar.Database
 // 03/06/2026  22:33
 
+
 namespace Jakar.Database;
 
 
@@ -10,7 +11,7 @@ public readonly struct ColumnNames
     public ColumnNames( CommandParameters parameters, int indentLevel )
     {
         StringBuilder sb = Value = new StringBuilder();
-        parameters.Table.ColumnNames(sb, ref indentLevel);
+        parameters.Table.ColumnNames(sb, ref indentLevel); 
     }
     public override string ToString() => Value.ToString();
 }
@@ -32,7 +33,7 @@ public readonly struct KeyValuePairs
 
         foreach ( ref readonly SqlParameter parameter in buffer.Values )
         {
-            sb.Append(' ', indentLevel * 4).Append(parameter.SourceColumn).Append(" = @").Append(parameter.ParameterName);
+            sb.Append(' ', indentLevel * 4).Append(parameter.Column.ColumnName).Append(" = @").Append(parameter.ParameterName);
 
             if ( index++ >= count - 1 ) { continue; }
 

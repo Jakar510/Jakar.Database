@@ -99,11 +99,7 @@ public readonly ref struct SqlInterpolatedStringHandler<TSelf>( int literalLengt
                         return;
 
                     case > 0 when isParameter:
-                        ReadOnlySpan<char> span  = paramName;
-                        int                index = span.IndexOf('.');
-                        if ( index >= 0 ) { span = span[index..]; }
-
-                        Sb.Append(span);
+                        Sb.Append(paramName.Parameterize());
 
                         if ( ColumnNames.TryPop(out string? name) )
                         {
