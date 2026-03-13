@@ -4,13 +4,13 @@
 namespace Jakar.Database;
 
 
-public readonly record struct SqlParameter( object? Value, string ParameterName, ColumnMetaData Column, ParameterDirection Direction, DataRowVersion SourceVersion ) : IComparable<SqlParameter>, IComparable
+public readonly struct SqlParameter( object? value, string parameterName, ColumnMetaData column, ParameterDirection direction, DataRowVersion sourceVersion ) : IEqualComparable<SqlParameter>
 {
-    public readonly object?            Value         = Value ?? DBNull.Value;
-    public readonly string             ParameterName = ParameterName.SqlName();
-    public readonly ColumnMetaData     Column        = Column;
-    public readonly ParameterDirection Direction     = Direction;
-    public readonly DataRowVersion     SourceVersion = SourceVersion; 
+    public readonly object?            Value         = value ?? DBNull.Value;
+    public readonly string             ParameterName = parameterName.SqlName();
+    public readonly ColumnMetaData     Column        = column;
+    public readonly ParameterDirection Direction     = direction;
+    public readonly DataRowVersion     SourceVersion = sourceVersion;
 
 
     public NpgsqlParameter ToPostgresParameter() => new(ParameterName, Column.PostgresDbType, 0, Column.ColumnName)
@@ -31,7 +31,7 @@ public readonly record struct SqlParameter( object? Value, string ParameterName,
 
     public int CompareTo( SqlParameter other )
     {
-        int indexComparison = Column.Index.CompareTo(other.Column.Index);
+        int indexComparison = Column.CompareTo(other.Column);
         if ( indexComparison != 0 ) { return indexComparison; }
 
         int sourceColumnComparison = string.Compare(Column.ColumnName, other.Column.ColumnName, StringComparison.Ordinal);
@@ -39,14 +39,26 @@ public readonly record struct SqlParameter( object? Value, string ParameterName,
 
         return string.Compare(ParameterName, other.ParameterName, StringComparison.Ordinal);
     }
-    public int CompareTo( object? obj )
+    public int CompareTo( object? other )
     {
-        if ( obj is null ) { return 1; }
+        if ( other is null ) { return 1; }
 
-        return obj is SqlParameter other
-                   ? CompareTo(other)
-                   : throw new ArgumentException($"Object must be of type {nameof(SqlParameter)}");
+        return other is SqlParameter x
+                   ? CompareTo(x)
+                   : throw new ExpectedValueTypeException(other, typeof(SqlParameter));
     }
+    public          bool Equals( SqlParameter other ) => Column.Equals(other.Column) && string.Equals(ParameterName, other.ParameterName, StringComparison.InvariantCulture) && Equals(Value, other.Value);
+    public override bool Equals( object?      obj )   => obj is SqlParameter other   && Equals(other);
+    public override int GetHashCode()
+    {
+        HashCode hashCode = new HashCode();
+        hashCode.Add(Column);
+        hashCode.Add(ParameterName, StringComparer.InvariantCulture);
+        hashCode.Add(Value);
+        return hashCode.ToHashCode();
+    }
+    public static bool operator ==( SqlParameter left, SqlParameter right ) => left.Equals(right);
+    public static bool operator !=( SqlParameter left, SqlParameter right ) => !left.Equals(right);
     public static bool operator <( SqlParameter  left, SqlParameter right ) => left.CompareTo(right) < 0;
     public static bool operator >( SqlParameter  left, SqlParameter right ) => left.CompareTo(right) > 0;
     public static bool operator <=( SqlParameter left, SqlParameter right ) => left.CompareTo(right) <= 0;

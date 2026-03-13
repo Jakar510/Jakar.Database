@@ -62,9 +62,9 @@ public readonly struct CommandParameters() : IEquatable<CommandParameters>
     internal int                                     KeyValuePairLength( int indentLevel ) => Table.Properties.Values.Sum(static x => x.KeyValuePair.Length) + ParameterCount * ( indentLevel * 4 + 3 );
 
 
-    public ColumnNames   ColumnNames( int   indentLevel )                           => new(this, indentLevel);
-    public VariableNames VariableNames( int indentLevel )                           => new(this, indentLevel);
-    public KeyValuePairs KeyValuePairs( int indentLevel, string separator = "AND" ) => new(this, indentLevel, separator);
+    public ColumnNames   ColumnNames( int   indentLevel )                                      => new(this, indentLevel);
+    public VariableNames VariableNames( int indentLevel )                                      => new(this, indentLevel);
+    public KeyValuePairs KeyValuePairs( int indentLevel, params ReadOnlySpan<char> separator ) => new(this, indentLevel, separator);
 
 
     public static CommandParameters Create<TSelf>()
@@ -89,7 +89,7 @@ public readonly struct CommandParameters() : IEquatable<CommandParameters>
         where TSelf : TableRecord<TSelf>, ITableRecord<TSelf>
     {
         CommandParameters result = Create<TSelf>(parameters.Length);
-        foreach ( ref readonly SqlParameter record in parameters ) { result.Add(in record); }
+        foreach ( ref readonly SqlParameter record in parameters ) { result.AddInternal(in record); }
 
         return result;
     }
@@ -114,18 +114,18 @@ public readonly struct CommandParameters() : IEquatable<CommandParameters>
     }
 
 
-    internal void Add( in SqlParameter parameter )
+    internal void AddInternal( in SqlParameter parameter )
     {
-        foreach ( ref readonly SqlParameter value in Values )
+        foreach ( ref readonly SqlParameter existing in Values )
         {
-            if ( string.Equals(value.ParameterName, parameter.ParameterName, StringComparison.InvariantCulture) && Equals(value.Value, parameter.Value) ) { return; }
+            if ( EqualityComparer<SqlParameter>.Default.Equals(existing, parameter) ) { return; }
         }
 
         __parameters.Add(parameter);
     }
-    internal CommandParameters Add( params ReadOnlySpan<SqlParameter> parameters )
+    internal CommandParameters AddInternal( params ReadOnlySpan<SqlParameter> parameters )
     {
-        foreach ( ref readonly SqlParameter record in parameters ) { Add(in record); }
+        foreach ( ref readonly SqlParameter record in parameters ) { AddInternal(in record); }
 
         return this;
     }
@@ -134,24 +134,24 @@ public readonly struct CommandParameters() : IEquatable<CommandParameters>
     public CommandParameters Add<TSelf>( string propertyName, IRecordID value, [CallerArgumentExpression(nameof(value))] string parameterName = EMPTY, ParameterDirection direction = ParameterDirection.Input, DataRowVersion sourceVersion = DataRowVersion.Default )
         where TSelf : PairRecord<TSelf>, ITableRecord<TSelf>
     {
-        Add(Table[propertyName].ToParameter(value.ID, parameterName, direction, sourceVersion));
+        AddInternal(Table[propertyName].ToParameter(value.ID, parameterName, direction, sourceVersion));
         return this;
     }
     public CommandParameters Add<TSelf>( string propertyName, RecordID<TSelf> value, [CallerArgumentExpression(nameof(value))] string parameterName = EMPTY, ParameterDirection direction = ParameterDirection.Input, DataRowVersion sourceVersion = DataRowVersion.Default )
         where TSelf : PairRecord<TSelf>, ITableRecord<TSelf>
     {
-        Add(Table[propertyName].ToParameter(value.Value, parameterName, direction, sourceVersion));
+        AddInternal(Table[propertyName].ToParameter(value.Value, parameterName, direction, sourceVersion));
         return this;
     }
     public CommandParameters Add<T>( string propertyName, T? value, [CallerArgumentExpression(nameof(value))] string parameterName = EMPTY, ParameterDirection direction = ParameterDirection.Input, DataRowVersion sourceVersion = DataRowVersion.Default )
         where T : struct, Enum
     {
-        Add(Table[propertyName].ToParameter(value, parameterName, direction, sourceVersion));
+        AddInternal(Table[propertyName].ToParameter(value, parameterName, direction, sourceVersion));
         return this;
     }
     public CommandParameters Add( string propertyName, object? value, [CallerArgumentExpression(nameof(value))] string parameterName = EMPTY, ParameterDirection direction = ParameterDirection.Input, DataRowVersion sourceVersion = DataRowVersion.Default )
     {
-        Add(Table[propertyName].ToParameter(value, parameterName, direction, sourceVersion));
+        AddInternal(Table[propertyName].ToParameter(value, parameterName, direction, sourceVersion));
         return this;
     }
 

@@ -2,7 +2,7 @@
 
 
 [SuppressMessage("ReSharper", "InconsistentNaming")]
-public sealed class ColumnMetaData
+public sealed class ColumnMetaData : IEquatable<ColumnMetaData>, IComparable<ColumnMetaData>, IComparable
 {
     public readonly bool                 IsAlwaysIdentity;
     public readonly bool                 IsDefaultIdentity;
@@ -208,4 +208,40 @@ public sealed class ColumnMetaData
         emit.Return();
         return emit.CreateDelegate();
     }
+
+
+    public int CompareTo( ColumnMetaData? other )
+    {
+        if ( other is null ) { return 1; }
+
+        if ( ReferenceEquals(this, other) ) { return 0; }
+
+        return Index.CompareTo(other.Index);
+    }
+    public int CompareTo( object? other )
+    {
+        if ( other is null ) { return 1; }
+
+        if ( ReferenceEquals(this, other) ) { return 0; }
+
+        return other is ColumnMetaData x
+                   ? CompareTo(x)
+                   : throw new ExpectedValueTypeException(other, typeof(ColumnMetaData));
+    }
+    public bool Equals( ColumnMetaData? other )
+    {
+        if ( other is null ) { return false; }
+
+        if ( ReferenceEquals(this, other) ) { return true; }
+
+        return DbType == other.DbType && PropertyName == other.PropertyName;
+    }
+    public override bool Equals( object? obj )                                      => ReferenceEquals(this, obj) || obj is ColumnMetaData other && Equals(other);
+    public override int  GetHashCode()                                              => HashCode.Combine((int)DbType, PropertyName);
+    public static   bool operator ==( ColumnMetaData? left, ColumnMetaData? right ) => Equals(left, right);
+    public static   bool operator !=( ColumnMetaData? left, ColumnMetaData? right ) => !Equals(left, right);
+    public static   bool operator <( ColumnMetaData?  left, ColumnMetaData? right ) => Comparer<ColumnMetaData>.Default.Compare(left, right) < 0;
+    public static   bool operator >( ColumnMetaData?  left, ColumnMetaData? right ) => Comparer<ColumnMetaData>.Default.Compare(left, right) > 0;
+    public static   bool operator <=( ColumnMetaData? left, ColumnMetaData? right ) => Comparer<ColumnMetaData>.Default.Compare(left, right) <= 0;
+    public static   bool operator >=( ColumnMetaData? left, ColumnMetaData? right ) => Comparer<ColumnMetaData>.Default.Compare(left, right) >= 0;
 }

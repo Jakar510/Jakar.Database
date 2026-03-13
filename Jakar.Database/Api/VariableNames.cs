@@ -11,7 +11,7 @@ public readonly struct ColumnNames
     public ColumnNames( CommandParameters parameters, int indentLevel )
     {
         StringBuilder sb = Value = new StringBuilder();
-        parameters.Table.ColumnNames(sb, ref indentLevel); 
+        parameters.Table.ColumnNames(sb, ref indentLevel);
     }
     public override string ToString() => Value.ToString();
 }
@@ -22,7 +22,7 @@ public readonly struct KeyValuePairs
 {
     internal readonly CommandParameters Parameters;
     internal readonly StringBuilder     Value;
-    public KeyValuePairs( CommandParameters parameters, int indentLevel, string separator )
+    public KeyValuePairs( CommandParameters parameters, int indentLevel, params ReadOnlySpan<char> separator )
     {
         Parameters = parameters;
         StringBuilder sb = Value = new StringBuilder(parameters.KeyValuePairLength(indentLevel));
@@ -33,12 +33,19 @@ public readonly struct KeyValuePairs
 
         foreach ( ref readonly SqlParameter parameter in buffer.Values )
         {
+            if ( !separator.IsEmpty ) { indentLevel++; }
+
             sb.Append(' ', indentLevel * 4).Append(parameter.Column.ColumnName).Append(" = @").Append(parameter.ParameterName);
 
             if ( index++ >= count - 1 ) { continue; }
 
+            if ( !separator.IsEmpty )
+            {
+                indentLevel--;
+                sb.Append('\n').Append(' ', indentLevel * 4).Append(separator);
+            }
+
             sb.Append(",\n");
-            sb.Append(separator);
         }
     }
     public override string ToString() => Value.ToString();

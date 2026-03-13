@@ -133,12 +133,12 @@ public readonly ref struct SqlInterpolatedStringHandler<TSelf>( int literalLengt
                 return;
 
             case KeyValuePairs n:
-                Parameters.Add(n.Parameters.Values);
+                Parameters.AddInternal(n.Parameters.Values);
                 Sb.Append(n.Value);
                 return;
 
             case CommandParameters n:
-                Parameters.Add(n.Values);
+                Parameters.AddInternal(n.Values);
 
                 return;
 
