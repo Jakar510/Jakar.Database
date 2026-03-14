@@ -55,6 +55,26 @@ public static class TableExtensions
 
         return ids;
     }
+    [Pure] public static StringBuilder Ids<TSelf>( this IEnumerable<Guid> values )
+        where TSelf : PairRecord<TSelf>, ITableRecord<TSelf> => values.AsValueEnumerable().Ids();
+    [Pure] public static StringBuilder Ids<TEnumerable>( this ValueEnumerable<TEnumerable, Guid> values )
+        where TEnumerable : struct, IValueEnumerator<Guid>, allows ref struct
+    {
+        const string                             SEPARATOR  = ", ";
+        StringBuilder                            ids        = new();
+        using ValueEnumerator<TEnumerable, Guid> enumerator = values.GetEnumerator();
+
+        for ( int i = 0; enumerator.MoveNext(); i++ )
+        {
+            if ( i > 0 ) { ids.Append(SEPARATOR); }
+
+            ids.Append('\'');
+            ids.Append(enumerator.Current);
+            ids.Append('\'');
+        }
+
+        return ids;
+    }
 
 
     [Pure] public static TSelf Validate<TSelf>( this TSelf self )
@@ -65,7 +85,7 @@ public static class TableExtensions
         if ( !string.Equals(TSelf.TableName, TSelf.TableName.ToSnakeCase()) ) { throw new InvalidOperationException($"{typeof(TSelf).Name}: {nameof(TSelf.TableName)} is not snake_case: '{TSelf.TableName}'"); }
 
         CommandParameters parameters = self.ToDynamicParameters();
-        int                length     = parameters.Count;
+        int               length     = parameters.Count;
 
 
         if ( length == TSelf.PropertyCount ) { return self; }
