@@ -23,7 +23,7 @@ public interface ICreateMapping<TSelf, TKey, TValue> : ITableRecord<TSelf>
 [Serializable]
 [TableExtras(nameof(KeyID), nameof(ValueID))]
 public abstract record Mapping<TSelf, TKey, TValue> : TableRecord<TSelf>
-    where TValue : PairRecord<TValue>, ITableRecord<TValue>
+    where TValue : OwnedTableRecord<TValue>, ITableRecord<TValue>
     where TKey : PairRecord<TKey>, ITableRecord<TKey>
     where TSelf : Mapping<TSelf, TKey, TValue>, ICreateMapping<TSelf, TKey, TValue>, ITableRecord<TSelf>
 {
@@ -158,51 +158,85 @@ public abstract record Mapping<TSelf, TKey, TValue> : TableRecord<TSelf>
     {
         if ( await Exists(context, key, value, token) ) { return false; }
 
-        TSelf      record  = TSelf.Create(key, value);
-        SqlCommand command = SqlCommand.GetInsert(record);
+        TSelf             self       = TSelf.Create(key, value);
+        CommandParameters parameters = self.ToDynamicParameters();
+
+        SqlCommand command = SqlCommand.Parse<TSelf>($"""
+                                                      INSERT INTO {TSelf.TableName}
+                                                      (
+                                                      {TSelf.MetaData.ColumnNames(1)}
+                                                      )
+                                                      VALUES
+                                                      {parameters.VariableNames(1)}
+                                                      RETURNING {nameof(IUniqueID.ID)};
+                                                      """);
+
         await context.ExecuteNonQueryAsync(command, token);
 
-        return record.IsValid();
+        return self.IsValid();
     }
     public static async ValueTask<bool> TryAdd( DbConnectionContext context, TSelf self, CancellationToken token )
     {
         if ( await Exists(context, self, token) ) { return false; }
 
-        SqlCommand command = SqlCommand.GetInsert(self);
-        await context.ExecuteNonQueryAsync(command, token);
-        return self.IsValid();
+        CommandParameters parameters = self.ToDynamicParameters();
+
+        SqlCommand command = SqlCommand.Parse<TSelf>($"""
+                                                      INSERT INTO {TSelf.TableName}
+                                                      (
+                                                      {TSelf.MetaData.ColumnNames(1)}
+                                                      )
+                                                      VALUES
+                                                      {parameters.VariableNames(1)}
+                                                      RETURNING {nameof(IUniqueID.ID)};
+                                                      """);
+
+        return await context.ExecuteNonQueryAsync(command, token) > 0;
     }
     public static async ValueTask TryAdd( DbConnectionContext context, DbTable<TValue> valueTable, RecordID<TKey> key, IEnumerable<RecordID<TValue>> values, CancellationToken token )
     {
         CommandParameters parameters = GetDynamicParameters(key);
 
+        // ReSharper disable PossibleMultipleEnumeration
         SqlCommand command = SqlCommand.Parse<TSelf>($"""
-                                                      SELECT * FROM {TValue.TableName} v
+                                                      SELECT *
+                                                      FROM {TValue.TableName} v
                                                       LEFT JOIN {TSelf.TableName} s
-                                                      WHERE 
-                                                      v.{nameof(IUniqueID.ID)} != s.{nameof(ValueID)} 
+                                                      WHERE
+                                                      v.{nameof(IUniqueID.ID)} != s.{nameof(ValueID)}
                                                       AND v.{nameof(IUniqueID.ID)} IN ( {values.Select(RecordID<TValue>.GetValue)} )
-                                                      AND s.{nameof(ValueID)} NOT IN ( {values.Select(RecordID<TValue>.GetValue)} ) 
+                                                      AND s.{nameof(ValueID)} NOT IN ( {values.Select(RecordID<TValue>.GetValue)} )
                                                       AND s.{nameof(KeyID)} = {key.Value}
                                                       """);
 
+        // ReSharper restore PossibleMultipleEnumeration
+
         ImmutableArray<RecordID<TValue>> missingValueIDs = await valueTable.WhereID(context, command, token).ToImmutableArray(token: token);
-        List<TSelf>                      list            = new(DEFAULT_CAPACITY);
 
         // ReSharper disable once ForeachCanBeConvertedToQueryUsingAnotherGetEnumerator
+        // ReSharper disable once ForeachCanBePartlyConvertedToQueryUsingAnotherGetEnumerator
         foreach ( RecordID<TValue> value in missingValueIDs )
         {
             TSelf record = TSelf.Create(key, value);
-            list.Add(record);
+            parameters.With(record.ToDynamicParameters());
         }
 
-        SqlCommand insertCommand = SqlCommand.GetInsert<TSelf>(list);
+        SqlCommand insertCommand = SqlCommand.Parse<TSelf>($"""
+                                                            INSERT INTO {TSelf.TableName}
+                                                            (
+                                                            {TSelf.MetaData.ColumnNames(1)}
+                                                            )
+                                                            VALUES
+                                                            {parameters.VariableNames(1)}
+                                                            RETURNING {nameof(IUniqueID.ID)};
+                                                            """);
+
         await context.ExecuteNonQueryAsync(insertCommand, token);
     }
     public static async ValueTask TryAdd( DbConnectionContext context, ImmutableArray<TSelf> records, CancellationToken token )
     {
         CommandParameters parameters = CommandParameters.Create<TSelf>();
-        StringBuilder      sb         = new();
+        StringBuilder     sb         = new();
 
         for ( int index = 0; index < records.Length; index++ )
         {
@@ -217,9 +251,7 @@ public abstract record Mapping<TSelf, TKey, TValue> : TableRecord<TSelf>
                                                       INSERT INTO {TSelf.TableName} ({nameof(KeyID)}, {nameof(ValueID)}, {nameof(DateCreated)})
                                                       SELECT v.KeyID, v.ValueID, NOW()
                                                       FROM (VALUES
-                                                      {sb}
-                                                      ) AS v(KeyID, ValueID)
-                                                      ON CONFLICT ({nameof(KeyID)}, {nameof(ValueID)}) DO NOTHING;
+                                                      {sb}) AS v(KeyID, ValueID) ON CONFLICT ({nameof(KeyID)}, {nameof(ValueID)}) DO NOTHING;
                                                       """);
 
         await context.ExecuteNonQueryAsync(command, token);
@@ -261,11 +293,12 @@ public abstract record Mapping<TSelf, TKey, TValue> : TableRecord<TSelf>
     public static async ValueTask<bool> Exists( DbConnectionContext context, RecordID<TKey> key, RecordID<TValue> value, CancellationToken token )
     {
         SqlCommand command = SqlCommand.Parse<TSelf>($"""
-                                                      SELECT * FROM {TSelf.TableName} 
-                                                      WHERE 
-                                                             {nameof(KeyID)} = {key.Value}
-                                                          AND 
-                                                             {nameof(ValueID)} = {value.Value}
+                                                      SELECT *
+                                                      FROM {TSelf.TableName}
+                                                      WHERE
+                                                      {nameof(KeyID)} = {key.Value}
+                                                      AND
+                                                      {nameof(ValueID)} = {value.Value}
                                                       """);
 
         return await context.ExecuteAsync<TSelf>(command, token).AnyAsync(token);
@@ -275,8 +308,10 @@ public abstract record Mapping<TSelf, TKey, TValue> : TableRecord<TSelf>
     public static IAsyncEnumerable<TValue> Where( DbConnectionContext context, DbTable<TValue> valueTable, RecordID<TKey> key, [EnumeratorCancellation] CancellationToken token )
     {
         SqlCommand command = SqlCommand.Parse<TSelf>($"""
-                                                      SELECT * FROM {TValue.TableName} v
-                                                      INNER JOIN {TSelf.TableName} s ON s.{nameof(ValueID)} = v.{nameof(IUniqueID.ID)} 
+                                                      SELECT *
+                                                      FROM {TValue.TableName} v
+                                                      INNER JOIN {TSelf.TableName} s
+                                                      ON s.{nameof(ValueID)} = v.{nameof(IUniqueID.ID)}
                                                       WHERE s.{nameof(KeyID)} = @{key.Value}
                                                       """);
 
@@ -285,8 +320,10 @@ public abstract record Mapping<TSelf, TKey, TValue> : TableRecord<TSelf>
     public static IAsyncEnumerable<TKey> Where( DbConnectionContext context, DbTable<TKey> keyTable, RecordID<TValue> value, [EnumeratorCancellation] CancellationToken token )
     {
         SqlCommand command = SqlCommand.Parse<TSelf>($"""
-                                                      SELECT * FROM {TKey.TableName} k
-                                                      INNER JOIN {TSelf.TableName} s ON s.{nameof(KeyID)} = k.{nameof(IUniqueID.ID)} 
+                                                      SELECT *
+                                                      FROM {TKey.TableName} k
+                                                      INNER JOIN {TSelf.TableName} s
+                                                      ON s.{nameof(KeyID)} = k.{nameof(IUniqueID.ID)}
                                                       WHERE s.{nameof(ValueID)} = {value.Value}
                                                       """);
 
@@ -306,7 +343,19 @@ public abstract record Mapping<TSelf, TKey, TValue> : TableRecord<TSelf>
             list.Add(record);
         }
 
-        SqlCommand command = SqlCommand.GetInsert<TSelf>(list);
+        CommandParameters parameters = CommandParameters.Create(list);
+
+        SqlCommand command = SqlCommand.Parse<TSelf>($"""
+                                                      INSERT INTO {TSelf.TableName} 
+                                                      (
+                                                      {TSelf.MetaData.ColumnNames(1)}
+                                                      )
+                                                      VALUES
+                                                      {parameters.VariableNames(1)}
+
+                                                      RETURNING {nameof(IUniqueID.ID)};
+                                                      """);
+
         await context.ExecuteNonQueryAsync(command, token);
     }
 
@@ -314,34 +363,37 @@ public abstract record Mapping<TSelf, TKey, TValue> : TableRecord<TSelf>
     public static async ValueTask Delete( DbConnectionContext context, TSelf self, CancellationToken token )
     {
         SqlCommand command = SqlCommand.Parse<TSelf>($"""
-                                                      DELETE FROM {TSelf.TableName} 
-                                                      WHERE 
-                                                             {nameof(KeyID)} = {self.KeyID.Value}
-                                                          AND 
-                                                             {nameof(ValueID)} = {self.ValueID.Value}
+                                                      DELETE
+                                                      FROM {TSelf.TableName}
+                                                      WHERE
+                                                      {nameof(KeyID)} = {self.KeyID.Value}
+                                                      AND
+                                                      {nameof(ValueID)} = {self.ValueID.Value}
                                                       """);
-        
+
         await context.ExecuteNonQueryAsync(command, token);
     }
     public static async ValueTask Delete( DbConnectionContext context, RecordID<TKey> key, CancellationToken token )
     {
         SqlCommand command = SqlCommand.Parse<TSelf>($"""
-                                                      DELETE FROM {TSelf.TableName} 
+                                                      DELETE
+                                                      FROM {TSelf.TableName}
                                                       WHERE {nameof(KeyID)} = {key.Value}
                                                       """);
-        
+
         await context.ExecuteNonQueryAsync(command, token);
     }
     public static async ValueTask Delete( DbConnectionContext context, RecordID<TKey> key, IEnumerable<RecordID<TValue>> values, CancellationToken token )
     {
         SqlCommand command = SqlCommand.Parse<TSelf>($"""
-                                                      DELETE FROM {TSelf.TableName} 
+                                                      DELETE
+                                                      FROM {TSelf.TableName}
                                                       WHERE
-                                                              {nameof(ValueID)} IN ( {values.Ids()} ) 
-                                                           AND 
-                                                              {nameof(KeyID)} = {key.Value}
+                                                      {nameof(ValueID)} IN ( {values.Ids()} )
+                                                      AND
+                                                      {nameof(KeyID)} = {key.Value}
                                                       """);
-        
+
         await context.ExecuteNonQueryAsync(command, token);
     }
     public static async ValueTask Delete( DbConnectionContext context, RecordID<TKey> key, RecordID<TValue> value, CancellationToken token )
@@ -353,7 +405,7 @@ public abstract record Mapping<TSelf, TKey, TValue> : TableRecord<TSelf>
                                                          AND 
                                                             {nameof(KeyID)} = {key.Value}
                                                       """);
-        
+
         await context.ExecuteNonQueryAsync(command, token);
     }
 }

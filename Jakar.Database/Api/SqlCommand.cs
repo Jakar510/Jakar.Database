@@ -1,6 +1,7 @@
 ﻿// Jakar.Extensions :: Jakar.Database
 // 10/19/2025  10:38
 
+using System.Transactions;
 using Microsoft.Data.SqlClient;
 
 
@@ -32,17 +33,9 @@ public readonly struct SqlCommand : IEquatable<SqlCommand>
 
     [Pure] [MustDisposeResource] public DbCommand ToCommand( DbConnectionContext context )
     {
-        if ( context.IsPostgres )
-        {
-            (NpgsqlConnection connection, NpgsqlTransaction? transaction) postgres = context.Postgres.Value;
-            return ToCommand(postgres.connection, postgres.transaction);
-        }
+        if ( context.TryAs(out NpgsqlConnection? postgresConnection, out NpgsqlTransaction? postgresTransaction) ) { return ToCommand(postgresConnection, postgresTransaction); }
 
-        if ( context.IsSqlServer )
-        {
-            (SqlConnection connection, SqlTransaction? transaction) postgres = context.SqlServer.Value;
-            return ToCommand(postgres.connection, postgres.transaction);
-        }
+        if ( context.TryAs(out SqlConnection? sqlConnection, out SqlTransaction? sqlTransaction) ) { return ToCommand(sqlConnection, sqlTransaction); }
 
         throw new InvalidOperationException("Unsupported connection type");
     }
@@ -104,15 +97,15 @@ public readonly struct SqlCommand : IEquatable<SqlCommand>
                                                                                LIMIT {count};
                                                                                """);
     public static SqlCommand GetRandom<TSelf>( UserRecord user, int count = 1 )
-        where TSelf : TableRecord<TSelf>, ITableRecord<TSelf> => GetRandom<TSelf>(user.ID, count);
+        where TSelf : OwnedTableRecord<TSelf>, ITableRecord<TSelf> => GetRandom<TSelf>(user.ID, count);
     public static SqlCommand GetRandom<TSelf>( in RecordID<UserRecord> userID, int count = 1 )
-        where TSelf : TableRecord<TSelf>, ITableRecord<TSelf> => Parse<TSelf>($"""
-                                                                               SELECT * FROM {TSelf.TableName}
-                                                                               WHERE 
-                                                                                    {nameof(IUserID.UserID)} = {userID.Value}
-                                                                               ORDER BY RANDOM()
-                                                                               LIMIT {count};
-                                                                               """);
+        where TSelf : OwnedTableRecord<TSelf>, ITableRecord<TSelf> => Parse<TSelf>($"""
+                                                                                    SELECT * FROM {TSelf.TableName}
+                                                                                    WHERE 
+                                                                                         {nameof(IUserID.UserID)} = {userID.Value}
+                                                                                    ORDER BY RANDOM()
+                                                                                    LIMIT {count};
+                                                                                    """);
 
 
     public static SqlCommand WherePaged<TSelf>( in CommandParameters parameters, int start, int count, string separator = "AND" )
@@ -199,10 +192,10 @@ public readonly struct SqlCommand : IEquatable<SqlCommand>
     public static SqlCommand GetCount<TSelf>()
         where TSelf : TableRecord<TSelf>, ITableRecord<TSelf> => Parse<TSelf>($"SELECT COUNT({nameof(IUniqueID.ID)}) FROM {TSelf.TableName};");
     public static SqlCommand GetSortedID<TSelf>()
-        where TSelf : TableRecord<TSelf>, ITableRecord<TSelf> => Parse<TSelf>($"""
-                                                                               SELECT {nameof(IUniqueID.ID)}, {nameof(IDateCreated.DateCreated)} FROM {TSelf.TableName}
-                                                                               ORDER BY {nameof(IDateCreated.DateCreated)} DESC;
-                                                                               """);
+        where TSelf : PairRecord<TSelf>, ITableRecord<TSelf> => Parse<TSelf>($"""
+                                                                              SELECT {nameof(IUniqueID.ID)}, {nameof(IDateCreated.DateCreated)} FROM {TSelf.TableName}
+                                                                              ORDER BY {nameof(IDateCreated.DateCreated)} DESC;
+                                                                              """);
     public static SqlCommand GetExists<TSelf>( in CommandParameters parameters )
         where TSelf : TableRecord<TSelf>, ITableRecord<TSelf> => Parse<TSelf>($"""
                                                                                EXISTS( 
@@ -213,13 +206,13 @@ public readonly struct SqlCommand : IEquatable<SqlCommand>
 
 
     [OverloadResolutionPriority(0)] public static SqlCommand GetDelete<TSelf>( in CommandParameters parameters, string separator = "AND" )
-        where TSelf : TableRecord<TSelf>, ITableRecord<TSelf> => Parse<TSelf>($"""
-                                                                               DELETE FROM {TSelf.TableName} 
-                                                                               WHERE 
-                                                                               {nameof(IUniqueID.ID)} in (
-                                                                               {parameters.KeyValuePairs(2, separator)}
-                                                                               );
-                                                                               """);
+        where TSelf : PairRecord<TSelf>, ITableRecord<TSelf> => Parse<TSelf>($"""
+                                                                              DELETE FROM {TSelf.TableName} 
+                                                                              WHERE 
+                                                                              {nameof(IUniqueID.ID)} in (
+                                                                              {parameters.KeyValuePairs(2, separator)}
+                                                                                );
+                                                                              """);
     [OverloadResolutionPriority(3)] public static SqlCommand GetDelete<TSelf>( in RecordID<TSelf> id )
         where TSelf : PairRecord<TSelf>, ITableRecord<TSelf> => Parse<TSelf>($"""
                                                                               DELETE FROM {TSelf.TableName}
@@ -251,9 +244,11 @@ public readonly struct SqlCommand : IEquatable<SqlCommand>
                                                                               WHERE ( 
                                                                                     id = IFNULL(
                                                                                             (
-                                                                                            SELECT MIN({nameof(IDateCreated.DateCreated)}) FROM {TSelf.TableName} 
-                                                                                                WHERE {nameof(IDateCreated.DateCreated)} > {pair.DateCreated} 
-                                                                                            LIMIT 2
+                                                                                            SELECT MIN(
+                                                                                                {nameof(IDateCreated.DateCreated)}) FROM {TSelf.TableName} 
+                                                                                                    WHERE {nameof(IDateCreated.DateCreated)} > {pair.DateCreated}
+                                                                                                    )
+                                                                                                LIMIT 2
                                                                                             ),
                                                                                             0
                                                                                         )
@@ -276,21 +271,20 @@ public readonly struct SqlCommand : IEquatable<SqlCommand>
 
 
     public static SqlCommand GetCopy<TSelf>()
-        where TSelf : TableRecord<TSelf>, ITableRecord<TSelf> => Parse<TSelf>($"""
-                                                                               CREATE TEMP TABLE temp_table (LIKE {TSelf.TableName} INCLUDING DEFAULTS);
+        where TSelf : PairRecord<TSelf>, ITableRecord<TSelf> => Parse<TSelf>($"""
+                                                                              CREATE TEMP TABLE temp_table (LIKE {TSelf.TableName} INCLUDING DEFAULTS);
 
-                                                                               COPY temp_table (
-                                                                               {TSelf.MetaData.ColumnNames(1)}
-                                                                               )
-                                                                               FROM STDIN;
+                                                                              COPY temp_table (
+                                                                              {TSelf.MetaData.ColumnNames(1)}
+                                                                              )
+                                                                              FROM STDIN;
 
-                                                                               INSERT INTO {TSelf.TableName}
-                                                                               SELECT *
-                                                                               FROM temp_table
-                                                                               RETURNING {nameof(IUniqueID.ID)};      
-                                                                               """);
+                                                                              INSERT INTO {TSelf.TableName}
+                                                                                  SELECT * FROM temp_table
+                                                                                  RETURNING {nameof(IUniqueID.ID)};      
+                                                                              """);
     [OverloadResolutionPriority(3)] public static SqlCommand GetInsert<TSelf>( TSelf record )
-        where TSelf : TableRecord<TSelf>, ITableRecord<TSelf>
+        where TSelf : PairRecord<TSelf>, ITableRecord<TSelf>
     {
         CommandParameters parameters = record.ToDynamicParameters();
 
@@ -306,14 +300,14 @@ public readonly struct SqlCommand : IEquatable<SqlCommand>
                              """);
     }
     [OverloadResolutionPriority(1)] public static SqlCommand GetInsert<TSelf>( IEnumerable<TSelf> records )
-        where TSelf : TableRecord<TSelf>, ITableRecord<TSelf>
+        where TSelf : PairRecord<TSelf>, ITableRecord<TSelf>
     {
         CommandParameters parameters = CommandParameters.Create(records);
 
         return Parse<TSelf>($"""
                              INSERT INTO {TSelf.TableName} 
                              (
-                             {TSelf.MetaData.ColumnNames(1)}
+                             {TSelf.MetaData.ColumnNames(1)}                 
                              )
                              VALUES
                              {parameters.VariableNames(1)}
@@ -322,7 +316,7 @@ public readonly struct SqlCommand : IEquatable<SqlCommand>
                              """);
     }
     [OverloadResolutionPriority(2)] public static SqlCommand GetInsert<TSelf>( params ReadOnlySpan<TSelf> records )
-        where TSelf : TableRecord<TSelf>, ITableRecord<TSelf>
+        where TSelf : PairRecord<TSelf>, ITableRecord<TSelf>
     {
         CommandParameters parameters = CommandParameters.Create(records);
 
@@ -340,16 +334,16 @@ public readonly struct SqlCommand : IEquatable<SqlCommand>
 
 
     public static SqlCommand GetUpdate<TSelf>( TSelf record )
-        where TSelf : TableRecord<TSelf>, ITableRecord<TSelf>
+        where TSelf : PairRecord<TSelf>, ITableRecord<TSelf>
     {
         CommandParameters parameters = record.ToDynamicParameters();
 
         return Parse<TSelf>($"""
                              UPDATE {TSelf.TableName} 
                              SET 
-                             {parameters} 
+                             {parameters.KeyValuePairs(1, "AND")}
                              WHERE 
-                                  {nameof(IUniqueID.ID)} = @{nameof(IUniqueID.ID)};
+                             {nameof(IUniqueID.ID)} = @{nameof(IUniqueID.ID)};
                              """);
     }
     public static SqlCommand GetTryInsert<TSelf>( TSelf record, in CommandParameters parameters, string separator = "AND" )
@@ -360,23 +354,23 @@ public readonly struct SqlCommand : IEquatable<SqlCommand>
         return Parse<TSelf>($"""
                              IF NOT EXISTS (
                              SELECT * FROM {TSelf.TableName} 
-                             WHERE 
-                             {nameof(IUniqueID.ID)} = @{record.ID}
-                             OR 
-                             (
-                             {parameters.KeyValuePairs(2, separator)}
-                             )
+                                 WHERE 
+                                    {nameof(IUniqueID.ID)} = @{record.ID}
+                                 OR 
+                                     (
+                                     {parameters.KeyValuePairs(3, separator)}
+                                     )
                              )
 
                              BEGIN
                              INSERT INTO {TSelf.TableName}
-                             (
-                             {recordParameters.ColumnNames(2)}
-                             )
+                                 (
+                                 {recordParameters.ColumnNames(2)}
+                                 )
                              VALUES
-                             (
-                             {recordParameters.VariableNames(2)}
-                             ) 
+                                 (
+                                 {recordParameters.VariableNames(2)}
+                                 ) 
                              RETURNING {nameof(IUniqueID.ID)};
                              END
 
@@ -396,32 +390,32 @@ public readonly struct SqlCommand : IEquatable<SqlCommand>
                              (
                              SELECT * FROM {TSelf.TableName}
                              WHERE
-                             {nameof(IUniqueID.ID)} = @{record.ID}
-                             OR 
-                             (
-                             {parameters.KeyValuePairs(4, separator)}
-                             )
+                                    {nameof(IUniqueID.ID)} = @{record.ID}
+                                 OR 
+                                     (
+                                     {parameters.KeyValuePairs(4, separator)}
+                                     )
                              )
 
                              BEGIN
                              INSERT INTO {TSelf.TableName}
                              (
                              {recordParameters.ColumnNames(2)}
-                             ) 
+                             )
                              VALUES 
                              (
                              {recordParameters.VariableNames(2)}
-                             ) 
+                             )
                              RETURNING {nameof(IUniqueID.ID)};
                              END
 
                              ELSE
                              BEGIN
                              UPDATE {TSelf.TableName} 
-                             SET
-                             {recordParameters.KeyValuePairs(2, null)}
-                             WHERE 
-                             {nameof(IUniqueID.ID)} = @{nameof(IUniqueID.ID)};
+                                 SET
+                                 {recordParameters.KeyValuePairs(3, null)}
+                                 WHERE 
+                                    {nameof(IUniqueID.ID)} = @{nameof(IUniqueID.ID)};
 
                              SELECT @{nameof(IUniqueID.ID)};
                              END

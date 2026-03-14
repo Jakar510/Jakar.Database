@@ -11,21 +11,32 @@ namespace Jakar.Database;
 
 public class DbConnectionContext : IAsyncDisposable
 {
-    protected readonly Database        _database;
-    protected          DbConnection?   _connection;
-    public             bool            HasTransaction { [MemberNotNullWhen(true, nameof(Transaction))] get => Transaction is not null; }
-    public             bool            IsPostgres     { [MemberNotNullWhen(true, nameof(Postgres))] get => _connection is NpgsqlConnection; }
-    public             bool            IsSqlServer    { [MemberNotNullWhen(true, nameof(SqlServer))] get => _connection is SqlConnection; }
-    public             ConnectionState State          => _connection?.State ?? ConnectionState.Closed;
+    protected readonly Database      _database;
+    protected          DbConnection? _connection;
 
 
-    public (NpgsqlConnection connection, NpgsqlTransaction? transaction)? Postgres => _connection is NpgsqlConnection connection
-                                                                                          ? ( connection, Transaction as NpgsqlTransaction )
-                                                                                          : null;
+    public bool            HasTransaction { [MemberNotNullWhen(true, nameof(Transaction))] get => Transaction is not null; }
+    public ConnectionState State          => _connection?.State ?? ConnectionState.Closed;
 
-    public (SqlConnection connection, SqlTransaction? transaction)? SqlServer => _connection is SqlConnection connection
-                                                                                     ? ( connection, Transaction as SqlTransaction )
-                                                                                     : null;
+
+    public bool TryAs( [NotNullWhen(true)] out NpgsqlConnection? connection, out NpgsqlTransaction? transaction )
+    {
+        connection = _connection is NpgsqlConnection x
+                         ? x
+                         : null;
+
+        transaction = Transaction as NpgsqlTransaction;
+        return connection is not null;
+    }
+    public bool TryAs( [NotNullWhen(true)] out SqlConnection? connection, out SqlTransaction? transaction )
+    {
+        connection = _connection is SqlConnection x
+                         ? x
+                         : null;
+
+        transaction = Transaction as SqlTransaction;
+        return connection is not null;
+    }
 
 
     public DbTransaction? Transaction { get; protected set; }
@@ -119,10 +130,10 @@ public class DbConnectionContext : IAsyncDisposable
         await using DbCommand cmd     = command.ToCommand(this);
         return await cmd.ExecuteNonQueryAsync(token);
     }
-    public async ValueTask ExecuteNonQueryAsync( SqlCommand sql, CancellationToken token )
+    public async ValueTask<int> ExecuteNonQueryAsync( SqlCommand sql, CancellationToken token )
     {
         await using DbCommand command = sql.ToCommand(this);
-        await command.ExecuteNonQueryAsync(token);
+        return await command.ExecuteNonQueryAsync(token);
     }
     public async IAsyncEnumerable<TSelf> ExecuteAsync<TSelf>( SqlCommand sql, [EnumeratorCancellation] CancellationToken token )
         where TSelf : TableRecord<TSelf>, ITableRecord<TSelf>
@@ -270,7 +281,7 @@ public class DbConnectionContext : IAsyncDisposable
 
 
     public virtual async ValueTask<ImmutableArray<TSelf>> ImportAsync<TSelf>( [HandlesResourceDisposal] ArrayBuffer<TSelf> records, [EnumeratorCancellation] CancellationToken token = default )
-        where TSelf : TableRecord<TSelf>, ITableRecord<TSelf>
+        where TSelf : PairRecord<TSelf>, ITableRecord<TSelf>
     {
         using ArrayBuffer<TSelf> array      = records;
         DbConnection             connection = await EnsureConnection(token);
@@ -283,7 +294,7 @@ public class DbConnectionContext : IAsyncDisposable
                };
     }
     protected virtual async ValueTask<ImmutableArray<TSelf>> ImportAsync<TSelf>( NpgsqlConnection connection, ArrayBuffer<TSelf> records, [EnumeratorCancellation] CancellationToken token = default )
-        where TSelf : TableRecord<TSelf>, ITableRecord<TSelf>
+        where TSelf : PairRecord<TSelf>, ITableRecord<TSelf>
     {
         await using NpgsqlBinaryImporter import = await connection.BeginBinaryImportAsync(SqlCommand.GetCopy<TSelf>().SQL, token);
         foreach ( TSelf record in records.Array ) { await record.Import(import, token); }
@@ -292,7 +303,7 @@ public class DbConnectionContext : IAsyncDisposable
         return [..records.Span];
     }
     protected virtual async ValueTask<ImmutableArray<TSelf>> ImportAsync<TSelf>( SqlConnection connection, ArrayBuffer<TSelf> records, CancellationToken token = default )
-        where TSelf : TableRecord<TSelf>, ITableRecord<TSelf>
+        where TSelf : PairRecord<TSelf>, ITableRecord<TSelf>
     {
         using SqlBulkCopy bulk = new(connection, SqlBulkCopyOptions.Default, Transaction as SqlTransaction);
 

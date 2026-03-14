@@ -29,7 +29,8 @@ public readonly struct SqlParameter( object? value, string parameterName, Column
                                                                      };
 
 
-    public int CompareTo( SqlParameter other )
+    public int CompareTo( SqlParameter other ) => CompareTo(in other);
+    public int CompareTo( ref readonly SqlParameter other )
     {
         int indexComparison = Column.CompareTo(other.Column);
         if ( indexComparison != 0 ) { return indexComparison; }
@@ -44,11 +45,12 @@ public readonly struct SqlParameter( object? value, string parameterName, Column
         if ( other is null ) { return 1; }
 
         return other is SqlParameter x
-                   ? CompareTo(x)
+                   ? CompareTo(in x)
                    : throw new ExpectedValueTypeException(other, typeof(SqlParameter));
     }
-    public          bool Equals( SqlParameter other ) => Column.Equals(other.Column) && string.Equals(ParameterName, other.ParameterName, StringComparison.InvariantCulture) && Equals(Value, other.Value);
-    public override bool Equals( object?      obj )   => obj is SqlParameter other   && Equals(other);
+    public          bool Equals( SqlParameter              other ) => Equals(in other);
+    public          bool Equals( ref readonly SqlParameter other ) => Column.Equals(other.Column) && string.Equals(ParameterName, other.ParameterName, StringComparison.InvariantCulture) && Equals(Value, other.Value);
+    public override bool Equals( object?                   obj )   => obj is SqlParameter other   && Equals(in other);
     public override int GetHashCode()
     {
         HashCode hashCode = new HashCode();
@@ -57,10 +59,12 @@ public readonly struct SqlParameter( object? value, string parameterName, Column
         hashCode.Add(Value);
         return hashCode.ToHashCode();
     }
-    public static bool operator ==( SqlParameter left, SqlParameter right ) => left.Equals(right);
-    public static bool operator !=( SqlParameter left, SqlParameter right ) => !left.Equals(right);
-    public static bool operator <( SqlParameter  left, SqlParameter right ) => left.CompareTo(right) < 0;
-    public static bool operator >( SqlParameter  left, SqlParameter right ) => left.CompareTo(right) > 0;
-    public static bool operator <=( SqlParameter left, SqlParameter right ) => left.CompareTo(right) <= 0;
-    public static bool operator >=( SqlParameter left, SqlParameter right ) => left.CompareTo(right) >= 0;
+
+
+    public static bool operator ==( SqlParameter left, SqlParameter right ) => left.Equals(in right);
+    public static bool operator !=( SqlParameter left, SqlParameter right ) => !left.Equals(in right);
+    public static bool operator <( SqlParameter  left, SqlParameter right ) => left.CompareTo(in right) < 0;
+    public static bool operator >( SqlParameter  left, SqlParameter right ) => left.CompareTo(in right) > 0;
+    public static bool operator <=( SqlParameter left, SqlParameter right ) => left.CompareTo(in right) <= 0;
+    public static bool operator >=( SqlParameter left, SqlParameter right ) => left.CompareTo(in right) >= 0;
 }

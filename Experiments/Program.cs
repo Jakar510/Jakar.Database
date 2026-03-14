@@ -24,38 +24,38 @@ try
     parameters.Add(nameof(RoleRecord.NormalizedName), "Administrator");
 
 
-    writeLine(SqlCommand.GetRandom<RoleRecord>().ToString());
-    writeLine(SqlCommand.GetRandom<RoleRecord>(userID).ToString());
-    writeLine(SqlCommand.WherePaged<RoleRecord>(parameters, 0, 10).ToString());
-    writeLine(SqlCommand.WherePaged<RoleRecord>(userID,     0, 10).ToString());
-    writeLine(SqlCommand.WherePaged<RoleRecord>(0,          10).ToString());
-    writeLine(SqlCommand.WherePaged<RoleRecord>(date, 0, 10).ToString());
-
-    writeLine(SqlCommand.Where<RoleRecord>(parameters).ToString());
-
-    writeLine(SqlCommand.Parse<RoleRecord>($"SELECT * FROM {RoleRecord.TableName} WHERE {nameof(RoleRecord.NameOfRole)} = @{ADMIN};").ToString());
-    
-    writeLine(SqlCommand.Get(id).ToString());
-    writeLine(SqlCommand.Get(id, RecordID<RoleRecord>.New()).ToString());
-    
-    writeLine(SqlCommand.Get<RoleRecord>(parameters).ToString());
-    writeLine(SqlCommand.GetAll<RoleRecord>().ToString());
-    writeLine(SqlCommand.GetFirst<RoleRecord>().ToString());
-    writeLine(SqlCommand.GetLast<RoleRecord>().ToString());
-    writeLine(SqlCommand.GetCount<RoleRecord>().ToString());
-    writeLine(SqlCommand.GetSortedID<RoleRecord>().ToString());
-    writeLine(SqlCommand.GetExists<RoleRecord>(parameters).ToString());
-    writeLine(SqlCommand.GetDelete<RoleRecord>(parameters).ToString());
-    writeLine(SqlCommand.GetDelete(id).ToString());
-    writeLine(SqlCommand.GetDelete(id, RecordID<RoleRecord>.New()).ToString());
-    writeLine(SqlCommand.GetDeleteAll<RoleRecord>().ToString());
-    writeLine(SqlCommand.GetNext(pair).ToString());
-    writeLine(SqlCommand.GetNextID(pair).ToString());
-    writeLine(SqlCommand.GetCopy<RoleRecord>().ToString());
-    writeLine(SqlCommand.GetInsert(record).ToString());
-    writeLine(SqlCommand.GetInsert(record, record).ToString());
-    writeLine(SqlCommand.GetUpdate(record).ToString());
-    writeLine(SqlCommand.GetTryInsert(record, parameters).ToString());
+    // writeLine(SqlCommand.GetRandom<RoleRecord>().ToString());
+    // writeLine(SqlCommand.GetRandom<RoleRecord>(userID).ToString());
+    // writeLine(SqlCommand.WherePaged<RoleRecord>(parameters, 0, 10).ToString());
+    // writeLine(SqlCommand.WherePaged<RoleRecord>(userID,     0, 10).ToString());
+    // writeLine(SqlCommand.WherePaged<RoleRecord>(0,          10).ToString());
+    // writeLine(SqlCommand.WherePaged<RoleRecord>(date, 0, 10).ToString());
+    //
+    // writeLine(SqlCommand.Where<RoleRecord>(parameters).ToString());
+    //
+    // writeLine(SqlCommand.Parse<RoleRecord>($"SELECT * FROM {RoleRecord.TableName} WHERE {nameof(RoleRecord.NameOfRole)} = @{ADMIN};").ToString());
+    //
+    // writeLine(SqlCommand.Get(id).ToString());
+    // writeLine(SqlCommand.Get(id, RecordID<RoleRecord>.New()).ToString());
+    //
+    // writeLine(SqlCommand.Get<RoleRecord>(parameters).ToString());
+    // writeLine(SqlCommand.GetAll<RoleRecord>().ToString());
+    // writeLine(SqlCommand.GetFirst<RoleRecord>().ToString());
+    // writeLine(SqlCommand.GetLast<RoleRecord>().ToString());
+    // writeLine(SqlCommand.GetCount<RoleRecord>().ToString());
+    // writeLine(SqlCommand.GetSortedID<RoleRecord>().ToString());
+    // writeLine(SqlCommand.GetExists<RoleRecord>(parameters).ToString());
+    // writeLine(SqlCommand.GetDelete<RoleRecord>(parameters).ToString());
+    // writeLine(SqlCommand.GetDelete(id).ToString());
+    // writeLine(SqlCommand.GetDelete(id, RecordID<RoleRecord>.New()).ToString());
+    // writeLine(SqlCommand.GetDeleteAll<RoleRecord>().ToString());
+    // writeLine(SqlCommand.GetNext(pair).ToString());
+    // writeLine(SqlCommand.GetNextID(pair).ToString());
+    // writeLine(SqlCommand.GetCopy<RoleRecord>().ToString());
+    // writeLine(SqlCommand.GetInsert(record).ToString());
+    // writeLine(SqlCommand.GetInsert(record, record).ToString());
+    // writeLine(SqlCommand.GetUpdate(record).ToString());
+    // writeLine(SqlCommand.GetTryInsert(record, parameters).ToString());
     writeLine(SqlCommand.InsertOrUpdate(record, parameters).ToString());
 
     // await TestDatabase.TestAsync();

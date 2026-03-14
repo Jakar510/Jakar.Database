@@ -88,7 +88,23 @@ public sealed record MigrationRecord : TableRecord<MigrationRecord>, ITableRecor
 
 
     public static MigrationRecord CreateTable( long migrationID ) => MetaData.CreateTable(migrationID);
-    public        SqlCommand      ApplySql()                      => SqlCommand.GetInsert(this);
+    public SqlCommand ApplySql()
+    {
+        CommandParameters parameters = ToDynamicParameters();
+
+        SqlCommand command = SqlCommand.Parse<MigrationRecord>($"""
+                                                                INSERT INTO {TABLE_NAME} 
+                                                                (
+                                                                {MetaData.ColumnNames(1)}
+                                                                )
+                                                                VALUES
+                                                                {parameters.VariableNames(1)}
+
+                                                                RETURNING {nameof(IUniqueID.ID)};
+                                                                """);
+
+        return command;
+    }
 
 
     public static MigrationRecord FromEnum<TEnum>( long migrationID )

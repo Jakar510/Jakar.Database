@@ -133,14 +133,17 @@ public readonly ref struct SqlInterpolatedStringHandler<TSelf>( int literalLengt
                 return;
 
             case KeyValuePairs n:
-                Parameters.AddInternal(n.Parameters.Values);
+                Parameters.AddInternal(n.Values);
                 Sb.Append(n.Value);
                 return;
 
-            case CommandParameters n:
-                Parameters.AddInternal(n.Values);
-
-                return;
+            case CommandParameters:
+                throw new InvalidOperationException($"""
+                                                     Not supported by design. Use any of the following methods instead: 
+                                                        • {nameof(CommandParameters)}.{nameof(CommandParameters.VariableNames)}
+                                                        • {nameof(CommandParameters)}.{nameof(CommandParameters.KeyValuePairs)}
+                                                        • {nameof(CommandParameters)}.{nameof(CommandParameters.ColumnNames)}
+                                                     """);
 
             case Enum n:
                 // ReSharper disable once RedundantToStringCall

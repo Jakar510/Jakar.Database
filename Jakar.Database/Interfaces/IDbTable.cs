@@ -123,8 +123,6 @@ public interface IDbTable<TSelf> : IDbTable
     public ValueTask<ErrorOrResult<TSelf>>           InsertOrUpdate( DbConnectionContext       context,    TSelf                                           record,  CommandParameters                         parameters, CancellationToken token = default );
     public ValueTask<ErrorOrResult<TSelf>>           Random( CancellationToken                 token                                                                                                       = default );
     public IAsyncEnumerable<TSelf>                   Random( int                               count,   [EnumeratorCancellation] CancellationToken token                                                   = default );
-    public IAsyncEnumerable<TSelf>                   Random( UserRecord                        user,    int                                        count, [EnumeratorCancellation] CancellationToken token = default );
     public ValueTask<ErrorOrResult<TSelf>>           Random( DbConnectionContext               context, CancellationToken                          token                                                                                                     = default );
-    public IAsyncEnumerable<TSelf>                   Random( DbConnectionContext               context, UserRecord                                 user,  int                                        count, [EnumeratorCancellation] CancellationToken token = default );
     public IAsyncEnumerable<TSelf>                   Random( DbConnectionContext               context, int                                        count, [EnumeratorCancellation] CancellationToken token = default );
 }

@@ -14,6 +14,7 @@ public readonly struct CommandParameters() : IEquatable<CommandParameters>
     // internal readonly List<ImmutableArray<SqlParameter>>    Extras     = [];
     private readonly List<SqlParameter>                 __parameters = [];
     private readonly List<ImmutableArray<SqlParameter>> __extras     = [];
+    private readonly UInt128                            __id         = new((ulong)Random.Shared.NextInt64(), (ulong)Random.Shared.NextInt64());
 
 
     public required ITableMetaData Table
@@ -114,20 +115,19 @@ public readonly struct CommandParameters() : IEquatable<CommandParameters>
     }
 
 
-    internal void AddInternal( in SqlParameter parameter )
+    internal bool AddInternal( in SqlParameter parameter )
     {
         foreach ( ref readonly SqlParameter existing in Values )
         {
-            if ( EqualityComparer<SqlParameter>.Default.Equals(existing, parameter) ) { return; }
+            if ( parameter.Equals(in existing) ) { return false; }
         }
 
         __parameters.Add(parameter);
+        return true;
     }
-    internal CommandParameters AddInternal( params ReadOnlySpan<SqlParameter> parameters )
+    internal void AddInternal( params ReadOnlySpan<SqlParameter> parameters )
     {
         foreach ( ref readonly SqlParameter record in parameters ) { AddInternal(in record); }
-
-        return this;
     }
 
 
@@ -171,8 +171,9 @@ public readonly struct CommandParameters() : IEquatable<CommandParameters>
     }
 
 
-    public          bool Equals( CommandParameters      other )                         => GetHash128() == other.GetHash128();
-    public override bool Equals( object?                obj )                           => obj is CommandParameters other && Equals(other);
-    public static   bool operator ==( CommandParameters left, CommandParameters right ) => left.Equals(right);
-    public static   bool operator !=( CommandParameters left, CommandParameters right ) => !left.Equals(right);
+    public          bool Equals( CommandParameters              other )                         => Equals(in other);
+    public          bool Equals( ref readonly CommandParameters other )                         => __id.Equals(other.__id);
+    public override bool Equals( object?                        obj )                           => obj is CommandParameters other && Equals(other);
+    public static   bool operator ==( CommandParameters         left, CommandParameters right ) => left.Equals(right);
+    public static   bool operator !=( CommandParameters         left, CommandParameters right ) => !left.Equals(right);
 }
