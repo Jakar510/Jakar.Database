@@ -9,51 +9,31 @@ using Microsoft.Data.SqlClient;
 namespace Jakar.Database;
 
 
+// ReSharper disable once ClassWithVirtualMembersNeverInherited.Global
 public class DbConnectionContext : IAsyncDisposable
 {
     protected readonly Database      _database;
     protected          DbConnection? _connection;
 
 
-    public bool            HasTransaction { [MemberNotNullWhen(true, nameof(Transaction))] get => Transaction is not null; }
-    public ConnectionState State          => _connection?.State ?? ConnectionState.Closed;
+    public virtual bool            HasTransaction { [MemberNotNullWhen(true, nameof(Transaction))] get => Transaction is not null; }
+    public virtual ConnectionState State          => _connection?.State ?? ConnectionState.Closed;
 
+    public virtual DbTransaction? Transaction { [HandlesResourceDisposal] get; protected set; }
 
-    public bool TryAs( [NotNullWhen(true)] out NpgsqlConnection? connection, out NpgsqlTransaction? transaction )
-    {
-        connection = _connection is NpgsqlConnection x
-                         ? x
-                         : null;
+    public virtual DatabaseType Type => _connection switch
+                                        {
+                                            null             => DatabaseType.NotSet,
+                                            NpgsqlConnection => DatabaseType.PostgreSQL,
+                                            SqlConnection    => DatabaseType.MicrosoftSql,
+                                            _                => throw new ExpectedValueTypeException(_connection, typeof(NpgsqlConnection), typeof(SqlConnection))
+                                        };
 
-        transaction = Transaction as NpgsqlTransaction;
-        return connection is not null;
-    }
-    public bool TryAs( [NotNullWhen(true)] out SqlConnection? connection, out SqlTransaction? transaction )
-    {
-        connection = _connection is SqlConnection x
-                         ? x
-                         : null;
-
-        transaction = Transaction as SqlTransaction;
-        return connection is not null;
-    }
-
-
-    public DbTransaction? Transaction { get; protected set; }
-
-    public DatabaseType Type => _connection switch
-                                {
-                                    null             => DatabaseType.NotSet,
-                                    NpgsqlConnection => DatabaseType.PostgreSQL,
-                                    SqlConnection    => DatabaseType.MicrosoftSql,
-                                    _                => throw new ExpectedValueTypeException(_connection, typeof(NpgsqlConnection), typeof(SqlConnection))
-                                };
-
-    public string? ServerVersion => _connection?.ServerVersion;
+    public virtual string? ServerVersion => _connection?.ServerVersion;
 
 
     [MustDisposeResource] internal DbConnectionContext( Database database ) => _database = database;
-    public async ValueTask DisposeAsync()
+    public virtual async ValueTask DisposeAsync()
     {
         if ( _connection is not null )
         {
@@ -73,7 +53,29 @@ public class DbConnectionContext : IAsyncDisposable
 
         return context;
     }
-    [HandlesResourceDisposal] public async ValueTask<DbConnection> EnsureConnection( CancellationToken token )
+
+
+    public virtual bool TryAs( [NotNullWhen(true)] out NpgsqlConnection? connection, out NpgsqlTransaction? transaction )
+    {
+        connection = _connection is NpgsqlConnection x
+                         ? x
+                         : null;
+
+        transaction = Transaction as NpgsqlTransaction;
+        return connection is not null;
+    }
+    public virtual bool TryAs( [NotNullWhen(true)] out SqlConnection? connection, out SqlTransaction? transaction )
+    {
+        connection = _connection is SqlConnection x
+                         ? x
+                         : null;
+
+        transaction = Transaction as SqlTransaction;
+        return connection is not null;
+    }
+
+
+    [HandlesResourceDisposal] public virtual async ValueTask<DbConnection> EnsureConnection( CancellationToken token )
     {
         DbConnection connection = _connection ??= await _database.CreateConnection(token);
         if ( connection.State is ConnectionState.Closed ) { await connection.OpenAsync(token); }
@@ -82,35 +84,35 @@ public class DbConnectionContext : IAsyncDisposable
     }
 
 
-    public async ValueTask<DbConnectionContext> StartTransactionAsync( IsolationLevel level, CancellationToken token )
+    public virtual async ValueTask<DbConnectionContext> StartTransactionAsync( IsolationLevel level, CancellationToken token )
     {
         DbConnection connection = await EnsureConnection(token);
         Transaction ??= await connection.BeginTransactionAsync(level, token);
         return this;
     }
-    public async ValueTask CompleteAsync( bool wasSuccessful, CancellationToken token )
+    public virtual async ValueTask CompleteAsync( bool wasSuccessful, CancellationToken token )
     {
         if ( wasSuccessful ) { await CommitAsync(token); }
         else { await RollbackAsync(token); }
     }
-    public async ValueTask CompleteAsync( bool wasSuccessful, string savePoint, CancellationToken token )
+    public virtual async ValueTask CompleteAsync( bool wasSuccessful, string savePoint, CancellationToken token )
     {
         if ( wasSuccessful ) { await CommitAsync(token); }
         else { await RollbackAsync(savePoint, token); }
     }
-    public async ValueTask CommitAsync( CancellationToken token )
+    public virtual async ValueTask CommitAsync( CancellationToken token )
     {
         if ( Transaction is not null ) { await Transaction.RollbackAsync(token); }
     }
-    public async ValueTask RollbackAsync( CancellationToken token )
+    public virtual async ValueTask RollbackAsync( CancellationToken token )
     {
         if ( Transaction is not null ) { await Transaction.RollbackAsync(token); }
     }
-    public async ValueTask RollbackAsync( string savePoint, CancellationToken token )
+    public virtual async ValueTask RollbackAsync( string savePoint, CancellationToken token )
     {
         if ( Transaction is not null ) { await Transaction.RollbackAsync(savePoint, token); }
     }
-    public async ValueTask SaveAsync( string rollbackID, CancellationToken token )
+    public virtual async ValueTask SaveAsync( string rollbackID, CancellationToken token )
     {
         if ( Transaction is not null ) { await Transaction.RollbackAsync(rollbackID, token); }
     }
@@ -124,23 +126,77 @@ public class DbConnectionContext : IAsyncDisposable
     }
 
 
-    public async ValueTask<int> Execute( string sql, CommandParameters parameters, CancellationToken token )
+    public virtual async ValueTask<int> Execute( string sql, CommandParameters parameters, CancellationToken token )
     {
         SqlCommand            command = SqlCommand.Create(sql, parameters);
         await using DbCommand cmd     = command.ToCommand(this);
         return await cmd.ExecuteNonQueryAsync(token);
     }
-    public async ValueTask<int> ExecuteNonQueryAsync( SqlCommand sql, CancellationToken token )
+    public virtual async ValueTask<int> ExecuteNonQueryAsync( SqlCommand sql, CancellationToken token )
     {
         await using DbCommand command = sql.ToCommand(this);
         return await command.ExecuteNonQueryAsync(token);
     }
-    public async IAsyncEnumerable<TSelf> ExecuteAsync<TSelf>( SqlCommand sql, [EnumeratorCancellation] CancellationToken token )
+    public virtual async IAsyncEnumerable<TSelf> ExecuteAsync<TSelf>( SqlCommand sql, [EnumeratorCancellation] CancellationToken token )
         where TSelf : TableRecord<TSelf>, ITableRecord<TSelf>
     {
         await using DbCommand    command = sql.ToCommand(this);
         await using DbDataReader reader  = await command.ExecuteReaderAsync(token);
         while ( await reader.ReadAsync(token) ) { yield return TSelf.Create(reader); }
+    }
+    public virtual async ValueTask<ImmutableArray<TSelf>> ExecuteAsync<TSelf>( SqlCommand sql, int initialCapacity, [EnumeratorCancellation] CancellationToken token = default )
+        where TSelf : TableRecord<TSelf>, ITableRecord<TSelf>
+    {
+        List<TSelf> list = new(initialCapacity);
+        await foreach ( TSelf record in ExecuteAsync<TSelf>(sql, token) ) { list.Add(record); }
+
+        return [..list];
+    }
+
+
+    public virtual ValueTask<TSelf> FirstAsync<TSelf>( [EnumeratorCancellation] CancellationToken token = default )
+        where TSelf : TableRecord<TSelf>, ITableRecord<TSelf> => FirstAsync<TSelf>(SqlCommand.GetFirst<TSelf>(), token);
+    public virtual ValueTask<TSelf?> FirstOrDefaultAsync<TSelf>( [EnumeratorCancellation] CancellationToken token = default )
+        where TSelf : TableRecord<TSelf>, ITableRecord<TSelf> => FirstOrDefaultAsync<TSelf>(SqlCommand.GetFirst<TSelf>(), token);
+    public virtual async ValueTask<TSelf> FirstAsync<TSelf>( SqlCommand command, [EnumeratorCancellation] CancellationToken token = default )
+        where TSelf : TableRecord<TSelf>, ITableRecord<TSelf>
+    {
+        try { return await ExecuteAsync<TSelf>(command, token).FirstAsync(token); }
+        catch ( Exception e ) { throw new DbSqlException(command.SQL, e, command.Parameters); }
+    }
+    public virtual async ValueTask<TSelf?> FirstOrDefaultAsync<TSelf>( SqlCommand command, [EnumeratorCancellation] CancellationToken token = default )
+        where TSelf : TableRecord<TSelf>, ITableRecord<TSelf>
+    {
+        try { return await ExecuteAsync<TSelf>(command, token).FirstOrDefaultAsync(token); }
+        catch ( Exception e ) { throw new DbSqlException(command.SQL, e, command.Parameters); }
+    }
+
+
+    public virtual async ValueTask<TSelf> SingleAsync<TSelf>( SqlCommand command, [EnumeratorCancellation] CancellationToken token = default )
+        where TSelf : TableRecord<TSelf>, ITableRecord<TSelf>
+    {
+        try { return await ExecuteAsync<TSelf>(command, token).SingleAsync(token); }
+        catch ( Exception e ) { throw new DbSqlException(command.SQL, e, command.Parameters); }
+    }
+    public virtual async ValueTask<TSelf?> SingleOrDefaultAsync<TSelf>( SqlCommand command, [EnumeratorCancellation] CancellationToken token = default )
+        where TSelf : TableRecord<TSelf>, ITableRecord<TSelf>
+    {
+        try { return await ExecuteAsync<TSelf>(command, token).SingleOrDefaultAsync(token); }
+        catch ( Exception e ) { throw new DbSqlException(command.SQL, e, command.Parameters); }
+    }
+
+
+    public virtual async ValueTask<TSelf> LastAsync<TSelf>( SqlCommand command, [EnumeratorCancellation] CancellationToken token = default )
+        where TSelf : TableRecord<TSelf>, ITableRecord<TSelf>
+    {
+        try { return await ExecuteAsync<TSelf>(command, token).LastAsync(token); }
+        catch ( Exception e ) { throw new DbSqlException(command.SQL, e, command.Parameters); }
+    }
+    public virtual async ValueTask<TSelf?> LastOrDefaultAsync<TSelf>( SqlCommand command, [EnumeratorCancellation] CancellationToken token = default )
+        where TSelf : TableRecord<TSelf>, ITableRecord<TSelf>
+    {
+        try { return await ExecuteAsync<TSelf>(command, token).LastOrDefaultAsync(token); }
+        catch ( Exception e ) { throw new DbSqlException(command.SQL, e, command.Parameters); }
     }
 
 
@@ -149,47 +205,47 @@ public class DbConnectionContext : IAsyncDisposable
         await using DbConnection connection = await EnsureConnection(token);
         return connection.ServerVersion;
     }
-    public async ValueTask Schema( Func<DataTable, CancellationToken, ValueTask> func, CancellationToken token = default )
+    public virtual async ValueTask Schema( Func<DataTable, CancellationToken, ValueTask> func, CancellationToken token = default )
     {
         using DataTable schema = await Schema(token);
         await func(schema, token);
     }
-    public async ValueTask Schema( Func<DataTable, CancellationToken, ValueTask> func, PostgresCollectionType collectionName, CancellationToken token = default )
+    public virtual async ValueTask Schema( Func<DataTable, CancellationToken, ValueTask> func, PostgresCollectionType collectionName, CancellationToken token = default )
     {
         using DataTable schema = await Schema(collectionName, token);
         await func(schema, token);
     }
-    public async ValueTask Schema( Func<DataTable, CancellationToken, ValueTask> func, PostgresCollectionType collectionName, string?[] restrictionValues, CancellationToken token = default )
+    public virtual async ValueTask Schema( Func<DataTable, CancellationToken, ValueTask> func, PostgresCollectionType collectionName, string?[] restrictionValues, CancellationToken token = default )
     {
         using DataTable schema = await Schema(collectionName, restrictionValues, token);
         await func(schema, token);
     }
-    public async ValueTask<TResult> Schema<TResult>( Func<DataTable, CancellationToken, ValueTask<TResult>> func, CancellationToken token = default )
+    public virtual async ValueTask<TResult> Schema<TResult>( Func<DataTable, CancellationToken, ValueTask<TResult>> func, CancellationToken token = default )
     {
         using DataTable schema = await Schema(token);
         return await func(schema, token);
     }
-    public async ValueTask<TResult> Schema<TResult>( Func<DataTable, CancellationToken, ValueTask<TResult>> func, PostgresCollectionType collectionName, CancellationToken token = default )
+    public virtual async ValueTask<TResult> Schema<TResult>( Func<DataTable, CancellationToken, ValueTask<TResult>> func, PostgresCollectionType collectionName, CancellationToken token = default )
     {
         using DataTable schema = await Schema(collectionName, token);
         return await func(schema, token);
     }
-    public async ValueTask<TResult> Schema<TResult>( Func<DataTable, CancellationToken, ValueTask<TResult>> func, PostgresCollectionType collectionName, string?[] restrictionValues, CancellationToken token = default )
+    public virtual async ValueTask<TResult> Schema<TResult>( Func<DataTable, CancellationToken, ValueTask<TResult>> func, PostgresCollectionType collectionName, string?[] restrictionValues, CancellationToken token = default )
     {
         using DataTable schema = await Schema(collectionName, restrictionValues, token);
         return await func(schema, token);
     }
-    public async ValueTask<DataTable> Schema( CancellationToken token = default )
+    public virtual async ValueTask<DataTable> Schema( CancellationToken token = default )
     {
         DbConnection connection = await EnsureConnection(token);
         return await connection.GetSchemaAsync(token);
     }
-    public async ValueTask<DataTable> Schema( PostgresCollectionType collectionName, CancellationToken token = default )
+    public virtual async ValueTask<DataTable> Schema( PostgresCollectionType collectionName, CancellationToken token = default )
     {
         DbConnection connection = await EnsureConnection(token);
         return await connection.GetSchemaAsync(collectionName.GetCollectionTypeName(), token);
     }
-    public async ValueTask<DataTable> Schema( PostgresCollectionType collectionName, string?[] restrictionValues, CancellationToken token = default )
+    public virtual async ValueTask<DataTable> Schema( PostgresCollectionType collectionName, string?[] restrictionValues, CancellationToken token = default )
     {
         DbConnection connection = await EnsureConnection(token);
         return await connection.GetSchemaAsync(collectionName.GetCollectionTypeName(), restrictionValues, token);
@@ -204,7 +260,7 @@ public class DbConnectionContext : IAsyncDisposable
     /// <param name="token"> An optional token to cancel the asynchronous operation. The default value is None. </param>
     /// <returns> A <see cref="NpgsqlBinaryImporter"/> which can be used to write rows and columns </returns>
     /// <remarks> See https://www.postgresql.org/docs/current/static/sql-copy.html. </remarks>
-    public async ValueTask<NpgsqlBinaryImporter> BeginBinaryImportAsync( string copyFromCommand, CancellationToken token = default )
+    public virtual async ValueTask<NpgsqlBinaryImporter> BeginBinaryImportAsync( string copyFromCommand, CancellationToken token = default )
     {
         DbConnection connection = await EnsureConnection(token);
         if ( connection is NpgsqlConnection postgres ) { return await postgres.BeginBinaryImportAsync(copyFromCommand, token); }
@@ -217,7 +273,7 @@ public class DbConnectionContext : IAsyncDisposable
     /// <param name="token"> An optional token to cancel the asynchronous operation. The default value is None. </param>
     /// <returns> A <see cref="NpgsqlBinaryExporter"/> which can be used to read rows and columns </returns>
     /// <remarks> See https://www.postgresql.org/docs/current/static/sql-copy.html. </remarks>
-    public async ValueTask<NpgsqlBinaryExporter> BeginBinaryExportAsync( string copyToCommand, CancellationToken token = default )
+    public virtual async ValueTask<NpgsqlBinaryExporter> BeginBinaryExportAsync( string copyToCommand, CancellationToken token = default )
     {
         DbConnection connection = await EnsureConnection(token);
         if ( connection is NpgsqlConnection postgres ) { return await postgres.BeginBinaryExportAsync(copyToCommand, token); }
@@ -235,7 +291,7 @@ public class DbConnectionContext : IAsyncDisposable
     /// <param name="token"> An optional token to cancel the asynchronous operation. The default value is None. </param>
     /// <returns> A TextWriter that can be used to send textual data. </returns>
     /// <remarks> See https://www.postgresql.org/docs/current/static/sql-copy.html. </remarks>
-    public async ValueTask<NpgsqlCopyTextWriter> BeginTextImportAsync( string copyFromCommand, CancellationToken token = default )
+    public virtual async ValueTask<NpgsqlCopyTextWriter> BeginTextImportAsync( string copyFromCommand, CancellationToken token = default )
     {
         DbConnection connection = await EnsureConnection(token);
         if ( connection is NpgsqlConnection postgres ) { return await postgres.BeginTextImportAsync(copyFromCommand, token); }
@@ -253,7 +309,7 @@ public class DbConnectionContext : IAsyncDisposable
     /// <param name="token"> An optional token to cancel the asynchronous operation. The default value is None. </param>
     /// <returns> A TextReader that can be used to read textual data. </returns>
     /// <remarks> See https://www.postgresql.org/docs/current/static/sql-copy.html. </remarks>
-    public async ValueTask<NpgsqlCopyTextReader> BeginTextExportAsync( string copyToCommand, CancellationToken token = default )
+    public virtual async ValueTask<NpgsqlCopyTextReader> BeginTextExportAsync( string copyToCommand, CancellationToken token = default )
     {
         DbConnection connection = await EnsureConnection(token);
         if ( connection is NpgsqlConnection postgres ) { return await postgres.BeginTextExportAsync(copyToCommand, token); }
@@ -271,7 +327,7 @@ public class DbConnectionContext : IAsyncDisposable
     /// <param name="token"> An optional token to cancel the asynchronous operation. The default value is None. </param>
     /// <returns> A <see cref="NpgsqlRawCopyStream"/> that can be used to read or write raw binary data. </returns>
     /// <remarks> See https://www.postgresql.org/docs/current/static/sql-copy.html. </remarks>
-    public async ValueTask<NpgsqlRawCopyStream> BeginRawBinaryCopyAsync( string copyCommand, CancellationToken token = default )
+    public virtual async ValueTask<NpgsqlRawCopyStream> BeginRawBinaryCopyAsync( string copyCommand, CancellationToken token = default )
     {
         DbConnection connection = await EnsureConnection(token);
         if ( connection is NpgsqlConnection postgres ) { return await postgres.BeginRawBinaryCopyAsync(copyCommand, token); }
@@ -345,7 +401,7 @@ public class DbConnectionContext : IAsyncDisposable
     /// <param name="timeout"> The time-out value, in milliseconds. The default value is 0, which indicates an infinite time-out period. Specifying -1 also indicates an infinite time-out period. </param>
     /// <param name="token"> An optional token to cancel the asynchronous operation. The default value is <see cref="CancellationToken.None"/>. </param>
     /// <returns> true if an asynchronous message was received, false if timed out. </returns>
-    public async ValueTask<bool> WaitAsync( int timeout, CancellationToken token = default )
+    public virtual async ValueTask<bool> WaitAsync( int timeout, CancellationToken token = default )
     {
         DbConnection connection = await EnsureConnection(token);
         if ( connection is NpgsqlConnection x ) { return await x.WaitAsync(timeout, token); }
@@ -365,7 +421,7 @@ public class DbConnectionContext : IAsyncDisposable
     /// <param name="timeout"> The time-out value as <see cref="TimeSpan"/> </param>
     /// <param name="token"> An optional token to cancel the asynchronous operation. The default value is <see cref="CancellationToken.None"/>. </param>
     /// <returns> true if an asynchronous message was received, false if timed out. </returns>
-    public ValueTask<bool> WaitAsync( TimeSpan timeout, CancellationToken token = default ) => WaitAsync((int)timeout.TotalMilliseconds, token);
+    public virtualValueTask<bool> WaitAsync( TimeSpan timeout, CancellationToken token = default ) => WaitAsync((int)timeout.TotalMilliseconds, token);
 
     /// <summary>
     ///     Waits asynchronously until an asynchronous PostgreSQL messages (e.g. a notification) arrives, and exits immediately. The asynchronous message is delivered via the normal events (
@@ -377,7 +433,7 @@ public class DbConnectionContext : IAsyncDisposable
     ///     ).
     /// </summary>
     /// <param name="token"> An optional token to cancel the asynchronous operation. The default value is <see cref="CancellationToken.None"/>. </param>
-    public ValueTask<bool> WaitAsync( CancellationToken token = default ) => WaitAsync(0, token);
+    public virtualValueTask<bool> WaitAsync( CancellationToken token = default ) => WaitAsync(0, token);
 
     #endregion
 }
