@@ -12,8 +12,9 @@ namespace Jakar.Database;
 // ReSharper disable once ClassWithVirtualMembersNeverInherited.Global
 public class DbConnectionContext : IAsyncDisposable
 {
-    protected readonly Database      _database;
-    protected          DbConnection? _connection;
+    protected readonly ConcurrentStack<string> _rollbackIDs = [];
+    protected readonly Database                _database;
+    protected          DbConnection?           _connection;
 
 
     public virtual bool            HasTransaction { [MemberNotNullWhen(true, nameof(Transaction))] get => Transaction is not null; }
@@ -82,14 +83,13 @@ public class DbConnectionContext : IAsyncDisposable
 
         return connection;
     }
-
-
-    public virtual async ValueTask<DbConnectionContext> StartTransactionAsync( IsolationLevel level, CancellationToken token )
+    [HandlesResourceDisposal] public virtual async ValueTask<DbTransaction> StartTransactionAsync( IsolationLevel level, CancellationToken token )
     {
         DbConnection connection = await EnsureConnection(token);
-        Transaction ??= await connection.BeginTransactionAsync(level, token);
-        return this;
+        return Transaction ??= await connection.BeginTransactionAsync(level, token);
     }
+
+
     public virtual async ValueTask CompleteAsync( bool wasSuccessful, CancellationToken token )
     {
         if ( wasSuccessful ) { await CommitAsync(token); }
@@ -106,15 +106,27 @@ public class DbConnectionContext : IAsyncDisposable
     }
     public virtual async ValueTask RollbackAsync( CancellationToken token )
     {
-        if ( Transaction is not null ) { await Transaction.RollbackAsync(token); }
+        if ( Transaction is not null )
+        {
+            if ( _rollbackIDs.TryPop(out string? rollbackID) ) { await Transaction.RollbackAsync(rollbackID, token); }
+            else { await Transaction.RollbackAsync(token); }
+        }
     }
     public virtual async ValueTask RollbackAsync( string savePoint, CancellationToken token )
     {
-        if ( Transaction is not null ) { await Transaction.RollbackAsync(savePoint, token); }
+        if ( Transaction is not null )
+        {
+            if ( !string.IsNullOrWhiteSpace(savePoint) ) { await Transaction.RollbackAsync(savePoint, token); }
+            else { await Transaction.RollbackAsync(token); }
+        }
     }
     public virtual async ValueTask SaveAsync( string rollbackID, CancellationToken token )
     {
-        if ( Transaction is not null ) { await Transaction.RollbackAsync(rollbackID, token); }
+        if ( Transaction is not null )
+        {
+            _rollbackIDs.Push(rollbackID);
+            await Transaction.RollbackAsync(rollbackID, token);
+        }
     }
 
 
@@ -421,7 +433,7 @@ public class DbConnectionContext : IAsyncDisposable
     /// <param name="timeout"> The time-out value as <see cref="TimeSpan"/> </param>
     /// <param name="token"> An optional token to cancel the asynchronous operation. The default value is <see cref="CancellationToken.None"/>. </param>
     /// <returns> true if an asynchronous message was received, false if timed out. </returns>
-    public virtualValueTask<bool> WaitAsync( TimeSpan timeout, CancellationToken token = default ) => WaitAsync((int)timeout.TotalMilliseconds, token);
+    public virtual ValueTask<bool> WaitAsync( TimeSpan timeout, CancellationToken token = default ) => WaitAsync((int)timeout.TotalMilliseconds, token);
 
     /// <summary>
     ///     Waits asynchronously until an asynchronous PostgreSQL messages (e.g. a notification) arrives, and exits immediately. The asynchronous message is delivered via the normal events (
@@ -433,7 +445,7 @@ public class DbConnectionContext : IAsyncDisposable
     ///     ).
     /// </summary>
     /// <param name="token"> An optional token to cancel the asynchronous operation. The default value is <see cref="CancellationToken.None"/>. </param>
-    public virtualValueTask<bool> WaitAsync( CancellationToken token = default ) => WaitAsync(0, token);
+    public virtual ValueTask<bool> WaitAsync( CancellationToken token = default ) => WaitAsync(0, token);
 
     #endregion
 }
