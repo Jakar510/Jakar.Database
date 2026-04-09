@@ -4,12 +4,9 @@
 public class EnumSqlHandler<TValue> : SqlConverter<EnumSqlHandler<TValue>, TValue>
     where TValue : unmanaged, Enum
 {
-    public static readonly FrozenDictionary<long, TValue> Longs = Enum.GetValues<TValue>()
-                                                                      .ToFrozenDictionary(GetLong, SelectSelf);
-    public static readonly FrozenDictionary<string, TValue> Names = Enum.GetValues<TValue>()
-                                                                        .ToFrozenDictionary(GetString, SelectSelf);
-    public static readonly FrozenDictionary<TValue, string> Values = Enum.GetValues<TValue>()
-                                                                         .ToFrozenDictionary(SelectSelf, GetString);
+    public static readonly FrozenDictionary<long, TValue>   Longs  = Enum.GetValues<TValue>().ToFrozenDictionary(GetLong, SelectSelf);
+    public static readonly FrozenDictionary<string, TValue> Names  = Enum.GetValues<TValue>().ToFrozenDictionary(GetString, SelectSelf);
+    public static readonly FrozenDictionary<TValue, string> Values = Enum.GetValues<TValue>().ToFrozenDictionary(SelectSelf, GetString);
 
 
     public EnumSqlHandler() { }
@@ -25,8 +22,7 @@ public class EnumSqlHandler<TValue> : SqlConverter<EnumSqlHandler<TValue>, TValu
                                                           : Enum.TryParse(value, true, out result)
                                                               ? result
                                                               : default;
-    public static TValue TryParse( ReadOnlySpan<char> value, TValue defaultValue ) => Names.GetAlternateLookup<ReadOnlySpan<char>>()
-                                                                                           .TryGetValue(value, out TValue result)
+    public static TValue TryParse( ReadOnlySpan<char> value, TValue defaultValue ) => Names.GetAlternateLookup<ReadOnlySpan<char>>().TryGetValue(value, out TValue result)
                                                                                           ? result
                                                                                           : Enum.TryParse(value, true, out result)
                                                                                               ? result

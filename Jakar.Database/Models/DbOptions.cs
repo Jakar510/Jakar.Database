@@ -15,11 +15,11 @@ public sealed class DbOptions
 {
     public const           string AUTHENTICATION_SCHEME              = JwtBearerDefaults.AuthenticationScheme;
     public const           string AUTHENTICATION_SCHEME_DISPLAY_NAME = $"Jwt.{AUTHENTICATION_SCHEME}";
-    public const           string OTEL_EXPORTER_OTLP_ENDPOINT        = nameof(OTEL_EXPORTER_OTLP_ENDPOINT);
     public const           string AUTHENTICATION_TYPE                = JwtBearerDefaults.AuthenticationScheme;
     public const           int    COMMAND_TIMEOUT                    = 300;
     public const           string JWT_ALGORITHM                      = SecurityAlgorithms.HmacSha512Signature;
     public const           string JWT_KEY                            = "JWT";
+    public const           string OTEL_EXPORTER_OTLP_ENDPOINT        = nameof(OTEL_EXPORTER_OTLP_ENDPOINT);
     public const           string USER_EXISTS                        = "User Exists";
     public static readonly Uri    Local_433                          = new("https://localhost:443");
     public static readonly Uri    Local_80                           = new("http://localhost:80");
@@ -27,6 +27,7 @@ public sealed class DbOptions
 
     public static   int                                                     ConcurrencyLevel                { get;                                 set; } = Environment.ProcessorCount;
     public static   PasswordRequirements                                    PasswordRequirements            { get => PasswordRequirements.Current; set => PasswordRequirements.Current = value; }
+    public          OpenTelemetryActivityEnricher                           ActivityEnricher                { [Pure] get => new(LoggerOptions, TelemetrySource); }
     public          AppInformation                                          AppInformation                  => TelemetrySource.Info;
     public          string                                                  AuthenticationScheme            { get;                                                  set; } = AUTHENTICATION_SCHEME;
     public          string                                                  AuthenticationSchemeDisplayName { get;                                                  set; } = AUTHENTICATION_SCHEME_DISPLAY_NAME;
@@ -40,6 +41,7 @@ public sealed class DbOptions
     public          Action<CookieAuthenticationOptions>?                    ConfigureExternalCookie         { get;                                                  set; }
     public          Action<GoogleOptions>?                                  ConfigureGoogle                 { get;                                                  set; }
     public          Action<IdentityOptions>                                 ConfigureIdentityOptions        { get;                                                  set; }
+    public          Action<LoggerConfiguration>?                            ConfigureLoggerConfiguration    { get;                                                  set; }
     public          Action<LoggerProviderBuilder>?                          ConfigureLoggerProviderBuilder  { get;                                                  set; }
     public          Action<MemoryBackplaneOptions>?                         ConfigureMemoryBackplane        { get;                                                  set; }
     public          Action<OtlpExporterOptions>?                            ConfigureMeterOtlpExporter      { get;                                                  set; }
@@ -48,22 +50,20 @@ public sealed class DbOptions
     public          Action<OpenTelemetryLoggerOptions>?                     ConfigureOpenTelemetryLogger    { get;                                                  set; }
     public          Action<RedisBackplaneOptions>?                          ConfigureRedisBackplane         { get;                                                  set; }
     public          Action<OtlpExporterOptions>?                            ConfigureTracerOtlpExporter     { get;                                                  set; }
-    public          Action<LoggerConfiguration>?                            ConfigureLoggerConfiguration    { get;                                                  set; }
     public required SecuredStringResolverOptions                            ConnectionStringResolver        { get;                                                  set; } = (Func<IConfiguration, SecuredString>)GetConnectionString;
     public          (LocalFile Pem, SecuredStringResolverOptions Password)? DataProtectorKey                { get;                                                  set; }
     public          Uri                                                     Domain                          { get;                                                  set; } = Local_433;
     public          FusionCacheEntryOptionsWrapper                          FusionCacheEntryOptions         { get;                                                  set; } = new() { Duration = TimeSpan.FromMinutes(2) };
+    public          HttpMiddlewareExporterOptions?                          HttpExporterOptions             { get;                                                  set; }
     public          string                                                  JWTAlgorithm                    { get;                                                  set; } = JWT_ALGORITHM;
     public          string                                                  JWTKey                          { get;                                                  set; } = JWT_KEY;
+    public required AppLoggerOptions                                        LoggerOptions                   { get;                                                  init; }
     public          SeqConfig?                                              SeqConfig                       { get;                                                  set; }
     public          Logger?                                                 Serilogger                      { get;                                                  set; }
     public required TelemetrySource                                         TelemetrySource                 { get => Validate.ThrowIfNull(TelemetrySource.Current); init => TelemetrySource.Current = value; }
     public required string                                                  TokenAudience                   { get;                                                  init; }
     public required string                                                  TokenIssuer                     { get;                                                  init; }
     public          string                                                  UserExists                      { get;                                                  set; } = USER_EXISTS;
-    public required AppLoggerOptions                                        LoggerOptions                   { get;                                                  init; }
-    public          OpenTelemetryActivityEnricher                           ActivityEnricher                { [Pure] get => new(LoggerOptions, TelemetrySource); }
-    public          HttpMiddlewareExporterOptions?                          HttpExporterOptions             { get; set; }
     internal        IOptions<DbOptions>                                     Wrapper                         => field ??= Options.Create(this);
 
 
@@ -111,8 +111,7 @@ public sealed class DbOptions
         builder.WithStackExchangeRedisBackplane(ConfigureRedisBackplane);
         builder.WithMemoryBackplane(ConfigureMemoryBackplane);
 
-        builder.WithLogger(static provider => provider.GetRequiredService<ILoggerFactory>()
-                                                      .CreateLogger<FusionCache>());
+        builder.WithLogger(static provider => provider.GetRequiredService<ILoggerFactory>().CreateLogger<FusionCache>());
     }
 
 
@@ -162,8 +161,7 @@ public sealed class DbOptions
     }
     public static async ValueTask<SecuredString> GetConnectionStringAsync( IServiceProvider provider, CancellationToken token )
     {
-        DbOptions options = provider.GetRequiredService<IOptions<DbOptions>>()
-                                    .Value;
+        DbOptions options = provider.GetRequiredService<IOptions<DbOptions>>().Value;
 
         IConfiguration configuration = provider.GetRequiredService<IConfiguration>();
         SecuredString  secure        = await options.GetConnectionStringAsync(configuration, token);

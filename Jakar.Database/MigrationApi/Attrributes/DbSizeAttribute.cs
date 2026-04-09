@@ -4,8 +4,8 @@
 public readonly record struct IntRange( int Min, int Max ) : IComparable<IntRange>
 {
     public static readonly IntRange Empty = new(-1, -1);
-    public readonly        int      Min   = Min;
     public readonly        int      Max   = Max;
+    public readonly        int      Min   = Min;
     public                 bool     IsValid => Min >= 0 && Max >= 0 && Min <= Max;
     public int CompareTo( IntRange other )
     {
@@ -23,8 +23,8 @@ public readonly record struct IntRange( int Min, int Max ) : IComparable<IntRang
 [AttributeUsage(AttributeTargets.Property)]
 public sealed class DbSizeAttribute( int? min, int? max ) : Attribute
 {
-    public readonly int? Min = min;
     public readonly int? Max = max;
+    public readonly int? Min = min;
 
     public IntRange AsIntRange => Min.HasValue && Max.HasValue
                                       ? new IntRange(Min.Value, Max.Value)

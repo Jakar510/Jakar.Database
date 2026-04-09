@@ -3,7 +3,6 @@
 
 using System.Xml;
 using Jakar.Shapes;
-using Org.BouncyCastle.Tls;
 
 
 
@@ -16,28 +15,16 @@ public enum PostgresType
     /// <summary> The default value, indicating that the PostgreSQL type has not been set. </summary>
     NotSet,
 
-    /// <summary>
-    /// Represents a serial communication interface for transmitting and receiving data over serial ports.
-    /// </summary>
-    /// <remarks>Use this type to interact with devices that communicate using serial protocols, such as
-    /// RS-232 or UART. Serial communication is commonly used for connecting to hardware peripherals, embedded systems,
-    /// or legacy equipment. Thread safety and supported features may vary depending on the implementation.</remarks>
+    /// <summary> Represents a serial communication interface for transmitting and receiving data over serial ports. </summary>
+    /// <remarks> Use this type to interact with devices that communicate using serial protocols, such as RS-232 or UART. Serial communication is commonly used for connecting to hardware peripherals, embedded systems, or legacy equipment. Thread safety and supported features may vary depending on the implementation. </remarks>
     Serial,
 
-    /// <summary>
-    /// Represents a 64-bit auto-incrementing integer value, typically used as a primary key in a database table.
-    /// </summary>
-    /// <remarks>Use this type to model database columns that require large, unique, sequential integer
-    /// values. It is commonly used for identifiers that must support a large range of values beyond the limits of a
-    /// standard 32-bit integer.</remarks>
+    /// <summary> Represents a 64-bit auto-incrementing integer value, typically used as a primary key in a database table. </summary>
+    /// <remarks> Use this type to model database columns that require large, unique, sequential integer values. It is commonly used for identifiers that must support a large range of values beyond the limits of a standard 32-bit integer. </remarks>
     BigSerial,
 
-    /// <summary>
-    /// Represents a 2-byte signed integer type used for small serial columns in a database schema.
-    /// </summary>
-    /// <remarks>This type is typically used to map database columns defined as SMALLSERIAL in PostgreSQL or
-    /// similar databases. It provides a convenient way to work with auto-incrementing small integer values in .NET
-    /// applications.</remarks>
+    /// <summary> Represents a 2-byte signed integer type used for small serial columns in a database schema. </summary>
+    /// <remarks> This type is typically used to map database columns defined as SMALLSERIAL in PostgreSQL or similar databases. It provides a convenient way to work with auto-incrementing small integer values in .NET applications. </remarks>
     SmallSerial,
 
     /// <summary>
@@ -286,9 +273,7 @@ public enum PostgresType
 
     /// <summary>
     ///     Corresponds to the PostgreSQL "bytea" type, holding a raw byte string.
-    ///     <para>
-    ///         <see cref="byte"/> array
-    ///     </para>
+    ///     <para> <see cref="byte"/> array </para>
     ///     <para>
     ///         <see cref="Memory{Byte}"/>
     ///     </para>
@@ -604,9 +589,7 @@ public enum PostgresType
 
     /// <summary> Corresponds to the PostgreSQL "pg_lsn" type, which can be used to store LSN (Log Sequence Number) data which is a pointer to a location in the WAL. </summary>
     /// <remarks>
-    ///     <see href="https://www.postgresql.org/docs/current/datatype-pg-lsn.html"/> and
-    ///     <see
-    ///         href="https://git.postgresql.org/gitweb/?p=postgresql.git;a=commit;h=7d03a83f4d0736ba869fa6f93973f7623a27038a"/>
+    ///     <see href="https://www.postgresql.org/docs/current/datatype-pg-lsn.html"/> and <see href="https://git.postgresql.org/gitweb/?p=postgresql.git;a=commit;h=7d03a83f4d0736ba869fa6f93973f7623a27038a"/>
     /// </remarks>
     PgLsn,
 
@@ -631,36 +614,28 @@ public enum PostgresType
 
     /// <summary>
     ///     Corresponds to the PostgreSQL "integer[]" type.
-    ///     <para>
-    ///         <see cref="int"/> array
-    ///     </para>
+    ///     <para> <see cref="int"/> array </para>
     /// </summary>
     /// <remarks> For more information, see the PostgreSQL documentation at <see href="https://www.postgresql.org/docs/current/static/datatype-array.html"/> </remarks>
     IntVector,
 
     /// <summary>
     ///     Corresponds to the PostgreSQL "bigint[]" type.
-    ///     <para>
-    ///         <see cref="long"/> array
-    ///     </para>
+    ///     <para> <see cref="long"/> array </para>
     /// </summary>
     /// <remarks> For more information, see the PostgreSQL documentation at <see href="https://www.postgresql.org/docs/current/static/datatype-array.html"/> </remarks>
     LongVector,
 
     /// <summary>
     ///     Corresponds to the PostgreSQL "float[]" type.
-    ///     <para>
-    ///         <see cref="float"/> array
-    ///     </para>
+    ///     <para> <see cref="float"/> array </para>
     /// </summary>
     /// <remarks> For more information, see the PostgreSQL documentation at <see href="https://www.postgresql.org/docs/current/static/datatype-array.html"/> </remarks>
     FloatVector,
 
     /// <summary>
     ///     Corresponds to the PostgreSQL "double[]" type.
-    ///     <para>
-    ///         <see cref="double"/> array
-    ///     </para>
+    ///     <para> <see cref="double"/> array </para>
     /// </summary>
     /// <remarks> For more information, see the PostgreSQL documentation at <see href="https://www.postgresql.org/docs/current/static/datatype-array.html"/> </remarks>
     DoubleVector,
@@ -994,11 +969,11 @@ public static class PostgresTypes
                 return PostgresType.Enum;
             }
 
-            if ( ( self.IsTypeOrUnderlyingType(typeof(RecordID<>)) ) ) { return PostgresType.Guid; }
+            if ( self.IsTypeOrUnderlyingType(typeof(RecordID<>)) ) { return PostgresType.Guid; }
 
-            if ( ( self.IsTypeOrUnderlyingType(typeof(RecordID<,>)) ) ) { return PostgresType.NotSet; }
+            if ( self.IsTypeOrUnderlyingType(typeof(RecordID<,>)) ) { return PostgresType.NotSet; }
 
-            if ( ( self.IsTypeOrUnderlyingType(typeof(AutoRecordID<>)) ) ) { return PostgresType.BigSerial; }
+            if ( self.IsTypeOrUnderlyingType(typeof(AutoRecordID<>)) ) { return PostgresType.BigSerial; }
 
             if ( self == typeof(byte[]) || self == typeof(Memory<byte>) || self == typeof(ReadOnlyMemory<byte>) || self == typeof(ImmutableArray<byte>) ) { return PostgresType.Binary; }
 

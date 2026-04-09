@@ -10,12 +10,18 @@ public static class LoggingExtensions
     public const string DEFAULT            = "Default";
 
 
-    public static string ConnectionString( this IConfiguration configuration, string name = DEFAULT ) => configuration.GetSection(CONNECTION_STRINGS)
-                                                                                                                      .GetValue<string>(name) ??
-                                                                                                         throw new InvalidOperationException($"{CONNECTION_STRINGS}::{DEFAULT} is not found");
-    public static string ConnectionString( this IServiceProvider provider, string name = DEFAULT ) => provider.GetRequiredService<IConfiguration>()
-                                                                                                              .ConnectionString(name);
-    public static string ConnectionString( this WebApplication configuration, string name = DEFAULT ) => configuration.Services.ConnectionString(name);
+    public static string ConnectionString( this IConfiguration   configuration, string name = DEFAULT ) => configuration.GetSection(CONNECTION_STRINGS).GetValue<string>(name) ?? throw new InvalidOperationException($"{CONNECTION_STRINGS}::{DEFAULT} is not found");
+    public static string ConnectionString( this IServiceProvider provider,      string name = DEFAULT ) => provider.GetRequiredService<IConfiguration>().ConnectionString(name);
+    public static string ConnectionString( this WebApplication   configuration, string name = DEFAULT ) => configuration.Services.ConnectionString(name);
+
+
+    public static string GetMachineName()
+    {
+    #pragma warning disable RS1035
+        try { return Environment.MachineName; }
+        catch ( InvalidOperationException ) { return Dns.GetHostName(); }
+    #pragma warning restore RS1035
+    }
 
 
 
@@ -84,15 +90,5 @@ public static class LoggingExtensions
 
             return self.Logging;
         }
-    }
-
-
-
-    public static string GetMachineName()
-    {
-    #pragma warning disable RS1035
-        try { return Environment.MachineName; }
-        catch ( InvalidOperationException ) { return Dns.GetHostName(); }
-    #pragma warning restore RS1035
     }
 }

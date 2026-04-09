@@ -18,20 +18,20 @@ public abstract partial class Database : Randoms, IConnectableDbRoot, IHealthChe
     public readonly    DbTable<RoleRecord>              Roles;
     public readonly    DbTable<UserLoginProviderRecord> UserLoginProviders;
     public readonly    DbTable<UserRecord>              Users;
-    protected readonly IFusionCache                     _cache;
     public readonly    IConfiguration                   Configuration;
+    protected readonly IFusionCache                     _cache;
     public readonly    ThreadLocal<UserRecord?>         LoggedInUser = new();
     protected          ActivitySource?                  _activitySource;
     protected          Meter?                           _meter;
     protected          string?                          _className;
-    public             MigrationManager                 MigrationManager          { get; }
     public static      Database?                        Current                   { get; set; }
     public static      DataProtector                    DataProtector             { get; set; } = new(RSAEncryptionPadding.OaepSHA1);
-    public virtual     IsolationLevel                   TransactionIsolationLevel => IsolationLevel.RepeatableRead;
     public             string                           ClassName                 => _className ??= GetType().GetFullName();
     protected internal SecuredString?                   ConnectionString          { get; set; }
+    public             MigrationManager                 MigrationManager          { get; }
     ref readonly       DbOptions IConnectableDbRoot.    Options                   => ref Options;
     public virtual     PasswordValidator                PasswordValidator         => DbOptions.PasswordRequirements.GetValidator();
+    public virtual     IsolationLevel                   TransactionIsolationLevel => IsolationLevel.RepeatableRead;
     public             AppVersion                       Version                   => Options.AppInformation.Version;
 
 

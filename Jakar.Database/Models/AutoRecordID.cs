@@ -15,10 +15,10 @@ public readonly struct AutoRecordID<TSelf>( long id ) : IEquatable<AutoRecordID<
 
     [Pure] public static AutoRecordID<TSelf>  Parse( string                    value )                       => Create(long.Parse(value));
     [Pure] public static AutoRecordID<TSelf>  Parse( params ReadOnlySpan<char> value )                       => Create(long.Parse(value));
-    [Pure] public static AutoRecordID<TSelf>  ID( DbDataReader             reader )                      => Create(reader, nameof(IUniqueID.ID));
-    [Pure] public static AutoRecordID<TSelf>? UserID( DbDataReader         reader )                      => TryCreate(reader, nameof(IUserRecordID.UserID));
-    [Pure] public static AutoRecordID<TSelf>? TryCreate( DbDataReader      reader, string propertyName ) => TryCreate(reader.GetFieldValue<long?>(TSelf.MetaData[propertyName].Index));
-    [Pure] public static AutoRecordID<TSelf>  Create( DbDataReader         reader, string propertyName ) => Create(reader.GetFieldValue<long>(TSelf.MetaData[propertyName].Index));
+    [Pure] public static AutoRecordID<TSelf>  ID( DbDataReader                 reader )                      => Create(reader, nameof(IUniqueID.ID));
+    [Pure] public static AutoRecordID<TSelf>? UserID( DbDataReader             reader )                      => TryCreate(reader, nameof(IUserRecordID.UserID));
+    [Pure] public static AutoRecordID<TSelf>? TryCreate( DbDataReader          reader, string propertyName ) => TryCreate(reader.GetFieldValue<long?>(TSelf.MetaData[propertyName].Index));
+    [Pure] public static AutoRecordID<TSelf>  Create( DbDataReader             reader, string propertyName ) => Create(reader.GetFieldValue<long>(TSelf.MetaData[propertyName].Index));
     [Pure] public static AutoRecordID<TSelf>  Create( IUniqueID<long>          value ) => Create(value.ID);
     [Pure] public static AutoRecordID<TSelf>  Create( long                     id )    => new(id);
     [Pure] public static AutoRecordID<TSelf> Create( [NotNullIfNotNull(nameof(id))] long? id ) => id.HasValue

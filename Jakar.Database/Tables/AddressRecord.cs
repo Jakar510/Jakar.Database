@@ -10,16 +10,16 @@ public sealed record AddressRecord : OwnedTableRecord<AddressRecord>, IAddress<A
     public const string TABLE_NAME = "addresses";
 
 
-    public static                                                                                           string               TableName       => TABLE_NAME;
-    [ForeignKey<AddressRecord, UserRecord>]                                                 public override RecordID<UserRecord> UserID          { get;                           init; }
-    [ProtectedPersonalData] [Indexed<AddressRecord>(nameof(Line1))] [Fixed(          512)]  public          string               Line1           { get;                           init; } = EMPTY;
-    [ProtectedPersonalData] [Indexed<AddressRecord>(nameof(Line2))] [Fixed(          512)]  public          string               Line2           { get;                           init; } = EMPTY;
-    [ProtectedPersonalData] [Indexed<AddressRecord>(nameof(City))] [Fixed(           512)]  public          string               City            { get;                           init; } = EMPTY;
-    [ProtectedPersonalData] [Indexed<AddressRecord>(nameof(StateOrProvince))] [Fixed(512)]  public          string               StateOrProvince { get;                           init; } = EMPTY;
-    [ProtectedPersonalData] [Indexed<AddressRecord>(nameof(Country))] [Fixed(        512)]  public          string               Country         { get;                           init; } = EMPTY;
-    [ProtectedPersonalData] [Indexed<AddressRecord>(nameof(PostalCode))] [Fixed(     512)]  public          string               PostalCode      { get;                           init; } = EMPTY;
-    [ProtectedPersonalData] [Indexed<AddressRecord>(nameof(Address))] [Fixed(        4096)] public          string?              Address         { get => field ??= GetAddress(); init; }
-    public                                                                                                  bool                 IsPrimary       { get;                           init; }
+    public static                                                                                          string               TableName       => TABLE_NAME;
+    [ProtectedPersonalData] [Indexed<AddressRecord>(nameof(Address))] [Fixed(4096)] public                 string?              Address         { get => field ??= GetAddress(); init; }
+    [ProtectedPersonalData] [Indexed<AddressRecord>(nameof(City))] [Fixed(   512)]  public                 string               City            { get;                           init; } = EMPTY;
+    [ProtectedPersonalData] [Indexed<AddressRecord>(nameof(Country))] [Fixed(512)]  public                 string               Country         { get;                           init; } = EMPTY;
+    public                                                                                                 bool                 IsPrimary       { get;                           init; }
+    [ProtectedPersonalData] [Indexed<AddressRecord>(nameof(Line1))] [Fixed(          512)] public          string               Line1           { get;                           init; } = EMPTY;
+    [ProtectedPersonalData] [Indexed<AddressRecord>(nameof(Line2))] [Fixed(          512)] public          string               Line2           { get;                           init; } = EMPTY;
+    [ProtectedPersonalData] [Indexed<AddressRecord>(nameof(PostalCode))] [Fixed(     512)] public          string               PostalCode      { get;                           init; } = EMPTY;
+    [ProtectedPersonalData] [Indexed<AddressRecord>(nameof(StateOrProvince))] [Fixed(512)] public          string               StateOrProvince { get;                           init; } = EMPTY;
+    [ForeignKey<AddressRecord, UserRecord>]                                                public override RecordID<UserRecord> UserID          { get;                           init; }
 
 
     public AddressRecord( in RecordID<UserRecord> userID, in RecordID<AddressRecord> id, in DateTimeOffset dateCreated, in DateTimeOffset? lastModified = null, JObject? additionalData = null ) : base(in userID, in id, in dateCreated, in lastModified, additionalData) { }
@@ -153,10 +153,10 @@ public sealed record AddressRecord : OwnedTableRecord<AddressRecord>, IAddress<A
     }
 
 
-    [Pure] public static AddressRecord Create( DbDataReader reader )                                                                                                         => new AddressRecord(reader).Validate();
-    [Pure] public static AddressRecord Create( Match            match )                                                                                                          => new(match);
-    [Pure] public static AddressRecord Create( IAddress<Guid>   address )                                                                                                        => new(address);
-    public static        AddressRecord Create( string           line1, string line2, string city, string stateOrProvince, string postalCode, string country, Guid id = default ) => Create(line1, line2, city, stateOrProvince, postalCode, country, id, RecordID<UserRecord>.Empty);
+    [Pure] public static AddressRecord Create( DbDataReader   reader )                                                                                                         => new AddressRecord(reader).Validate();
+    [Pure] public static AddressRecord Create( Match          match )                                                                                                          => new(match);
+    [Pure] public static AddressRecord Create( IAddress<Guid> address )                                                                                                        => new(address);
+    public static        AddressRecord Create( string         line1, string line2, string city, string stateOrProvince, string postalCode, string country, Guid id = default ) => Create(line1, line2, city, stateOrProvince, postalCode, country, id, RecordID<UserRecord>.Empty);
     [Pure] public static AddressRecord Create( string line1, string line2, string city, string stateOrProvince, string postalCode, string country, Guid id, RecordID<UserRecord> userID ) =>
         new(userID, RecordID<AddressRecord>.Create(id), DateTimeOffset.UtcNow)
         {
@@ -171,7 +171,7 @@ public sealed record AddressRecord : OwnedTableRecord<AddressRecord>, IAddress<A
 
     [Pure] public static async ValueTask<AddressRecord?> TryFromClaims( DbConnectionContext context, Database db, Claim[] claims, ClaimType types, CancellationToken token )
     {
-        CommandParameters  parameters = CommandParameters.Create<AddressRecord>();
+        CommandParameters   parameters = CommandParameters.Create<AddressRecord>();
         ReadOnlySpan<Claim> span       = claims;
 
         if ( hasFlag(types, ClaimType.StreetAddressLine1) ) { parameters.Add(nameof(Line1), span.Single(static ( ref readonly x ) => x.Type == ClaimType.StreetAddressLine1.ToClaimTypes()).Value); }

@@ -56,7 +56,7 @@ try
     // writeLine(SqlCommand.GetInsert(record, record).ToString());
     // writeLine(SqlCommand.GetUpdate(record).ToString());
     // writeLine(SqlCommand.GetTryInsert(record, parameters).ToString());
-    writeLine(SqlCommand.InsertOrUpdate(record, parameters).ToString());
+    writeLine(SqlCommand.InsertOrUpdate(record, in parameters).ToString());
 
     // await TestDatabase.TestAsync();
 }

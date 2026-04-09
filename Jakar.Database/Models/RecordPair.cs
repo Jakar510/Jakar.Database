@@ -14,9 +14,9 @@ public readonly struct RecordPair<TSelf>( RecordID<TSelf> id, DateTimeOffset dat
     private readonly int             __hash      = HashCode.Combine(id, dateCreated);
 
 
-    public static ReadOnlyMemory<PropertyInfo> ClassProperties  { get; } = typeof(RecordPair<TSelf>).GetProperties();
-    public static TableMetaData<TSelf>         MetaData => TSelf.MetaData;
-    public static string                       TableName        => TSelf.TableName;
+    public static ReadOnlyMemory<PropertyInfo> ClassProperties { get; } = typeof(RecordPair<TSelf>).GetProperties();
+    public static TableMetaData<TSelf>         MetaData        => TSelf.MetaData;
+    public static string                       TableName       => TSelf.TableName;
 
 
     public UInt128 GetHash() => ID.GetHash() | new UInt128(0, (ulong)DateCreated.GetHashCode());

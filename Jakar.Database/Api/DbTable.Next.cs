@@ -20,7 +20,7 @@ public partial class DbTable<TSelf>
         {
             await using DbCommand    cmd    = command.ToCommand(context);
             await using DbDataReader reader = await cmd.ExecuteReaderAsync(token);
-            ErrorOrResult<TSelf>         record = await reader.SingleAsync<TSelf>(token);
+            ErrorOrResult<TSelf>     record = await reader.SingleAsync<TSelf>(token);
             return record;
         }
         catch ( Exception e ) { throw new DbSqlException(command.SQL, e, command.Parameters); }
@@ -35,7 +35,7 @@ public partial class DbTable<TSelf>
         {
             await using DbCommand    cmd    = command.ToCommand(context);
             await using DbDataReader reader = await cmd.ExecuteReaderAsync(token);
-            List<RecordPair<TSelf>>      pairs  = [];
+            List<RecordPair<TSelf>>  pairs  = [];
             while ( await reader.ReadAsync(token) ) { pairs.Add(RecordPair<TSelf>.Create(reader)); }
 
             return pairs;
@@ -52,7 +52,7 @@ public partial class DbTable<TSelf>
         {
             await using DbCommand    cmd    = command.ToCommand(context);
             await using DbDataReader reader = await cmd.ExecuteReaderAsync(token);
-            Guid?                        id     = null;
+            Guid?                    id     = null;
             if ( await reader.ReadAsync(token) ) { id = reader.GetGuid(0); }
 
             return id;

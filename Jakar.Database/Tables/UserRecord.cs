@@ -1,8 +1,4 @@
-﻿using Microsoft.AspNetCore.Http.HttpResults;
-
-
-
-namespace Jakar.Database;
+﻿namespace Jakar.Database;
 
 
 [Serializable]
@@ -13,68 +9,18 @@ public sealed record UserRecord : PairRecord<UserRecord>, ITableRecord<UserRecor
     public const string TABLE_NAME = "users";
 
 
-    public static string                                                TableName           => TABLE_NAME;
-    public        RecordID<UserRecord>?                                 EscalateTo          { get; set; }
-    Guid? IEscalateToUser<Guid>.                                        EscalateTo          => EscalateTo?.Value;
-    Guid? IImageID<Guid>.                                               ImageID             => ImageID?.Value;
-    [ForeignKey<UserRecord, FileRecord>()] public RecordID<FileRecord>? ImageID             { get; set; }
-    public                                        bool                  IsValid             => !string.IsNullOrWhiteSpace(UserName) && ID.IsValid();
-    public                                        SupportedLanguage     PreferredLanguage   { get; set; }
-    public                                        DateTimeOffset?       SubscriptionExpires { get; set; }
-    public                                        Guid?                 SubscriptionID      { get; set; }
-    public                                        Guid                  UserID              => ID.Value;
-    RecordID<UserRecord> IUserRecordID.                                 UserID              => ID;
-    [Fixed(USER_NAME)] [ProtectedPersonalData] public string            UserName            { get; init; } = EMPTY;
-
-
-
-    #region Security
-
-    public                            UserRights Rights           { get; set; } = new();
-    [Fixed(AUTHENTICATOR_KEY)] public string?    AuthenticatorKey { get; set; } = EMPTY;
-    public                            int?       BadLogins        { get; set; }
-
-    /// <summary> A random value that must change whenever a user is persisted to the store </summary>
-    [Fixed(CONCURRENCY_STAMP)] public string? ConcurrencyStamp { get; set; } = EMPTY;
-
-    public                                      bool            IsActive               { get; set; }
-    public                                      bool            IsDisabled             { get; set; }
-    public                                      bool            IsEmailConfirmed       { get; set; }
-    public                                      bool            IsLocked               { get; set; }
-    public                                      bool            IsPhoneNumberConfirmed { get; set; }
-    public                                      bool            IsTwoFactorEnabled     { get; set; }
-    public                                      DateTimeOffset? LastBadAttempt         { get; set; }
-    public                                      DateTimeOffset? LastLogin              { get; set; }
-    public                                      DateTimeOffset? LockDate               { get; set; }
-    public                                      DateTimeOffset? LockoutEnd             { get; set; }
-    [Fixed(ENCRYPTED_MAX_PASSWORD_SIZE)] public string?         PasswordHash           { get; set; }
-    [Fixed(REFRESH_TOKEN)]               public string?         RefreshTokenHash       { get; set; }
-    public                                      DateTimeOffset? RefreshTokenExpiryTime { get; set; }
-    [Fixed(SECURITY_STAMP)] public              string?         SecurityStamp          { get; set; }
-    public                                      Guid?           SessionID              { get; set; }
-
-    #endregion Security
-
-
-
-    #region Details
-
-    [Fixed(COMPANY)] [ProtectedPersonalData] public string?                                              Company     { get; set; } = EMPTY;
-    Guid? ICreatedByUser<Guid>.                                                                          CreatedBy   => EscalateTo?.Value;
-    [Fixed(DEPARTMENT)]                                                                   public string? Department  { get; set; } = EMPTY;
-    [Fixed(DESCRIPTION)]                                                                  public string? Description { get; set; }
-    [Fixed(EMAIL)] [Indexed<UserRecord>(nameof(Email))] [ProtectedPersonalData]           public string? Email       { get; set; } = EMPTY;
-    [Fixed(WEBSITE)] [ProtectedPersonalData]                                              public string? Website     { get; set; } = EMPTY;
-    [Fixed(LAST_NAME)] [Indexed<UserRecord>(nameof(LastName))] [ProtectedPersonalData]    public string? LastName    { get; set; } = EMPTY;
-    [Fixed(PHONE)] [Indexed<UserRecord>(    nameof(PhoneNumber))] [ProtectedPersonalData] public string? PhoneNumber { get; set; } = EMPTY;
-    [Fixed(PHONE_EXT)] [ProtectedPersonalData]                                            public string? Ext         { get; set; } = EMPTY;
-    [Fixed(TITLE)]                                                                        public string? Title       { get; set; } = EMPTY;
-    [Fixed(FIRST_NAME)] [Indexed<UserRecord>(nameof(FirstName))] [ProtectedPersonalData]  public string? FirstName   { get; set; } = EMPTY;
-    [Fixed(FULL_NAME)] [Indexed<UserRecord>( nameof(FullName))] [ProtectedPersonalData]   public string? FullName    { get; set; } = EMPTY;
-    [Fixed(GENDER)] [ProtectedPersonalData]                                               public string? Gender      { get; set; } = EMPTY;
-
-    #endregion Details
-
+    public static string                                              TableName           => TABLE_NAME;
+    public        RecordID<UserRecord>?                               EscalateTo          { get; set; }
+    Guid? IEscalateToUser<Guid>.                                      EscalateTo          => EscalateTo?.Value;
+    Guid? IImageID<Guid>.                                             ImageID             => ImageID?.Value;
+    [ForeignKey<UserRecord, FileRecord>] public RecordID<FileRecord>? ImageID             { get; set; }
+    public                                      bool                  IsValid             => !string.IsNullOrWhiteSpace(UserName) && ID.IsValid();
+    public                                      SupportedLanguage     PreferredLanguage   { get; set; }
+    public                                      DateTimeOffset?       SubscriptionExpires { get; set; }
+    public                                      Guid?                 SubscriptionID      { get; set; }
+    public                                      Guid                  UserID              => ID.Value;
+    RecordID<UserRecord> IUserRecordID.                               UserID              => ID;
+    [Fixed(USER_NAME)] [ProtectedPersonalData] public string          UserName            { get; init; } = EMPTY;
 
 
     public UserRecord( in RecordID<UserRecord> ID ) : this(in ID, null, DateTimeOffset.UtcNow) { }
@@ -123,7 +69,7 @@ public sealed record UserRecord : PairRecord<UserRecord>, ITableRecord<UserRecor
     }
 
 
-    public UserRecord( IUserData<Guid> value ) : base(RecordID<UserRecord>.Create(value.ID), DateTimeOffset.UtcNow, value.AdditionalData, null) => With(value);
+    public UserRecord( IUserData<Guid> value ) : base(RecordID<UserRecord>.Create(value.ID), DateTimeOffset.UtcNow, value.AdditionalData) => With(value);
     public static UserRecord Create<TValue>( TValue value )
         where TValue : IUserData<Guid>, IUserDetails
     {
@@ -542,6 +488,67 @@ public sealed record UserRecord : PairRecord<UserRecord>, ITableRecord<UserRecor
     public static bool operator <=( UserRecord left, UserRecord right ) => left.CompareTo(right) <= 0;
 
 
+    public event PropertyChangedEventHandler? PropertyChanged;
+    private void                              OnPropertyChanged( [CallerMemberName] string? propertyName = null ) { PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName)); }
+    private bool SetField<T>( ref T field, T value, [CallerMemberName] string? propertyName = null )
+    {
+        if ( EqualityComparer<T>.Default.Equals(field, value) ) { return false; }
+
+        field = value;
+        OnPropertyChanged(propertyName);
+        return true;
+    }
+
+
+
+    #region Security
+
+    public                            UserRights Rights           { get; set; } = new();
+    [Fixed(AUTHENTICATOR_KEY)] public string?    AuthenticatorKey { get; set; } = EMPTY;
+    public                            int?       BadLogins        { get; set; }
+
+    /// <summary> A random value that must change whenever a user is persisted to the store </summary>
+    [Fixed(CONCURRENCY_STAMP)] public string? ConcurrencyStamp { get; set; } = EMPTY;
+
+    public                                      bool            IsActive               { get; set; }
+    public                                      bool            IsDisabled             { get; set; }
+    public                                      bool            IsEmailConfirmed       { get; set; }
+    public                                      bool            IsLocked               { get; set; }
+    public                                      bool            IsPhoneNumberConfirmed { get; set; }
+    public                                      bool            IsTwoFactorEnabled     { get; set; }
+    public                                      DateTimeOffset? LastBadAttempt         { get; set; }
+    public                                      DateTimeOffset? LastLogin              { get; set; }
+    public                                      DateTimeOffset? LockDate               { get; set; }
+    public                                      DateTimeOffset? LockoutEnd             { get; set; }
+    [Fixed(ENCRYPTED_MAX_PASSWORD_SIZE)] public string?         PasswordHash           { get; set; }
+    [Fixed(REFRESH_TOKEN)]               public string?         RefreshTokenHash       { get; set; }
+    public                                      DateTimeOffset? RefreshTokenExpiryTime { get; set; }
+    [Fixed(SECURITY_STAMP)] public              string?         SecurityStamp          { get; set; }
+    public                                      Guid?           SessionID              { get; set; }
+
+    #endregion Security
+
+
+
+    #region Details
+
+    [Fixed(COMPANY)] [ProtectedPersonalData] public string?                                              Company     { get; set; } = EMPTY;
+    Guid? ICreatedByUser<Guid>.                                                                          CreatedBy   => EscalateTo?.Value;
+    [Fixed(DEPARTMENT)]                                                                   public string? Department  { get; set; } = EMPTY;
+    [Fixed(DESCRIPTION)]                                                                  public string? Description { get; set; }
+    [Fixed(EMAIL)] [Indexed<UserRecord>(nameof(Email))] [ProtectedPersonalData]           public string? Email       { get; set; } = EMPTY;
+    [Fixed(WEBSITE)] [ProtectedPersonalData]                                              public string? Website     { get; set; } = EMPTY;
+    [Fixed(LAST_NAME)] [Indexed<UserRecord>(nameof(LastName))] [ProtectedPersonalData]    public string? LastName    { get; set; } = EMPTY;
+    [Fixed(PHONE)] [Indexed<UserRecord>(    nameof(PhoneNumber))] [ProtectedPersonalData] public string? PhoneNumber { get; set; } = EMPTY;
+    [Fixed(PHONE_EXT)] [ProtectedPersonalData]                                            public string? Ext         { get; set; } = EMPTY;
+    [Fixed(TITLE)]                                                                        public string? Title       { get; set; } = EMPTY;
+    [Fixed(FIRST_NAME)] [Indexed<UserRecord>(nameof(FirstName))] [ProtectedPersonalData]  public string? FirstName   { get; set; } = EMPTY;
+    [Fixed(FULL_NAME)] [Indexed<UserRecord>( nameof(FullName))] [ProtectedPersonalData]   public string? FullName    { get; set; } = EMPTY;
+    [Fixed(GENDER)] [ProtectedPersonalData]                                               public string? Gender      { get; set; } = EMPTY;
+
+    #endregion Details
+
+
 
     #region Helpers
 
@@ -731,16 +738,4 @@ public sealed record UserRecord : PairRecord<UserRecord>, ITableRecord<UserRecor
     }
 
     #endregion Claims
-
-
-
-    public event PropertyChangedEventHandler? PropertyChanged;
-    private void                              OnPropertyChanged( [CallerMemberName] string? propertyName = null ) { PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName)); }
-    private bool SetField<T>( ref T field, T value, [CallerMemberName] string? propertyName = null )
-    {
-        if ( EqualityComparer<T>.Default.Equals(field, value) ) return false;
-        field = value;
-        OnPropertyChanged(propertyName);
-        return true;
-    }
 }

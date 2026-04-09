@@ -73,7 +73,7 @@ public partial class DbTable<TSelf>
 
     public virtual async ValueTask<ErrorOrResult<TSelf>> TryInsert( DbConnectionContext context, TSelf record, CommandParameters parameters, CancellationToken token = default )
     {
-        SqlCommand command = SqlCommand.GetTryInsert(record, parameters);
+        SqlCommand command = SqlCommand.GetTryInsert(record, in parameters);
 
         try
         {
@@ -92,7 +92,7 @@ public partial class DbTable<TSelf>
 
     public virtual async ValueTask<ErrorOrResult<TSelf>> InsertOrUpdate( DbConnectionContext context, TSelf record, CommandParameters parameters, CancellationToken token = default )
     {
-        SqlCommand command = SqlCommand.InsertOrUpdate(record, parameters);
+        SqlCommand command = SqlCommand.InsertOrUpdate(record, in parameters);
 
         try
         {

@@ -13,8 +13,8 @@ public sealed record RecoveryCodeRecord : OwnedTableRecord<RecoveryCodeRecord>, 
 
 
     public static                                                string               TableName => TABLE_NAME;
-    [ForeignKey<RecoveryCodeRecord, UserRecord>] public override RecordID<UserRecord> UserID    { get; init; }
     [Unique]                                     public          string               Code      { get; init; }
+    [ForeignKey<RecoveryCodeRecord, UserRecord>] public override RecordID<UserRecord> UserID    { get; init; }
 
 
     public RecoveryCodeRecord( string code, UserRecord                   user ) : this(code, RecordID<RecoveryCodeRecord>.New(), user.ID, DateTimeOffset.UtcNow) { }

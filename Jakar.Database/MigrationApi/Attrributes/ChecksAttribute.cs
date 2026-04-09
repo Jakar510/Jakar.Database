@@ -17,9 +17,7 @@ public sealed class ChecksAttribute( bool and, params string[] checks ) : Databa
 
     public override StringBuilder ToStringBuilder()
     {
-        StringBuilder sb = new(5 +
-                               Constraints.AsValueEnumerable()
-                                          .Sum(static x => x.Length));
+        StringBuilder sb = new(5 + Constraints.AsValueEnumerable().Sum(static x => x.Length));
 
         for ( int i = 0; i < Constraints.Length; i++ )
         {

@@ -34,7 +34,7 @@ public ref struct ParameterNames( CommandParameters self ) : IValueEnumerator<Pa
     {
         __index = 0;
         __array.Dispose();
-        __array = self.Parameters.AsValueEnumerable().Select(static x => x.ParameterName).Order().ToArrayBuffer();
+        __array = self.Values.AsValueEnumerable().Select(static x => x.ParameterName).Order().ToArrayBuffer();
     }
     public void Dispose()
     {

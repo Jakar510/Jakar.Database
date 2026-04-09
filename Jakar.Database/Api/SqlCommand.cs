@@ -1,7 +1,6 @@
 ﻿// Jakar.Extensions :: Jakar.Database
 // 10/19/2025  10:38
 
-using System.Transactions;
 using Microsoft.Data.SqlClient;
 
 
@@ -49,7 +48,7 @@ public readonly struct SqlCommand : IEquatable<SqlCommand>
                                                           CommandText    = SQL,
                                                           CommandType    = CommandType ?? System.Data.CommandType.Text,
                                                           Transaction    = transaction,
-                                                          CommandTimeout = 30,
+                                                          CommandTimeout = 30
                                                       };
 
         foreach ( ref readonly SqlParameter parameter in Parameters.Parameters ) { command.Parameters.Add(parameter.ToSqlParameter()); }
@@ -431,7 +430,7 @@ public readonly struct SqlCommand : IEquatable<SqlCommand>
         hashCode.Add(SQL, StringComparer.InvariantCultureIgnoreCase);
         hashCode.Add(Parameters);
         hashCode.Add(CommandType);
-        hashCode.Add((int)Flags);
+        hashCode.Add(Flags);
         return hashCode.ToHashCode();
     }
 

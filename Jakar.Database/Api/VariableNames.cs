@@ -27,19 +27,20 @@ public readonly struct KeyValuePairs
     {
         Parameters = parameters;
         Value      = new StringBuilder(parameters.KeyValuePairLength(indentLevel));
-        int                             index  = 0;
-        int                             count  = parameters.Count;
-        using ArrayBuffer<SqlParameter> buffer = parameters.Parameters;
+        int                        index  = 0;
+        int                        count  = parameters.Count;
+        ReadOnlySpan<SqlParameter> buffer = parameters.Values;
 
-        foreach ( ref readonly SqlParameter parameter in buffer.Values )
+        for ( int i = 0; i < buffer.Length; i++ )
         {
-            if ( !separator.IsEmpty ) { indentLevel++; }
+            ref readonly SqlParameter parameter = ref buffer[i];
+            if ( i > 0 && !separator.IsEmpty ) { indentLevel++; }
 
             Value.Append(' ', indentLevel * 4).Append(parameter.Column.ColumnName).Append(" = @").Append(parameter.ParameterName);
 
             if ( index++ >= count - 1 ) { continue; }
 
-            if ( !separator.IsEmpty )
+            if ( i > 0 && !separator.IsEmpty )
             {
                 indentLevel--;
                 Value.Append('\n').Append(' ', indentLevel * 4).Append(separator);

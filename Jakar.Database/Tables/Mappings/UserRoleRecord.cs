@@ -18,10 +18,10 @@ public sealed record UserRoleRecord : Mapping<UserRoleRecord, UserRecord, RoleRe
 
     public UserRoleRecord( RecordID<UserRecord>  key, RecordID<RoleRecord> value ) : base(key, value) { }
     private UserRoleRecord( RecordID<UserRecord> key, RecordID<RoleRecord> value, DateTimeOffset dateCreated ) : base(key, value, dateCreated) { }
-    internal UserRoleRecord( DbDataReader    reader ) : base(reader) { }
+    internal UserRoleRecord( DbDataReader        reader ) : base(reader) { }
 
 
-    [Pure] public static UserRoleRecord Create( DbDataReader     reader )                          => new UserRoleRecord(reader).Validate();
+    [Pure] public static UserRoleRecord Create( DbDataReader         reader )                          => new UserRoleRecord(reader).Validate();
     [Pure] public static UserRoleRecord Create( UserRecord           key, RoleRecord           value ) => new(key, value);
     [Pure] public static UserRoleRecord Create( RecordID<UserRecord> key, RecordID<RoleRecord> value ) => new(key, value);
     [Pure] public static ImmutableArray<UserRoleRecord> Create( UserRecord key, params ReadOnlySpan<RoleRecord> values )

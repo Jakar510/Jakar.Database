@@ -18,23 +18,20 @@ public readonly struct SqlParameter( object? value, string parameterName, Column
                                                         Value         = Value,
                                                         IsNullable    = Column.IsNullable,
                                                         SourceVersion = SourceVersion,
-                                                        Direction     = Direction,
+                                                        Direction     = Direction
                                                     };
     public Microsoft.Data.SqlClient.SqlParameter ToSqlParameter() => new(ParameterName, Column.SqlDbType, 0, Column.ColumnName)
                                                                      {
                                                                          Value         = Value,
                                                                          IsNullable    = Column.IsNullable,
                                                                          SourceVersion = SourceVersion,
-                                                                         Direction     = Direction,
+                                                                         Direction     = Direction
                                                                      };
 
 
     public int CompareTo( SqlParameter other ) => CompareTo(in other);
     public int CompareTo( ref readonly SqlParameter other )
     {
-        int indexComparison = Column.CompareTo(other.Column);
-        if ( indexComparison != 0 ) { return indexComparison; }
-
         int sourceColumnComparison = string.Compare(Column.ColumnName, other.Column.ColumnName, StringComparison.Ordinal);
         if ( sourceColumnComparison != 0 ) { return sourceColumnComparison; }
 
@@ -49,16 +46,9 @@ public readonly struct SqlParameter( object? value, string parameterName, Column
                    : throw new ExpectedValueTypeException(other, typeof(SqlParameter));
     }
     public          bool Equals( SqlParameter              other ) => Equals(in other);
-    public          bool Equals( ref readonly SqlParameter other ) => Column.Equals(other.Column) && string.Equals(ParameterName, other.ParameterName, StringComparison.InvariantCulture) && Equals(Value, other.Value);
+    public          bool Equals( ref readonly SqlParameter other ) => Column.Equals(other.Column) && string.Equals(ParameterName, other.ParameterName, StringComparison.InvariantCulture);
     public override bool Equals( object?                   obj )   => obj is SqlParameter other   && Equals(in other);
-    public override int GetHashCode()
-    {
-        HashCode hashCode = new HashCode();
-        hashCode.Add(Column);
-        hashCode.Add(ParameterName, StringComparer.InvariantCulture);
-        hashCode.Add(Value);
-        return hashCode.ToHashCode();
-    }
+    public override int  GetHashCode()                             => HashCode.Combine(Column, ParameterName, Value);
 
 
     public static bool operator ==( SqlParameter left, SqlParameter right ) => left.Equals(in right);

@@ -1,2 +1,1 @@
 ﻿namespace Jakar.Database;
-

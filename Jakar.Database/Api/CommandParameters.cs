@@ -30,7 +30,7 @@ public readonly struct CommandParameters() : IEquatable<CommandParameters>
     {
         get
         {
-            __parameters.AsSpan().Sort(Comparer<SqlParameter>.Default);
+            __parameters.Sort(Comparer<SqlParameter>.Default);
             return __parameters.AsSpan();
         }
     }
@@ -54,13 +54,15 @@ public readonly struct CommandParameters() : IEquatable<CommandParameters>
             return buffer;
         }
     }
-    public   int                                     Capacity                              => __parameters.Capacity;
-    public   bool                                    IsGrouped                             => __extras.Count > 0;
-    public   ValueEnumerable<ParameterNames, string> ParameterNames                        { [Pure] get => new(new ParameterNames(this)); }
-    public   int                                     SpacerCount                           => Math.Max(__parameters.Count, Table.ColumnCount) - 1;
-    internal int                                     VariableNameLength                    => Table.MaxLength_ColumnName * Table.ColumnCount  + Parameters.Sum(static x => x.ParameterName.Length + 10);
-    public   IndexedEnumerator                       IndexedParameters                     => new(this);
-    internal int                                     KeyValuePairLength( int indentLevel ) => Table.Properties.Values.Sum(static x => x.KeyValuePair.Length) + ParameterCount * ( indentLevel * 4 + 3 );
+    public   int                                     Capacity           => __parameters.Capacity;
+    public   bool                                    IsGrouped          => __extras.Count > 0;
+    public   ValueEnumerable<ParameterNames, string> ParameterNames     { [Pure] get => new(new ParameterNames(this)); }
+    public   int                                     SpacerCount        => Math.Max(__parameters.Count, Table.ColumnCount) - 1;
+    internal int                                     VariableNameLength => Table.MaxLength_ColumnName * Table.ColumnCount  + Parameters.Sum(static x => x.ParameterName.Length + 10);
+    public   IndexedEnumerator                       IndexedParameters  => new(this);
+
+
+    internal int KeyValuePairLength( int indentLevel ) => Table.Properties.Values.Sum(static x => x.KeyValuePair.Length) + ParameterCount * ( indentLevel * 4 + 3 );
 
 
     public ColumnNames   ColumnNames( int   indentLevel )                                      => new(this, indentLevel);
@@ -117,7 +119,7 @@ public readonly struct CommandParameters() : IEquatable<CommandParameters>
 
     internal bool AddInternal( in SqlParameter parameter )
     {
-        foreach ( ref readonly SqlParameter existing in Values )
+        foreach ( ref readonly SqlParameter existing in __parameters.AsSpan() )
         {
             if ( parameter.Equals(in existing) ) { return false; }
         }
@@ -170,10 +172,10 @@ public readonly struct CommandParameters() : IEquatable<CommandParameters>
         return Hashes.Hash128(in names);
     }
 
-
-    public          bool Equals( CommandParameters              other )                         => Equals(in other);
-    public          bool Equals( ref readonly CommandParameters other )                         => __id.Equals(other.__id);
-    public override bool Equals( object?                        obj )                           => obj is CommandParameters other && Equals(other);
-    public static   bool operator ==( CommandParameters         left, CommandParameters right ) => left.Equals(right);
-    public static   bool operator !=( CommandParameters         left, CommandParameters right ) => !left.Equals(right);
+    public override string ToString()                                                             => __parameters.ToJson();
+    public          bool   Equals( CommandParameters              other )                         => Equals(in other);
+    public          bool   Equals( ref readonly CommandParameters other )                         => __id.Equals(other.__id);
+    public override bool   Equals( object?                        obj )                           => obj is CommandParameters other && Equals(other);
+    public static   bool operator ==( CommandParameters           left, CommandParameters right ) => left.Equals(right);
+    public static   bool operator !=( CommandParameters           left, CommandParameters right ) => !left.Equals(right);
 }

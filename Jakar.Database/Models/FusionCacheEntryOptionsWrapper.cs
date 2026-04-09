@@ -155,10 +155,7 @@ public interface IFusionCacheEntryOptions
     public TimeSpan Duration { get; set; }
 
     /// <summary>
-    ///     The threshold to apply when deciding whether to refresh the cache entry eagerly (that is, before the actual expiration). <br/> This value is intended as a percentage of the
-    ///     <see
-    ///         cref="Duration"/>
-    ///     option, expressed as a value between 0.0 and 1.0 (eg: 0.5 = 50%, 0.75 = 75%, etc). <br/><br/> For example by setting it to 0.8 (80%) with a
+    ///     The threshold to apply when deciding whether to refresh the cache entry eagerly (that is, before the actual expiration). <br/> This value is intended as a percentage of the <see cref="Duration"/> option, expressed as a value between 0.0 and 1.0 (eg: 0.5 = 50%, 0.75 = 75%, etc). <br/><br/> For example by setting it to 0.8 (80%) with a
     ///     <see
     ///         cref="Duration"/>
     ///     of 10 minutes, if there's a cache access for the entry after 8 minutes (80% of 10 minutes) an eager refresh will automatically start in the background, while immediately returning the (still valid) cached value to the caller. <br/><br/> <strong> DOCS: </strong>
@@ -204,10 +201,7 @@ public interface IFusionCacheEntryOptions
     public TimeSpan FactorySoftTimeout { get; set; }
 
     /// <summary>
-    ///     When fail-safe is enabled this is the maximum amount of time a cache entry can be used in case of problems, even if expired. <br/><br/> Specifically: <br/> - if
-    ///     <see
-    ///         cref="IsFailSafeEnabled"/>
-    ///     is set to
+    ///     When fail-safe is enabled this is the maximum amount of time a cache entry can be used in case of problems, even if expired. <br/><br/> Specifically: <br/> - if <see cref="IsFailSafeEnabled"/> is set to
     ///     <see
     ///         langword="true"/>
     ///     , an entry will apparently expire normally after the specified

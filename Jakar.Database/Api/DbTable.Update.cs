@@ -31,7 +31,7 @@ public partial class DbTable<TSelf>
 
     [MethodImpl(MethodImplOptions.AggressiveOptimization)] public virtual async ValueTask Update( DbConnectionContext context, TSelf record, CancellationToken token = default )
     {
-        SqlCommand command = SqlCommand.GetUpdate<TSelf>(record);
+        SqlCommand command = SqlCommand.GetUpdate(record);
 
         try
         {

@@ -9,19 +9,19 @@ namespace Jakar.Database;
 public partial class DbTable<TSelf> : IDbTable<TSelf>
     where TSelf : PairRecord<TSelf>, ITableRecord<TSelf>
 {
-    protected readonly IFusionCache       _cache;
-    protected readonly IConnectableDbRoot _database;
+    protected readonly IConnectableDbRoot    _database;
+    protected readonly IFusionCache          _cache;
+    public static      TSelf[]               Empty      => [];
+    public static      ImmutableArray<TSelf> EmptyArray => [];
 
 
-    public static TableMetaData<TSelf>     MetaData                  { [Pure] get => TSelf.MetaData; }
-    public static TSelf[]                  Empty                     => [];
-    public static ImmutableArray<TSelf>    EmptyArray                => [];
-    public static FrozenSet<TSelf>         Set                       => FrozenSet<TSelf>.Empty;
-    public        FusionCacheEntryOptions? Options                   { get; set; }
-    public        RecordGenerator<TSelf>   Records                   => new(this);
-    ITableMetaData IDbTable.               MetaData                  { [Pure] get => MetaData; }
-    public IsolationLevel                  TransactionIsolationLevel => _database.TransactionIsolationLevel;
-    public string                          TableName                 { [Pure] get => TSelf.TableName; }
+    public static TableMetaData<TSelf> MetaData                  { [Pure] get => TSelf.MetaData; }
+    public static FrozenSet<TSelf>     Set                       => FrozenSet<TSelf>.Empty;
+    ITableMetaData IDbTable.           MetaData                  { [Pure] get => MetaData; }
+    public FusionCacheEntryOptions?    Options                   { get; set; }
+    public RecordGenerator<TSelf>      Records                   => new(this);
+    public string                      TableName                 { [Pure] get => TSelf.TableName; }
+    public IsolationLevel              TransactionIsolationLevel => _database.TransactionIsolationLevel;
 
 
     public DbTable( IConnectableDbRoot database, IFusionCache cache )

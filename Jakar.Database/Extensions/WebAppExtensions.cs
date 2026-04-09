@@ -24,6 +24,8 @@ public static class WebAppExtensions
         return app;
     }
 
+
+
     /// <param name="self"> The <see cref="WebApplicationBuilder"/> to configure. </param>
     extension( WebApplicationBuilder self )
     {

@@ -1,13 +1,6 @@
 ﻿// Jakar.Extensions :: Jakar.Database
 // 08/14/2022  8:38 PM
 
-using Microsoft.AspNetCore.DataProtection.KeyManagement;
-using Microsoft.Data.SqlClient;
-using OpenTelemetry;
-using static Pipelines.Sockets.Unofficial.SocketConnection;
-
-
-
 namespace Jakar.Database;
 
 
@@ -33,8 +26,8 @@ public interface ITableRecord<TSelf>
     where TSelf : TableRecord<TSelf>, ITableRecord<TSelf>
 {
     public abstract static ref readonly ImmutableArray<PropertyInfo> ClassProperties { [Pure] get; }
-    public abstract static              int                          PropertyCount   { get; }
     public abstract static              TableMetaData<TSelf>         MetaData        { [Pure] get; }
+    public abstract static              int                          PropertyCount   { get; }
     public abstract static              string                       TableName       { [Pure] get; }
 
 
@@ -50,12 +43,12 @@ public abstract record TableRecord<TSelf>( in DateTimeOffset DateCreated ) : IJs
 {
     protected internal static readonly ImmutableArray<PropertyInfo> Properties = typeof(TSelf).GetProperties(ITableMetaData.ATTRIBUTES).AsValueEnumerable().Where(static x => !x.HasAttribute<DbIgnoreAttribute>()).ToImmutableArray();
 
-    protected DateTimeOffset? _lastModified;
-
-
-    public static              TableMetaData<TSelf>         MetaData        => TableMetaData<TSelf>.Instance;
+    protected                  DateTimeOffset?              _lastModified;
     public static ref readonly ImmutableArray<PropertyInfo> ClassProperties { [Pure] get => ref Properties; }
-    public static              int                          PropertyCount   => Properties.Length;
+
+
+    public static TableMetaData<TSelf> MetaData      => TableMetaData<TSelf>.Instance;
+    public static int                  PropertyCount => Properties.Length;
 
 
     protected internal TableRecord( DbDataReader reader ) : this(reader.DateCreated<TSelf>()) { }
@@ -170,13 +163,13 @@ public abstract record LastModifiedRecord<TSelf> : TableRecord<TSelf>, ILastModi
 public abstract record PairRecord<TSelf> : LastModifiedRecord<TSelf>, IUniqueID
     where TSelf : PairRecord<TSelf>, ITableRecord<TSelf>
 {
-    private   RecordID<TSelf> __id;
-    protected JObject?        _additionalData;
-
-
-    Guid IUniqueID<Guid>.                          ID             => ID.Value;
+    protected                      JObject?        _additionalData;
+    private                        RecordID<TSelf> __id;
     [ProtectedPersonalData] public JObject?        AdditionalData { get => _additionalData; set => _additionalData = value; }
-    [Key]                   public RecordID<TSelf> ID             { get => __id;            init => __id = value; }
+
+
+    Guid IUniqueID<Guid>.        ID => ID.Value;
+    [Key] public RecordID<TSelf> ID { get => __id; init => __id = value; }
 
 
     protected PairRecord( in RecordID<TSelf> id, in DateTimeOffset dateCreated, JObject? additionalData = null, in DateTimeOffset? lastModified = null ) : base(in dateCreated, in lastModified)
@@ -264,8 +257,8 @@ public abstract record OwnedTableRecord<TSelf> : PairRecord<TSelf>, IUserRecordI
     Guid IUserID.                        UserID => UserID.Value;
 
 
-    protected OwnedTableRecord( in RecordID<UserRecord>   userID, in RecordID<TSelf> id, in DateTimeOffset dateCreated, in DateTimeOffset? lastModified, JObject? additionalData = null ) : base(in id, in dateCreated, additionalData, in lastModified) => UserID = userID;
-    protected internal OwnedTableRecord( DbDataReader reader ) : base(reader) => UserID = RecordID<UserRecord>.UserID(reader);
+    protected OwnedTableRecord( in RecordID<UserRecord> userID, in RecordID<TSelf> id, in DateTimeOffset dateCreated, in DateTimeOffset? lastModified, JObject? additionalData = null ) : base(in id, in dateCreated, additionalData, in lastModified) => UserID = userID;
+    protected internal OwnedTableRecord( DbDataReader   reader ) : base(reader) => UserID = RecordID<UserRecord>.UserID(reader);
 
 
     public static implicit operator RecordID<UserRecord>( OwnedTableRecord<TSelf>? record ) => record?.UserID ?? RecordID<UserRecord>.Empty;
@@ -293,10 +286,10 @@ public abstract record OwnedTableRecord<TSelf> : PairRecord<TSelf>, IUserRecordI
     }
 
 
-    public async ValueTask<UserRecord?> GetUser( DbConnectionContext context, Database db, CancellationToken token ) => await db.Users.Get(context, GetDynamicParameters(this), token);
+    public async ValueTask<UserRecord?> GetUser( DbConnectionContext           context, Database db, CancellationToken token ) => await db.Users.Get(context, GetDynamicParameters(this), token);
     public async ValueTask<UserRecord?> GetUserWhoCreated( DbConnectionContext context, Database db, CancellationToken token ) => await db.Users.Get(context, UserID,                     token);
 
-    
+
     public override ValueTask Import( DataRow row, CancellationToken token )
     {
         row[MetaData[nameof(UserID)].DataColumn] = UserID;

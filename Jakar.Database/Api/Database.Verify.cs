@@ -26,11 +26,7 @@ public enum SubscriptionStatus
 {
     NotSet = 0,
     /// <summary> Indicates that the value or state is unknown or could not be determined. </summary>
-    /// <remarks>
-    /// Use this value when the actual state is unavailable, indeterminate, or not applicable.
-    /// This can be useful as a default or error state in scenarios where a specific value cannot be provided.
-    /// This should not be used to represent a valid or meaningful state, but rather to indicate the absence of information, and should override all other flags.
-    /// </remarks>
+    /// <remarks> Use this value when the actual state is unavailable, indeterminate, or not applicable. This can be useful as a default or error state in scenarios where a specific value cannot be provided. This should not be used to represent a valid or meaningful state, but rather to indicate the absence of information, and should override all other flags. </remarks>
     Unknown = 1 << 1,
     /// <summary> Temporarily suspended, resumable </summary>
     Paused = 1 << 2,
@@ -50,10 +46,10 @@ public enum SubscriptionStatus
     TrialExpired = 1 << 9,
     /// <summary> After expiration but still usable </summary>
     GracePeriod = 1 << 10,
-    /// <summary>  Provider temporarily blocked it </summary>
+    /// <summary> Provider temporarily blocked it </summary>
     OnHold = 1 << 11,
 
-    PaymentIssueMask = PastDue | PaymentRequired | Chargeback,
+    PaymentIssueMask = PastDue | PaymentRequired | Chargeback
 }
 
 

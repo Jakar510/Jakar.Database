@@ -23,16 +23,17 @@ public sealed record MigrationRecord : TableRecord<MigrationRecord>, ITableRecor
                                                                                         """);
     public static readonly string SetLastModifiedName = nameof(SetLastModified).SqlName();
 
-    internal          long   MigrationIdValue;
     internal readonly string RollbackID = Randoms.RandomString(10);
 
+    internal long MigrationIdValue;
 
-    public static              string          TableName   => TABLE_NAME;
-    public                     DateTimeOffset? AppliedOn   { get;                     set; }
-    public required            string          Description { get;                     init; }
-    [Key]      public required long            MigrationID { get => MigrationIdValue; init => MigrationIdValue = value; }
-    [DbIgnore] public          string          SQL         { get;                     internal init; } = EMPTY;
-    public                     string?         ReferenceID { get;                     init; }
+
+    public static         string          TableName   => TABLE_NAME;
+    public                DateTimeOffset? AppliedOn   { get;                     set; }
+    public required       string          Description { get;                     init; }
+    [Key] public required long            MigrationID { get => MigrationIdValue; init => MigrationIdValue = value; }
+    public                string?         ReferenceID { get;                     init; }
+    [DbIgnore] public     string          SQL         { get;                     internal init; } = EMPTY;
 
 
     public MigrationRecord() : base(DateTimeOffset.UtcNow) { }
@@ -61,14 +62,14 @@ public sealed record MigrationRecord : TableRecord<MigrationRecord>, ITableRecor
 
 
     /// <summary>
-    /// <para> pg_textsearch <see href="https://github.com/timescale/pg_textsearch"/> </para>
-    /// <para> uint128 <see href="https://github.com/pg-uint/pg-uint128"/> </para>
-    /// <para> pg_crypto <see href="https://www.postgresql.org/docs/current/pgcrypto.html"/> </para>
-    /// <para> pg_crypto <see href="https://github.com/pgaudit/pgaudit/tree/main"/> </para>
-    /// <para> pg_crypto <see href="https://learnsql.com/blog/postgis-basic-queries/"/> </para>
+    ///     <para> pg_textsearch <see href="https://github.com/timescale/pg_textsearch"/> </para>
+    ///     <para> uint128 <see href="https://github.com/pg-uint/pg-uint128"/> </para>
+    ///     <para> pg_crypto <see href="https://www.postgresql.org/docs/current/pgcrypto.html"/> </para>
+    ///     <para> pg_crypto <see href="https://github.com/pgaudit/pgaudit/tree/main"/> </para>
+    ///     <para> pg_crypto <see href="https://learnsql.com/blog/postgis-basic-queries/"/> </para>
     /// </summary>
-    /// <param name="migrationID"></param>
-    /// <returns></returns>
+    /// <param name="migrationID"> </param>
+    /// <returns> </returns>
     public static MigrationRecord AddPostgreSqlExtensions( long migrationID ) =>
         Create<MigrationRecord>(migrationID,
                                 "Add PostgreSql extensions",

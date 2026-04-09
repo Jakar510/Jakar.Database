@@ -8,16 +8,65 @@ namespace Jakar.Database;
 [SuppressMessage("ReSharper", "UnusedMethodReturnValue.Global")]
 public static class DbServices
 {
+    public static string GetFullName( this Type type ) => type.AssemblyQualifiedName ?? type.FullName ?? type.Name;
+
+
+    private static LogLevel GetLogLevel( this bool isDevEnvironment ) =>
+        isDevEnvironment
+            ? LogLevel.Trace
+            : LogLevel.Information;
+
+
+    public static string GetMachineName()
+    {
+    #pragma warning disable RS1035
+        try { return Environment.MachineName; }
+        catch ( InvalidOperationException ) { return Dns.GetHostName(); }
+    #pragma warning restore RS1035
+    }
+
+
+    public static Assembly[] GetAssemblies<TApp>( params ReadOnlySpan<Assembly> assemblies )
+        where TApp : IAppName
+    {
+        Assembly? entry = Assembly.GetEntryAssembly();
+
+        return entry is not null
+                   ? [typeof(TApp).Assembly, typeof(Database).Assembly, Assembly.GetExecutingAssembly(), entry, ..assemblies]
+                   : [typeof(TApp).Assembly, typeof(Database).Assembly, Assembly.GetExecutingAssembly(), ..assemblies];
+    }
+
+
+    public static JwtBearerOptions GetJwtBearerOptions( this IServiceProvider provider )
+    {
+        JwtBearerOptions? bearer = provider.GetService<JwtBearerOptions>();
+        if ( bearer is not null ) { return bearer; }
+
+        IConfiguration configuration = provider.GetRequiredService<IConfiguration>();
+        DbOptions      options       = provider.GetRequiredService<DbOptions>();
+
+        JwtBearerOptions jwt = new()
+                               {
+                                   Audience                  = options.TokenAudience,
+                                   ClaimsIssuer              = options.TokenIssuer,
+                                   TokenValidationParameters = configuration.GetTokenValidationParameters(options)
+                               };
+
+        jwt.TokenHandlers.Add(DbTokenHandler.Instance);
+        return jwt;
+    }
+
+
+    public static AuthorizationBuilder RequireMultiFactorAuthentication( this AuthorizationBuilder builder ) => builder.AddPolicy(nameof(RequireMfa), static policy => policy.Requirements.Add(RequireMfa.Instance));
+
+
+
     extension<TSelf>( TSelf self )
         where TSelf : PairRecord<TSelf>, ITableRecord<TSelf>
     {
         public bool IsValid()    => self.ID.IsValid();
         public bool IsNotValid() => !self.IsValid();
     }
-
-
-
-    public static string GetFullName( this Type type ) => type.AssemblyQualifiedName ?? type.FullName ?? type.Name;
 
 
 
@@ -32,18 +81,12 @@ public static class DbServices
                                           });
 
             self.Services.AddOpenTelemetry()
-                .WithMetrics(static x =>
-                             {
-                                 x.AddRuntimeInstrumentation()
-                                  .AddMeter("Microsoft.AspNetCore.Hosting", "Microsoft.AspNetCore.Server.Kestrel", "System.Net.Http");
-                             })
+                .WithMetrics(static x => { x.AddRuntimeInstrumentation().AddMeter("Microsoft.AspNetCore.Hosting", "Microsoft.AspNetCore.Server.Kestrel", "System.Net.Http"); })
                 .WithTracing(x =>
                              {
                                  if ( self.Environment.IsDevelopment() ) { x.SetSampler<AlwaysOnSampler>(); }
 
-                                 x.AddAspNetCoreInstrumentation()
-                                  .AddGrpcClientInstrumentation()
-                                  .AddHttpClientInstrumentation();
+                                 x.AddAspNetCoreInstrumentation().AddGrpcClientInstrumentation().AddHttpClientInstrumentation();
                              });
 
             return self.AddOpenTelemetryExporters();
@@ -59,19 +102,11 @@ public static class DbServices
                 self.Services.ConfigureOpenTelemetryTracerProvider(static tracing => tracing.AddOtlpExporter());
             }
 
-            self.Services.AddOpenTelemetry()
-                .WithMetrics(static x => x.AddPrometheusExporter());
+            self.Services.AddOpenTelemetry().WithMetrics(static x => x.AddPrometheusExporter());
 
             return self;
         }
     }
-
-
-
-    private static LogLevel GetLogLevel( this bool isDevEnvironment ) =>
-        isDevEnvironment
-            ? LogLevel.Trace
-            : LogLevel.Information;
 
 
 
@@ -127,27 +162,6 @@ public static class DbServices
 
 
 
-    public static string GetMachineName()
-    {
-    #pragma warning disable RS1035
-        try { return Environment.MachineName; }
-        catch ( InvalidOperationException ) { return Dns.GetHostName(); }
-    #pragma warning restore RS1035
-    }
-
-
-    public static Assembly[] GetAssemblies<TApp>( params ReadOnlySpan<Assembly> assemblies )
-        where TApp : IAppName
-    {
-        Assembly? entry = Assembly.GetEntryAssembly();
-
-        return entry is not null
-                   ? [typeof(TApp).Assembly, typeof(Database).Assembly, Assembly.GetExecutingAssembly(), entry, ..assemblies]
-                   : [typeof(TApp).Assembly, typeof(Database).Assembly, Assembly.GetExecutingAssembly(), ..assemblies];
-    }
-
-
-
     extension( WebApplicationBuilder self )
     {
         public WebApplicationBuilder AddDatabase<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)] TDatabase>( DbOptions options )
@@ -175,8 +189,7 @@ public static class DbServices
         {
             self.Services.AddSingleton(options);
 
-            self.Services.AddScoped<IOptions<DbOptions>>(static provider => provider.GetRequiredService<DbOptions>()
-                                                                                    .Wrapper);
+            self.Services.AddScoped<IOptions<DbOptions>>(static provider => provider.GetRequiredService<DbOptions>().Wrapper);
 
             self.AddOpenTelemetry<TestDatabase>(options);
 
@@ -199,8 +212,7 @@ public static class DbServices
 
             options.AddAuthentication(self);
 
-            self.Services.AddAuthorizationBuilder()
-                .RequireMultiFactorAuthentication();
+            self.Services.AddAuthorizationBuilder().RequireMultiFactorAuthentication();
 
             return self;
         }
@@ -310,27 +322,6 @@ public static class DbServices
 
 
 
-    public static JwtBearerOptions GetJwtBearerOptions( this IServiceProvider provider )
-    {
-        JwtBearerOptions? bearer = provider.GetService<JwtBearerOptions>();
-        if ( bearer is not null ) { return bearer; }
-
-        IConfiguration configuration = provider.GetRequiredService<IConfiguration>();
-        DbOptions      options       = provider.GetRequiredService<DbOptions>();
-
-        JwtBearerOptions jwt = new()
-                               {
-                                   Audience                  = options.TokenAudience,
-                                   ClaimsIssuer              = options.TokenIssuer,
-                                   TokenValidationParameters = configuration.GetTokenValidationParameters(options)
-                               };
-
-        jwt.TokenHandlers.Add(DbTokenHandler.Instance);
-        return jwt;
-    }
-
-
-
     extension( IServiceCollection self )
     {
         public IServiceCollection AddDataProtection()
@@ -356,8 +347,4 @@ public static class DbServices
             return self;
         }
     }
-
-
-
-    public static AuthorizationBuilder RequireMultiFactorAuthentication( this AuthorizationBuilder builder ) => builder.AddPolicy(nameof(RequireMfa), static policy => policy.Requirements.Add(RequireMfa.Instance));
 }

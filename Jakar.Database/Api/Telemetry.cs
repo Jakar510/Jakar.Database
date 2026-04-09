@@ -35,6 +35,131 @@ public static class Telemetry
     public static ActivitySource Source { get; set; } = DbSource;
 
 
+    public static IMetricServer Server( int port, string url = "/metrics", CollectorRegistry? registry = null, X509Certificate2? certificate = null )
+    {
+        KestrelMetricServer server = new(port, url, registry, certificate);
+        return server.Start();
+    }
+    public static IMetricServer Server( KestrelMetricServerOptions options )
+    {
+        KestrelMetricServer server = new(options);
+        return server.Start();
+    }
+
+
+    public static ActivitySource CreateSource()                                           => CreateSource(GetAssembly());
+    public static ActivitySource CreateSource( Assembly     assembly )                    => CreateSource(assembly.GetName());
+    public static ActivitySource CreateSource( AssemblyName assembly )                    => CreateSource(assembly.Name ?? nameof(Database), assembly);
+    public static ActivitySource CreateSource( string       name )                        => CreateSource(name,                              GetAssembly());
+    public static ActivitySource CreateSource( string       name, Assembly     assembly ) => CreateSource(name,                              assembly.GetName());
+    public static ActivitySource CreateSource( string       name, AssemblyName assembly ) => CreateSource(name,                              assembly.GetVersion());
+    public static ActivitySource CreateSource( string       name, AppVersion   version )  => CreateSource(name,                              version.ToString());
+    public static ActivitySource CreateSource( string       name, string       version )  => new(name, version);
+    public static Meter          CreateMeter()                                                                                                                         => CreateMeter(GetAssembly());
+    public static Meter          CreateMeter( Assembly     assembly )                                                                                                  => CreateMeter(assembly.GetName());
+    public static Meter          CreateMeter( AssemblyName assembly )                                                                                                  => CreateMeter(assembly.Name ?? nameof(Database), assembly);
+    public static Meter          CreateMeter( string       name )                                                                                                      => CreateMeter(name,                              GetAssembly());
+    public static Meter          CreateMeter( string       name, Assembly     assembly )                                                                               => CreateMeter(name,                              assembly.GetName());
+    public static Meter          CreateMeter( string       name, AssemblyName assembly )                                                                               => CreateMeter(name,                              assembly.GetVersion());
+    public static Meter          CreateMeter( string       name, AppVersion   version, IEnumerable<KeyValuePair<string, object?>>? tags = null, object? scope = null ) => CreateMeter(name,                              version.ToString(), tags, scope);
+    public static Meter          CreateMeter( string       name, string?      version, IEnumerable<KeyValuePair<string, object?>>? tags = null, object? scope = null ) => new(name, version, tags, scope);
+    public static Assembly       GetAssembly()                            => Assembly.GetEntryAssembly() ?? Assembly.GetExecutingAssembly();
+    public static AppVersion     GetVersion( this Assembly     assembly ) => assembly.GetName().GetVersion();
+    public static AppVersion     GetVersion( this AssemblyName assembly ) => assembly.Version ?? DefaultVersion;
+
+
+    public static Meter GetOrAddMeter( [CallerMemberName] string meterName = EMPTY ) => Meters.GetOrAdd(meterName, CreateMeter);
+
+
+    public static Histogram<TValue> GetOrAdd<TValue>( string unit, string description, IEnumerable<KeyValuePair<string, object?>>? tags = null, [CallerMemberName] string meterName = EMPTY )
+        where TValue : struct
+    {
+        if ( Instruments.TryGetValue(description, out Instrument? value) && value is Histogram<TValue> instrument ) { return instrument; }
+
+        Instruments[description] = instrument = GetOrAddMeter(meterName).CreateHistogram<TValue>(meterName, unit, description, tags ?? Pairs);
+
+        return instrument;
+    }
+
+
+    public static ObservableGauge<TValue> GetOrAddGauge<TValue>( string name, Func<Measurement<TValue>> observeValue, string? unit, string? description = null, IEnumerable<KeyValuePair<string, object?>>? tags = null, [CallerMemberName] string meterName = EMPTY )
+        where TValue : struct
+    {
+        if ( Instruments.TryGetValue(name, out Instrument? value) && value is ObservableGauge<TValue> instrument ) { return instrument; }
+
+        Instruments[name] = instrument = GetOrAddMeter(meterName).CreateObservableGauge(name, observeValue, unit, description, tags ?? Pairs);
+
+        return instrument;
+    }
+    public static ObservableGauge<TValue> GetOrAddGauge<TValue>( string name, Func<IEnumerable<Measurement<TValue>>> observeValue, string? unit, string? description = null, IEnumerable<KeyValuePair<string, object?>>? tags = null, [CallerMemberName] string meterName = EMPTY )
+        where TValue : struct
+    {
+        if ( Instruments.TryGetValue(name, out Instrument? value) && value is ObservableGauge<TValue> instrument ) { return instrument; }
+
+        Instruments[name] = instrument = GetOrAddMeter(meterName).CreateObservableGauge(name, observeValue, unit, description, tags ?? Pairs);
+
+        return instrument;
+    }
+
+
+    public static Counter<TValue> GetOrAddCounter<TValue>( string name, string? unit, string? description = null, IEnumerable<KeyValuePair<string, object?>>? tags = null, [CallerMemberName] string meterName = EMPTY )
+        where TValue : struct
+    {
+        if ( Instruments.TryGetValue(name, out Instrument? value) && value is Counter<TValue> instrument ) { return instrument; }
+
+        Instruments[name] = instrument = GetOrAddMeter(meterName).CreateCounter<TValue>(name, unit, description, tags ?? Pairs);
+
+        return instrument;
+    }
+    public static ObservableCounter<TValue> GetOrAddCounter<TValue>( string name, Func<Measurement<TValue>> observeValue, string? unit, string? description = null, IEnumerable<KeyValuePair<string, object?>>? tags = null, [CallerMemberName] string meterName = EMPTY )
+        where TValue : struct
+    {
+        if ( Instruments.TryGetValue(name, out Instrument? value) && value is ObservableCounter<TValue> instrument ) { return instrument; }
+
+        Instruments[name] = instrument = GetOrAddMeter(meterName).CreateObservableCounter(name, observeValue, unit, description, tags ?? Pairs);
+
+        return instrument;
+    }
+    public static ObservableCounter<TValue> GetOrAddCounter<TValue>( string name, Func<IEnumerable<Measurement<TValue>>> observeValue, string? unit, string? description = null, IEnumerable<KeyValuePair<string, object?>>? tags = null, [CallerMemberName] string meterName = EMPTY )
+        where TValue : struct
+    {
+        if ( Instruments.TryGetValue(name, out Instrument? value) && value is ObservableCounter<TValue> instrument ) { return instrument; }
+
+        Instruments[name] = instrument = GetOrAddMeter(meterName).CreateObservableCounter(name, observeValue, unit, description, tags ?? Pairs);
+
+        return instrument;
+    }
+
+
+    public static UpDownCounter<TValue> GetOrAddUpDownCounter<TValue>( string name, string? unit, string? description = null, IEnumerable<KeyValuePair<string, object?>>? tags = null, [CallerMemberName] string meterName = EMPTY )
+        where TValue : struct
+    {
+        if ( Instruments.TryGetValue(name, out Instrument? value) && value is UpDownCounter<TValue> instrument ) { return instrument; }
+
+        Instruments[name] = instrument = GetOrAddMeter(meterName).CreateUpDownCounter<TValue>(name, unit, description, tags ?? Pairs);
+
+        return instrument;
+    }
+    public static ObservableUpDownCounter<TValue> GetOrAddUpDownCounter<TValue>( string name, Func<Measurement<TValue>> observeValue, string? unit, string? description = null, IEnumerable<KeyValuePair<string, object?>>? tags = null, [CallerMemberName] string meterName = EMPTY )
+        where TValue : struct
+    {
+        if ( Instruments.TryGetValue(name, out Instrument? value) && value is ObservableUpDownCounter<TValue> instrument ) { return instrument; }
+
+        Instruments[name] = instrument = GetOrAddMeter(meterName).CreateObservableUpDownCounter(name, observeValue, unit, description, tags ?? Pairs);
+
+        return instrument;
+    }
+    public static ObservableUpDownCounter<TValue> GetOrAddUpDownCounter<TValue>( string name, Func<IEnumerable<Measurement<TValue>>> observeValue, string? unit, string? description = null, IEnumerable<KeyValuePair<string, object?>>? tags = null, [CallerMemberName] string meterName = EMPTY )
+        where TValue : struct
+    {
+        if ( Instruments.TryGetValue(name, out Instrument? value) && value is ObservableUpDownCounter<TValue> instrument ) { return instrument; }
+
+        Instruments[name] = instrument = GetOrAddMeter(meterName).CreateObservableUpDownCounter(name, observeValue, unit, description, tags ?? Pairs);
+
+        return instrument;
+    }
+
+
 
     extension( OtlpExporterOptions exporter )
     {
@@ -106,18 +231,10 @@ public static class Telemetry
         {
             KeyValuePair<string, object>[] attributes = [new(ATTRIBUTE_SERVICE_NAME, TApp.AppName), new(ATTRIBUTE_SERVICE_VERSION, TApp.AppVersion.ToString()), new(ATTRIBUTE_SERVICE_INSTANCE, TApp.AppID.ToString()), new(ATTRIBUTE_SERVICE_NAMESPACE, typeof(TApp).Namespace ?? EMPTY)];
 
-            ResourceBuilder resources = ResourceBuilder.CreateEmpty()
-                                                       .AddAttributes(attributes)
-                                                       .AddTelemetrySdk()
-                                                       .AddEnvironmentVariableDetector()
-                                                       .AddService(TApp.AppName, typeof(TApp).Namespace, TApp.AppVersion.ToString())
-                                                       .AddService(METER_NAME);
+            ResourceBuilder resources = ResourceBuilder.CreateEmpty().AddAttributes(attributes).AddTelemetrySdk().AddEnvironmentVariableDetector().AddService(TApp.AppName, typeof(TApp).Namespace, TApp.AppVersion.ToString()).AddService(METER_NAME);
 
 
-            self.Services.AddOpenTelemetry()
-                .WithTracing(configureTracing)
-                .WithMetrics(configureMetrics)
-                .WithLogging(options.ConfigureLoggerProviderBuilder, options.ConfigureOpenTelemetryLogger);
+            self.Services.AddOpenTelemetry().WithTracing(configureTracing).WithMetrics(configureMetrics).WithLogging(options.ConfigureLoggerProviderBuilder, options.ConfigureOpenTelemetryLogger);
 
             self.Services.AddOpenApi();
             return self;
@@ -151,142 +268,6 @@ public static class Telemetry
                 if ( options.ConfigureTracerOtlpExporter is not null ) { tracerProviderBuilder.AddOtlpExporter(options.ConfigureTracerOtlpExporter); }
             }
         }
-    }
-
-
-
-    public static IMetricServer Server( int port, string url = "/metrics", CollectorRegistry? registry = null, X509Certificate2? certificate = null )
-    {
-        KestrelMetricServer server = new(port, url, registry, certificate);
-        return server.Start();
-    }
-    public static IMetricServer Server( KestrelMetricServerOptions options )
-    {
-        KestrelMetricServer server = new(options);
-        return server.Start();
-    }
-
-
-    public static ActivitySource CreateSource()                                           => CreateSource(GetAssembly());
-    public static ActivitySource CreateSource( Assembly     assembly )                    => CreateSource(assembly.GetName());
-    public static ActivitySource CreateSource( AssemblyName assembly )                    => CreateSource(assembly.Name ?? nameof(Database), assembly);
-    public static ActivitySource CreateSource( string       name )                        => CreateSource(name,                              GetAssembly());
-    public static ActivitySource CreateSource( string       name, Assembly     assembly ) => CreateSource(name,                              assembly.GetName());
-    public static ActivitySource CreateSource( string       name, AssemblyName assembly ) => CreateSource(name,                              assembly.GetVersion());
-    public static ActivitySource CreateSource( string       name, AppVersion   version )  => CreateSource(name,                              version.ToString());
-    public static ActivitySource CreateSource( string       name, string       version )  => new(name, version);
-    public static Meter          CreateMeter()                                                                                                                         => CreateMeter(GetAssembly());
-    public static Meter          CreateMeter( Assembly     assembly )                                                                                                  => CreateMeter(assembly.GetName());
-    public static Meter          CreateMeter( AssemblyName assembly )                                                                                                  => CreateMeter(assembly.Name ?? nameof(Database), assembly);
-    public static Meter          CreateMeter( string       name )                                                                                                      => CreateMeter(name,                              GetAssembly());
-    public static Meter          CreateMeter( string       name, Assembly     assembly )                                                                               => CreateMeter(name,                              assembly.GetName());
-    public static Meter          CreateMeter( string       name, AssemblyName assembly )                                                                               => CreateMeter(name,                              assembly.GetVersion());
-    public static Meter          CreateMeter( string       name, AppVersion   version, IEnumerable<KeyValuePair<string, object?>>? tags = null, object? scope = null ) => CreateMeter(name,                              version.ToString(), tags, scope);
-    public static Meter          CreateMeter( string       name, string?      version, IEnumerable<KeyValuePair<string, object?>>? tags = null, object? scope = null ) => new(name, version, tags, scope);
-    public static Assembly       GetAssembly() => Assembly.GetEntryAssembly() ?? Assembly.GetExecutingAssembly();
-    public static AppVersion GetVersion( this Assembly assembly ) => assembly.GetName()
-                                                                             .GetVersion();
-    public static AppVersion GetVersion( this AssemblyName assembly ) => assembly.Version ?? DefaultVersion;
-
-
-    public static Meter GetOrAddMeter( [CallerMemberName] string meterName = EMPTY ) => Meters.GetOrAdd(meterName, CreateMeter);
-
-
-    public static Histogram<TValue> GetOrAdd<TValue>( string unit, string description, IEnumerable<KeyValuePair<string, object?>>? tags = null, [CallerMemberName] string meterName = EMPTY )
-        where TValue : struct
-    {
-        if ( Instruments.TryGetValue(description, out Instrument? value) && value is Histogram<TValue> instrument ) { return instrument; }
-
-        Instruments[description] = instrument = GetOrAddMeter(meterName)
-                                      .CreateHistogram<TValue>(meterName, unit, description, tags ?? Pairs);
-
-        return instrument;
-    }
-
-
-    public static ObservableGauge<TValue> GetOrAddGauge<TValue>( string name, Func<Measurement<TValue>> observeValue, string? unit, string? description = null, IEnumerable<KeyValuePair<string, object?>>? tags = null, [CallerMemberName] string meterName = EMPTY )
-        where TValue : struct
-    {
-        if ( Instruments.TryGetValue(name, out Instrument? value) && value is ObservableGauge<TValue> instrument ) { return instrument; }
-
-        Instruments[name] = instrument = GetOrAddMeter(meterName)
-                               .CreateObservableGauge(name, observeValue, unit, description, tags ?? Pairs);
-
-        return instrument;
-    }
-    public static ObservableGauge<TValue> GetOrAddGauge<TValue>( string name, Func<IEnumerable<Measurement<TValue>>> observeValue, string? unit, string? description = null, IEnumerable<KeyValuePair<string, object?>>? tags = null, [CallerMemberName] string meterName = EMPTY )
-        where TValue : struct
-    {
-        if ( Instruments.TryGetValue(name, out Instrument? value) && value is ObservableGauge<TValue> instrument ) { return instrument; }
-
-        Instruments[name] = instrument = GetOrAddMeter(meterName)
-                               .CreateObservableGauge(name, observeValue, unit, description, tags ?? Pairs);
-
-        return instrument;
-    }
-
-
-    public static Counter<TValue> GetOrAddCounter<TValue>( string name, string? unit, string? description = null, IEnumerable<KeyValuePair<string, object?>>? tags = null, [CallerMemberName] string meterName = EMPTY )
-        where TValue : struct
-    {
-        if ( Instruments.TryGetValue(name, out Instrument? value) && value is Counter<TValue> instrument ) { return instrument; }
-
-        Instruments[name] = instrument = GetOrAddMeter(meterName)
-                               .CreateCounter<TValue>(name, unit, description, tags ?? Pairs);
-
-        return instrument;
-    }
-    public static ObservableCounter<TValue> GetOrAddCounter<TValue>( string name, Func<Measurement<TValue>> observeValue, string? unit, string? description = null, IEnumerable<KeyValuePair<string, object?>>? tags = null, [CallerMemberName] string meterName = EMPTY )
-        where TValue : struct
-    {
-        if ( Instruments.TryGetValue(name, out Instrument? value) && value is ObservableCounter<TValue> instrument ) { return instrument; }
-
-        Instruments[name] = instrument = GetOrAddMeter(meterName)
-                               .CreateObservableCounter(name, observeValue, unit, description, tags ?? Pairs);
-
-        return instrument;
-    }
-    public static ObservableCounter<TValue> GetOrAddCounter<TValue>( string name, Func<IEnumerable<Measurement<TValue>>> observeValue, string? unit, string? description = null, IEnumerable<KeyValuePair<string, object?>>? tags = null, [CallerMemberName] string meterName = EMPTY )
-        where TValue : struct
-    {
-        if ( Instruments.TryGetValue(name, out Instrument? value) && value is ObservableCounter<TValue> instrument ) { return instrument; }
-
-        Instruments[name] = instrument = GetOrAddMeter(meterName)
-                               .CreateObservableCounter(name, observeValue, unit, description, tags ?? Pairs);
-
-        return instrument;
-    }
-
-
-    public static UpDownCounter<TValue> GetOrAddUpDownCounter<TValue>( string name, string? unit, string? description = null, IEnumerable<KeyValuePair<string, object?>>? tags = null, [CallerMemberName] string meterName = EMPTY )
-        where TValue : struct
-    {
-        if ( Instruments.TryGetValue(name, out Instrument? value) && value is UpDownCounter<TValue> instrument ) { return instrument; }
-
-        Instruments[name] = instrument = GetOrAddMeter(meterName)
-                               .CreateUpDownCounter<TValue>(name, unit, description, tags ?? Pairs);
-
-        return instrument;
-    }
-    public static ObservableUpDownCounter<TValue> GetOrAddUpDownCounter<TValue>( string name, Func<Measurement<TValue>> observeValue, string? unit, string? description = null, IEnumerable<KeyValuePair<string, object?>>? tags = null, [CallerMemberName] string meterName = EMPTY )
-        where TValue : struct
-    {
-        if ( Instruments.TryGetValue(name, out Instrument? value) && value is ObservableUpDownCounter<TValue> instrument ) { return instrument; }
-
-        Instruments[name] = instrument = GetOrAddMeter(meterName)
-                               .CreateObservableUpDownCounter(name, observeValue, unit, description, tags ?? Pairs);
-
-        return instrument;
-    }
-    public static ObservableUpDownCounter<TValue> GetOrAddUpDownCounter<TValue>( string name, Func<IEnumerable<Measurement<TValue>>> observeValue, string? unit, string? description = null, IEnumerable<KeyValuePair<string, object?>>? tags = null, [CallerMemberName] string meterName = EMPTY )
-        where TValue : struct
-    {
-        if ( Instruments.TryGetValue(name, out Instrument? value) && value is ObservableUpDownCounter<TValue> instrument ) { return instrument; }
-
-        Instruments[name] = instrument = GetOrAddMeter(meterName)
-                               .CreateObservableUpDownCounter(name, observeValue, unit, description, tags ?? Pairs);
-
-        return instrument;
     }
 
 
@@ -419,9 +400,7 @@ public static class Telemetry
 
         public static void Print( TextWriter writer )
         {
-            ReadOnlySpan<PropertyInfo> properties = typeof(Tags).GetProperties(BindingFlags.Static | BindingFlags.Public)
-                                                                .Where(static x => x.Name != nameof(Prefix))
-                                                                .ToArray();
+            ReadOnlySpan<PropertyInfo> properties = typeof(Tags).GetProperties(BindingFlags.Static | BindingFlags.Public).Where(static x => x.Name != nameof(Prefix)).ToArray();
 
             foreach ( PropertyInfo property in properties ) { writer.WriteLine(getPrefixLine(property.Name)); }
 

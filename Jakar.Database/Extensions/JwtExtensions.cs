@@ -6,30 +6,6 @@ namespace Jakar.Database;
 
 public static class JwtExtensions
 {
-    extension( IConfiguration self )
-    {
-        [Pure] public DateTimeOffset TokenExpiration() => self.TokenExpiration(TimeSpan.FromMinutes(30));
-        [Pure] public DateTimeOffset TokenExpiration( TimeSpan defaultValue )
-        {
-            TimeSpan offset = self.TokenValidation()
-                                  .GetValue(nameof(TokenExpiration), defaultValue);
-
-            return DateTimeOffset.UtcNow + offset;
-        }
-        public IConfigurationSection TokenValidation()                            => self.GetSection(nameof(TokenValidation));
-        public byte[]                GetJWTKey( DbOptions               options ) => Encoding.UTF8.GetBytes(self[options.JWTKey] ?? EMPTY);
-        public SymmetricSecurityKey  GetSymmetricSecurityKey( DbOptions options ) => new(self.GetJWTKey(options));
-        public SigningCredentials    GetSigningCredentials( DbOptions   options ) => new(self.GetSymmetricSecurityKey(options), options.JWTAlgorithm);
-        public TokenValidationParameters GetTokenValidationParameters( DbOptions options )
-        {
-            IConfigurationSection section = self.TokenValidation();
-            SymmetricSecurityKey  key     = self.GetSymmetricSecurityKey(options);
-            return section.GetTokenValidationParameters(key, options);
-        }
-    }
-
-
-
     public static TokenValidationParameters GetTokenValidationParameters( this WebApplication        app,     DbOptions options ) => app.Configuration.GetTokenValidationParameters(options);
     public static TokenValidationParameters GetTokenValidationParameters( this WebApplicationBuilder builder, DbOptions options ) => builder.Configuration.GetTokenValidationParameters(options);
     public static TokenValidationParameters GetTokenValidationParameters( this IConfigurationSection section, SymmetricSecurityKey key, DbOptions options ) =>
@@ -51,4 +27,27 @@ public static class JwtExtensions
             ValidIssuer                               = section.GetValue(nameof(TokenValidationParameters.ValidIssuer),                               options.TokenIssuer),
             ValidAudience                             = section.GetValue(nameof(TokenValidationParameters.ValidAudience),                             options.TokenAudience)
         };
+
+
+
+    extension( IConfiguration self )
+    {
+        [Pure] public DateTimeOffset TokenExpiration() => self.TokenExpiration(TimeSpan.FromMinutes(30));
+        [Pure] public DateTimeOffset TokenExpiration( TimeSpan defaultValue )
+        {
+            TimeSpan offset = self.TokenValidation().GetValue(nameof(TokenExpiration), defaultValue);
+
+            return DateTimeOffset.UtcNow + offset;
+        }
+        public IConfigurationSection TokenValidation()                            => self.GetSection(nameof(TokenValidation));
+        public byte[]                GetJWTKey( DbOptions               options ) => Encoding.UTF8.GetBytes(self[options.JWTKey] ?? EMPTY);
+        public SymmetricSecurityKey  GetSymmetricSecurityKey( DbOptions options ) => new(self.GetJWTKey(options));
+        public SigningCredentials    GetSigningCredentials( DbOptions   options ) => new(self.GetSymmetricSecurityKey(options), options.JWTAlgorithm);
+        public TokenValidationParameters GetTokenValidationParameters( DbOptions options )
+        {
+            IConfigurationSection section = self.TokenValidation();
+            SymmetricSecurityKey  key     = self.GetSymmetricSecurityKey(options);
+            return section.GetTokenValidationParameters(key, options);
+        }
+    }
 }

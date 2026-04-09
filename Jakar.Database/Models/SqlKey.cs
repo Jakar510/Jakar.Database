@@ -36,9 +36,9 @@ public readonly struct SqlKey( ImmutableArray<string> parameters ) : IEquatable<
 
         return AsValueEnumerable().SequenceEqual(other.AsValueEnumerable());
     }
-    public override bool Equals( object?            other ) => other is SqlKey x && Equals(x);
+    public override bool Equals( object?           other ) => other is SqlKey x && Equals(x);
     public          bool Equals( CommandParameters other ) => AsValueEnumerable().SequenceEqual(other.ParameterNames, StringComparer.Ordinal);
-    public override int  GetHashCode()                      => __hash;
+    public override int  GetHashCode()                     => __hash;
     public int CompareTo( object? other ) =>
         other is SqlKey sqlKey
             ? CompareTo(sqlKey)

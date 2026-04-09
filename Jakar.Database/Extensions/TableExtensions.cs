@@ -103,6 +103,16 @@ public static class TableExtensions
     }
 
 
+    public static string GetTableName( this Type type, bool convertToSnakeCase = true )
+    {
+        string name = type.GetCustomAttribute<TableAttribute>()?.Name ?? type.GetCustomAttribute<System.ComponentModel.DataAnnotations.Schema.TableAttribute>()?.Name ?? type.Name;
+
+        if ( convertToSnakeCase ) { name = name.ToSnakeCase(CultureInfo.InvariantCulture); }
+
+        return name;
+    }
+
+
 
     extension( DbDataReader self )
     {
@@ -167,16 +177,5 @@ public static class TableExtensions
         public TValue? GetValue<TValue>( int ordinal ) => self.GetFieldValue<object?>(ordinal) is TValue value
                                                               ? value
                                                               : default;
-    }
-
-
-
-    public static string GetTableName( this Type type, bool convertToSnakeCase = true )
-    {
-        string name = type.GetCustomAttribute<TableAttribute>()?.Name ?? type.GetCustomAttribute<System.ComponentModel.DataAnnotations.Schema.TableAttribute>()?.Name ?? type.Name;
-
-        if ( convertToSnakeCase ) { name = name.ToSnakeCase(CultureInfo.InvariantCulture); }
-
-        return name;
     }
 }

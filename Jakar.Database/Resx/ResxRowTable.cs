@@ -1,9 +1,4 @@
-﻿using static Npgsql.Replication.PgOutput.Messages.RelationMessage;
-using static Pipelines.Sockets.Unofficial.SocketConnection;
-
-
-
-namespace Jakar.Database;
+﻿namespace Jakar.Database;
 
 
 /// <see cref="ResxString"/>
@@ -11,28 +6,28 @@ namespace Jakar.Database;
 [Table(TABLE_NAME)]
 public sealed record ResxRowRecord : TableRecord<ResxRowRecord>, ITableRecord<ResxRowRecord>, IResxString
 {
-    public const          string                      TABLE_NAME = "resx";
-    public static         string                      TableName      => TABLE_NAME;
-    [Key] public required AutoRecordID<ResxRowRecord> KeyID          { get; init; }
-    public required       string                      Key            { get; init; }
-    public required       string                      Neutral        { get; init; }
-    public                string                      Arabic         { get; init; } = EMPTY;
-    public                string                      Chinese        { get; init; } = EMPTY;
-    public                string                      Czech          { get; init; } = EMPTY;
-    public                string                      Dutch          { get; init; } = EMPTY;
-    public                string                      English        { get; init; } = EMPTY;
-    public                string                      French         { get; init; } = EMPTY;
-    public                string                      German         { get; init; } = EMPTY;
+    public const  string                              TABLE_NAME = "resx";
+    public static string                              TableName      => TABLE_NAME;
+    public        JObject?                            AdditionalData { get; set; }
+    public        string                              Arabic         { get; init; } = EMPTY;
+    public        string                              Chinese        { get; init; } = EMPTY;
+    public        string                              Czech          { get; init; } = EMPTY;
+    public        string                              Dutch          { get; init; } = EMPTY;
+    public        string                              English        { get; init; } = EMPTY;
+    public        string                              French         { get; init; } = EMPTY;
+    public        string                              German         { get; init; } = EMPTY;
+    long IUniqueID<long>.                             ID             => KeyID.Value;
     public                string                      Japanese       { get; init; } = EMPTY;
+    public required       string                      Key            { get; init; }
+    [Key] public required AutoRecordID<ResxRowRecord> KeyID          { get; init; }
     public                string                      Korean         { get; init; } = EMPTY;
+    public                DateTimeOffset?             LastModified   { get; set; }
+    public required       string                      Neutral        { get; init; }
     public                string                      Polish         { get; init; } = EMPTY;
     public                string                      Portuguese     { get; init; } = EMPTY;
     public                string                      Spanish        { get; init; } = EMPTY;
     public                string                      Swedish        { get; init; } = EMPTY;
     public                string                      Thai           { get; init; } = EMPTY;
-    long IUniqueID<long>.                             ID             => KeyID.Value;
-    public DateTimeOffset?                            LastModified   { get; set; }
-    public JObject?                                   AdditionalData { get; set; }
 
 
     public ResxRowRecord( in DateTimeOffset dateCreated ) : base(in dateCreated) { }

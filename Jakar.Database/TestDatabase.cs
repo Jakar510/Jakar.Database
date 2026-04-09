@@ -6,12 +6,12 @@ namespace Jakar.Database;
 
 internal sealed class TestDatabase( IConfiguration configuration, IOptions<DbOptions> options, IFusionCache cache ) : Database(configuration, options, cache), IAppID
 {
-    public static Guid AppID { get; } = Guid.NewGuid();
+    public static readonly TelemetrySource Source = new(AppVersion, AppID, AppName, "Jakar.Database");
+    public static          Guid            AppID { get; } = Guid.NewGuid();
 
     public static string AppName => nameof(TestDatabase);
 
-    public static          AppVersion      AppVersion { get; } = new(1, 0, 0, 1);
-    public static readonly TelemetrySource Source = new(AppVersion, AppID, AppName, "Jakar.Database");
+    public static AppVersion AppVersion { get; } = new(1, 0, 0, 1);
 
     protected override DbConnection CreateConnection( in SecuredString secure ) => new NpgsqlConnection(secure);
 
@@ -78,8 +78,8 @@ internal sealed class TestDatabase( IConfiguration configuration, IOptions<DbOpt
     }
     private static async ValueTask<(UserRecord Admin, UserRecord User)> Add_Users( Database db, CancellationToken token = default )
     {
-        UserRecord admin = UserRecord.Create("Admin", "Admin", Permissions<TestDatabase.TestRight>.SA());
-        UserRecord user  = UserRecord.Create("User",  "User",  Permissions<TestDatabase.TestRight>.Create(TestDatabase.TestRight.Read));
+        UserRecord admin = UserRecord.Create("Admin", "Admin", Permissions<TestRight>.SA());
+        UserRecord user  = UserRecord.Create("User",  "User",  Permissions<TestRight>.Create(TestRight.Read));
 
         admin = await db.Users.Insert(admin, token);
         user  = await db.Users.Insert(user,  token);
@@ -89,8 +89,8 @@ internal sealed class TestDatabase( IConfiguration configuration, IOptions<DbOpt
 
     private static async ValueTask<(RoleRecord Admin, RoleRecord User)> Add_Roles( Database db, UserRecord adminUser, CancellationToken token = default )
     {
-        RoleRecord admin = RoleRecord.Create("Admin", Permissions<TestDatabase.TestRight>.SA(),                                "Admins", adminUser);
-        RoleRecord user  = RoleRecord.Create("User",  Permissions<TestDatabase.TestRight>.Create(TestDatabase.TestRight.Read), "Users",  adminUser);
+        RoleRecord admin = RoleRecord.Create("Admin", Permissions<TestRight>.SA(),                   "Admins", adminUser);
+        RoleRecord user  = RoleRecord.Create("User",  Permissions<TestRight>.Create(TestRight.Read), "Users",  adminUser);
 
         return ( await db.Roles.Insert(admin, token), await db.Roles.Insert(user, token) );
     }
@@ -114,8 +114,8 @@ internal sealed class TestDatabase( IConfiguration configuration, IOptions<DbOpt
 
     private static async ValueTask<(GroupRecord Admin, GroupRecord User)> Add_Group( Database db, UserRecord adminUser, CancellationToken token = default )
     {
-        GroupRecord admin = GroupRecord.Create("Admin", Permissions<TestDatabase.TestRight>.SA(),                                "Admin", adminUser);
-        GroupRecord user  = GroupRecord.Create("User",  Permissions<TestDatabase.TestRight>.Create(TestDatabase.TestRight.Read), "User",  adminUser);
+        GroupRecord admin = GroupRecord.Create("Admin", Permissions<TestRight>.SA(),                   "Admin", adminUser);
+        GroupRecord user  = GroupRecord.Create("User",  Permissions<TestRight>.Create(TestRight.Read), "User",  adminUser);
 
         return ( await db.Groups.Insert(admin, token), await db.Groups.Insert(user, token) );
     }
@@ -167,7 +167,7 @@ internal sealed class TestDatabase( IConfiguration configuration, IOptions<DbOpt
                               Hash            = "hash",
                               MimeType        = MimeType.Unknown,
                               Payload         = "payload",
-                              FullPath        = "full file system path",
+                              FullPath        = "full file system path"
                           };
 
         file = await db.Files.Insert(file, token);

@@ -10,9 +10,9 @@ namespace Jakar.Database;
 public sealed class AsyncKeyGenerator<TSelf>( DbTable<TSelf> table, CancellationToken token = default ) : IAsyncEnumerator<RecordID<TSelf>>, IAsyncEnumerable<RecordID<TSelf>>
     where TSelf : PairRecord<TSelf>, ITableRecord<TSelf>
 {
-    private          CancellationToken   __token = token;
-    private          KeyGenerator<TSelf> __generator;
-    public           RecordID<TSelf>     Current { get; private set; }
+    private CancellationToken   __token = token;
+    private KeyGenerator<TSelf> __generator;
+    public  RecordID<TSelf>     Current { get; private set; }
 
 
     public ValueTask DisposeAsync()

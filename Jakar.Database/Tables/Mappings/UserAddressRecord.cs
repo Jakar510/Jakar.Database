@@ -20,7 +20,7 @@ public sealed record UserAddressRecord : Mapping<UserAddressRecord, UserRecord, 
     public UserAddressRecord( UserRecord            key, AddressRecord           value ) : base(key, value) { }
     public UserAddressRecord( RecordID<UserRecord>  key, RecordID<AddressRecord> value ) : base(key, value) { }
     private UserAddressRecord( RecordID<UserRecord> key, RecordID<AddressRecord> value, DateTimeOffset dateCreated ) : base(key, value, dateCreated) { }
-    internal UserAddressRecord( DbDataReader    reader ) : base(reader) { }
+    internal UserAddressRecord( DbDataReader        reader ) : base(reader) { }
 
 
     [Pure] public static UserAddressRecord Create( UserRecord           key, AddressRecord           value ) => new(key, value);

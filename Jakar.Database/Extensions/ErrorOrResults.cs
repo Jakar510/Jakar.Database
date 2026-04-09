@@ -23,6 +23,30 @@ public static class ErrorOrResults
     public static bool IsAuthorized( this ClaimsIdentity  principal, RecordID<UserRecord> id ) => principal.IsAuthorized(id.Value);
 
 
+    public static async Task<Results<JsonResult<TValue>, JsonResult<Errors>>> ToResult<TValue>( this Task<ErrorOrResult<TValue>> result )
+    {
+        ErrorOrResult<TValue> errorOrResult = await result.ConfigureAwait(false);
+        return errorOrResult.ToResult();
+    }
+    public static async ValueTask<Results<JsonResult<TValue>, JsonResult<Errors>>> ToResult<TValue>( this ValueTask<ErrorOrResult<TValue>> result )
+    {
+        ErrorOrResult<TValue> errorOrResult = await result.ConfigureAwait(false);
+        return errorOrResult.ToResult();
+    }
+
+
+    public static async Task<ActionResult<TValue>> ToActionResult<TValue>( this Task<ErrorOrResult<TValue>> result )
+    {
+        ErrorOrResult<TValue> errorOrResult = await result.ConfigureAwait(false);
+        return errorOrResult.ToActionResult();
+    }
+    public static async ValueTask<ActionResult<TValue>> ToActionResult<TValue>( this ValueTask<ErrorOrResult<TValue>> result )
+    {
+        ErrorOrResult<TValue> errorOrResult = await result.ConfigureAwait(false);
+        return errorOrResult.ToActionResult();
+    }
+
+
 
     extension<TValue>( ErrorOrResult<TValue> result )
     {
@@ -97,19 +121,6 @@ public static class ErrorOrResults
 
 
 
-    public static async Task<Results<JsonResult<TValue>, JsonResult<Errors>>> ToResult<TValue>( this Task<ErrorOrResult<TValue>> result )
-    {
-        ErrorOrResult<TValue> errorOrResult = await result.ConfigureAwait(false);
-        return errorOrResult.ToResult();
-    }
-    public static async ValueTask<Results<JsonResult<TValue>, JsonResult<Errors>>> ToResult<TValue>( this ValueTask<ErrorOrResult<TValue>> result )
-    {
-        ErrorOrResult<TValue> errorOrResult = await result.ConfigureAwait(false);
-        return errorOrResult.ToResult();
-    }
-
-
-
     extension<TValue>( ErrorOrResult<TValue> result )
     {
         public Results<JsonResult<TValue>, JsonResult<Errors>> ToResult() =>
@@ -120,18 +131,5 @@ public static class ErrorOrResults
         public ActionResult<TValue> ToActionResult() => result.TryGetValue(out TValue? value, out Errors? errors)
                                                             ? new ObjectResult(value) { StatusCode  = (int)Errors.GetStatus(errors) }
                                                             : new ObjectResult(errors) { StatusCode = (int)errors.GetStatus() };
-    }
-
-
-
-    public static async Task<ActionResult<TValue>> ToActionResult<TValue>( this Task<ErrorOrResult<TValue>> result )
-    {
-        ErrorOrResult<TValue> errorOrResult = await result.ConfigureAwait(false);
-        return errorOrResult.ToActionResult();
-    }
-    public static async ValueTask<ActionResult<TValue>> ToActionResult<TValue>( this ValueTask<ErrorOrResult<TValue>> result )
-    {
-        ErrorOrResult<TValue> errorOrResult = await result.ConfigureAwait(false);
-        return errorOrResult.ToActionResult();
     }
 }

@@ -25,10 +25,13 @@ public class TableMetaData<TSelf> : ITableMetaData
 {
     // ReSharper disable once StaticMemberInGenericType
     public static readonly TableMetaData<TSelf> Instance = Create();
-    protected              MigrationRecord?     _createTableSql;
 
-    public readonly FrozenDictionary<int, string>            Indexes;
-    public readonly FrozenDictionary<string, ColumnMetaData> Properties;
+    public readonly FrozenDictionary<int, string>                                                                    Indexes;
+    public readonly FrozenDictionary<string, ColumnMetaData>                                                         Properties;
+    protected       MigrationRecord?                                                                                 _createTableSql;
+    public static   ITableMetaData                                                                                   Default     => Instance;
+    public          int                                                                                              ColumnCount => Properties.Count;
+    public          ValueEnumerable<Select<TableMetaDataEnumerator, PropertyColumn, ColumnMetaData>, ColumnMetaData> Columns     => Values.Select(static x => x.Column);
 
 
     public DataTable DataTable
@@ -41,13 +44,11 @@ public class TableMetaData<TSelf> : ITableMetaData
             return table;
         }
     }
-    public static ITableMetaData                                                                                   Default        => Instance;
-    public        ValueEnumerable<Select<TableMetaDataEnumerator, PropertyColumn, ColumnMetaData>, ColumnMetaData> Columns        => Values.Select(static x => x.Column);
-    public        int                                                                                              ColumnCount    => Properties.Count;
-    public        TableExtrasAttribute?                                                                            Extras         { get; init; }
-    public        ArrayBuffer<ColumnMetaData>                                                                      ForeignKeys    { [Pure] [MustDisposeResource] get => Columns.Where(static x => x.HasForeignKeyConstraint).ToArrayBuffer(); }
-    public        ArrayBuffer<Func<long, MigrationRecord>>                                                         IndexedColumns { [Pure] [MustUseReturnValue] [MustDisposeResource] get => Columns.Where(static x => x.IsColumnIndexed).Select(CreateIndex).ToArrayBuffer(); }
-    FrozenDictionary<int, string> ITableMetaData.                                                                  Indexes        => Indexes;
+    public TableExtrasAttribute?                    Extras          { get; init; }
+    public int                                      ForeignKeyCount { get; }
+    public ArrayBuffer<ColumnMetaData>              ForeignKeys     { [Pure] [MustDisposeResource] get => Columns.Where(static x => x.HasForeignKeyConstraint).ToArrayBuffer(); }
+    public ArrayBuffer<Func<long, MigrationRecord>> IndexedColumns  { [Pure] [MustUseReturnValue] [MustDisposeResource] get => Columns.Where(static x => x.IsColumnIndexed).Select(CreateIndex).ToArrayBuffer(); }
+    FrozenDictionary<int, string> ITableMetaData.   Indexes         => Indexes;
     public ref readonly ColumnMetaData this[ string propertyName ] => ref Properties[propertyName];
     public PropertyColumn this[ int index ]
     {
@@ -58,7 +59,6 @@ public class TableMetaData<TSelf> : ITableMetaData
             return new PropertyColumn(propertyName, Properties[propertyName]);
         }
     }
-    public int                                                      ForeignKeyCount             { get; }
     public int                                                      MaxLength_ColumnName        { get; }
     public int                                                      MaxLength_DataType          { get; }
     public int                                                      MaxLength_IndexColumnName   { get; }

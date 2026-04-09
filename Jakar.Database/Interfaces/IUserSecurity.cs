@@ -23,8 +23,8 @@ public interface IUserSecurity : IUserRecordID
     public                                             DateTimeOffset? LockDate               { get; set; }
     public                                             DateTimeOffset? LockoutEnd             { get; set; }
     [StringLength(ENCRYPTED_MAX_PASSWORD_SIZE)] public string?         PasswordHash           { get; set; }
-    public                                             string?         RefreshTokenHash       { get; set; }
     public                                             DateTimeOffset? RefreshTokenExpiryTime { get; set; }
+    public                                             string?         RefreshTokenHash       { get; set; }
     [StringLength(SECURITY_STAMP)] public              string?         SecurityStamp          { get; set; }
     public                                             Guid?           SessionID              { get; set; }
 }

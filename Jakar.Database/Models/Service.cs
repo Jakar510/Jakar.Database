@@ -47,7 +47,7 @@ public abstract class Service : BaseClass, IAsyncDisposable, IValidator
 
 
     [StackTraceHidden] [DoesNotReturn] protected virtual void ThrowDisabled( Exception? inner = null, [CallerMemberName] string? caller = null ) => throw new ApiDisabledException($"{ClassName}.{caller}", inner);
-    [StackTraceHidden] [DoesNotReturn] protected void ThrowDisposed( Exception? inner = null, [CallerMemberName] string? caller = null ) => throw new ObjectDisposedException($"{ClassName}.{caller}", inner);
+    [StackTraceHidden] [DoesNotReturn] protected         void ThrowDisposed( Exception? inner = null, [CallerMemberName] string? caller = null ) => throw new ObjectDisposedException($"{ClassName}.{caller}", inner);
 }
 
 
@@ -126,8 +126,7 @@ public static class HostedServiceExtensions
 
             if ( __source is not null )
             {
-                await __source.CancelAsync()
-                              .ConfigureAwait(false);
+                await __source.CancelAsync().ConfigureAwait(false);
 
                 __source.Dispose();
             }
@@ -140,16 +139,8 @@ public static class HostedServiceExtensions
                 {
                     IsAlive = true;
 
-                    try
-                    {
-                        await __service.StartAsync(__source.Token)
-                                       .ConfigureAwait(false);
-                    }
-                    finally
-                    {
-                        await __service.StopAsync(CancellationToken.None)
-                                       .ConfigureAwait(false);
-                    }
+                    try { await __service.StartAsync(__source.Token).ConfigureAwait(false); }
+                    finally { await __service.StopAsync(CancellationToken.None).ConfigureAwait(false); }
                 }
                 catch ( TaskCanceledException ) { }
                 catch ( Exception e ) { DbLog.ServiceError(__logger, e, this, __service); }

@@ -1,11 +1,6 @@
 ﻿// Jakar.Extensions :: Jakar.Database
 // 03/12/2023  1:07 PM
 
-using System.Linq;
-using System.Linq.Expressions;
-
-
-
 namespace Jakar.Database;
 
 
@@ -13,10 +8,10 @@ namespace Jakar.Database;
 public partial class DbTable<TSelf>
 {
     public ValueTask<long>                 Count( CancellationToken               token = default )                                                        => this.Call(Count, token);
-    public ValueTask<bool>                 Exists( CommandParameters             parameters, CancellationToken token )                                    => this.TryCall(Exists, parameters, token);
+    public ValueTask<bool>                 Exists( CommandParameters              parameters, CancellationToken token )                                    => this.TryCall(Exists, parameters, token);
     public IAsyncEnumerable<TSelf>         Get( IEnumerable<RecordID<TSelf>>      ids,        CancellationToken token                          = default ) => this.Call(Get, ids,        token);
     public IAsyncEnumerable<TSelf>         Get( IAsyncEnumerable<RecordID<TSelf>> ids,        CancellationToken token                          = default ) => this.Call(Get, ids,        token);
-    public ValueTask<ErrorOrResult<TSelf>> Get( CommandParameters                parameters, CancellationToken token                          = default ) => this.Call(Get, parameters, token);
+    public ValueTask<ErrorOrResult<TSelf>> Get( CommandParameters                 parameters, CancellationToken token                          = default ) => this.Call(Get, parameters, token);
     public ValueTask<ErrorOrResult<TSelf>> Get( string                            columnName, object?           value, CancellationToken token = default ) => this.Call(Get, columnName, value, token);
     public ValueTask<ErrorOrResult<TSelf>> Get( RecordID<TSelf>                   id,         CancellationToken token = default ) => this.Call(Get, id, token);
     public ValueTask<ErrorOrResult<TSelf>> Get( RecordID<TSelf>?                  id,         CancellationToken token = default ) => this.Call(Get, id, token);
@@ -92,7 +87,7 @@ public partial class DbTable<TSelf>
 
     public virtual async ValueTask<ErrorOrResult<TSelf>> Get( DbConnectionContext context, CommandParameters parameters, CancellationToken token = default )
     {
-        SqlCommand command = SqlCommand.Get<TSelf>(parameters);
+        SqlCommand command = SqlCommand.Get<TSelf>(in parameters);
 
         try
         {

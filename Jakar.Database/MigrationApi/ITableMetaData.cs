@@ -14,8 +14,8 @@ public interface ITableMetaData : IDisposable
     public const BindingFlags ATTRIBUTES = BindingFlags.Instance | BindingFlags.Public | BindingFlags.SetProperty | BindingFlags.GetProperty;
 
     public abstract static ITableMetaData                                                                                   Default         { get; }
-    public                 ValueEnumerable<Select<TableMetaDataEnumerator, PropertyColumn, ColumnMetaData>, ColumnMetaData> Columns         { [Pure] get; }
     public                 int                                                                                              ColumnCount     { get; }
+    public                 ValueEnumerable<Select<TableMetaDataEnumerator, PropertyColumn, ColumnMetaData>, ColumnMetaData> Columns         { [Pure] get; }
     public                 DataTable                                                                                        DataTable       { get; }
     public                 int                                                                                              ForeignKeyCount { get; }
     public                 ArrayBuffer<ColumnMetaData>                                                                      ForeignKeys     { [Pure] [MustUseReturnValue] [MustDisposeResource] get; }

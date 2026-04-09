@@ -18,7 +18,7 @@ public sealed record UserGroupRecord : Mapping<UserGroupRecord, UserRecord, Grou
 
     public UserGroupRecord( RecordID<UserRecord>  key, RecordID<GroupRecord> value ) : base(key, value) { }
     private UserGroupRecord( RecordID<UserRecord> key, RecordID<GroupRecord> value, DateTimeOffset dateCreated ) : base(key, value, dateCreated) { }
-    internal UserGroupRecord( DbDataReader    reader ) : base(reader) { }
+    internal UserGroupRecord( DbDataReader        reader ) : base(reader) { }
 
 
     [Pure] public static UserGroupRecord Create( UserRecord           key, GroupRecord           value ) => new(key, value);

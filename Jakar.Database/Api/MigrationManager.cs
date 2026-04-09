@@ -4,9 +4,9 @@
 [SuppressMessage("ReSharper", "ClassWithVirtualMembersNeverInherited.Global")]
 public class MigrationManager
 {
-    public const       string                                              MIGRATIONS           = "/_migrations";
-    private readonly   SortedDictionary<long, Func<long, MigrationRecord>> __migrationFactories = new(Comparer<long>.Default);
+    public const       string                                              MIGRATIONS = "/_migrations";
     protected readonly Database                                            _db;
+    private readonly   SortedDictionary<long, Func<long, MigrationRecord>> __migrationFactories = new(Comparer<long>.Default);
     protected          FrozenSet<MigrationRecord>?                         _records;
     internal static    long                                                MigrationID => Interlocked.Add(ref field, 1);
 

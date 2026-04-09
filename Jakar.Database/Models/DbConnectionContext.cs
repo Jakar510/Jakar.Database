@@ -17,8 +17,10 @@ public class DbConnectionContext : IAsyncDisposable
     protected          DbConnection?           _connection;
 
 
-    public virtual bool            HasTransaction { [MemberNotNullWhen(true, nameof(Transaction))] get => Transaction is not null; }
-    public virtual ConnectionState State          => _connection?.State ?? ConnectionState.Closed;
+    public virtual bool HasTransaction { [MemberNotNullWhen(true, nameof(Transaction))] get => Transaction is not null; }
+
+    public virtual string?         ServerVersion => _connection?.ServerVersion;
+    public virtual ConnectionState State         => _connection?.State ?? ConnectionState.Closed;
 
     public virtual DbTransaction? Transaction { [HandlesResourceDisposal] get; protected set; }
 
@@ -29,8 +31,6 @@ public class DbConnectionContext : IAsyncDisposable
                                             SqlConnection    => DatabaseType.MicrosoftSql,
                                             _                => throw new ExpectedValueTypeException(_connection, typeof(NpgsqlConnection), typeof(SqlConnection))
                                         };
-
-    public virtual string? ServerVersion => _connection?.ServerVersion;
 
 
     [MustDisposeResource] internal DbConnectionContext( Database database ) => _database = database;
@@ -46,7 +46,7 @@ public class DbConnectionContext : IAsyncDisposable
     }
 
 
-    public static async ValueTask<DbConnectionContext> CreateAsync( Database database, CancellationToken token, IsolationLevel? traIsolationLevel = null )
+    [MustDisposeResource] public static async ValueTask<DbConnectionContext> CreateAsync( Database database, CancellationToken token, IsolationLevel? traIsolationLevel = null )
     {
         DbConnectionContext context = new(database);
         await context.EnsureConnection(token);
@@ -76,17 +76,17 @@ public class DbConnectionContext : IAsyncDisposable
     }
 
 
-    [HandlesResourceDisposal] public virtual async ValueTask<DbConnection> EnsureConnection( CancellationToken token )
+    public virtual async ValueTask<DbConnection> EnsureConnection( CancellationToken token )
     {
         DbConnection connection = _connection ??= await _database.CreateConnection(token);
         if ( connection.State is ConnectionState.Closed ) { await connection.OpenAsync(token); }
 
         return connection;
     }
-    [HandlesResourceDisposal] public virtual async ValueTask<DbTransaction> StartTransactionAsync( IsolationLevel level, CancellationToken token )
+    public virtual async ValueTask StartTransactionAsync( IsolationLevel level, CancellationToken token )
     {
         DbConnection connection = await EnsureConnection(token);
-        return Transaction ??= await connection.BeginTransactionAsync(level, token);
+        Transaction ??= await connection.BeginTransactionAsync(level, token);
     }
 
 

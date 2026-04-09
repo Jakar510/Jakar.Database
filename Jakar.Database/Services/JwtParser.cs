@@ -23,18 +23,13 @@ public static class JwtParser
         List<Claim> claims  = [];
         string      payload = jwt.Split('.')[1];
 
-        string json = ParseBase64WithoutPadding(payload)
-           .ConvertToString(Encoding.Default);
+        string json = ParseBase64WithoutPadding(payload).ConvertToString(Encoding.Default);
 
         JObject keyValuePairs = json.GetAdditionalData() ?? new JObject();
 
         ExtractRolesFromJwt(claims, keyValuePairs);
 
-        if ( keyValuePairs.HasValues )
-        {
-            claims.AddRange(keyValuePairs.Values<KeyValuePair<string, object?>>()
-                                         .Select(static kvp => new Claim(kvp.Key, kvp.Value?.ToString() ?? EMPTY)));
-        }
+        if ( keyValuePairs.HasValues ) { claims.AddRange(keyValuePairs.Values<KeyValuePair<string, object?>>().Select(static kvp => new Claim(kvp.Key, kvp.Value?.ToString() ?? EMPTY))); }
 
         return claims;
     }
@@ -43,11 +38,7 @@ public static class JwtParser
         JToken? roles = keyValuePairs[ClaimTypes.Role];
         if ( roles is null ) { return; }
 
-        ReadOnlySpan<string> parsedRoles = roles.ToString()
-                                                .Trim()
-                                                .TrimStart('[')
-                                                .TrimEnd(']')
-                                                .Split(',');
+        ReadOnlySpan<string> parsedRoles = roles.ToString().Trim().TrimStart('[').TrimEnd(']').Split(',');
 
         if ( !parsedRoles.IsEmpty )
         {

@@ -6,7 +6,7 @@ namespace Jakar.Database;
 
 public enum PrecisionInfo
 {
-    /// <summary> (28, 28) </summary> 
+    /// <summary> (28, 28) </summary>
     Decimal,
     /// <summary> (308, 15) </summary>
     Double,
@@ -21,8 +21,8 @@ public enum PrecisionInfo
 public readonly record struct PrecisionPair( int Scope, int Precision ) : IComparable<PrecisionPair>
 {
     public static readonly PrecisionPair Empty     = new(-1, -1);
-    public readonly        int           Scope     = Scope;
     public readonly        int           Precision = Precision;
+    public readonly        int           Scope     = Scope;
     public                 bool          IsValid => Scope >= 0 && Precision >= 0 && Scope <= Precision;
     public int CompareTo( PrecisionPair other )
     {

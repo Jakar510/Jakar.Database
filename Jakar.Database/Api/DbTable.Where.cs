@@ -9,14 +9,14 @@ namespace Jakar.Database;
 public partial class DbTable<TSelf>
 {
     public IAsyncEnumerable<TSelf> Where( CommandParameters parameters, [EnumeratorCancellation] CancellationToken token                                                        = default ) => this.TryCall(Where, parameters,                         token);
-    public IAsyncEnumerable<TSelf> Where( string             sql,        CommandParameters                         parameters, [EnumeratorCancellation] CancellationToken token = default ) => this.TryCall(Where, SqlCommand.Create(sql, parameters), token);
-    public IAsyncEnumerable<TSelf> Where<TValue>( string     columnName, TValue?                                    value,      [EnumeratorCancellation] CancellationToken token = default ) => this.TryCall(Where, columnName,                         value, token);
+    public IAsyncEnumerable<TSelf> Where( string            sql,        CommandParameters                          parameters, [EnumeratorCancellation] CancellationToken token = default ) => this.TryCall(Where, SqlCommand.Create(sql, parameters), token);
+    public IAsyncEnumerable<TSelf> Where<TValue>( string    columnName, TValue?                                    value,      [EnumeratorCancellation] CancellationToken token = default ) => this.TryCall(Where, columnName,                         value, token);
 
 
     public virtual IAsyncEnumerable<TSelf> Where( DbConnectionContext context, string sql, CommandParameters parameters, [EnumeratorCancellation] CancellationToken token = default ) => Where(context, SqlCommand.Create(sql, parameters), token);
     public virtual IAsyncEnumerable<TSelf> Where( DbConnectionContext context, CommandParameters parameters, [EnumeratorCancellation] CancellationToken token = default )
     {
-        SqlCommand command = SqlCommand.Get<TSelf>(parameters);
+        SqlCommand command = SqlCommand.Get<TSelf>(in parameters);
         return Where(context, command, token);
     }
     public virtual async IAsyncEnumerable<TSelf> Where( DbConnectionContext context, SqlCommand command, [EnumeratorCancellation] CancellationToken token = default )
@@ -34,14 +34,14 @@ public partial class DbTable<TSelf>
 
 
     public IAsyncEnumerable<RecordID<TSelf>> WhereID( CommandParameters parameters, [EnumeratorCancellation] CancellationToken token                                                        = default ) => this.TryCall(WhereID, parameters,                         token);
-    public IAsyncEnumerable<RecordID<TSelf>> WhereID( string             sql,        CommandParameters                         parameters, [EnumeratorCancellation] CancellationToken token = default ) => this.TryCall(WhereID, SqlCommand.Create(sql, parameters), token);
-    public IAsyncEnumerable<RecordID<TSelf>> WhereID<TValue>( string     columnName, TValue?                                    value,      [EnumeratorCancellation] CancellationToken token = default ) => this.TryCall(WhereID, columnName,                         value, token);
+    public IAsyncEnumerable<RecordID<TSelf>> WhereID( string            sql,        CommandParameters                          parameters, [EnumeratorCancellation] CancellationToken token = default ) => this.TryCall(WhereID, SqlCommand.Create(sql, parameters), token);
+    public IAsyncEnumerable<RecordID<TSelf>> WhereID<TValue>( string    columnName, TValue?                                    value,      [EnumeratorCancellation] CancellationToken token = default ) => this.TryCall(WhereID, columnName,                         value, token);
 
 
     public virtual IAsyncEnumerable<RecordID<TSelf>> WhereID( DbConnectionContext context, string sql, CommandParameters parameters, [EnumeratorCancellation] CancellationToken token = default ) => WhereID(context, SqlCommand.Create(sql, parameters), token);
     public virtual IAsyncEnumerable<RecordID<TSelf>> WhereID( DbConnectionContext context, CommandParameters parameters, [EnumeratorCancellation] CancellationToken token = default )
     {
-        SqlCommand command = SqlCommand.Get<TSelf>(parameters);
+        SqlCommand command = SqlCommand.Get<TSelf>(in parameters);
         return WhereID(context, command, token);
     }
     public virtual async IAsyncEnumerable<RecordID<TSelf>> WhereID( DbConnectionContext context, SqlCommand command, [EnumeratorCancellation] CancellationToken token = default )

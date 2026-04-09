@@ -6,9 +6,9 @@ public interface ICreateMapping<TSelf, TKey, TValue> : ITableRecord<TSelf>
     where TKey : PairRecord<TKey>, ITableRecord<TKey>
     where TSelf : TableRecord<TSelf>, ITableRecord<TSelf>, ICreateMapping<TSelf, TKey, TValue>
 {
+    [Key] [DbIgnore] public RecordID<TKey, TValue> ID      { get; }
     public                  RecordID<TKey>         KeyID   { get; init; }
     public                  RecordID<TValue>       ValueID { get; init; }
-    [Key] [DbIgnore] public RecordID<TKey, TValue> ID      { get; }
 
 
     [Pure]                                  public abstract static TSelf                 Create( TKey           key, TValue                                value );
@@ -27,13 +27,13 @@ public abstract record Mapping<TSelf, TKey, TValue> : TableRecord<TSelf>
     where TKey : PairRecord<TKey>, ITableRecord<TKey>
     where TSelf : Mapping<TSelf, TKey, TValue>, ICreateMapping<TSelf, TKey, TValue>, ITableRecord<TSelf>
 {
-    private WeakReference<TKey>?   __owner;
-    private WeakReference<TValue>? __value;
+    private      WeakReference<TKey>?   __owner;
+    private      WeakReference<TValue>? __value;
+    [Key] public RecordID<TKey, TValue> ID => new(KeyID, ValueID);
 
 
-    public abstract RecordID<TKey>         KeyID   { get; init; }
-    public abstract RecordID<TValue>       ValueID { get; init; }
-    [Key] public    RecordID<TKey, TValue> ID      => new(KeyID, ValueID);
+    public abstract RecordID<TKey>   KeyID   { get; init; }
+    public abstract RecordID<TValue> ValueID { get; init; }
 
 
     protected Mapping( RecordID<TKey> key, RecordID<TValue> value ) : this(key, value, DateTimeOffset.UtcNow) { }
@@ -360,7 +360,7 @@ public abstract record Mapping<TSelf, TKey, TValue> : TableRecord<TSelf>
                                                       RETURNING {nameof(IUniqueID.ID)};
                                                       """);
 
-        return  await context.ExecuteNonQueryAsync(command, token);
+        return await context.ExecuteNonQueryAsync(command, token);
     }
 
 
@@ -374,7 +374,7 @@ public abstract record Mapping<TSelf, TKey, TValue> : TableRecord<TSelf>
                                                             {nameof(ValueID)} = {self.ValueID.Value}
                                                       """);
 
-        return  await context.ExecuteNonQueryAsync(command, token);
+        return await context.ExecuteNonQueryAsync(command, token);
     }
     public static async ValueTask<int> Delete( DbConnectionContext context, RecordID<TKey> key, CancellationToken token )
     {
@@ -383,7 +383,7 @@ public abstract record Mapping<TSelf, TKey, TValue> : TableRecord<TSelf>
                                                       WHERE {nameof(KeyID)} = {key.Value}
                                                       """);
 
-        return  await context.ExecuteNonQueryAsync(command, token);
+        return await context.ExecuteNonQueryAsync(command, token);
     }
     public static async ValueTask<int> Delete( DbConnectionContext context, RecordID<TKey> key, IEnumerable<RecordID<TValue>> values, CancellationToken token )
     {
@@ -395,7 +395,7 @@ public abstract record Mapping<TSelf, TKey, TValue> : TableRecord<TSelf>
                                                             {nameof(KeyID)} = {key.Value}
                                                       """);
 
-        return  await context.ExecuteNonQueryAsync(command, token);
+        return await context.ExecuteNonQueryAsync(command, token);
     }
     public static async ValueTask<int> Delete( DbConnectionContext context, RecordID<TKey> key, RecordID<TValue> value, CancellationToken token )
     {

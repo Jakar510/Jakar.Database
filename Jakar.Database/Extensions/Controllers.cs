@@ -193,9 +193,9 @@ public static class Controllers
         public void AddError( string error, string? title = null, string key = ERROR )
         {
             self.AddError(key,
-                                title is null
-                                    ? error
-                                    : $"{title} : {error}");
+                          title is null
+                              ? error
+                              : $"{title} : {error}");
         }
         public void AddError( scoped in ReadOnlySpan<string> errors )
         {

@@ -8,7 +8,7 @@ namespace Jakar.Database;
 ///     <see href="https://stackoverflow.com/a/15992856/9530917"/>
 /// </summary>
 public sealed class RecordGenerator<TSelf>( DbTable<TSelf> table ) : IAsyncEnumerable<TSelf>, IAsyncEnumerator<TSelf>
-    where TSelf : PairRecord<TSelf>,  ITableRecord<TSelf>
+    where TSelf : PairRecord<TSelf>, ITableRecord<TSelf>
 {
     private readonly AsyncKeyGenerator<TSelf> __generator = new(table);
     private          CancellationToken        __token;

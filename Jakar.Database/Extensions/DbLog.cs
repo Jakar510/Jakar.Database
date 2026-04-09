@@ -40,11 +40,7 @@ public static class DbLog // TODO: Jakar.Extensions.SelfLogger
     public static void Sender<TValue>( ILogger logger, HttpContext context, TValue cls, [CallerMemberName] string caller = EMPTY )
         where TValue : notnull
     {
-        Sender(logger,
-               context.Connection.RemoteIpAddress?.ToString() ?? EMPTY,
-               cls.GetType()
-                  .Name,
-               caller);
+        Sender(logger, context.Connection.RemoteIpAddress?.ToString() ?? EMPTY, cls.GetType().Name, caller);
     }
 
 
@@ -61,16 +57,7 @@ public static class DbLog // TODO: Jakar.Extensions.SelfLogger
         where TValue : notnull
         where TService : notnull
     {
-        ServiceStopped(logger,
-                       t.GetType()
-                        .Name,
-                       token.IsCancellationRequested,
-                       cls.GetType()
-                          .FullName ??
-                       cls.GetType()
-                          .Name,
-                       e,
-                       caller);
+        ServiceStopped(logger, t.GetType().Name, token.IsCancellationRequested, cls.GetType().FullName ?? cls.GetType().Name, e, caller);
     }
 
 
@@ -87,15 +74,7 @@ public static class DbLog // TODO: Jakar.Extensions.SelfLogger
         where TValue : notnull
         where TService : notnull
     {
-        ServiceError(logger,
-                     e,
-                     t.GetType()
-                      .Name,
-                     cls.GetType()
-                        .FullName ??
-                     cls.GetType()
-                        .Name,
-                     caller);
+        ServiceError(logger, e, t.GetType().Name, cls.GetType().FullName ?? cls.GetType().Name, caller);
     }
 
 
@@ -111,11 +90,7 @@ public static class DbLog // TODO: Jakar.Extensions.SelfLogger
     public static void Error<TValue>( ILogger logger, Exception e, TValue cls, [CallerMemberName] string caller = EMPTY )
         where TValue : notnull
     {
-        Error(logger,
-              e,
-              cls.GetType()
-                 .Name,
-              caller);
+        Error(logger, e, cls.GetType().Name, caller);
     }
 
 

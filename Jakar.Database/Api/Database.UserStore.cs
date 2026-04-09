@@ -75,14 +75,14 @@
         public ValueTask RemoveLoginAsync( UserRecord user, string loginProvider, string providerKey, CancellationToken token ) => this.TryCall(RemoveLoginAsync, user, loginProvider, providerKey, token);
         public virtual async ValueTask RemoveLoginAsync( DbConnectionContext context, UserRecord user, string loginProvider, string providerKey, CancellationToken token )
         {
-            CommandParameters                        parameters = UserLoginProviderRecord.GetDynamicParameters(user, loginProvider, providerKey);
+            CommandParameters                         parameters = UserLoginProviderRecord.GetDynamicParameters(user, loginProvider, providerKey);
             IAsyncEnumerable<UserLoginProviderRecord> records    = UserLoginProviders.Where(context, parameters, token);
             await foreach ( UserLoginProviderRecord record in records ) { await UserLoginProviders.Delete(context, record, token); }
         }
 
 
-        public         ValueTask<string?> GetAuthenticatorKeyAsync( UserRecord       user,       CancellationToken  token )                                                 => this.TryCall(GetAuthenticatorKeyAsync, user, token);
-        public virtual ValueTask<string?> GetAuthenticatorKeyAsync( DbConnectionContext context, UserRecord user, CancellationToken token ) => new(user.AuthenticatorKey);
+        public         ValueTask<string?> GetAuthenticatorKeyAsync( UserRecord          user,    CancellationToken token )                         => this.TryCall(GetAuthenticatorKeyAsync, user, token);
+        public virtual ValueTask<string?> GetAuthenticatorKeyAsync( DbConnectionContext context, UserRecord        user, CancellationToken token ) => new(user.AuthenticatorKey);
 
 
         public ValueTask SetAuthenticatorKeyAsync( UserRecord user, string key, CancellationToken token ) => this.TryCall(SetAuthenticatorKeyAsync, user, key, token);
@@ -233,8 +233,8 @@
         }
 
 
-        public       ValueTask<UserRecord?> FindByEmailAsync( string           email,      CancellationToken  token )                                              => this.TryCall(FindByEmailAsync, email, token);
-        public async ValueTask<UserRecord?> FindByEmailAsync( DbConnectionContext context, string email, CancellationToken token ) => await Users.Get(context, nameof(UserRecord.Email), email, token);
+        public       ValueTask<UserRecord?> FindByEmailAsync( string              email,   CancellationToken token )                          => this.TryCall(FindByEmailAsync, email, token);
+        public async ValueTask<UserRecord?> FindByEmailAsync( DbConnectionContext context, string            email, CancellationToken token ) => await Users.Get(context, nameof(UserRecord.Email), email, token);
 
         #endregion
 
@@ -308,12 +308,12 @@
 
         #region Claims
 
-        public         ValueTask AddClaimsAsync( UserRecord       user,       IEnumerable<Claim> claims,      CancellationToken token )                                                    => this.TryCall(AddClaimsAsync, user, claims, token);
-        public virtual ValueTask AddClaimsAsync( DbConnectionContext context, UserRecord        user, IEnumerable<Claim> claims, CancellationToken token ) => ValueTask.CompletedTask;
+        public         ValueTask AddClaimsAsync( UserRecord          user,    IEnumerable<Claim> claims, CancellationToken  token )                           => this.TryCall(AddClaimsAsync, user, claims, token);
+        public virtual ValueTask AddClaimsAsync( DbConnectionContext context, UserRecord         user,   IEnumerable<Claim> claims, CancellationToken token ) => ValueTask.CompletedTask;
 
 
-        public         ValueTask<Claim[]> GetClaimsAsync( UserRecord       user,       ClaimType          types,       CancellationToken token )                                          => this.Call(GetClaimsAsync, user, types, token);
-        public virtual ValueTask<Claim[]> GetClaimsAsync( DbConnectionContext context, UserRecord        user, ClaimType types, CancellationToken token ) => user.GetUserClaims(context, this, types, token);
+        public         ValueTask<Claim[]> GetClaimsAsync( UserRecord          user,    ClaimType  types, CancellationToken token )                          => this.Call(GetClaimsAsync, user, types, token);
+        public virtual ValueTask<Claim[]> GetClaimsAsync( DbConnectionContext context, UserRecord user,  ClaimType         types, CancellationToken token ) => user.GetUserClaims(context, this, types, token);
 
 
         public IAsyncEnumerable<UserRecord> GetUsersForClaimAsync( Claim claim, [EnumeratorCancellation] CancellationToken token ) => this.TryCall(GetUsersForClaimAsync, claim, token);
@@ -323,12 +323,12 @@
         }
 
 
-        public         ValueTask RemoveClaimsAsync( UserRecord       user,       IEnumerable<Claim> claims,      CancellationToken token )                                                    => this.TryCall(RemoveClaimsAsync, user, claims, token);
-        public virtual ValueTask RemoveClaimsAsync( DbConnectionContext context, UserRecord        user, IEnumerable<Claim> claims, CancellationToken token ) => ValueTask.CompletedTask;
+        public         ValueTask RemoveClaimsAsync( UserRecord          user,    IEnumerable<Claim> claims, CancellationToken  token )                           => this.TryCall(RemoveClaimsAsync, user, claims, token);
+        public virtual ValueTask RemoveClaimsAsync( DbConnectionContext context, UserRecord         user,   IEnumerable<Claim> claims, CancellationToken token ) => ValueTask.CompletedTask;
 
 
-        public         ValueTask ReplaceClaimAsync( UserRecord       user,       Claim              claim,       Claim      newClaim, CancellationToken token )                                          => this.TryCall(ReplaceClaimAsync, user, claim, newClaim, token);
-        public virtual ValueTask ReplaceClaimAsync( DbConnectionContext context, UserRecord user,     Claim             claim, Claim newClaim, CancellationToken token ) => ValueTask.CompletedTask;
+        public         ValueTask ReplaceClaimAsync( UserRecord          user,    Claim      claim, Claim newClaim, CancellationToken token )                             => this.TryCall(ReplaceClaimAsync, user, claim, newClaim, token);
+        public virtual ValueTask ReplaceClaimAsync( DbConnectionContext context, UserRecord user,  Claim claim,    Claim             newClaim, CancellationToken token ) => ValueTask.CompletedTask;
 
         #endregion
     }

@@ -4,38 +4,38 @@
 [SuppressMessage("ReSharper", "InconsistentNaming")]
 public sealed class ColumnMetaData : IEquatable<ColumnMetaData>, IComparable<ColumnMetaData>, IComparable
 {
-    public readonly bool                 IsAlwaysIdentity;
-    public readonly bool                 IsDefaultIdentity;
-    public readonly bool                 IsFixed;
-    public readonly bool                 IsNullable;
-    public readonly bool                 IsPrimaryKey;
-    public readonly bool                 IsUnique;
-    public readonly ChecksAttribute?     Checks;
-    public readonly DbSizeAttribute?     Length;
-    public readonly DefaultsAttribute?   Defaults;
-    public readonly ForeignKeyAttribute? ForeignKey;
-    public readonly IndexedAttribute?    Indexed;
-    public readonly PostgresType         DbType;
-    public readonly string               ColumnName;
-    public readonly string               DataType;
-    public readonly string               KeyValuePair;
-    public readonly string               PropertyName;
-    public readonly string               VariableName;
-    public readonly Type                 PropertyType;
-    private         NpgsqlDbType?        __postgresDbType;
-    private         SqlDbType?           __sqlDbType;
+    public readonly              bool                 IsAlwaysIdentity;
+    public readonly              bool                 IsDefaultIdentity;
+    public readonly              bool                 IsFixed;
+    public readonly              bool                 IsNullable;
+    public readonly              bool                 IsPrimaryKey;
+    public readonly              bool                 IsUnique;
+    public readonly              ChecksAttribute?     Checks;
+    public readonly              DbSizeAttribute?     Length;
+    public readonly              DefaultsAttribute?   Defaults;
+    public readonly              ForeignKeyAttribute? ForeignKey;
+    public readonly              IndexedAttribute?    Indexed;
+    public readonly              PostgresType         DbType;
+    public readonly              string               ColumnName;
+    public readonly              string               DataType;
+    public readonly              string               KeyValuePair;
+    public readonly              string               PropertyName;
+    public readonly              string               VariableName;
+    [JsonIgnore] public readonly Type                 PropertyType;
+    private                      NpgsqlDbType?        __postgresDbType;
+    private                      SqlDbType?           __sqlDbType;
 
 
-    public DataColumn DataColumn => new(ColumnName, PropertyType)
-                                    {
-                                        AllowDBNull       = IsNullable,
-                                        AutoIncrement     = DbType is PostgresType.BigSerial or PostgresType.Serial or PostgresType.SmallSerial,
-                                        AutoIncrementSeed = 1,
-                                        AutoIncrementStep = 0,
-                                        DateTimeMode      = DataSetDateTime.Utc,
-                                        MaxLength         = Length?.Max ?? -1,
-                                        Unique            = IsUnique,
-                                    };
+    [JsonIgnore] public DataColumn DataColumn => new(ColumnName, PropertyType)
+                                                 {
+                                                     AllowDBNull       = IsNullable,
+                                                     AutoIncrement     = DbType is PostgresType.BigSerial or PostgresType.Serial or PostgresType.SmallSerial,
+                                                     AutoIncrementSeed = 1,
+                                                     AutoIncrementStep = 0,
+                                                     DateTimeMode      = DataSetDateTime.Utc,
+                                                     MaxLength         = Length?.Max ?? -1,
+                                                     Unique            = IsUnique
+                                                 };
 
     public bool         HasCheckConstraint      { [MemberNotNullWhen(true, nameof(Checks))] get => Checks?.IsValid is true; }
     public bool         HasDefaultConstraint    { [MemberNotNullWhen(true, nameof(Defaults))] get => Defaults?.IsValid is true; }
@@ -236,7 +236,7 @@ public sealed class ColumnMetaData : IEquatable<ColumnMetaData>, IComparable<Col
 
         return DbType == other.DbType && PropertyName == other.PropertyName;
     }
-    public override bool Equals( object? obj )                                      => ReferenceEquals(this, obj) || obj is ColumnMetaData other && Equals(other);
+    public override bool Equals( object? obj )                                      => ReferenceEquals(this, obj) || ( obj is ColumnMetaData other && Equals(other) );
     public override int  GetHashCode()                                              => HashCode.Combine((int)DbType, PropertyName);
     public static   bool operator ==( ColumnMetaData? left, ColumnMetaData? right ) => Equals(left, right);
     public static   bool operator !=( ColumnMetaData? left, ColumnMetaData? right ) => !Equals(left, right);

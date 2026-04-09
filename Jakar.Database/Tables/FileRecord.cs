@@ -13,14 +13,14 @@ public sealed record FileRecord : PairRecord<FileRecord>, ITableRecord<FileRecor
 
 
     public static        string    TableName       => TABLE_NAME;
-    [Fixed(256)]  public string?   FileName        { get; set; }
     [Fixed(1024)] public string?   FileDescription { get; set; }
-    [Fixed(256)]  public string?   FileType        { get; set; }
+    [Fixed(256)]  public string?   FileName        { get; set; }
     public               long      FileSize        { get; set; }
+    [Fixed(256)] public  string?   FileType        { get; set; }
+    [Unique]     public  string?   FullPath        { get; init; }
     public               string    Hash            { get; set; } = EMPTY;
     public               MimeType? MimeType        { get; set; }
     public               string    Payload         { get; set; } = EMPTY;
-    [Unique] public      string?   FullPath        { get; init; }
 
 
     public FileRecord( in RecordID<FileRecord>       id,   in DateTimeOffset dateCreated, in DateTimeOffset? lastModified = null, JObject? additionalData = null ) : base(in id, in dateCreated, additionalData, in lastModified) { }
@@ -47,7 +47,7 @@ public sealed record FileRecord : PairRecord<FileRecord>, ITableRecord<FileRecor
         Payload         = reader.GetFieldValue<FileRecord, string>(nameof(Payload));
         FullPath        = reader.GetFieldValue<FileRecord, string?>(nameof(FullPath));
     }
-    [Pure] public static FileRecord Create( DbDataReader              reader )                       => new FileRecord(reader).Validate();
+    [Pure] public static FileRecord Create( DbDataReader                  reader )                       => new FileRecord(reader).Validate();
     public static        FileRecord Create( IFileData<Guid, FileMetaData> data, LocalFile? file = null ) => new(data, file);
     public static FileRecord Create<TFileMetaData>( IFileData<Guid, TFileMetaData> data, LocalFile? file = null )
         where TFileMetaData : class, IFileMetaData<TFileMetaData> => new(data, data.MetaData, file);

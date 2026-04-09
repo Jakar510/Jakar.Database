@@ -8,8 +8,8 @@ public interface IValueEnumerator<out TSelf, T> : IValueEnumerator<T>
     where TSelf : allows ref struct
 {
     public ImmutableArray<T> Array   { get; }
-    public ReadOnlySpan<T>   Span    { get; }
     public T?                Current { get; }
+    public ReadOnlySpan<T>   Span    { get; }
 
 
     public bool  MoveNext();

@@ -6,7 +6,7 @@ namespace Jakar.Database;
 
 public enum ColumnIndex
 {
-    NotSet,
+    NotSet
 }
 
 

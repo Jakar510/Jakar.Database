@@ -9,11 +9,11 @@ public sealed record RoleRecord : OwnedTableRecord<RoleRecord>, ITableRecord<Rol
 
 
     public static                                        string               TableName        => TABLE_NAME;
-    [ForeignKey<RoleRecord, UserRecord>] public override RecordID<UserRecord> UserID           { get; init; }
-    public                                               UserRights           Rights           { get; set; }
+    [Fixed(CONCURRENCY_STAMP)]        public             string               ConcurrencyStamp { get; init; }
     [Fixed(NAME)] [Unique]            public             string               NameOfRole       { get; init; }
     [Fixed(NORMALIZED_NAME)] [Unique] public             string               NormalizedName   { get; init; }
-    [Fixed(CONCURRENCY_STAMP)]        public             string               ConcurrencyStamp { get; init; }
+    public                                               UserRights           Rights           { get; set; }
+    [ForeignKey<RoleRecord, UserRecord>] public override RecordID<UserRecord> UserID           { get; init; }
 
 
     public RoleRecord( IdentityRole role, RecordID<UserRecord> userID                              = default ) : this(role.Name ?? EMPTY, role.NormalizedName ?? EMPTY, role.ConcurrencyStamp ?? EMPTY, userID) { }

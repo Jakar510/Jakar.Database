@@ -13,7 +13,7 @@ public partial class DbTable<TSelf>
     public ValueTask Delete( RecordID<TSelf>                   id,         CancellationToken token = default ) => this.TryCall(Delete, id,         token);
     public ValueTask Delete( IEnumerable<RecordID<TSelf>>      ids,        CancellationToken token = default ) => this.TryCall(Delete, ids,        token);
     public ValueTask Delete( IAsyncEnumerable<RecordID<TSelf>> ids,        CancellationToken token = default ) => this.TryCall(Delete, ids,        token);
-    public ValueTask Delete( CommandParameters                parameters, CancellationToken token = default ) => this.TryCall(Delete, parameters, token);
+    public ValueTask Delete( CommandParameters                 parameters, CancellationToken token = default ) => this.TryCall(Delete, parameters, token);
 
 
     public virtual ValueTask Delete( DbConnectionContext context, TSelf              record,  CancellationToken token = default ) => Delete(context, record.ID,                        token);
@@ -30,7 +30,7 @@ public partial class DbTable<TSelf>
     }
     public virtual async ValueTask Delete( DbConnectionContext context, RecordID<TSelf> id, CancellationToken token = default )
     {
-        SqlCommand                command = SqlCommand.GetDelete(in id);
+        SqlCommand            command = SqlCommand.GetDelete(in id);
         await using DbCommand cmd     = command.ToCommand(context);
         await cmd.ExecuteScalarAsync(token);
     }
@@ -49,7 +49,7 @@ public partial class DbTable<TSelf>
     }
     public async ValueTask Delete( DbConnectionContext context, CommandParameters parameters, CancellationToken token )
     {
-        SqlCommand                command = SqlCommand.GetDelete<TSelf>(parameters);
+        SqlCommand            command = SqlCommand.GetDelete<TSelf>(parameters);
         await using DbCommand cmd     = command.ToCommand(context);
         await cmd.ExecuteScalarAsync(token);
     }

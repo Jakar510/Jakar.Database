@@ -6,9 +6,7 @@ namespace Jakar.Database;
 
 public static class PostgresParams
 {
-    private static readonly ConcurrentDictionary<(string Original, int MaxLength), string> __paddedCache             = new();
-    private static readonly ConcurrentDictionary<string, string>                           __parameterNameCache      = new(Environment.ProcessorCount, DEFAULT_CAPACITY, StringComparer.InvariantCulture);
-    private static readonly ConcurrentDictionary<string, string>                           __indexNameSnakeCaseCache = new(StringComparer.InvariantCultureIgnoreCase);
+    private static readonly ConcurrentDictionary<string, string> __indexNameSnakeCaseCache = new(StringComparer.InvariantCultureIgnoreCase);
     private static readonly ConcurrentDictionary<string, string> __nameSnakeCaseCache = new(StringComparer.InvariantCultureIgnoreCase)
                                                                                         {
                                                                                             [nameof(MimeType)]                   = "mime_types",
@@ -27,6 +25,8 @@ public static class PostgresParams
                                                                                             [nameof(IUserRecordID.UserID)]       = "user_id",
                                                                                             [nameof(IJsonModel.AdditionalData)]  = "additional_data"
                                                                                         };
+    private static readonly ConcurrentDictionary<(string Original, int MaxLength), string> __paddedCache        = new();
+    private static readonly ConcurrentDictionary<string, string>                           __parameterNameCache = new(Environment.ProcessorCount, DEFAULT_CAPACITY, StringComparer.InvariantCulture);
 
 
     public static string AddSqlName<TSelf>()
