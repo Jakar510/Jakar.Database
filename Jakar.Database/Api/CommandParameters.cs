@@ -54,12 +54,13 @@ public readonly struct CommandParameters() : IEquatable<CommandParameters>
             return buffer;
         }
     }
-    public   int                                     Capacity           => __parameters.Capacity;
-    public   bool                                    IsGrouped          => __extras.Count > 0;
-    public   ValueEnumerable<ParameterNames, string> ParameterNames     { [Pure] get => new(new ParameterNames(this)); }
-    public   int                                     SpacerCount        => Math.Max(__parameters.Count, Table.ColumnCount) - 1;
-    internal int                                     VariableNameLength => Table.MaxLength_ColumnName * Table.ColumnCount  + Parameters.Sum(static x => x.ParameterName.Length + 10);
-    public   IndexedEnumerator                       IndexedParameters  => new(this);
+    public   int                 Capacity            => __parameters.Capacity;
+    public   bool                IsGrouped           => __extras.Count > 0;
+    public   ParameterNames      ParameterNames      { [Pure] [MustDisposeResource] get => new(this); }
+    public   ExtraParameterNames ExtraParameterNames { [Pure] [MustDisposeResource] get => new(this); }
+    public   int                 SpacerCount         => Math.Max(__parameters.Count, Table.ColumnCount) - 1;
+    internal int                 VariableNameLength  => Table.MaxLength_ColumnName * Table.ColumnCount  + Parameters.Sum(static x => x.ParameterName.Length + 10);
+    public   IndexedEnumerator   IndexedParameters   => new(this);
 
 
     internal int KeyValuePairLength( int indentLevel ) => Table.Properties.Values.Sum(static x => x.KeyValuePair.Length) + ParameterCount * ( indentLevel * 4 + 3 );
@@ -161,14 +162,14 @@ public readonly struct CommandParameters() : IEquatable<CommandParameters>
     public override int GetHashCode() => Extras.GetHashCode();
     public ulong GetHash64()
     {
-        using ParameterNames array = new(this);
-        ReadOnlySpan<string> names = array.Span;
+        using ParameterNames buffer = ParameterNames;
+        ReadOnlySpan<string>      names  = buffer.Span;
         return Hashes.Hash(in names);
     }
     public UInt128 GetHash128()
     {
-        using ParameterNames array = new(this);
-        ReadOnlySpan<string> names = array.Span;
+        using ParameterNames buffer = ParameterNames;
+        ReadOnlySpan<string>      names  = buffer.Span;
         return Hashes.Hash128(in names);
     }
 

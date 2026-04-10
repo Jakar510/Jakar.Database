@@ -31,14 +31,14 @@ public class DbSqlException( string sql, Exception? inner = null, CommandParamet
             if ( dynamicParameters.Value.Count == 0 ) { parameters = "NONE"; }
             else
             {
-                using ParameterNames buffer = new(dynamicParameters.Value);
+                using ParameterNames buffer = dynamicParameters.Value.ParameterNames;
                 parameters = string.Join(",\n        ", buffer.Span);
             }
 
             if ( dynamicParameters.Value.Count == 0 ) { extrasParameters = "NONE"; }
             else
             {
-                using ArrayBuffer<string> buffer = dynamicParameters.Value.Extras.AsValueEnumerable().SelectMany(static x => x).Select(static x => x.ParameterName).ToArrayBuffer();
+                using ExtraParameterNames buffer = dynamicParameters.Value.ExtraParameterNames;
                 extrasParameters = string.Join(",\n        ", buffer.Span);
             }
         }

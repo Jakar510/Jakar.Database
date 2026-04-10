@@ -90,9 +90,9 @@ public static class TableExtensions
 
         if ( length == TSelf.PropertyCount ) { return self; }
 
-        HashSet<string>      missing = [.. TSelf.ClassProperties.Select(static x => x.Name)];
-        using ParameterNames array   = new(parameters);
-        missing.ExceptWith(array.Array);
+        HashSet<string>           missing = [.. TSelf.ClassProperties.Select(static x => x.Name)];
+        using ParameterNames buffer  = parameters.ParameterNames;
+        missing.ExceptWith(buffer.Array);
 
         string message = $"""
                           '{typeof(TSelf).Name}': {nameof(self.ToDynamicParameters)}.Length ({length}) != {nameof(TSelf.ClassProperties)}.Length ({TSelf.PropertyCount})

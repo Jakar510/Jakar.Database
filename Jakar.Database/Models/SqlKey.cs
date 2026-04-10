@@ -17,7 +17,11 @@ public readonly struct SqlKey( ImmutableArray<string> parameters ) : IEquatable<
 
     private static string GetKey( params ReadOnlySpan<string> parameters ) => new StringBuilder(parameters.Sum(static x => x.Length + 1)).AppendJoin(',', parameters!).ToString();
     public static SqlKey Create<TSelf>( CommandParameters parameters )
-        where TSelf : TableRecord<TSelf>, ITableRecord<TSelf> => new([..parameters.ParameterNames]);
+        where TSelf : TableRecord<TSelf>, ITableRecord<TSelf>
+    {
+        using ParameterNames buffer = parameters.ParameterNames;
+        return new SqlKey([..buffer.Span]);
+    }
 
 
     public ValueEnumerable<FromImmutableArray<string>, string> AsValueEnumerable() => new(new FromImmutableArray<string>(parameters));
@@ -37,7 +41,11 @@ public readonly struct SqlKey( ImmutableArray<string> parameters ) : IEquatable<
         return AsValueEnumerable().SequenceEqual(other.AsValueEnumerable());
     }
     public override bool Equals( object?           other ) => other is SqlKey x && Equals(x);
-    public          bool Equals( CommandParameters other ) => AsValueEnumerable().SequenceEqual(other.ParameterNames, StringComparer.Ordinal);
+    public bool Equals( CommandParameters other )
+    {
+        using ParameterNames buffer = other.ParameterNames;
+        return AsValueEnumerable().SequenceEqual(buffer.Array, StringComparer.Ordinal);
+    }
     public override int  GetHashCode()                     => __hash;
     public int CompareTo( object? other ) =>
         other is SqlKey sqlKey

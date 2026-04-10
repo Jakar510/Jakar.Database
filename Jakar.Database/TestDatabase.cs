@@ -7,11 +7,10 @@ namespace Jakar.Database;
 internal sealed class TestDatabase( IConfiguration configuration, IOptions<DbOptions> options, IFusionCache cache ) : Database(configuration, options, cache), IAppID
 {
     public static readonly TelemetrySource Source = new(AppVersion, AppID, AppName, "Jakar.Database");
-    public static          Guid            AppID { get; } = Guid.NewGuid();
+    public static          Guid            AppID      { get; } = Guid.NewGuid();
+    public static          string          AppName    => nameof(TestDatabase);
+    public static          AppVersion      AppVersion => field ??= new AppVersion(1, 0, 0, 1);
 
-    public static string AppName => nameof(TestDatabase);
-
-    public static AppVersion AppVersion { get; } = new(1, 0, 0, 1);
 
     protected override DbConnection CreateConnection( in SecuredString secure ) => new NpgsqlConnection(secure);
 
