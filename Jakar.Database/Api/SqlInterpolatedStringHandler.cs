@@ -128,7 +128,7 @@ public readonly ref struct SqlInterpolatedStringHandler<TSelf>( int literalLengt
                 return;
 
             case VariableNames n:
-                Parameters.With(in n.Parameters);
+                Parameters.AddInternal(n.Values);
                 Sb.Append(n.Value);
                 return;
 

@@ -13,7 +13,7 @@ public readonly struct CommandParameters() : IEquatable<CommandParameters>
     // internal readonly List<SqlParameter>                    parameters = [];
     // internal readonly List<ImmutableArray<SqlParameter>>    Extras     = [];
     private readonly List<SqlParameter>                 __parameters = [];
-    private readonly List<ImmutableArray<SqlParameter>> __extras     = [];
+    private readonly List<ImmutableArray<SqlParameter>> __groups     = [];
     private readonly UInt128                            __id         = new((ulong)Random.Shared.NextInt64(), (ulong)Random.Shared.NextInt64());
 
 
@@ -26,18 +26,20 @@ public readonly struct CommandParameters() : IEquatable<CommandParameters>
             __parameters.EnsureCapacity(value.ColumnCount);
         }
     }
-    public ReadOnlySpan<SqlParameter> Values
+    private List<SqlParameter> __Params
     {
         get
         {
             __parameters.Sort(Comparer<SqlParameter>.Default);
-            return __parameters.AsSpan();
+            return __parameters;
         }
     }
-    public ReadOnlySpan<ImmutableArray<SqlParameter>> Extras                   => __extras.AsSpan();
-    public ReadOnlySpan<SqlParameter>                 ExtraValues( int index ) => Extras[index].AsSpan();
-    public int                                        Count                    => __parameters.Count;
-    public int                                        ParameterCount           => __parameters.Count + Extras.Sum(static x => x.Length);
+    public ReadOnlySpan<SqlParameter>                 Values => __Params.AsSpan();
+    public ReadOnlySpan<ImmutableArray<SqlParameter>> Groups => __groups.AsSpan();
+    public ReadOnlySpan<SqlParameter> this[ int                                groupIndex ] => Groups[groupIndex].AsSpan();
+    public ValueEnumerable<ListWhere<SqlParameter>, SqlParameter> this[ string propertyName ] => ColumnsFor(propertyName);
+    public int Count          => __parameters.Count;
+    public int ParameterCount => __parameters.Count + Groups.Sum(static x => x.Length);
     public ArrayBuffer<SqlParameter> Parameters
     {
         [Pure] [MustDisposeResource] get
@@ -45,7 +47,7 @@ public readonly struct CommandParameters() : IEquatable<CommandParameters>
             ArrayBuffer<SqlParameter> buffer = new(ParameterCount);
             foreach ( ref readonly SqlParameter parameter in Values ) { buffer.Add(in parameter); }
 
-            foreach ( ref readonly ImmutableArray<SqlParameter> array in Extras )
+            foreach ( ref readonly ImmutableArray<SqlParameter> array in Groups )
             {
                 foreach ( ref readonly SqlParameter parameter in array.AsSpan() ) { buffer.Add(in parameter); }
             }
@@ -55,20 +57,17 @@ public readonly struct CommandParameters() : IEquatable<CommandParameters>
         }
     }
     public   int                 Capacity            => __parameters.Capacity;
-    public   bool                IsGrouped           => __extras.Count > 0;
+    public   bool                IsGrouped           => __groups.Count > 0;
     public   ParameterNames      ParameterNames      { [Pure] [MustDisposeResource] get => new(this); }
-    public   ExtraParameterNames ExtraParameterNames { [Pure] [MustDisposeResource] get => new(this); }
-    public   int                 SpacerCount         => Math.Max(__parameters.Count, Table.ColumnCount) - 1;
-    internal int                 VariableNameLength  => Table.MaxLength_ColumnName * Table.ColumnCount  + Parameters.Sum(static x => x.ParameterName.Length + 10);
+    public   ExtraParameterNames GroupParameterNames { [Pure] [MustDisposeResource] get => new(this); }
+    internal int                 VariableNameLength  => Table.MaxLength_ColumnName * Table.ColumnCount + Parameters.Sum(static x => x.ParameterName.Length + 10);
     public   IndexedEnumerator   IndexedParameters   => new(this);
 
 
-    internal int KeyValuePairLength( int indentLevel ) => Table.Properties.Values.Sum(static x => x.KeyValuePair.Length) + ParameterCount * ( indentLevel * 4 + 3 );
-
-
-    public ColumnNames   ColumnNames( int   indentLevel )                                      => new(this, indentLevel);
-    public VariableNames VariableNames( int indentLevel )                                      => new(this, indentLevel);
-    public KeyValuePairs KeyValuePairs( int indentLevel, params ReadOnlySpan<char> separator ) => new(this, indentLevel, separator);
+    internal int           KeyValuePairLength( int indentLevel )                                      => Table.Properties.Values.Sum(static x => x.KeyValuePair.Length) + ParameterCount * ( indentLevel * 4 + 3 );
+    public   ColumnNames   ColumnNames( int        indentLevel )                                      => new(this, indentLevel);
+    public   VariableNames VariableNames( int      indentLevel )                                      => new(this, indentLevel);
+    public   KeyValuePairs KeyValuePairs( int      indentLevel, params ReadOnlySpan<char> separator ) => new(this, indentLevel, separator);
 
 
     public static CommandParameters Create<TSelf>()
@@ -76,8 +75,8 @@ public readonly struct CommandParameters() : IEquatable<CommandParameters>
     public static CommandParameters Create<TSelf>( IEnumerable<TSelf> records )
         where TSelf : TableRecord<TSelf>, ITableRecord<TSelf>
     {
-        CommandParameters parameters = new() { Table = TSelf.MetaData };
-        foreach ( TSelf record in records ) { parameters.With(record.ToDynamicParameters()); }
+        CommandParameters parameters = Create<TSelf>();
+        foreach ( TSelf record in records ) { parameters.AddGroup(record); }
 
         return parameters;
     }
@@ -85,7 +84,7 @@ public readonly struct CommandParameters() : IEquatable<CommandParameters>
         where TSelf : TableRecord<TSelf>, ITableRecord<TSelf>
     {
         CommandParameters parameters = Create<TSelf>(records.Length);
-        foreach ( TSelf record in records ) { parameters.With(record.ToDynamicParameters()); }
+        foreach ( TSelf record in records ) { parameters.AddGroup(record); }
 
         return parameters;
     }
@@ -100,27 +99,33 @@ public readonly struct CommandParameters() : IEquatable<CommandParameters>
     public static CommandParameters Create<TSelf>( int capacity )
         where TSelf : TableRecord<TSelf>, ITableRecord<TSelf>
     {
-        CommandParameters parameters = new() { Table = TSelf.MetaData };
+        CommandParameters parameters = Create<TSelf>();
         parameters.__parameters.EnsureCapacity(capacity);
         return parameters;
     }
 
 
-    public ValueEnumerable<Where<FromSpan<SqlParameter>, SqlParameter>, SqlParameter> ColumnsFor( string propertyName ) => Values.AsValueEnumerable().Where(x => string.Equals(x.Column.PropertyName, propertyName, StringComparison.InvariantCulture));
+    public ValueEnumerable<ListWhere<SqlParameter>, SqlParameter> ColumnsFor( string propertyName ) => __Params.AsValueEnumerable().Where(x => string.Equals(x.Column.PropertyName, propertyName, StringComparison.InvariantCulture));
 
 
-    public CommandParameters With( in CommandParameters other )
+    public CommandParameters AddGroup<TSelf>( TSelf other )
+        where TSelf : TableRecord<TSelf>, ITableRecord<TSelf>
+    {
+        CommandParameters parameters = other.ToDynamicParameters();
+        return AddGroup(in parameters);
+    }
+    public CommandParameters AddGroup( in CommandParameters other )
     {
         SqlParameter[] array = [..other.Values];
         Array.Sort(array, Comparer<SqlParameter>.Default);
-        __extras.Add(array.AsImmutableArray());
+        __groups.Add(array.AsImmutableArray());
         return this;
     }
 
 
-    internal bool AddInternal( in SqlParameter parameter )
+    internal bool AddInternal( ref readonly SqlParameter parameter )
     {
-        foreach ( ref readonly SqlParameter existing in __parameters.AsSpan() )
+        foreach ( ref readonly SqlParameter existing in Values )
         {
             if ( parameter.Equals(in existing) ) { return false; }
         }
@@ -137,43 +142,48 @@ public readonly struct CommandParameters() : IEquatable<CommandParameters>
     public CommandParameters Add<TSelf>( string propertyName, IRecordID value, [CallerArgumentExpression(nameof(value))] string parameterName = EMPTY, ParameterDirection direction = ParameterDirection.Input, DataRowVersion sourceVersion = DataRowVersion.Default )
         where TSelf : PairRecord<TSelf>, ITableRecord<TSelf>
     {
-        AddInternal(Table[propertyName].ToParameter(value.ID, parameterName, direction, sourceVersion));
+        SqlParameter parameter = Table[propertyName].ToParameter(value.ID, parameterName, direction, sourceVersion);
+        AddInternal(in parameter);
         return this;
     }
     public CommandParameters Add<TSelf>( string propertyName, RecordID<TSelf> value, [CallerArgumentExpression(nameof(value))] string parameterName = EMPTY, ParameterDirection direction = ParameterDirection.Input, DataRowVersion sourceVersion = DataRowVersion.Default )
         where TSelf : PairRecord<TSelf>, ITableRecord<TSelf>
     {
-        AddInternal(Table[propertyName].ToParameter(value.Value, parameterName, direction, sourceVersion));
+        SqlParameter parameter = Table[propertyName].ToParameter(value.Value, parameterName, direction, sourceVersion);
+        AddInternal(in parameter);
         return this;
     }
     public CommandParameters Add<T>( string propertyName, T? value, [CallerArgumentExpression(nameof(value))] string parameterName = EMPTY, ParameterDirection direction = ParameterDirection.Input, DataRowVersion sourceVersion = DataRowVersion.Default )
         where T : struct, Enum
     {
-        AddInternal(Table[propertyName].ToParameter(value, parameterName, direction, sourceVersion));
+        SqlParameter parameter = Table[propertyName].ToParameter(value, parameterName, direction, sourceVersion);
+        AddInternal(in parameter);
         return this;
     }
     public CommandParameters Add( string propertyName, object? value, [CallerArgumentExpression(nameof(value))] string parameterName = EMPTY, ParameterDirection direction = ParameterDirection.Input, DataRowVersion sourceVersion = DataRowVersion.Default )
     {
-        AddInternal(Table[propertyName].ToParameter(value, parameterName, direction, sourceVersion));
+        SqlParameter parameter = Table[propertyName].ToParameter(value, parameterName, direction, sourceVersion);
+        AddInternal(in parameter);
         return this;
     }
 
 
-    public override int GetHashCode() => Extras.GetHashCode();
+    public override int GetHashCode() => __id.GetHashCode();
     public ulong GetHash64()
     {
         using ParameterNames buffer = ParameterNames;
-        ReadOnlySpan<string>      names  = buffer.Span;
+        ReadOnlySpan<string> names  = buffer.Span;
         return Hashes.Hash(in names);
     }
     public UInt128 GetHash128()
     {
         using ParameterNames buffer = ParameterNames;
-        ReadOnlySpan<string>      names  = buffer.Span;
+        ReadOnlySpan<string> names  = buffer.Span;
         return Hashes.Hash128(in names);
     }
 
-    public override string ToString()                                                             => __parameters.ToJson();
+
+    public override string ToString()                                                             => ( __parameters, __groups ).ToJson();
     public          bool   Equals( CommandParameters              other )                         => Equals(in other);
     public          bool   Equals( ref readonly CommandParameters other )                         => __id.Equals(other.__id);
     public override bool   Equals( object?                        obj )                           => obj is CommandParameters other && Equals(other);

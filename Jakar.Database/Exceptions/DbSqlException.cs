@@ -38,7 +38,7 @@ public class DbSqlException( string sql, Exception? inner = null, CommandParamet
             if ( dynamicParameters.Value.Count == 0 ) { extrasParameters = "NONE"; }
             else
             {
-                using ExtraParameterNames buffer = dynamicParameters.Value.ExtraParameterNames;
+                using ExtraParameterNames buffer = dynamicParameters.Value.GroupParameterNames;
                 extrasParameters = string.Join(",\n        ", buffer.Span);
             }
         }
@@ -54,8 +54,9 @@ public class DbSqlException( string sql, Exception? inner = null, CommandParamet
                     Parameters:
                         {parameters}
 
-                    Extras Parameters:
+                    Grouped Parameters:
                         {extrasParameters}
                 """;
     }
 }
+ 

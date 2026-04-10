@@ -56,8 +56,9 @@ public readonly struct KeyValuePairs
 
 public readonly struct VariableNames
 {
-    internal readonly CommandParameters Parameters;
-    internal readonly StringBuilder     Value;
+    internal readonly CommandParameters          Parameters;
+    internal readonly StringBuilder              Value;
+    public            ReadOnlySpan<SqlParameter> Values => Parameters.Values;
     public VariableNames( CommandParameters parameters, int indentLevel )
     {
         Parameters = parameters;

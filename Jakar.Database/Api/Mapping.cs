@@ -220,11 +220,7 @@ public abstract record Mapping<TSelf, TKey, TValue> : TableRecord<TSelf>
 
         // ReSharper disable once ForeachCanBeConvertedToQueryUsingAnotherGetEnumerator
         // ReSharper disable once ForeachCanBePartlyConvertedToQueryUsingAnotherGetEnumerator
-        foreach ( RecordID<TValue> value in missingValueIDs )
-        {
-            TSelf record = TSelf.Create(key, value);
-            parameters.With(record.ToDynamicParameters());
-        }
+        foreach ( RecordID<TValue> value in missingValueIDs ) { parameters.AddGroup(TSelf.Create(key, value)); }
 
         SqlCommand insertCommand = SqlCommand.Parse<TSelf>($"""
                                                             INSERT INTO {TSelf.TableName}
