@@ -20,8 +20,8 @@ public ref struct IndexedEnumerator( CommandParameters self )
                 Current = new Set(0, __parameters.Values);
                 return true;
 
-            case >= 0 when index < __parameters.Extras.Length:
-                Current = new Set(__index, __parameters.Extras[index].AsSpan());
+            case >= 0 when index < __parameters.Groups.Length:
+                Current = new Set(__index, __parameters.Groups[index].AsSpan());
                 return true;
 
             default:

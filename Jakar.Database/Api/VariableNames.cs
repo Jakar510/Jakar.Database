@@ -80,7 +80,7 @@ public readonly struct VariableNames
                 indentLevel--;
             }
 
-            ReadOnlySpan<ImmutableArray<SqlParameter>> span = parameters.Extras;
+            ReadOnlySpan<ImmutableArray<SqlParameter>> span = parameters.Groups;
 
             for ( int i = 0; i < span.Length; i++ )
             {

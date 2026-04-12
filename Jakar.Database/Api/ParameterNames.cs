@@ -98,7 +98,7 @@ public ref struct ExtraParameterNames( CommandParameters self ) : IValueEnumerat
     {
         __index = 0;
         __array.Dispose();
-        __array = self.Extras.AsValueEnumerable().SelectMany(static x => x).Select(static x => x.ParameterName).ToArrayBuffer();
+        __array = self.Groups.AsValueEnumerable().SelectMany(static x => x).Select(static x => x.ParameterName).ToArrayBuffer();
     }
     public void Dispose()
     {
