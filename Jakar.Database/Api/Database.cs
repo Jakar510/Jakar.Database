@@ -33,6 +33,7 @@ public abstract partial class Database : Randoms, IConnectableDbRoot, IHealthChe
     public virtual     PasswordValidator                PasswordValidator         => DbOptions.PasswordRequirements.GetValidator();
     public virtual     IsolationLevel                   TransactionIsolationLevel => IsolationLevel.RepeatableRead;
     public             AppVersion                       Version                   => Options.AppInformation.Version;
+    public abstract    DatabaseType                     DatabaseType              { get; }
 
 
     static Database()

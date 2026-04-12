@@ -22,6 +22,7 @@ public interface ITableMetaData : IDisposable
     public                 ArrayBuffer<Func<long, MigrationRecord>>                                                         IndexedColumns  { [Pure] [MustUseReturnValue] [MustDisposeResource] get; }
     public                 FrozenDictionary<int, string>                                                                    Indexes         { get; }
     public ref readonly ColumnMetaData this[ string propertyName ] { get; }
+    public ref readonly string this[ string         propertyName, DatabaseType type ] { get; }
     public PropertyColumn this[ int                 index ] { get; }
     public int                                      MaxLength_ColumnName        { get; }
     public int                                      MaxLength_DataType          { get; }

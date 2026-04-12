@@ -7,9 +7,11 @@ namespace Jakar.Database;
 internal sealed class TestDatabase( IConfiguration configuration, IOptions<DbOptions> options, IFusionCache cache ) : Database(configuration, options, cache), IAppID
 {
     public static readonly TelemetrySource Source;
-    public static          Guid            AppID      { get; }
-    public static          string          AppName    => nameof(TestDatabase);
-    public static          AppVersion      AppVersion { get; }
+    public static          Guid            AppID        { get; }
+    public static          string          AppName      => nameof(TestDatabase);
+    public static          AppVersion      AppVersion   { get; }
+    public override        DatabaseType    DatabaseType => DatabaseType.PostgreSQL;
+
 
     static TestDatabase()
     {

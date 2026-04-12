@@ -28,7 +28,7 @@ public class DbConnectionContext : IAsyncDisposable
                                         {
                                             null             => DatabaseType.NotSet,
                                             NpgsqlConnection => DatabaseType.PostgreSQL,
-                                            SqlConnection    => DatabaseType.MicrosoftSql,
+                                            SqlConnection    => DatabaseType.MicrosoftSqlServer,
                                             _                => throw new ExpectedValueTypeException(_connection, typeof(NpgsqlConnection), typeof(SqlConnection))
                                         };
 

@@ -4,38 +4,46 @@
 [SuppressMessage("ReSharper", "InconsistentNaming")]
 public sealed class ColumnMetaData : IEquatable<ColumnMetaData>, IComparable<ColumnMetaData>, IComparable
 {
-    public readonly              bool                 IsAlwaysIdentity;
-    public readonly              bool                 IsDefaultIdentity;
-    public readonly              bool                 IsFixed;
-    public readonly              bool                 IsNullable;
-    public readonly              bool                 IsPrimaryKey;
-    public readonly              bool                 IsUnique;
-    public readonly              ChecksAttribute?     Checks;
-    public readonly              DbSizeAttribute?     Length;
-    public readonly              DefaultsAttribute?   Defaults;
-    public readonly              ForeignKeyAttribute? ForeignKey;
-    public readonly              IndexedAttribute?    Indexed;
-    public readonly              PostgresType         DbType;
-    public readonly              string               ColumnName;
-    public readonly              string               DataType;
-    public readonly              string               KeyValuePair;
-    public readonly              string               PropertyName;
-    public readonly              string               VariableName;
-    [JsonIgnore] public readonly Type                 PropertyType;
-    private                      NpgsqlDbType?        __postgresDbType;
-    private                      SqlDbType?           __sqlDbType;
+    public readonly              bool                                   IsAlwaysIdentity;
+    public readonly              bool                                   IsDefaultIdentity;
+    public readonly              bool                                   IsFixed;
+    public readonly              bool                                   IsNullable;
+    public readonly              bool                                   IsPrimaryKey;
+    public readonly              bool                                   IsUnique;
+    public readonly              ChecksAttribute?                       Checks;
+    public readonly              DbSizeAttribute?                       Length;
+    public readonly              DefaultsAttribute?                     Defaults;
+    public readonly              ForeignKeyAttribute?                   ForeignKey;
+    public readonly              IndexedAttribute?                      Indexed;
+    public readonly              PostgresType                           DbType;
+    public readonly              string                                 ColumnName;
+    public readonly              string                                 KeyValuePair;
+    public readonly              string                                 PropertyName;
+    public readonly              string                                 VariableName;
+    [JsonIgnore] public readonly Type                                   PropertyType;
+    private                      NpgsqlDbType?                          __postgresDbType;
+    private                      SqlDbType?                             __sqlDbType;
+    public readonly              FrozenDictionary<DatabaseType, string> DataTypes;
 
+    [JsonIgnore] public DataColumn DataColumn
+    {
+        get
+        {
+            DataColumn column = new(ColumnName, PropertyType, null, MappingType.Element)
+                                {
+                                    AllowDBNull       = IsNullable,
+                                    AutoIncrement     = DbType is PostgresType.BigSerial or PostgresType.Serial or PostgresType.SmallSerial,
+                                    AutoIncrementSeed = 1,
+                                    AutoIncrementStep = 1,
+                                    MaxLength         = Length?.Max ?? -1,
+                                    Unique            = IsUnique
+                                };
 
-    [JsonIgnore] public DataColumn DataColumn => new(ColumnName, PropertyType)
-                                                 {
-                                                     AllowDBNull       = IsNullable,
-                                                     AutoIncrement     = DbType is PostgresType.BigSerial or PostgresType.Serial or PostgresType.SmallSerial,
-                                                     AutoIncrementSeed = 1,
-                                                     AutoIncrementStep = 0,
-                                                     DateTimeMode      = DataSetDateTime.Utc,
-                                                     MaxLength         = Length?.Max ?? -1,
-                                                     Unique            = IsUnique
-                                                 };
+            if ( DbType is PostgresType.DateTime ) { column.DateTimeMode = DataSetDateTime.Utc; }
+
+            return column;
+        }
+    }
 
     public bool         HasCheckConstraint      { [MemberNotNullWhen(true, nameof(Checks))] get => Checks?.IsValid is true; }
     public bool         HasDefaultConstraint    { [MemberNotNullWhen(true, nameof(Defaults))] get => Defaults?.IsValid is true; }
@@ -45,6 +53,7 @@ public sealed class ColumnMetaData : IEquatable<ColumnMetaData>, IComparable<Col
     public bool         IsColumnIndexed         { [MemberNotNullWhen(true, nameof(Indexed))] get => Indexed?.IsValid is true || HasForeignKeyConstraint; }
     public NpgsqlDbType PostgresDbType          => __postgresDbType ??= DbType.ToNpgsqlDbType();
     public SqlDbType    SqlDbType               => __sqlDbType ??= DbType.ToSqlDbType();
+    public ref readonly string this[ DatabaseType type ] => ref DataTypes[type];
 
 
     public ColumnMetaData( in PropertyInfo property )
@@ -67,25 +76,24 @@ public sealed class ColumnMetaData : IEquatable<ColumnMetaData>, IComparable<Col
             ForeignKey        = property.GetCustomAttribute<ForeignKeyAttribute>();
             Indexed           = property.GetCustomAttribute<IndexedAttribute>();
             Length            = property.GetCustomAttribute<DbSizeAttribute>();
-            DataType          = property.GetDataType(DatabaseType.PostgreSQL, out DbType, out IsNullable);
             PropertyName      = propertyName;
             ColumnName        = columnName;
             KeyValuePair      = $"{columnName} = @{columnName}";
             VariableName      = $"@{columnName}";
+            DataTypes         = property.GetDataTypes(out DbType, out IsNullable);
 
-
-            if ( IsPrimaryKey && ForeignKey?.IsValid is true ) { throw new ArgumentException($"Column '{propertyName}' has a PrimaryKey flag but {nameof(ForeignKey)} is invalid.", nameof(ForeignKey)); }
+            if ( IsPrimaryKey && ForeignKey?.IsValid is true ) { throw new ArgumentException($"Column '{PropertyName}' has a PrimaryKey flag but {nameof(ForeignKey)} is invalid.", nameof(ForeignKey)); }
         }
         catch ( Exception ex ) { throw new InvalidOperationException($"Failed to create ColumnMetaData for property '{property.DeclaringType?.FullName}.{property.Name}'.", ex); }
     }
     public static ColumnMetaData Create( in PropertyInfo property ) => new(in property);
 
 
-    internal void AddData<TMetaData>( StringBuilder query, TMetaData Instance )
+    internal void AddData<TMetaData>( StringBuilder query, TMetaData Instance, ref readonly DatabaseType type )
         where TMetaData : ITableMetaData
     {
-        string columnName = ColumnName_Padded(Instance);
-        string dataType   = DataType_Padded(Instance);
+        string columnName = ColumnName.GetPadded(Instance.MaxLength_ColumnName);
+        string dataType   = DataTypes[type].GetPadded(Instance.MaxLength_DataType);
         query.Append($"    {columnName} {dataType}");
 
 
@@ -131,12 +139,10 @@ public sealed class ColumnMetaData : IEquatable<ColumnMetaData>, IComparable<Col
     }
 
 
-    internal      string ColumnName_Padded( ITableMetaData      table )    => ColumnName.GetPadded(table.MaxLength_ColumnName);
     internal      string KeyValuePair_Padded( ITableMetaData    table )    => KeyValuePair.GetPadded(table.MaxLength_KeyValuePair);
     internal      string VariableName_Padded( ITableMetaData    table )    => VariableName.GetPadded(table.MaxLength_Variables);
     internal      string CreateIndex( ITableMetaData            table )    => $"CREATE INDEX {IndexColumnName_Padded(table)} ON {table.TableName}({ColumnName});";
     internal      string IndexColumnName_Padded( ITableMetaData table )    => Indexed?.Name.GetPadded(table.MaxLength_IndexColumnName) ?? ForeignKey?.Index(ColumnName, table.MaxLength_IndexColumnName) ?? EMPTY;
-    internal      string DataType_Padded( ITableMetaData        table )    => DataType.GetPadded(table.MaxLength_DataType);
     public static string GetColumnName( ColumnMetaData          column )   => column.ColumnName;
     public static string GetVariableName( ColumnMetaData        column )   => column.VariableName;
     public static string GetKeyValuePair( ColumnMetaData        column )   => column.KeyValuePair;

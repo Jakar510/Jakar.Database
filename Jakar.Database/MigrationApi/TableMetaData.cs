@@ -50,6 +50,7 @@ public class TableMetaData<TSelf> : ITableMetaData
     public ArrayBuffer<Func<long, MigrationRecord>> IndexedColumns  { [Pure] [MustUseReturnValue] [MustDisposeResource] get => Columns.Where(static x => x.IsColumnIndexed).Select(CreateIndex).ToArrayBuffer(); }
     FrozenDictionary<int, string> ITableMetaData.   Indexes         => Indexes;
     public ref readonly ColumnMetaData this[ string propertyName ] => ref Properties[propertyName];
+    public ref readonly string this[ string         propertyName, DatabaseType type ] => ref Properties[propertyName][type];
     public PropertyColumn this[ int index ]
     {
         get
@@ -80,7 +81,7 @@ public class TableMetaData<TSelf> : ITableMetaData
         MaxLength_KeyValuePair    = properties.Values.Max(static x => x.KeyValuePair.Length);
         MaxLength_Variables       = properties.Values.Max(static x => x.VariableName.Length);
         MaxLength_ColumnName      = properties.Values.Max(static x => x.ColumnName.Length);
-        MaxLength_DataType        = properties.Values.Max(static x => x.DataType.Length);
+        MaxLength_DataType        = properties.Values.SelectMany(static x => x.DataTypes.Values).Max(static x => x.Length);
     }
 
 
@@ -193,7 +194,7 @@ public class TableMetaData<TSelf> : ITableMetaData
     }
 
 
-    [Pure] public string CreateTableSql()
+    [Pure] public string CreateTableSql( in DatabaseType type )
     {
         StringBuilder query = new(10240);
 
@@ -203,7 +204,7 @@ public class TableMetaData<TSelf> : ITableMetaData
 
         for ( int index = 0; index < Instance.ColumnCount; index++ )
         {
-            Instance[index].Column.AddData(query, this);
+            Instance[index].Column.AddData(query, this, in type);
 
             query.Append(',');
             query.Append('\n');
@@ -285,7 +286,7 @@ public class TableMetaData<TSelf> : ITableMetaData
                                                                                       MigrationID = migrationID,
                                                                                       Description = $"Create {TableName} table",
                                                                                       ReferenceID = TableName,
-                                                                                      SQL         = CreateTableSql()
+                                                                                      SQL         = CreateTableSql(Validate.ThrowIfNull(Database.Current).DatabaseType)
                                                                                   };
 
 

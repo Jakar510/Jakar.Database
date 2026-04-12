@@ -10,9 +10,10 @@ namespace SampleApi;
 
 internal sealed class SampleDatabase( IConfiguration configuration, IOptions<DbOptions> options, IFusionCache cache ) : Database(configuration, options, cache), IAppID
 {
-    public static Guid       AppID      { get; } = Guid.NewGuid();
-    public static string     AppName    => nameof(SampleDatabase);
-    public static AppVersion AppVersion { get; } = new(1, 0, 0, 1);
+    public static   Guid         AppID        { get; } = Guid.NewGuid();
+    public static   string       AppName      => nameof(SampleDatabase);
+    public static   AppVersion   AppVersion   { get; } = new(1, 0, 0, 1);
+    public override DatabaseType DatabaseType => DatabaseType.PostgreSQL;
 
 
     protected override DbConnection CreateConnection( in SecuredString secure ) => new NpgsqlConnection(secure);

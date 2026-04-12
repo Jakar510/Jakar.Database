@@ -40,6 +40,7 @@ public readonly struct SqlCommand : IEquatable<SqlCommand>
     }
     [Pure] [MustDisposeResource] public Microsoft.Data.SqlClient.SqlCommand ToCommand( SqlConnection connection, SqlTransaction? transaction = null )
     {
+        Console.WriteLine(this.ToJson());
         ArgumentNullException.ThrowIfNull(connection);
 
         Microsoft.Data.SqlClient.SqlCommand command = new()
@@ -57,6 +58,7 @@ public readonly struct SqlCommand : IEquatable<SqlCommand>
     }
     [Pure] [MustDisposeResource] public DbCommand ToCommand( NpgsqlConnection connection, NpgsqlTransaction? transaction = null )
     {
+        Console.WriteLine(this.ToJson());
         ArgumentNullException.ThrowIfNull(connection);
 
         NpgsqlCommand command = new()

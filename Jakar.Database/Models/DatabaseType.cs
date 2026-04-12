@@ -29,7 +29,7 @@ public enum DatabaseType
 
     /// <summary> Represents a Microsoft SQL Server database connection. <see cref="Microsoft.Data.SqlClient.SqlConnection"/> </summary>
     /// <remarks> This class provides methods and properties to interact with a Microsoft SQL Server database, including executing commands and managing transactions. </remarks>
-    MicrosoftSql,
+    MicrosoftSqlServer,
 
     /// <summary> Represents the Oracle database type. <see cref="Oracle.ManagedDataAccess.Client.OracleConnection"/> </summary>
     /// <remarks> Use this value to specify Oracle as the target database when configuring database connections or operations. </remarks>

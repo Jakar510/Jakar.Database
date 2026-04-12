@@ -704,24 +704,34 @@ public static class PostgresTypes
         public int TryGetLength() => self.GetCustomAttribute<StringLengthAttribute>()?.MaximumLength ?? self.GetCustomAttribute<LengthAttribute>()?.MaximumLength ?? self.GetCustomAttribute<MaxLengthAttribute>()?.Length ?? self.GetCustomAttribute<MinLengthAttribute>()?.Length ?? 0;
 
 
-        public string GetDataType( DatabaseType type, out PostgresType dbType, out bool isNullable )
+        public FrozenDictionary<DatabaseType, string> GetDataTypes( out PostgresType dbType, out bool isNullable )
         {
             dbType = self.PropertyType.GetPostgresType(in self, out isNullable, out int length);
 
+            Dictionary<DatabaseType, string> dataTypes = new()
+                                                         {
+                                                             [DatabaseType.PostgreSQL]         = self.GetDataType(DatabaseType.PostgreSQL,         in dbType, in length),
+                                                             [DatabaseType.MicrosoftSqlServer] = self.GetDataType(DatabaseType.MicrosoftSqlServer, in dbType, in length)
+                                                         };
+
+            return dataTypes.ToFrozenDictionary();
+        }
+        public string GetDataType( in DatabaseType type, ref readonly PostgresType dbType, ref readonly int length )
+        {
             return type switch
                    {
-                       DatabaseType.PostgreSQL   => self.GetPostgresDataType(in dbType, in length),
-                       DatabaseType.MicrosoftSql => EMPTY,
-                       DatabaseType.Oracle       => EMPTY,
-                       DatabaseType.MySQL        => EMPTY,
-                       DatabaseType.Firebird     => EMPTY,
-                       DatabaseType.NotSet       => throw new InvalidOperationException("Database type is not set"),
-                       _                         => throw new OutOfRangeException(type)
+                       DatabaseType.PostgreSQL         => self.GetPostgresDataType(in dbType, in length),
+                       DatabaseType.MicrosoftSqlServer => self.GetMicrosoftSqlServerDataType(in dbType, in length),
+                       DatabaseType.Oracle             => EMPTY,
+                       DatabaseType.MySQL              => EMPTY,
+                       DatabaseType.Firebird           => EMPTY,
+                       DatabaseType.NotSet             => throw new InvalidOperationException("Database type is not set"),
+                       _                               => throw new OutOfRangeException(type)
                    };
         }
 
 
-        public string GetMicrosoftSqlServerDataType( in PostgresType dbType, in int length )
+        public string GetMicrosoftSqlServerDataType( ref readonly PostgresType dbType, ref readonly int length )
         {
             return dbType switch
                    {
@@ -825,7 +835,7 @@ public static class PostgresTypes
                        _                                     => throw new OutOfRangeException(self)
                    };
         }
-        public string GetPostgresDataType( in PostgresType dbType, in int length )
+        public string GetPostgresDataType( ref readonly PostgresType dbType, ref readonly int length )
         {
             return dbType switch
                    {
