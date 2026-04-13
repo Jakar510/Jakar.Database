@@ -19,7 +19,7 @@ internal sealed class TestDatabase( IConfiguration configuration, IOptions<DbOpt
         AppVersion = new AppVersion(1, 0, 0, 1);
         Source     = new TelemetrySource(AppVersion, AppID, AppName, "Jakar.Database");
     }
-    protected override DbConnection CreateConnection( in SecuredString secure ) => new NpgsqlConnection(secure);
+    protected override DbConnection CreateConnection( in ConnectionString secure ) => new NpgsqlConnection(secure);
 
 
     public static WebApplicationBuilder Create()

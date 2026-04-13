@@ -30,7 +30,7 @@ public readonly struct CommandParameters() : IEquatable<CommandParameters>
     {
         get
         {
-            __parameters.Sort(Comparer<SqlParameter>.Default);
+            __parameters.Sort(Table.Sorter);
             return __parameters;
         }
     }

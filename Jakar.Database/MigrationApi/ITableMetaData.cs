@@ -24,15 +24,16 @@ public interface ITableMetaData : IDisposable
     public ref readonly ColumnMetaData this[ string propertyName ] { get; }
     public ref readonly string this[ string         propertyName, DatabaseType type ] { get; }
     public PropertyColumn this[ int                 index ] { get; }
-    public int                                      MaxLength_ColumnName        { get; }
-    public int                                      MaxLength_DataType          { get; }
-    public int                                      MaxLength_IndexColumnName   { get; }
-    public int                                      MaxLength_KeyValuePair      { get; }
-    public int                                      MaxLength_Variables         { get; }
-    public FrozenDictionary<string, ColumnMetaData> Properties                  { get; }
-    public string                                   SetLastModifiedFunctionName { get; }
-    public ArrayBuffer<ColumnMetaData>              SortedColumns               { [Pure] [MustUseReturnValue] [MustDisposeResource] get; }
-    public string                                   TableName                   { [Pure] get; }
+    public int                                                                                                                            MaxLength_ColumnName        { get; }
+    public int                                                                                                                            MaxLength_DataType          { get; }
+    public int                                                                                                                            MaxLength_IndexColumnName   { get; }
+    public int                                                                                                                            MaxLength_KeyValuePair      { get; }
+    public int                                                                                                                            MaxLength_Variables         { get; }
+    public FrozenDictionary<string, ColumnMetaData>                                                                                       Properties                  { get; }
+    public string                                                                                                                         SetLastModifiedFunctionName { get; }
+    public ValueEnumerable<OrderBy<Select<TableMetaDataEnumerator, PropertyColumn, ColumnMetaData>, ColumnMetaData, int>, ColumnMetaData> SortedColumns               { [Pure] [MustUseReturnValue] [MustDisposeResource] get; }
+    public string                                                                                                                         TableName                   { [Pure] get; }
+    public ParameterSorter                                                                                                                Sorter                      { get; }
 
 
     public string IndexName( string   propertyName );
@@ -46,4 +47,11 @@ public interface ITableMetaData : IDisposable
 
     public TableMetaDataEnumerator GetEnumerator();
     public void                    ColumnNames( StringBuilder sb, ref int indentLevel );
+}
+
+
+
+public sealed class ParameterSorter( ITableMetaData metaData ) : Comparer<SqlParameter>
+{
+    public override int Compare( SqlParameter x, SqlParameter y ) => metaData[x.Column.PropertyName].CompareTo(metaData[y.Column.PropertyName]);
 }

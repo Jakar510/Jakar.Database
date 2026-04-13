@@ -3,6 +3,7 @@
 
 
 using Microsoft.Data.SqlClient;
+using Microsoft.Data.Sqlite;
 
 
 
@@ -106,13 +107,13 @@ public class DbConnectionContext : IAsyncDisposable
     }
     public virtual async ValueTask RollbackAsync( CancellationToken token )
     {
-        if ( Transaction is not null )
-        {
-            if ( _rollbackIDs.TryPop(out string? rollbackID) ) { await Transaction.RollbackAsync(rollbackID, token); }
-            else { await Transaction.RollbackAsync(token); }
-        }
+        string? savePoint = _rollbackIDs.TryPop(out string? rollbackID)
+                                ? rollbackID
+                                : null;
+
+        await RollbackAsync(savePoint, token);
     }
-    public virtual async ValueTask RollbackAsync( string savePoint, CancellationToken token )
+    public virtual async ValueTask RollbackAsync( string? savePoint, CancellationToken token )
     {
         if ( Transaction is not null )
         {
@@ -166,6 +167,59 @@ public class DbConnectionContext : IAsyncDisposable
         await foreach ( TSelf record in ExecuteAsync<TSelf>(sql, token) ) { list.Add(record); }
 
         return [..list];
+    }
+
+
+    public async ValueTask EnsureTableExistsAsync<TSelf>( CancellationToken token )
+        where TSelf : TableRecord<TSelf>, ITableRecord<TSelf>
+    {
+        if ( !await TableExistsAsync<MigrationRecord>(token) ) { await ExecuteNonQueryAsync(TSelf.MetaData.CreateTableSql(), token); }
+    }
+    public async ValueTask<bool> TableExistsAsync<TSelf>( CancellationToken token )
+        where TSelf : TableRecord<TSelf>, ITableRecord<TSelf>
+    {
+        DbConnection connection = await EnsureConnection(token);
+
+        string sql = connection switch
+                     {
+                         NpgsqlConnection => """
+                                             SELECT EXISTS (
+                                                 SELECT 1
+                                                 FROM information_schema.tables
+                                                 WHERE table_name = @name
+                                             )
+                                             """,
+
+                         SqlConnection => """
+                                          SELECT CASE WHEN EXISTS (
+                                              SELECT 1
+                                              FROM INFORMATION_SCHEMA.TABLES
+                                              WHERE TABLE_NAME = @name
+                                          ) THEN 1 ELSE 0 END
+                                          """,
+
+                         SqliteConnection => """
+                                             SELECT EXISTS (
+                                                 SELECT 1
+                                                 FROM sqlite_master
+                                                 WHERE type='table'
+                                                 AND name = @name
+                                             )
+                                             """,
+
+                         _ => throw new NotSupportedException($"Unsupported provider: {connection.GetType().FullName}")
+                     };
+
+        await using DbCommand cmd = connection.CreateCommand();
+        cmd.CommandText = sql;
+
+        DbParameter p = cmd.CreateParameter();
+        p.ParameterName = "@name";
+        p.Value         = TSelf.TableName;
+        cmd.Parameters.Add(p);
+
+        object? result = await cmd.ExecuteScalarAsync(token);
+        return Convert.ToInt32(result) == 1;
     }
 
 

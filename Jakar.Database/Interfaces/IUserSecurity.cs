@@ -42,17 +42,21 @@ public static class UserSecurities
     extension<TSelf>( TSelf self )
         where TSelf : TableRecord<TSelf>, IUserSecurity, ITableRecord<TSelf>
     {
-        public bool HasPassword() => !string.IsNullOrWhiteSpace(self.PasswordHash);
-
-
+        /// <summary> <see cref="Database"/>.<see cref="Database.VerifyPassword{TSelf}(ref TSelf, in string)"/> </summary>
         public TSelf WithPassword( string password )
         {
             if ( password.Length > MAX_PASSWORD_SIZE ) { throw new ArgumentException($"Password Must be less than {MAX_PASSWORD_SIZE} chars", nameof(password)); }
 
-            self.PasswordHash = Database.DataProtector.Encrypt(password);
+            self.PasswordHash = TSelf.Hasher.HashPassword(self, password);
             return self;
         }
+
+
+        /// <summary> <see cref="Database"/>.<see cref="Database.VerifyPassword{TSelf}(ref TSelf, in string)"/> </summary>
         public TSelf WithPassword( in string password, scoped in Requirements requirements ) => self.WithPassword(password, requirements, out _);
+
+
+        /// <summary> <see cref="Database"/>.<see cref="Database.VerifyPassword{TSelf}(ref TSelf, in string)"/> </summary>
         public TSelf WithPassword( in string password, scoped in Requirements requirements, out PasswordValidator.Results results )
         {
             if ( requirements.MaxLength > MAX_PASSWORD_SIZE ) { throw new ArgumentException($"Password Must be less than {MAX_PASSWORD_SIZE} chars", nameof(password)); }

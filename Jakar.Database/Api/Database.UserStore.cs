@@ -20,7 +20,7 @@
 
 
         public       Task<string?> GetPasswordHashAsync( UserRecord? user, CancellationToken token )                                 => Task.FromResult(user?.PasswordHash);
-        public       Task<bool>    HasPasswordAsync( UserRecord      user, CancellationToken token )                                 => Task.FromResult(user.HasPassword());
+        public       Task<bool>    HasPasswordAsync( UserRecord      user, CancellationToken token )                                 => Task.FromResult(user.HasPassword);
         public async Task          SetPasswordHashAsync( UserRecord  user, string?           passwordHash, CancellationToken token ) => await this.TryCall(SetPasswordHashAsync, user, passwordHash, token);
         public async ValueTask SetPasswordHashAsync( DbConnectionContext context, UserRecord user, string? passwordHash, CancellationToken token )
         {

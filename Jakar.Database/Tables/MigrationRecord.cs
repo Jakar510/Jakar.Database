@@ -11,19 +11,10 @@ namespace Jakar.Database;
 [Serializable]
 public sealed record MigrationRecord : TableRecord<MigrationRecord>, ITableRecord<MigrationRecord>
 {
-    public const           string     TABLE_NAME = "migrations";
-    public static readonly SqlCommand SelectSql  = SqlCommand.Parse<MigrationRecord>($"SELECT * FROM {TABLE_NAME} ORDER BY {nameof(MigrationID)};");
-    public static readonly SqlCommand TryCreateSql = SqlCommand.Parse<MigrationRecord>($"""
-                                                                                        CREATE TABLE IF NOT EXISTS {TABLE_NAME} (
-                                                                                            {nameof(MigrationID)} bigint      PRIMARY KEY,
-                                                                                            {nameof(AppliedOn)}   timestamptz NULL,
-                                                                                            {nameof(DateCreated)} timestamptz NULL,
-                                                                                            {nameof(Description)} text        NOT NULL,
-                                                                                            {nameof(ReferenceID)} text        NULL
-                                                                                        ); 
-                                                                                        """);
-    public static readonly string SetLastModifiedName = nameof(SetLastModified).SqlName();
-    internal readonly      string RollbackID          = Randoms.RandomString(10);
+    public const           string     TABLE_NAME          = "migrations";
+    public static readonly SqlCommand SelectSql           = SqlCommand.Parse<MigrationRecord>($"SELECT * FROM {TABLE_NAME} ORDER BY {nameof(MigrationID)};");
+    public static readonly string     SetLastModifiedName = nameof(SetLastModified).SqlName();
+    internal readonly      string     RollbackID          = Randoms.RandomString(10);
 
 
     public static         string          TableName   => TABLE_NAME;
@@ -68,22 +59,21 @@ public sealed record MigrationRecord : TableRecord<MigrationRecord>, ITableRecor
     /// </summary>
     /// <param name="migrationID"> </param>
     /// <returns> </returns>
-    public static MigrationRecord AddPostgreSqlExtensions( long migrationID ) =>
-        Create<MigrationRecord>(migrationID,
-                                "Add PostgreSql extensions",
+    public static MigrationRecord AddPostgreSqlExtensions( long migrationID ) => Create<MigrationRecord>(migrationID,
+                                                                                                         "Add PostgreSql extensions",
 
-                                // ReSharper disable StringLiteralTypo
-                                """
+                                                                                                         // ReSharper disable StringLiteralTypo
+                                                                                                         """
 
-                                CREATE EXTENSION pg_crypto;
-                                CREATE EXTENSION postgis;
-                                CREATE EXTENSION pgaudit;
-                                CREATE EXTENSION pg_textsearch;
-                                CREATE EXTENSION uint128;
-                                """
+                                                                                                         CREATE EXTENSION pg_crypto;
+                                                                                                         CREATE EXTENSION postgis;
+                                                                                                         CREATE EXTENSION pgaudit;
+                                                                                                         CREATE EXTENSION pg_textsearch;
+                                                                                                         CREATE EXTENSION uint128;
+                                                                                                         """
 
-                                // ReSharper restore StringLiteralTypo
-                               );
+                                                                                                         // ReSharper restore StringLiteralTypo
+                                                                                                        );
 
 
     public static MigrationRecord CreateTable( long migrationID ) => MetaData.CreateTable(migrationID);

@@ -129,7 +129,9 @@ public class MigrationManager
     public async ValueTask ApplyMigrations( CancellationToken token = default )
     {
         await using DbConnectionContext context = await _db.ConnectAsync(token);
-        await context.ExecuteNonQueryAsync(MigrationRecord.TryCreateSql, token);
+
+        await context.EnsureTableExistsAsync<MigrationRecord>(token);
+
         await context.StartTransactionAsync(_db.TransactionIsolationLevel, token);
 
         try
@@ -161,11 +163,7 @@ public class MigrationManager
 
         SqlCommand migrationRecord = self.ApplySql();
 
-        try
-        {
-            await context.ExecuteNonQueryAsync(migrationRecord, token);
-            await context.SaveAsync(self.RollbackID, token);
-        }
+        try { await context.ExecuteNonQueryAsync(migrationRecord, token); }
         catch ( Exception e ) { throw new DbSqlException(migrationRecord, e) { RollbackID = self.RollbackID }; }
     }
 

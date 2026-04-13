@@ -16,7 +16,7 @@ internal sealed class SampleDatabase( IConfiguration configuration, IOptions<DbO
     public override DatabaseType DatabaseType => DatabaseType.PostgreSQL;
 
 
-    protected override DbConnection CreateConnection( in SecuredString secure ) => new NpgsqlConnection(secure);
+    protected override DbConnection CreateConnection( in ConnectionString secure ) => new NpgsqlConnection(secure);
 
 
     public static SampleDatabase Create( [MustDisposeResource] out WebApplication app )

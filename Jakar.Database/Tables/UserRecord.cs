@@ -21,6 +21,7 @@ public sealed record UserRecord : PairRecord<UserRecord>, ITableRecord<UserRecor
     public                                      Guid                  UserID              => ID.Value;
     RecordID<UserRecord> IUserRecordID.                               UserID              => ID;
     [Fixed(USER_NAME)] [ProtectedPersonalData] public string          UserName            { get; init; } = EMPTY;
+    public                                            bool            HasPassword         { [MemberNotNullWhen(true, nameof(PasswordHash))] get => !string.IsNullOrWhiteSpace(PasswordHash); }
 
 
     public UserRecord( in RecordID<UserRecord> ID ) : this(in ID, null, DateTimeOffset.UtcNow) { }

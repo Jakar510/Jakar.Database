@@ -1,6 +1,10 @@
 ﻿// Jakar.Extensions :: Jakar.Database
 // 08/14/2022  8:39 PM
 
+using System.Security;
+
+
+
 namespace Jakar.Database;
 
 
@@ -27,7 +31,7 @@ public abstract partial class Database : Randoms, IConnectableDbRoot, IHealthChe
     public static      Database?                        Current                   { get; set; }
     public static      DataProtector                    DataProtector             { get; set; } = new(RSAEncryptionPadding.OaepSHA1);
     public             string                           ClassName                 => _className ??= GetType().GetFullName();
-    protected internal SecuredString?                   ConnectionString          { get; set; }
+    protected internal ConnectionString?                   ConnectionString          { get; set; }
     public             MigrationManager                 MigrationManager          { get; }
     ref readonly       DbOptions IConnectableDbRoot.    Options                   => ref Options;
     public virtual     PasswordValidator                PasswordValidator         => DbOptions.PasswordRequirements.GetValidator();
@@ -75,7 +79,6 @@ public abstract partial class Database : Randoms, IConnectableDbRoot, IHealthChe
         foreach ( IDbTable disposable in _tables ) { await disposable.DisposeAsync(); }
 
         _tables.Clear();
-        ConnectionString?.Dispose();
         ConnectionString = null;
         NpgsqlConnection.ClearAllPools();
         GC.SuppressFinalize(this);
@@ -147,7 +150,7 @@ public abstract partial class Database : Randoms, IConnectableDbRoot, IHealthChe
         await connection.OpenAsync(token);
         return connection;
     }
-    protected abstract                 DbConnection                   CreateConnection( in SecuredString secure );
+    protected abstract                 DbConnection                   CreateConnection( in ConnectionString secure );
     [MustDisposeResource] public async ValueTask<DbConnectionContext> ConnectAsync( CancellationToken    token, IsolationLevel? level = null ) => await DbConnectionContext.CreateAsync(this, token, level);
 
 

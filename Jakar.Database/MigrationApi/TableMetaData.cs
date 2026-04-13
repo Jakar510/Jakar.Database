@@ -60,16 +60,17 @@ public class TableMetaData<TSelf> : ITableMetaData
             return new PropertyColumn(propertyName, Properties[propertyName]);
         }
     }
-    public int                                                      MaxLength_ColumnName        { get; }
-    public int                                                      MaxLength_DataType          { get; }
-    public int                                                      MaxLength_IndexColumnName   { get; }
-    public int                                                      MaxLength_KeyValuePair      { get; }
-    public int                                                      MaxLength_Variables         { get; }
-    FrozenDictionary<string, ColumnMetaData> ITableMetaData.        Properties                  => Properties;
-    public string                                                   SetLastModifiedFunctionName => field ??= $"{TSelf.TableName}_{MigrationRecord.SetLastModifiedName}";
-    public ArrayBuffer<ColumnMetaData>                              SortedColumns               { [Pure] [MustUseReturnValue] [MustDisposeResource] get => Columns.OrderBy(static x => x.Index).ToArrayBuffer(); }
-    public string                                                   TableName                   { [Pure] get => TSelf.TableName; }
-    public ValueEnumerable<TableMetaDataEnumerator, PropertyColumn> Values                      => AsValueEnumerable();
+    public int                                                                                                                            MaxLength_ColumnName        { get; }
+    public int                                                                                                                            MaxLength_DataType          { get; }
+    public int                                                                                                                            MaxLength_IndexColumnName   { get; }
+    public int                                                                                                                            MaxLength_KeyValuePair      { get; }
+    public int                                                                                                                            MaxLength_Variables         { get; }
+    FrozenDictionary<string, ColumnMetaData> ITableMetaData.                                                                              Properties                  => Properties;
+    public string                                                                                                                         SetLastModifiedFunctionName => field ??= $"{TSelf.TableName}_{MigrationRecord.SetLastModifiedName}";
+    public ValueEnumerable<OrderBy<Select<TableMetaDataEnumerator, PropertyColumn, ColumnMetaData>, ColumnMetaData, int>, ColumnMetaData> SortedColumns               { [Pure] [MustUseReturnValue] [MustDisposeResource] get => Columns.OrderBy(static x => x.Index); }
+    public string                                                                                                                         TableName                   { [Pure] get => TSelf.TableName; }
+    public ValueEnumerable<TableMetaDataEnumerator, PropertyColumn>                                                                       Values                      => AsValueEnumerable();
+    public ParameterSorter                                                                                                                Sorter                      { get; }
 
 
     protected internal TableMetaData( FrozenDictionary<string, ColumnMetaData> properties )
@@ -82,6 +83,7 @@ public class TableMetaData<TSelf> : ITableMetaData
         MaxLength_Variables       = properties.Values.Max(static x => x.VariableName.Length);
         MaxLength_ColumnName      = properties.Values.Max(static x => x.ColumnName.Length);
         MaxLength_DataType        = properties.Values.SelectMany(static x => x.DataTypes.Values).Max(static x => x.Length);
+        Sorter                    = new ParameterSorter(this);
     }
 
 
@@ -168,7 +170,7 @@ public class TableMetaData<TSelf> : ITableMetaData
 
         int index = 0;
 
-        foreach ( string columnName in Columns.Select(static x => x.ColumnName) )
+        foreach ( string columnName in SortedColumns.Select(static x => x.ColumnName) )
         {
             sb.Append(' ', indentLevel * 4).Append(columnName);
             if ( index++ < ColumnCount - 1 ) { sb.Append(",\n"); }
@@ -191,6 +193,7 @@ public class TableMetaData<TSelf> : ITableMetaData
     }
 
 
+    [Pure] public SqlCommand CreateTableSql() => SqlCommand.Create<TSelf>(CreateTableSql(Validate.ThrowIfNull(Database.Current).DatabaseType));
     [Pure] public string CreateTableSql( in DatabaseType type )
     {
         StringBuilder query = new(10240);
@@ -283,7 +286,7 @@ public class TableMetaData<TSelf> : ITableMetaData
                                                                                       MigrationID = migrationID,
                                                                                       Description = $"Create {TableName} table",
                                                                                       ReferenceID = TableName,
-                                                                                      SQL         = CreateTableSql(Validate.ThrowIfNull(Database.Current).DatabaseType)
+                                                                                      SQL         = CreateTableSql()
                                                                                   };
 
 

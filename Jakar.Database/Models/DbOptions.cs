@@ -50,7 +50,7 @@ public sealed class DbOptions
     public          Action<OpenTelemetryLoggerOptions>?                     ConfigureOpenTelemetryLogger    { get;                                                  set; }
     public          Action<RedisBackplaneOptions>?                          ConfigureRedisBackplane         { get;                                                  set; }
     public          Action<OtlpExporterOptions>?                            ConfigureTracerOtlpExporter     { get;                                                  set; }
-    public required SecuredStringResolverOptions                            ConnectionStringResolver        { get;                                                  set; } = (Func<IConfiguration, SecuredString>)GetConnectionString;
+    public required SecuredStringResolverOptions                            ConnectionStringResolver        { get;                                                  set; } = (Func<IConfiguration, ConnectionString>)GetConnectionString;
     public          (LocalFile Pem, SecuredStringResolverOptions Password)? DataProtectorKey                { get;                                                  set; }
     public          Uri                                                     Domain                          { get;                                                  set; } = Local_433;
     public          FusionCacheEntryOptionsWrapper                          FusionCacheEntryOptions         { get;                                                  set; } = new() { Duration = TimeSpan.FromMinutes(2) };
@@ -146,28 +146,28 @@ public sealed class DbOptions
     }
 
 
-    public static SecuredString GetConnectionString( IConfiguration configuration ) => SecuredStringResolverOptions.GetSecuredString(configuration);
+    public static ConnectionString GetConnectionString( IConfiguration configuration ) => SecuredStringResolverOptions.GetSecuredString(configuration);
     public static string GetConnectionString( IServiceProvider provider )
     {
-        ValueTask<SecuredString> task    = GetConnectionStringAsync(provider);
-        SecuredString            secured = task.CallSynchronously();
+        ValueTask<ConnectionString> task    = GetConnectionStringAsync(provider);
+        ConnectionString            secured = task.CallSynchronously();
         string                   value   = secured.ToString();
         return value;
     }
-    public static async ValueTask<SecuredString> GetConnectionStringAsync( IServiceProvider provider )
+    public static async ValueTask<ConnectionString> GetConnectionStringAsync( IServiceProvider provider )
     {
         using CancellationTokenSource source = new(TimeSpan.FromMinutes(5));
         return await GetConnectionStringAsync(provider, source.Token);
     }
-    public static async ValueTask<SecuredString> GetConnectionStringAsync( IServiceProvider provider, CancellationToken token )
+    public static async ValueTask<ConnectionString> GetConnectionStringAsync( IServiceProvider provider, CancellationToken token )
     {
         DbOptions options = provider.GetRequiredService<IOptions<DbOptions>>().Value;
 
         IConfiguration configuration = provider.GetRequiredService<IConfiguration>();
-        SecuredString  secure        = await options.GetConnectionStringAsync(configuration, token);
+        ConnectionString  secure        = await options.GetConnectionStringAsync(configuration, token);
         return secure;
     }
-    public async ValueTask<SecuredString> GetConnectionStringAsync( IConfiguration configuration, CancellationToken token ) => await ConnectionStringResolver.GetSecuredStringAsync(configuration, token);
+    public async ValueTask<ConnectionString> GetConnectionStringAsync( IConfiguration configuration, CancellationToken token ) => await ConnectionStringResolver.GetSecuredStringAsync(configuration, token);
 }
 
 

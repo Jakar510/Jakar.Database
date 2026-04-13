@@ -29,6 +29,7 @@ public interface ITableRecord<TSelf>
     public abstract static              TableMetaData<TSelf>         MetaData        { [Pure] get; }
     public abstract static              int                          PropertyCount   { get; }
     public abstract static              string                       TableName       { [Pure] get; }
+    public abstract static              PasswordHasher<TSelf>        Hasher          { [Pure] get; }
 
 
     // [Pure] public abstract static TSelf Create( SqlDataReader    reader );
@@ -45,10 +46,9 @@ public abstract record TableRecord<TSelf>( in DateTimeOffset DateCreated ) : IJs
 
     protected                  DateTimeOffset?              _lastModified;
     public static ref readonly ImmutableArray<PropertyInfo> ClassProperties { [Pure] get => ref Properties; }
-
-
-    public static TableMetaData<TSelf> MetaData      => TableMetaData<TSelf>.Instance;
-    public static int                  PropertyCount => Properties.Length;
+    public static              PasswordHasher<TSelf>        Hasher          { [Pure] get; } = new();
+    public static              TableMetaData<TSelf>         MetaData        => TableMetaData<TSelf>.Instance;
+    public static              int                          PropertyCount   => Properties.Length;
 
 
     protected internal TableRecord( DbDataReader reader ) : this(reader.DateCreated<TSelf>()) { }
@@ -107,8 +107,7 @@ public abstract record TableRecord<TSelf>( in DateTimeOffset DateCreated ) : IJs
     public async ValueTask Import( NpgsqlBinaryImporter importer, CancellationToken token )
     {
         await importer.StartRowAsync(token);
-        using ArrayBuffer<ColumnMetaData> buffer = MetaData.SortedColumns;
-
+        using ArrayBuffer<ColumnMetaData> buffer = MetaData.SortedColumns.ToArrayBuffer();
         foreach ( ColumnMetaData column in buffer.Array ) { await Import(importer, column.PropertyName, column.PostgresDbType, token); }
     }
     protected abstract ValueTask Import( NpgsqlBinaryImporter importer, string propertyName, NpgsqlDbType postgresDbType, CancellationToken token );
@@ -120,6 +119,8 @@ public abstract record TableRecord<TSelf>( in DateTimeOffset DateCreated ) : IJs
                    ? ValueTask.FromCanceled(token)
                    : ValueTask.CompletedTask;
     }
+
+
     [Pure] public virtual CommandParameters ToDynamicParameters()
     {
         CommandParameters parameters = CommandParameters.Create<TSelf>();
