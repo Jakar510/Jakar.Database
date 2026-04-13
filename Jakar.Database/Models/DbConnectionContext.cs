@@ -138,16 +138,19 @@ public class DbConnectionContext : IAsyncDisposable
     }
 
 
-    public virtual async ValueTask<int> Execute( string sql, CommandParameters parameters, CancellationToken token )
-    {
-        SqlCommand            command = SqlCommand.Create(sql, parameters);
-        await using DbCommand cmd     = command.ToCommand(this);
-        return await cmd.ExecuteNonQueryAsync(token);
-    }
-    public virtual async ValueTask<int> ExecuteNonQueryAsync( SqlCommand sql, CancellationToken token )
+    public virtual async ValueTask ExecuteNonQueryAsync( string sql, CommandParameters parameters, CancellationToken token ) => await ExecuteNonQueryAsync(SqlCommand.Create(sql, parameters), token);
+    public virtual async ValueTask ExecuteNonQueryAsync( SqlCommand sql, CancellationToken token )
     {
         await using DbCommand command = sql.ToCommand(this);
-        return await command.ExecuteNonQueryAsync(token);
+        await command.ExecuteNonQueryAsync(token);
+    }
+    public virtual async ValueTask<T?> ExecuteScalarAsync<T>( SqlCommand sql, CancellationToken token )
+    {
+        await using DbCommand command = sql.ToCommand(this);
+
+        return await command.ExecuteScalarAsync(token).ConfigureAwait(false) is T result
+                   ? result
+                   : default;
     }
     public virtual async IAsyncEnumerable<TSelf> ExecuteAsync<TSelf>( SqlCommand sql, [EnumeratorCancellation] CancellationToken token )
         where TSelf : TableRecord<TSelf>, ITableRecord<TSelf>
@@ -170,6 +173,8 @@ public class DbConnectionContext : IAsyncDisposable
         where TSelf : TableRecord<TSelf>, ITableRecord<TSelf> => FirstAsync<TSelf>(SqlCommand.GetFirst<TSelf>(), token);
     public virtual ValueTask<TSelf?> FirstOrDefaultAsync<TSelf>( [EnumeratorCancellation] CancellationToken token = default )
         where TSelf : TableRecord<TSelf>, ITableRecord<TSelf> => FirstOrDefaultAsync<TSelf>(SqlCommand.GetFirst<TSelf>(), token);
+
+
     public virtual async ValueTask<TSelf> FirstAsync<TSelf>( SqlCommand command, [EnumeratorCancellation] CancellationToken token = default )
         where TSelf : TableRecord<TSelf>, ITableRecord<TSelf>
     {

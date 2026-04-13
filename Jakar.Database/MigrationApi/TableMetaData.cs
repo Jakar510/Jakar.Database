@@ -130,9 +130,6 @@ public class TableMetaData<TSelf> : ITableMetaData
             indexes[i++] = propertyName;
         }
 
-        Console.WriteLine();
-        Console.WriteLine(indexes.ToJson());
-        Console.WriteLine();
         return indexes.ToFrozenDictionary();
     }
 
@@ -318,7 +315,7 @@ public class TableMetaData<TSelf> : ITableMetaData
         foreach ( PropertyInfo property in properties )
         {
             ColumnMetaData data = ColumnMetaData.Create(in property);
-            if ( data.DbType is PostgresType.NotSet ) { continue; }
+            if ( data.DbType is DbColumnType.NotSet ) { continue; }
 
             dictionary[property.Name] = data;
         }

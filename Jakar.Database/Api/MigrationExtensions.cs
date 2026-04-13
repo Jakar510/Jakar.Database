@@ -9,38 +9,38 @@ public static class MigrationExtensions
     public static async Task<ContentHttpResult> GetMigrationsAndRenderHtml( [FromServices] Database db, CancellationToken token ) => await db.MigrationManager.AppliedMigrations(token);
 
 
-    public static PostgresType ToDbPropertyType( this DbType type ) => type switch
+    public static DbColumnType ToDbPropertyType( this DbType type ) => type switch
                                                                        {
-                                                                           DbType.AnsiString            => PostgresType.String,
-                                                                           DbType.Binary                => PostgresType.Binary,
-                                                                           DbType.Byte                  => PostgresType.Byte,
-                                                                           DbType.Boolean               => PostgresType.Boolean,
-                                                                           DbType.Currency              => PostgresType.Decimal,
-                                                                           DbType.Date                  => PostgresType.Date,
-                                                                           DbType.Decimal               => PostgresType.Decimal,
-                                                                           DbType.Double                => PostgresType.Double,
-                                                                           DbType.Guid                  => PostgresType.Guid,
-                                                                           DbType.Int16                 => PostgresType.Short,
-                                                                           DbType.Int32                 => PostgresType.Int,
-                                                                           DbType.Int64                 => PostgresType.Long,
-                                                                           DbType.SByte                 => PostgresType.SByte,
-                                                                           DbType.Single                => PostgresType.Double,
-                                                                           DbType.String                => PostgresType.String,
-                                                                           DbType.StringFixedLength     => PostgresType.String,
-                                                                           DbType.Time                  => PostgresType.Time,
-                                                                           DbType.UInt16                => PostgresType.UShort,
-                                                                           DbType.UInt32                => PostgresType.UInt,
-                                                                           DbType.UInt64                => PostgresType.Long,
-                                                                           DbType.VarNumeric            => PostgresType.Decimal,
-                                                                           DbType.Xml                   => PostgresType.Xml,
-                                                                           DbType.AnsiStringFixedLength => PostgresType.String,
-                                                                           DbType.DateTime              => PostgresType.DateTime,
-                                                                           DbType.DateTime2             => PostgresType.DateTime,
-                                                                           DbType.DateTimeOffset        => PostgresType.DateTimeOffset,
-                                                                           DbType.Object                => PostgresType.Json,
+                                                                           DbType.AnsiString            => DbColumnType.String,
+                                                                           DbType.Binary                => DbColumnType.Binary,
+                                                                           DbType.Byte                  => DbColumnType.Byte,
+                                                                           DbType.Boolean               => DbColumnType.Boolean,
+                                                                           DbType.Currency              => DbColumnType.Decimal,
+                                                                           DbType.Date                  => DbColumnType.Date,
+                                                                           DbType.Decimal               => DbColumnType.Decimal,
+                                                                           DbType.Double                => DbColumnType.Double,
+                                                                           DbType.Guid                  => DbColumnType.Guid,
+                                                                           DbType.Int16                 => DbColumnType.Short,
+                                                                           DbType.Int32                 => DbColumnType.Int,
+                                                                           DbType.Int64                 => DbColumnType.Long,
+                                                                           DbType.SByte                 => DbColumnType.SByte,
+                                                                           DbType.Single                => DbColumnType.Double,
+                                                                           DbType.String                => DbColumnType.String,
+                                                                           DbType.StringFixedLength     => DbColumnType.String,
+                                                                           DbType.Time                  => DbColumnType.Time,
+                                                                           DbType.UInt16                => DbColumnType.UShort,
+                                                                           DbType.UInt32                => DbColumnType.UInt,
+                                                                           DbType.UInt64                => DbColumnType.Long,
+                                                                           DbType.VarNumeric            => DbColumnType.Decimal,
+                                                                           DbType.Xml                   => DbColumnType.Xml,
+                                                                           DbType.AnsiStringFixedLength => DbColumnType.String,
+                                                                           DbType.DateTime              => DbColumnType.DateTime,
+                                                                           DbType.DateTime2             => DbColumnType.DateTime,
+                                                                           DbType.DateTimeOffset        => DbColumnType.DateTimeOffset,
+                                                                           DbType.Object                => DbColumnType.Json,
                                                                            _                            => throw new OutOfRangeException(type)
                                                                        };
-    public static PostgresType? ToDbPropertyType( this DbType? type ) => type?.ToDbPropertyType();
+    public static DbColumnType? ToDbPropertyType( this DbType? type ) => type?.ToDbPropertyType();
 
 
 

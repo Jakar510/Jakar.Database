@@ -15,7 +15,7 @@ public sealed class ColumnMetaData : IEquatable<ColumnMetaData>, IComparable<Col
     public readonly              DefaultsAttribute?                     Defaults;
     public readonly              ForeignKeyAttribute?                   ForeignKey;
     public readonly              IndexedAttribute?                      Indexed;
-    public readonly              PostgresType                           DbType;
+    public readonly              DbColumnType                           DbType;
     public readonly              string                                 ColumnName;
     public readonly              string                                 KeyValuePair;
     public readonly              string                                 PropertyName;
@@ -24,22 +24,27 @@ public sealed class ColumnMetaData : IEquatable<ColumnMetaData>, IComparable<Col
     private                      NpgsqlDbType?                          __postgresDbType;
     private                      SqlDbType?                             __sqlDbType;
     public readonly              FrozenDictionary<DatabaseType, string> DataTypes;
+    private                      Type?                                  _propertyType;
 
     [JsonIgnore] public DataColumn DataColumn
     {
         get
         {
-            DataColumn column = new(ColumnName, PropertyType, null, MappingType.Element)
+            _propertyType ??= PropertyType.TryGetUnderlyingType(out Type? type)
+                                  ? type
+                                  : PropertyType;
+
+            DataColumn column = new(ColumnName, _propertyType, null, MappingType.Element)
                                 {
                                     AllowDBNull       = IsNullable,
-                                    AutoIncrement     = DbType is PostgresType.BigSerial or PostgresType.Serial or PostgresType.SmallSerial,
+                                    AutoIncrement     = DbType is DbColumnType.BigSerial or DbColumnType.Serial or DbColumnType.SmallSerial,
                                     AutoIncrementSeed = 1,
                                     AutoIncrementStep = 1,
                                     MaxLength         = Length?.Max ?? -1,
                                     Unique            = IsUnique
                                 };
 
-            if ( DbType is PostgresType.DateTime ) { column.DateTimeMode = DataSetDateTime.Utc; }
+            if ( DbType is DbColumnType.DateTime ) { column.DateTimeMode = DataSetDateTime.Utc; }
 
             return column;
         }
@@ -102,8 +107,8 @@ public sealed class ColumnMetaData : IEquatable<ColumnMetaData>, IComparable<Col
             // ReSharper disable once SwitchStatementHandlesSomeKnownEnumValuesWithDefault
             query.Append(DbType switch
                          {
-                             PostgresType.Guid                                           => " PRIMARY KEY DEFAULT gen_random_uuid()",
-                             PostgresType.Long or PostgresType.Int or PostgresType.Short => " PRIMARY KEY GENERATED ALWAYS AS IDENTITY",
+                             DbColumnType.Guid                                           => " PRIMARY KEY DEFAULT gen_random_uuid()",
+                             DbColumnType.Long or DbColumnType.Int or DbColumnType.Short => " PRIMARY KEY GENERATED ALWAYS AS IDENTITY",
                              _                                                           => " PRIMARY KEY"
                          });
 

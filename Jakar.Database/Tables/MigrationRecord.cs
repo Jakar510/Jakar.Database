@@ -17,23 +17,21 @@ public sealed record MigrationRecord : TableRecord<MigrationRecord>, ITableRecor
                                                                                         CREATE TABLE IF NOT EXISTS {TABLE_NAME} (
                                                                                             {nameof(MigrationID)} bigint      PRIMARY KEY,
                                                                                             {nameof(AppliedOn)}   timestamptz NULL,
+                                                                                            {nameof(DateCreated)} timestamptz NULL,
                                                                                             {nameof(Description)} text        NOT NULL,
                                                                                             {nameof(ReferenceID)} text        NULL
                                                                                         ); 
                                                                                         """);
     public static readonly string SetLastModifiedName = nameof(SetLastModified).SqlName();
-
-    internal readonly string RollbackID = Randoms.RandomString(10);
-
-    internal long MigrationIdValue;
+    internal readonly      string RollbackID          = Randoms.RandomString(10);
 
 
     public static         string          TableName   => TABLE_NAME;
-    public                DateTimeOffset? AppliedOn   { get;                     set; }
-    public required       string          Description { get;                     init; }
-    [Key] public required long            MigrationID { get => MigrationIdValue; init => MigrationIdValue = value; }
-    public                string?         ReferenceID { get;                     init; }
-    [DbIgnore] public     string          SQL         { get;                     internal init; } = EMPTY;
+    public                DateTimeOffset? AppliedOn   { get; set; }
+    public required       string          Description { get; init; }
+    [Key] public required long            MigrationID { get; init; }
+    public                string?         ReferenceID { get; init; }
+    [DbIgnore] public     string          SQL         { get; internal init; } = EMPTY;
 
 
     public MigrationRecord() : base(DateTimeOffset.UtcNow) { }
@@ -99,9 +97,9 @@ public sealed record MigrationRecord : TableRecord<MigrationRecord>, ITableRecor
                                                                 {MetaData.ColumnNames(1)}
                                                                 )
                                                                 VALUES
+                                                                (
                                                                 {parameters.VariableNames(1)}
-
-                                                                RETURNING {nameof(IUniqueID.ID)};
+                                                                )
                                                                 """);
 
         return command;

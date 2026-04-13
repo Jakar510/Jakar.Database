@@ -193,7 +193,8 @@ public abstract record Mapping<TSelf, TKey, TValue> : TableRecord<TSelf>
                                                       RETURNING {nameof(IUniqueID.ID)};
                                                       """);
 
-        return await context.ExecuteNonQueryAsync(command, token) > 0;
+        await context.ExecuteNonQueryAsync(command, token);
+        return true;
     }
     public static async ValueTask TryAdd( DbConnectionContext context, DbTable<TValue> valueTable, RecordID<TKey> key, IEnumerable<RecordID<TValue>> values, CancellationToken token )
     {
@@ -331,7 +332,7 @@ public abstract record Mapping<TSelf, TKey, TValue> : TableRecord<TSelf>
     }
 
 
-    public static async ValueTask<int> Replace( DbConnectionContext context, RecordID<TKey> key, IEnumerable<RecordID<TValue>> values, CancellationToken token )
+    public static async ValueTask Replace( DbConnectionContext context, RecordID<TKey> key, IEnumerable<RecordID<TValue>> values, CancellationToken token )
     {
         await Delete(context, key, token);
         List<TSelf> list = new(DEFAULT_CAPACITY);
@@ -356,11 +357,11 @@ public abstract record Mapping<TSelf, TKey, TValue> : TableRecord<TSelf>
                                                       RETURNING {nameof(IUniqueID.ID)};
                                                       """);
 
-        return await context.ExecuteNonQueryAsync(command, token);
+        await context.ExecuteNonQueryAsync(command, token);
     }
 
 
-    public static async ValueTask<int> Delete( DbConnectionContext context, TSelf self, CancellationToken token )
+    public static async ValueTask Delete( DbConnectionContext context, TSelf self, CancellationToken token )
     {
         SqlCommand command = SqlCommand.Parse<TSelf>($"""
                                                       DELETE FROM {TSelf.TableName}
@@ -370,18 +371,18 @@ public abstract record Mapping<TSelf, TKey, TValue> : TableRecord<TSelf>
                                                             {nameof(ValueID)} = {self.ValueID.Value}
                                                       """);
 
-        return await context.ExecuteNonQueryAsync(command, token);
+        await context.ExecuteNonQueryAsync(command, token);
     }
-    public static async ValueTask<int> Delete( DbConnectionContext context, RecordID<TKey> key, CancellationToken token )
+    public static async ValueTask Delete( DbConnectionContext context, RecordID<TKey> key, CancellationToken token )
     {
         SqlCommand command = SqlCommand.Parse<TSelf>($"""
                                                       DELETE FROM {TSelf.TableName}
                                                       WHERE {nameof(KeyID)} = {key.Value}
                                                       """);
 
-        return await context.ExecuteNonQueryAsync(command, token);
+        await context.ExecuteNonQueryAsync(command, token);
     }
-    public static async ValueTask<int> Delete( DbConnectionContext context, RecordID<TKey> key, IEnumerable<RecordID<TValue>> values, CancellationToken token )
+    public static async ValueTask Delete( DbConnectionContext context, RecordID<TKey> key, IEnumerable<RecordID<TValue>> values, CancellationToken token )
     {
         SqlCommand command = SqlCommand.Parse<TSelf>($"""
                                                       DELETE FROM {TSelf.TableName}
@@ -391,9 +392,9 @@ public abstract record Mapping<TSelf, TKey, TValue> : TableRecord<TSelf>
                                                             {nameof(KeyID)} = {key.Value}
                                                       """);
 
-        return await context.ExecuteNonQueryAsync(command, token);
+        await context.ExecuteNonQueryAsync(command, token);
     }
-    public static async ValueTask<int> Delete( DbConnectionContext context, RecordID<TKey> key, RecordID<TValue> value, CancellationToken token )
+    public static async ValueTask Delete( DbConnectionContext context, RecordID<TKey> key, RecordID<TValue> value, CancellationToken token )
     {
         SqlCommand command = SqlCommand.Parse<TSelf>($"""
                                                       DELETE FROM {TSelf.TableName} 
@@ -403,6 +404,6 @@ public abstract record Mapping<TSelf, TKey, TValue> : TableRecord<TSelf>
                                                             {nameof(KeyID)} = {key.Value}
                                                       """);
 
-        return await context.ExecuteNonQueryAsync(command, token);
+        await context.ExecuteNonQueryAsync(command, token);
     }
 }
