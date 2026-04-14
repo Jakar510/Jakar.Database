@@ -13,14 +13,14 @@ public interface ITableMetaData : IDisposable
 {
     public const BindingFlags ATTRIBUTES = BindingFlags.Instance | BindingFlags.Public | BindingFlags.SetProperty | BindingFlags.GetProperty;
 
-    public abstract static ITableMetaData                                                                                   Default         { get; }
-    public                 int                                                                                              ColumnCount     { get; }
-    public                 ValueEnumerable<Select<TableMetaDataEnumerator, PropertyColumn, ColumnMetaData>, ColumnMetaData> Columns         { [Pure] get; }
-    public                 DataTable                                                                                        DataTable       { get; }
-    public                 int                                                                                              ForeignKeyCount { get; }
-    public                 ArrayBuffer<ColumnMetaData>                                                                      ForeignKeys     { [Pure] [MustUseReturnValue] [MustDisposeResource] get; }
-    public                 ArrayBuffer<Func<long, MigrationRecord>>                                                         IndexedColumns  { [Pure] [MustUseReturnValue] [MustDisposeResource] get; }
-    public                 FrozenDictionary<int, string>                                                                    Indexes         { get; }
+    public abstract static ITableMetaData                                                                                                                                                          Default         { get; }
+    public                 int                                                                                                                                                                     ColumnCount     { get; }
+    public                 ValueEnumerable<Select<TableMetaDataEnumerator, PropertyColumn, ColumnMetaData>, ColumnMetaData>                                                                        Columns         { [Pure] get; }
+    public                 DataTable                                                                                                                                                               DataTable       { get; }
+    public                 int                                                                                                                                                                     ForeignKeyCount { get; }
+    public                 ValueEnumerable<SelectWhere<TableMetaDataEnumerator, PropertyColumn, ColumnMetaData>, ColumnMetaData>                                                                   ForeignKeys     { [Pure] [MustUseReturnValue] [MustDisposeResource] get; }
+    public                 ValueEnumerable<Select<SelectWhere<TableMetaDataEnumerator, PropertyColumn, ColumnMetaData>, ColumnMetaData, Func<long, MigrationRecord>>, Func<long, MigrationRecord>> IndexedColumns  { [Pure] [MustUseReturnValue] [MustDisposeResource] get; }
+    public                 FrozenDictionary<int, string>                                                                                                                                           Indexes         { get; }
     public ref readonly ColumnMetaData this[ string propertyName ] { get; }
     public ref readonly string this[ string         propertyName, DatabaseType type ] { get; }
     public PropertyColumn this[ int                 index ] { get; }

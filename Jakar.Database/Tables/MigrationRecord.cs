@@ -193,7 +193,7 @@ public sealed record MigrationRecord : TableRecord<MigrationRecord>, ITableRecor
 
     public override bool Equals( MigrationRecord?    other ) => ReferenceEquals(this, other) || Nullable.Equals(MigrationID, other?.MigrationID) || string.Equals(Description, other?.Description);
     public override int  CompareTo( MigrationRecord? other ) => Nullable.Compare(AppliedOn, other?.AppliedOn);
-    public override int  GetHashCode()                       => HashCode.Combine(MigrationID, ReferenceID, Description, SQL);
+    public override int  GetHashCode()                       => MigrationID.GetHashCode();
 
 
     public static bool operator >( MigrationRecord  left, MigrationRecord right ) => Comparer<MigrationRecord>.Default.Compare(left, right) > 0;

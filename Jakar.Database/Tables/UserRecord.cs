@@ -364,7 +364,7 @@ public sealed record UserRecord : PairRecord<UserRecord>, ITableRecord<UserRecor
         parameters.Add(nameof(Email),                  Email);
         parameters.Add(nameof(PhoneNumber),            PhoneNumber);
         parameters.Add(nameof(Ext),                    Ext);
-        parameters.Add(nameof(EscalateTo),             EscalateTo?.Value);
+        parameters.Add(nameof(EscalateTo),             EscalateTo);
         parameters.Add(nameof(LastBadAttempt),         LastBadAttempt);
         parameters.Add(nameof(LastLogin),              LastLogin);
         parameters.Add(nameof(BadLogins),              BadLogins);

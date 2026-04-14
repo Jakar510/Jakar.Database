@@ -32,8 +32,6 @@ public class TableMetaData<TSelf> : ITableMetaData
     public static   ITableMetaData                                                                                   Default     => Instance;
     public          int                                                                                              ColumnCount => Properties.Count;
     public          ValueEnumerable<Select<TableMetaDataEnumerator, PropertyColumn, ColumnMetaData>, ColumnMetaData> Columns     => Values.Select(static x => x.Column);
-
-
     public DataTable DataTable
     {
         [Pure] [MustDisposeResource] get
@@ -44,11 +42,11 @@ public class TableMetaData<TSelf> : ITableMetaData
             return table;
         }
     }
-    public TableExtrasAttribute?                    Extras          { get; init; }
-    public int                                      ForeignKeyCount { get; }
-    public ArrayBuffer<ColumnMetaData>              ForeignKeys     { [Pure] [MustDisposeResource] get => Columns.Where(static x => x.HasForeignKeyConstraint).ToArrayBuffer(); }
-    public ArrayBuffer<Func<long, MigrationRecord>> IndexedColumns  { [Pure] [MustUseReturnValue] [MustDisposeResource] get => Columns.Where(static x => x.IsColumnIndexed).Select(CreateIndex).ToArrayBuffer(); }
-    FrozenDictionary<int, string> ITableMetaData.   Indexes         => Indexes;
+    public TableExtrasAttribute?                                                                                                                                                   Extras          { get; init; }
+    public int                                                                                                                                                                     ForeignKeyCount { get; }
+    public ValueEnumerable<SelectWhere<TableMetaDataEnumerator, PropertyColumn, ColumnMetaData>, ColumnMetaData>                                                                   ForeignKeys     { [Pure] get => Columns.Where(static x => x.HasForeignKeyConstraint); }
+    public ValueEnumerable<Select<SelectWhere<TableMetaDataEnumerator, PropertyColumn, ColumnMetaData>, ColumnMetaData, Func<long, MigrationRecord>>, Func<long, MigrationRecord>> IndexedColumns  { [Pure] [MustUseReturnValue] get => Columns.Where(static x => x.IsColumnIndexed).Select(CreateIndex); }
+    FrozenDictionary<int, string> ITableMetaData.                                                                                                                                  Indexes         => Indexes;
     public ref readonly ColumnMetaData this[ string propertyName ] => ref Properties[propertyName];
     public ref readonly string this[ string         propertyName, DatabaseType type ] => ref Properties[propertyName][type];
     public PropertyColumn this[ int index ]
@@ -67,7 +65,7 @@ public class TableMetaData<TSelf> : ITableMetaData
     public int                                                                                                                            MaxLength_Variables         { get; }
     FrozenDictionary<string, ColumnMetaData> ITableMetaData.                                                                              Properties                  => Properties;
     public string                                                                                                                         SetLastModifiedFunctionName => field ??= $"{TSelf.TableName}_{MigrationRecord.SetLastModifiedName}";
-    public ValueEnumerable<OrderBy<Select<TableMetaDataEnumerator, PropertyColumn, ColumnMetaData>, ColumnMetaData, int>, ColumnMetaData> SortedColumns               { [Pure] [MustUseReturnValue] [MustDisposeResource] get => Columns.OrderBy(static x => x.Index); }
+    public ValueEnumerable<OrderBy<Select<TableMetaDataEnumerator, PropertyColumn, ColumnMetaData>, ColumnMetaData, int>, ColumnMetaData> SortedColumns               { [Pure] [MustUseReturnValue] get => Columns.OrderBy(static x => x.Index); }
     public string                                                                                                                         TableName                   { [Pure] get => TSelf.TableName; }
     public ValueEnumerable<TableMetaDataEnumerator, PropertyColumn>                                                                       Values                      => AsValueEnumerable();
     public ParameterSorter                                                                                                                Sorter                      { get; }
@@ -256,7 +254,7 @@ public class TableMetaData<TSelf> : ITableMetaData
 
             query.Append(',');
             query.Append('\n');
-            using ArrayBuffer<ColumnMetaData> foreignKeys                   = Instance.ForeignKeys;
+            using ArrayBuffer<ColumnMetaData> foreignKeys                   = Instance.ForeignKeys.ToArrayBuffer();
             int                               maxForeignKeyColumnNameLength = foreignKeys.Values.AsValueEnumerable().Max(static x => x.ColumnName.Length);
 
             foreach ( ColumnMetaData column in foreignKeys.Values )

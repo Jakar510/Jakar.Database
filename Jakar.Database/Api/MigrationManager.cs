@@ -2,13 +2,14 @@
 
 
 [SuppressMessage("ReSharper", "ClassWithVirtualMembersNeverInherited.Global")]
+[SuppressMessage("ReSharper", "UnusedMethodReturnValue.Global")]
 public class MigrationManager
 {
     public const       string                                              MIGRATIONS = "/_migrations";
     protected readonly Database                                            _db;
     private readonly   SortedDictionary<long, Func<long, MigrationRecord>> __migrationFactories = new(Comparer<long>.Default);
     protected          FrozenSet<MigrationRecord>?                         _records;
-    internal static    long                                                MigrationID => Interlocked.Add(ref field, 1);
+    public             long                                                LastMigrationID => __migrationFactories.Count;
 
 
     public FrozenSet<MigrationRecord> Records
@@ -27,68 +28,59 @@ public class MigrationManager
 
     public MigrationManager( Database db )
     {
-        _db                               = db;
-        __migrationFactories[MigrationID] = MigrationRecord.SetLastModified;
-        __migrationFactories[MigrationID] = MigrationRecord.FromEnum<MimeType>;
-        __migrationFactories[MigrationID] = MigrationRecord.FromEnum<SupportedLanguage>;
-        __migrationFactories[MigrationID] = MigrationRecord.FromEnum<SubscriptionStatus>;
-        __migrationFactories[MigrationID] = MigrationRecord.FromEnum<DeviceCategory>;
-        __migrationFactories[MigrationID] = MigrationRecord.FromEnum<DevicePlatform>;
-        __migrationFactories[MigrationID] = MigrationRecord.FromEnum<DeviceTypes>;
-        __migrationFactories[MigrationID] = MigrationRecord.FromEnum<DistanceUnit>;
-        __migrationFactories[MigrationID] = MigrationRecord.FromEnum<ProgrammingLanguage>;
-        __migrationFactories[MigrationID] = MigrationRecord.FromEnum<Status>;
+        _db                     = db;
+        __migrationFactories[0] = MigrationRecord.SetLastModified;
+        __migrationFactories[1] = MigrationRecord.FromEnum<MimeType>;
+        __migrationFactories[2] = MigrationRecord.FromEnum<SupportedLanguage>;
+        __migrationFactories[3] = MigrationRecord.FromEnum<SubscriptionStatus>;
+        __migrationFactories[4] = MigrationRecord.FromEnum<DeviceCategory>;
+        __migrationFactories[5] = MigrationRecord.FromEnum<DevicePlatform>;
+        __migrationFactories[6] = MigrationRecord.FromEnum<DeviceTypes>;
+        __migrationFactories[7] = MigrationRecord.FromEnum<DistanceUnit>;
+        __migrationFactories[8] = MigrationRecord.FromEnum<ProgrammingLanguage>;
+        __migrationFactories[9] = MigrationRecord.FromEnum<Status>;
 
-        Add<ResxRowRecord>();
-        Add<FileRecord>();
-        Add<UserRecord>();
-        Add<RecoveryCodeRecord>();
-        Add<UserRecoveryCodeRecord>();
-        Add<RoleRecord>();
-        Add<UserRoleRecord>();
-        Add<GroupRecord>();
-        Add<UserGroupRecord>();
-        Add<AddressRecord>();
-        Add<UserAddressRecord>();
+
+        Add(10, ResxRowRecord.MetaData.CreateTable);
+        Add(11, FileRecord.MetaData.CreateTable);
+        Add(12, UserRecord.MetaData.CreateTable);
+        Add(13, RecoveryCodeRecord.MetaData.CreateTable);
+        Add(14, UserRecoveryCodeRecord.MetaData.CreateTable);
+        Add(15, RoleRecord.MetaData.CreateTable);
+        Add(16, UserRoleRecord.MetaData.CreateTable);
+        Add(17, GroupRecord.MetaData.CreateTable);
+        Add(18, UserGroupRecord.MetaData.CreateTable);
+        Add(19, AddressRecord.MetaData.CreateTable);
+        Add(20, UserAddressRecord.MetaData.CreateTable);
+
+
+        Add(ResxRowRecord.MetaData.IndexedColumns.Union(FileRecord.MetaData.IndexedColumns)
+                         .Union(UserRecord.MetaData.IndexedColumns)
+                         .Union(RecoveryCodeRecord.MetaData.IndexedColumns)
+                         .Union(UserRecoveryCodeRecord.MetaData.IndexedColumns)
+                         .Union(RoleRecord.MetaData.IndexedColumns)
+                         .Union(UserRoleRecord.MetaData.IndexedColumns)
+                         .Union(GroupRecord.MetaData.IndexedColumns)
+                         .Union(UserGroupRecord.MetaData.IndexedColumns)
+                         .Union(AddressRecord.MetaData.IndexedColumns)
+                         .Union(UserAddressRecord.MetaData.IndexedColumns));
     }
 
 
-    public MigrationManager Add<TSelf>()
-        where TSelf : TableRecord<TSelf>, ITableRecord<TSelf> => Add(TSelf.MetaData);
-    public MigrationManager Add( ITableMetaData data ) => Add(data.CreateTable).Add(data.IndexedColumns);
-    public MigrationManager Add( [HandlesResourceDisposal] in PooledArray<Func<long, MigrationRecord>> funcs )
-    {
-        using ( funcs ) { Add(funcs.Span); }
-
-        return this;
-    }
-    public MigrationManager Add( params ReadOnlySpan<Func<long, MigrationRecord>> span )
-    {
-        Interlocked.Exchange(ref _records, null);
-        foreach ( Func<long, MigrationRecord> func in span ) { AddInternal(func); }
-
-        return this;
-    }
-    public MigrationManager Add( Func<long, MigrationRecord> func )
-    {
-        Interlocked.Exchange(ref _records, null);
-        return AddInternal(func);
-    }
     public MigrationManager Add<TEnumerator>( ValueEnumerable<TEnumerator, Func<long, MigrationRecord>> enumerable )
         where TEnumerator : struct, IValueEnumerator<Func<long, MigrationRecord>>, allows ref struct
     {
         Interlocked.Exchange(ref _records, null);
-        foreach ( Func<long, MigrationRecord> func in enumerable ) { AddInternal(func); }
+        foreach ( Func<long, MigrationRecord> func in enumerable ) { Add(LastMigrationID, func); }
 
         return this;
     }
-
-
-    protected MigrationManager AddInternal( Func<long, MigrationRecord> func )
+    public MigrationManager Add( long migrationID, Func<long, MigrationRecord> func )
     {
+        Interlocked.Exchange(ref _records, null);
         if ( __migrationFactories.Values.Contains(func) ) { throw new InvalidOperationException("migration factory method has already been added"); }
 
-        __migrationFactories.Add(MigrationID, func);
+        __migrationFactories.Add(migrationID, func);
         return this;
     }
 
@@ -136,12 +128,16 @@ public class MigrationManager
 
         try
         {
-            ImmutableArray<MigrationRecord> applied = await AllMigrations(context, token);
-            HashSet<MigrationRecord>        pending = new(Records);
-            pending.ExceptWith(applied);
+            ImmutableArray<MigrationRecord> applied    = await AllMigrations(context, token);
+            HashSet<long>                   appliedIds = applied.Select(x => x.MigrationID).ToHashSet();
 
             // ReSharper disable once LoopCanBeConvertedToQuery
-            foreach ( MigrationRecord record in pending.OrderBy(static x => x.MigrationID) ) { await Apply(context, record, token); }
+            foreach ( MigrationRecord record in Records.OrderBy(static x => x.MigrationID) )
+            {
+                if ( appliedIds.Contains(record.MigrationID) ) { continue; }
+
+                await Apply(context, record, token);
+            }
 
             await context.CommitAsync(token);
         }
