@@ -160,6 +160,18 @@ public readonly struct CommandParameters() : IEquatable<CommandParameters>
         AddInternal(in parameter);
         return this;
     }
+    public CommandParameters Add( string propertyName, string? value, [CallerArgumentExpression(nameof(value))] string parameterName = EMPTY, ParameterDirection direction = ParameterDirection.Input, DataRowVersion sourceVersion = DataRowVersion.Default )
+    {
+        SqlParameter parameter = Table[propertyName].ToParameter(value, parameterName, direction, sourceVersion);
+        AddInternal(in parameter);
+        return this;
+    }
+    public CommandParameters Add( string propertyName, UserRights? value, [CallerArgumentExpression(nameof(value))] string parameterName = EMPTY, ParameterDirection direction = ParameterDirection.Input, DataRowVersion sourceVersion = DataRowVersion.Default )
+    {
+        SqlParameter parameter = Table[propertyName].ToParameter(value?.Value, parameterName, direction, sourceVersion);
+        AddInternal(in parameter);
+        return this;
+    }
     public CommandParameters Add<T>( string propertyName, T value, [CallerArgumentExpression(nameof(value))] string parameterName = EMPTY, ParameterDirection direction = ParameterDirection.Input, DataRowVersion sourceVersion = DataRowVersion.Default )
         where T : unmanaged, Enum
     {
