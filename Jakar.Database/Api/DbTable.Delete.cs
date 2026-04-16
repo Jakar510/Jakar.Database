@@ -45,7 +45,7 @@ public partial class DbTable<TSelf>
             await using DbCommand cmd = command.ToCommand(context);
             await cmd.ExecuteScalarAsync(token);
         }
-        catch ( Exception e ) { throw new DbSqlException(command.SQL, e, command.Parameters); }
+        catch ( Exception e ) { throw new DbSqlException(command, e); }
     }
     public async ValueTask Delete( DbConnectionContext context, CommandParameters parameters, CancellationToken token )
     {

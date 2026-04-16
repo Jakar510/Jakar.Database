@@ -472,7 +472,8 @@ public readonly ref struct SqlInterpolatedStringHandler<TSelf>( int literalLengt
 
     public (string SQL, ImmutableArray<SqlParameter> Parameters) Build() => new(ToString(), [..Parameters.Values]);
 
-    public SqlCommand ToSqlCommand( CommandType? commandType = null, CommandFlags flags = CommandFlags.None ) => SqlCommand.Create(ToString(), Parameters, commandType, flags);
+
+    public SqlCommand ToSqlCommand( in CommandType commandType = CommandType.Text ) => SqlCommand.Create(ToString(), Parameters, in commandType);
 
 
     public static void ParseFormat( ref string? format, out ushort indentLevel )

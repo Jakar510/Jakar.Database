@@ -23,7 +23,7 @@ public partial class DbTable<TSelf>
             ErrorOrResult<TSelf>     record = await reader.SingleAsync<TSelf>(token);
             return record;
         }
-        catch ( Exception e ) { throw new DbSqlException(command.SQL, e, command.Parameters); }
+        catch ( Exception e ) { throw new DbSqlException(command, e); }
     }
 
 
@@ -40,7 +40,7 @@ public partial class DbTable<TSelf>
 
             return pairs;
         }
-        catch ( Exception e ) { throw new DbSqlException(command.SQL, e, command.Parameters); }
+        catch ( Exception e ) { throw new DbSqlException(command, e); }
     }
 
 
@@ -57,6 +57,6 @@ public partial class DbTable<TSelf>
 
             return id;
         }
-        catch ( Exception e ) { throw new DbSqlException(command.SQL, e, command.Parameters); }
+        catch ( Exception e ) { throw new DbSqlException(command, e); }
     }
 }

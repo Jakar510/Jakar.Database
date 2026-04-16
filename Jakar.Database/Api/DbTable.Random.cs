@@ -16,7 +16,7 @@ public partial class DbTable<TSelf>
         SqlCommand command = SqlCommand.GetRandom<TSelf>();
 
         try { return await context.FirstAsync<TSelf>(command, token); }
-        catch ( Exception e ) { throw new DbSqlException(command.SQL, e, command.Parameters); }
+        catch ( Exception e ) { throw new DbSqlException(command, e); }
     }
 
 

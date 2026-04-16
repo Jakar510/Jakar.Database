@@ -32,14 +32,20 @@ public class DbSqlException( string sql, Exception? inner = null, CommandParamet
             else
             {
                 using ParameterNames buffer = dynamicParameters.Value.ParameterNames;
-                parameters = string.Join(",\n        ", buffer.Span);
+
+                parameters = buffer.Span.Length > 0
+                                 ? string.Join(", ", buffer.Span)
+                                 : "--NONE--";
             }
 
             if ( dynamicParameters.Value.Count == 0 ) { extrasParameters = "NONE"; }
             else
             {
                 using ExtraParameterNames buffer = dynamicParameters.Value.GroupParameterNames;
-                extrasParameters = string.Join(",\n        ", buffer.Span);
+
+                extrasParameters = buffer.Span.Length > 0
+                                       ? string.Join(", ", buffer.Span)
+                                       : "--NONE--";
             }
         }
 
@@ -56,7 +62,7 @@ public class DbSqlException( string sql, Exception? inner = null, CommandParamet
 
                     Grouped Parameters:
                         {extrasParameters}
+                        
                 """;
     }
 }
- 

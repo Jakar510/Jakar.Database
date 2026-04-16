@@ -76,7 +76,7 @@ public partial class DbTable<TSelf>
                            ? Error.NotFound(command.SQL)
                            : result;
             }
-            catch ( Exception e ) { throw new DbSqlException(command.SQL, e, command.Parameters); }
+            catch ( Exception e ) { throw new DbSqlException(command, e); }
         }
     }
 
@@ -104,6 +104,6 @@ public partial class DbTable<TSelf>
                        ? Error.NotFound(command.SQL)
                        : result;
         }
-        catch ( Exception e ) { throw new DbSqlException(command.SQL, e, command.Parameters); }
+        catch ( Exception e ) { throw new DbSqlException(command, e); }
     }
 }

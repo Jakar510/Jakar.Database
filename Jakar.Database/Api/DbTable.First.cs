@@ -22,7 +22,7 @@ public partial class DbTable<TSelf>
             ErrorOrResult<TSelf>     record = await reader.FirstAsync<TSelf>(token);
             return record;
         }
-        catch ( Exception e ) { throw new DbSqlException(command.SQL, e, command.Parameters); }
+        catch ( Exception e ) { throw new DbSqlException(command, e); }
     }
     public virtual async ValueTask<ErrorOrResult<TSelf>> FirstOrDefault( DbConnectionContext context, CancellationToken token = default )
     {
@@ -35,6 +35,6 @@ public partial class DbTable<TSelf>
             ErrorOrResult<TSelf>     record = await reader.FirstOrDefaultAsync<TSelf>(token);
             return record;
         }
-        catch ( Exception e ) { throw new DbSqlException(command.SQL, e, command.Parameters); }
+        catch ( Exception e ) { throw new DbSqlException(command, e); }
     }
 }

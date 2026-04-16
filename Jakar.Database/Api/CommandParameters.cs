@@ -12,9 +12,10 @@ public readonly struct CommandParameters() : IEquatable<CommandParameters>
 {
     // internal readonly List<SqlParameter>                    parameters = [];
     // internal readonly List<ImmutableArray<SqlParameter>>    Extras     = [];
-    private readonly List<SqlParameter>                 __parameters = [];
-    private readonly List<ImmutableArray<SqlParameter>> __groups     = [];
-    private readonly UInt128                            __id         = new((ulong)Random.Shared.NextInt64(), (ulong)Random.Shared.NextInt64());
+    private readonly       List<SqlParameter>                 __parameters = [];
+    private readonly       List<ImmutableArray<SqlParameter>> __groups     = [];
+    private readonly       UInt128                            __id         = new((ulong)Random.Shared.NextInt64(), (ulong)Random.Shared.NextInt64());
+    public static readonly CommandParameters                  Empty        = new() { Table = null! };
 
 
     public required ITableMetaData Table
@@ -23,14 +24,14 @@ public readonly struct CommandParameters() : IEquatable<CommandParameters>
         init
         {
             field = value;
-            __parameters.EnsureCapacity(value.ColumnCount);
+            __parameters.EnsureCapacity(value?.ColumnCount ?? 0);
         }
     }
     private List<SqlParameter> __Params
     {
         get
         {
-            __parameters.Sort(Table.Sorter);
+            __parameters.Sort(Table.Sorter ?? Comparer<SqlParameter>.Default);
             return __parameters;
         }
     }

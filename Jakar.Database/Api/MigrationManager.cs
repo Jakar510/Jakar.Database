@@ -1,4 +1,8 @@
-﻿namespace Jakar.Database;
+﻿using ILogger = Microsoft.Extensions.Logging.ILogger;
+
+
+
+namespace Jakar.Database;
 
 
 [SuppressMessage("ReSharper", "ClassWithVirtualMembersNeverInherited.Global")]
@@ -118,7 +122,7 @@ public class MigrationManager
     }
 
 
-    public async ValueTask ApplyMigrations( CancellationToken token = default )
+    public async ValueTask ApplyMigrations( ILogger logger, CancellationToken token = default )
     {
         await using DbConnectionContext context = await _db.ConnectAsync(token);
 
@@ -129,22 +133,26 @@ public class MigrationManager
         try
         {
             ImmutableArray<MigrationRecord> applied    = await AllMigrations(context, token);
-            HashSet<long>                   appliedIds = applied.Select(x => x.MigrationID).ToHashSet();
+            HashSet<long>                   appliedIds = applied.Select(static x => x.MigrationID).ToHashSet();
+            FrozenSet<MigrationRecord>      records    = Records;
 
-            // ReSharper disable once LoopCanBeConvertedToQuery
-            foreach ( MigrationRecord record in Records.OrderBy(static x => x.MigrationID) )
+            foreach ( MigrationRecord record in records.OrderBy(static x => x.MigrationID) )
             {
-                if ( appliedIds.Contains(record.MigrationID) ) { continue; }
+                if ( appliedIds.Contains(record.MigrationID) )
+                {
+                    logger.LogDebug("Migration {MigrationID} has already been applied; skipping.", record.MigrationID);
+                    continue;
+                }
 
                 await Apply(context, record, token);
             }
 
             await context.CommitAsync(token);
         }
-        catch ( Exception )
+        catch ( Exception e )
         {
+            logger.LogCritical(e, "{Source} has failed: {Message}", nameof(ApplyMigrations), e.Message);
             await context.RollbackAsync(token);
-            throw;
         }
     }
     public virtual async Task Apply( DbConnectionContext context, MigrationRecord self, CancellationToken token )
@@ -157,10 +165,10 @@ public class MigrationManager
         }
         catch ( Exception e ) { throw new DbSqlException(self.SQL, e); }
 
-        SqlCommand migrationRecord = self.ApplySql();
+        SqlCommand applySql = self.ApplySql();
 
-        try { await context.ExecuteNonQueryAsync(migrationRecord, token); }
-        catch ( Exception e ) { throw new DbSqlException(migrationRecord, e) { RollbackID = self.RollbackID }; }
+        try { await context.ExecuteNonQueryAsync(applySql, token); }
+        catch ( Exception e ) { throw new DbSqlException(applySql, e) { RollbackID = self.RollbackID }; }
     }
 
 

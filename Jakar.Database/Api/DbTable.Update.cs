@@ -38,6 +38,6 @@ public partial class DbTable<TSelf>
             await using DbCommand cmd = command.ToCommand(context);
             await cmd.ExecuteNonQueryAsync(token);
         }
-        catch ( Exception e ) { throw new DbSqlException(command.SQL, e, command.Parameters); }
+        catch ( Exception e ) { throw new DbSqlException(command, e); }
     }
 }

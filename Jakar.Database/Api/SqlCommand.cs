@@ -10,24 +10,22 @@ namespace Jakar.Database;
 
 public readonly struct SqlCommand : IEquatable<SqlCommand>
 {
-    public const    string            SPACER = ",\n      ";
-    public readonly string            SQL;
-    public readonly CommandParameters Parameters;
-    public readonly CommandType?      CommandType;
-    public readonly CommandFlags      Flags;
+    public const    string             SPACER = ",\n      ";
+    public readonly string             SQL;
+    public readonly CommandParameters? Parameters;
+    public readonly CommandType        CommandType;
 
-
-    private SqlCommand( string sql, CommandParameters parameters, CommandType? commandType = null, CommandFlags flags = CommandFlags.None )
+    private SqlCommand( ref readonly string sql, ref readonly CommandParameters? parameters, ref readonly CommandType commandType )
     {
         SQL         = sql;
         Parameters  = parameters;
         CommandType = commandType;
-        Flags       = flags;
     }
 
 
-    public static implicit operator string( SqlCommand            sql ) => sql.SQL;
-    public static implicit operator CommandParameters( SqlCommand sql ) => sql.Parameters;
+    public static implicit operator SqlCommand( string             sql ) => Create(sql);
+    public static implicit operator string( SqlCommand             sql ) => sql.SQL;
+    public static implicit operator CommandParameters?( SqlCommand sql ) => sql.Parameters;
 
 
     [Pure] [MustDisposeResource] public DbCommand ToCommand( DbConnectionContext context )
@@ -46,12 +44,14 @@ public readonly struct SqlCommand : IEquatable<SqlCommand>
                                                       {
                                                           Connection     = connection,
                                                           CommandText    = SQL,
-                                                          CommandType    = CommandType ?? System.Data.CommandType.Text,
+                                                          CommandType    = CommandType,
                                                           Transaction    = transaction,
                                                           CommandTimeout = 30
                                                       };
 
-        foreach ( ref readonly SqlParameter parameter in Parameters.Parameters ) { command.Parameters.Add(parameter.ToSqlParameter()); }
+        if ( Parameters is null ) { return command; }
+
+        foreach ( ref readonly SqlParameter parameter in Parameters.Value.Parameters ) { command.Parameters.Add(parameter.ToSqlParameter()); }
 
         return command;
     }
@@ -63,13 +63,15 @@ public readonly struct SqlCommand : IEquatable<SqlCommand>
                                 {
                                     Connection               = connection,
                                     CommandText              = SQL,
-                                    CommandType              = CommandType ?? System.Data.CommandType.Text,
+                                    CommandType              = CommandType,
                                     Transaction              = transaction,
                                     CommandTimeout           = 30,
                                     AllResultTypesAreUnknown = false
                                 };
 
-        foreach ( ref readonly SqlParameter parameter in Parameters.Parameters ) { command.Parameters.Add(parameter.ToPostgresParameter()); }
+        if ( Parameters is null ) { return command; }
+
+        foreach ( ref readonly SqlParameter parameter in Parameters.Value.Parameters ) { command.Parameters.Add(parameter.ToPostgresParameter()); }
 
         return command;
     }
@@ -78,15 +80,15 @@ public readonly struct SqlCommand : IEquatable<SqlCommand>
     public override string ToString() => DbSqlException.GetMessage(nameof(SqlCommand), SQL, Parameters);
 
 
-    public static SqlCommand Create( string sql, in CommandParameters parameters, CommandType? commandType = null, CommandFlags flags = CommandFlags.None ) => new(sql, parameters, commandType, flags);
+    public static SqlCommand Create( string sql, in CommandParameters? parameters = null, in CommandType commandType = CommandType.Text ) => new(in sql, in parameters, in commandType);
 
 
     public static SqlCommand Create<TSelf>( string sql, params ReadOnlySpan<SqlParameter> parameters )
-        where TSelf : TableRecord<TSelf>, ITableRecord<TSelf> => new(sql, CommandParameters.Create<TSelf>(parameters));
+        where TSelf : TableRecord<TSelf>, ITableRecord<TSelf> => Create(sql, CommandParameters.Create<TSelf>(parameters));
 
 
-    public static SqlCommand Parse<TSelf>( ref SqlInterpolatedStringHandler<TSelf> handler, CommandType? commandType = null, CommandFlags flags = CommandFlags.None )
-        where TSelf : TableRecord<TSelf>, ITableRecord<TSelf> => handler.ToSqlCommand(commandType, flags);
+    public static SqlCommand Parse<TSelf>( ref SqlInterpolatedStringHandler<TSelf> handler, in CommandType commandType = CommandType.Text )
+        where TSelf : TableRecord<TSelf>, ITableRecord<TSelf> => handler.ToSqlCommand(commandType);
 
 
     public static SqlCommand GetRandom<TSelf>( int count = 1 )
@@ -289,11 +291,13 @@ public readonly struct SqlCommand : IEquatable<SqlCommand>
 
         return Parse<TSelf>($"""
                              INSERT INTO {TSelf.TableName} 
-                             (
-                             {TSelf.MetaData.ColumnNames(1)}
-                             )
+                                 (
+                             {TSelf.MetaData.ColumnNames(2)}
+                                 )
                              VALUES
-                             {parameters.VariableNames(1)}
+                                 (
+                             {parameters.VariableNames(2)}
+                                 )
 
                              RETURNING {nameof(IUniqueID.ID)};
                              """);
@@ -305,11 +309,13 @@ public readonly struct SqlCommand : IEquatable<SqlCommand>
 
         return Parse<TSelf>($"""
                              INSERT INTO {TSelf.TableName} 
-                             (
-                             {TSelf.MetaData.ColumnNames(1)}                 
-                             )
+                                 (
+                             {TSelf.MetaData.ColumnNames(2)}                 
+                                 )
                              VALUES
-                             {parameters.VariableNames(1)}
+                                 (
+                             {parameters.VariableNames(2)}
+                                 )
 
                              RETURNING {nameof(IUniqueID.ID)};
                              """);
@@ -320,12 +326,14 @@ public readonly struct SqlCommand : IEquatable<SqlCommand>
         CommandParameters parameters = CommandParameters.Create(records);
 
         return Parse<TSelf>($"""
-                             INSERT INTO {TSelf.TableName} 
-                             (
-                             {TSelf.MetaData.ColumnNames(1)}
-                             )
+                             INSERT INTO {TSelf.TableName}
+                                 (
+                             {TSelf.MetaData.ColumnNames(2)}
+                                 )
                              VALUES
-                             {parameters.VariableNames(1)}
+                                 (
+                             {parameters.VariableNames(2)}
+                                 )
 
                              RETURNING {nameof(IUniqueID.ID)};
                              """);
@@ -342,7 +350,7 @@ public readonly struct SqlCommand : IEquatable<SqlCommand>
                              SET 
                              {parameters.KeyValuePairs(1, "AND")}
                              WHERE 
-                             {nameof(IUniqueID.ID)} = @{nameof(IUniqueID.ID)};
+                                {nameof(IUniqueID.ID)} = @{nameof(IUniqueID.ID)};
                              """);
     }
     public static SqlCommand GetTryInsert<TSelf>( TSelf record, in CommandParameters parameters, string separator = "AND" )
@@ -422,7 +430,7 @@ public readonly struct SqlCommand : IEquatable<SqlCommand>
     }
 
 
-    public          bool Equals( SqlCommand other ) => string.Equals(SQL, other.SQL, StringComparison.InvariantCultureIgnoreCase) && Parameters.Equals(other.Parameters) && CommandType == other.CommandType && Flags == other.Flags;
+    public          bool Equals( SqlCommand other ) => string.Equals(SQL, other.SQL, StringComparison.InvariantCultureIgnoreCase) && Parameters.Equals(other.Parameters) && CommandType == other.CommandType;
     public override bool Equals( object?    obj )   => obj is SqlCommand other                                                    && Equals(other);
     public override int GetHashCode()
     {
@@ -430,7 +438,6 @@ public readonly struct SqlCommand : IEquatable<SqlCommand>
         hashCode.Add(SQL, StringComparer.InvariantCultureIgnoreCase);
         hashCode.Add(Parameters);
         hashCode.Add(CommandType);
-        hashCode.Add(Flags);
         return hashCode.ToHashCode();
     }
 

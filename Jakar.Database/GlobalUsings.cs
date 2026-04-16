@@ -110,7 +110,6 @@ global using ZXing;
 global using ZXing.QrCode;
 global using ZXing.QrCode.Internal;
 global using static Jakar.Extensions.BaseRecord;
-global using CommandFlags = Dapper.CommandFlags;
 global using Enum = System.Enum;
 global using FormatException = System.FormatException;
 global using IDataProtector = Jakar.Extensions.IDataProtector;

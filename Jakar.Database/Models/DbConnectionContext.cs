@@ -148,9 +148,12 @@ public class DbConnectionContext : IAsyncDisposable
     public virtual async ValueTask<T?> ExecuteScalarAsync<T>( SqlCommand sql, CancellationToken token )
     {
         await using DbCommand command = sql.ToCommand(this);
+        object?               value   = await command.ExecuteScalarAsync(token).ConfigureAwait(false);
 
-        return await command.ExecuteScalarAsync(token).ConfigureAwait(false) is T result
-                   ? result
+        Console.WriteLine($"ExecuteScalarAsync value: {value}");
+
+        return value is T result
+                    ? result
                    : default;
     }
     public virtual async IAsyncEnumerable<TSelf> ExecuteAsync<TSelf>( SqlCommand sql, [EnumeratorCancellation] CancellationToken token )
@@ -233,13 +236,13 @@ public class DbConnectionContext : IAsyncDisposable
         where TSelf : TableRecord<TSelf>, ITableRecord<TSelf>
     {
         try { return await ExecuteAsync<TSelf>(command, token).FirstAsync(token); }
-        catch ( Exception e ) { throw new DbSqlException(command.SQL, e, command.Parameters); }
+        catch ( Exception e ) { throw new DbSqlException(command, e); }
     }
     public virtual async ValueTask<TSelf?> FirstOrDefaultAsync<TSelf>( SqlCommand command, [EnumeratorCancellation] CancellationToken token = default )
         where TSelf : TableRecord<TSelf>, ITableRecord<TSelf>
     {
         try { return await ExecuteAsync<TSelf>(command, token).FirstOrDefaultAsync(token); }
-        catch ( Exception e ) { throw new DbSqlException(command.SQL, e, command.Parameters); }
+        catch ( Exception e ) { throw new DbSqlException(command, e); }
     }
 
 
@@ -247,13 +250,13 @@ public class DbConnectionContext : IAsyncDisposable
         where TSelf : TableRecord<TSelf>, ITableRecord<TSelf>
     {
         try { return await ExecuteAsync<TSelf>(command, token).SingleAsync(token); }
-        catch ( Exception e ) { throw new DbSqlException(command.SQL, e, command.Parameters); }
+        catch ( Exception e ) { throw new DbSqlException(command, e); }
     }
     public virtual async ValueTask<TSelf?> SingleOrDefaultAsync<TSelf>( SqlCommand command, [EnumeratorCancellation] CancellationToken token = default )
         where TSelf : TableRecord<TSelf>, ITableRecord<TSelf>
     {
         try { return await ExecuteAsync<TSelf>(command, token).SingleOrDefaultAsync(token); }
-        catch ( Exception e ) { throw new DbSqlException(command.SQL, e, command.Parameters); }
+        catch ( Exception e ) { throw new DbSqlException(command, e); }
     }
 
 
@@ -261,13 +264,13 @@ public class DbConnectionContext : IAsyncDisposable
         where TSelf : TableRecord<TSelf>, ITableRecord<TSelf>
     {
         try { return await ExecuteAsync<TSelf>(command, token).LastAsync(token); }
-        catch ( Exception e ) { throw new DbSqlException(command.SQL, e, command.Parameters); }
+        catch ( Exception e ) { throw new DbSqlException(command, e); }
     }
     public virtual async ValueTask<TSelf?> LastOrDefaultAsync<TSelf>( SqlCommand command, [EnumeratorCancellation] CancellationToken token = default )
         where TSelf : TableRecord<TSelf>, ITableRecord<TSelf>
     {
         try { return await ExecuteAsync<TSelf>(command, token).LastOrDefaultAsync(token); }
-        catch ( Exception e ) { throw new DbSqlException(command.SQL, e, command.Parameters); }
+        catch ( Exception e ) { throw new DbSqlException(command, e); }
     }
 
 

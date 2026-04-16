@@ -59,16 +59,10 @@ public partial class DbTable<TSelf>
 
         try
         {
-            await using DbCommand    cmd    = command.ToCommand(context);
-            await using DbDataReader reader = await cmd.ExecuteReaderAsync(token);
-            RecordID<TSelf>          id;
-
-            if ( await reader.ReadAsync(token) ) { id = RecordID<TSelf>.Create(reader.GetGuid(0)); }
-            else { throw new InvalidOperationException($"Insert command did not return the new ID for type {typeof(TSelf).FullName}"); }
-
+            RecordID<TSelf> id = new(await context.ExecuteScalarAsync<Guid>(command, token));
             return record.With(id);
         }
-        catch ( Exception e ) { throw new DbSqlException(command.SQL, e, command.Parameters); }
+        catch ( Exception e ) { throw new DbSqlException(command, e); }
     }
 
     public virtual async ValueTask<ErrorOrResult<TSelf>> TryInsert( DbConnectionContext context, TSelf record, CommandParameters parameters, CancellationToken token = default )
@@ -77,16 +71,10 @@ public partial class DbTable<TSelf>
 
         try
         {
-            await using DbCommand    cmd    = command.ToCommand(context);
-            await using DbDataReader reader = await cmd.ExecuteReaderAsync(token);
-            RecordID<TSelf>          id;
-
-            if ( await reader.ReadAsync(token) ) { id = RecordID<TSelf>.Create(reader.GetGuid(0)); }
-            else { throw new InvalidOperationException($"Insert command did not return the new ID for type {typeof(TSelf).FullName}"); }
-
+            RecordID<TSelf> id = new(await context.ExecuteScalarAsync<Guid>(command, token));
             return record.With(id);
         }
-        catch ( Exception e ) { throw new DbSqlException(command.SQL, e, command.Parameters); }
+        catch ( Exception e ) { throw new DbSqlException(command, e); }
     }
 
 
@@ -96,15 +84,9 @@ public partial class DbTable<TSelf>
 
         try
         {
-            await using DbCommand    cmd    = command.ToCommand(context);
-            await using DbDataReader reader = await cmd.ExecuteReaderAsync(token);
-            RecordID<TSelf>          id;
-
-            if ( await reader.ReadAsync(token) ) { id = RecordID<TSelf>.Create(reader.GetGuid(0)); }
-            else { throw new InvalidOperationException($"Insert command did not return the new ID for type {typeof(TSelf).FullName}"); }
-
+            RecordID<TSelf> id = new(await context.ExecuteScalarAsync<Guid>(command, token));
             return record.With(id);
         }
-        catch ( Exception e ) { throw new DbSqlException(command.SQL, e, command.Parameters); }
+        catch ( Exception e ) { throw new DbSqlException(command, e); }
     }
 }

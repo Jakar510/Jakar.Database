@@ -72,6 +72,6 @@ public partial class DbTable<TSelf> : IDbTable<TSelf>
             await using DbDataReader reader = await cmd.ExecuteReaderAsync(token);
             return await func(reader, token);
         }
-        catch ( Exception e ) { throw new DbSqlException(command.SQL, e, command.Parameters); }
+        catch ( Exception e ) { throw new DbSqlException(command, e); }
     }
 }

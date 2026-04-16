@@ -1,6 +1,10 @@
 ﻿// Jakar.Database :: Jakar.Database
 // 02/24/2026  08:41
 
+using ILogger = Microsoft.Extensions.Logging.ILogger;
+
+
+
 namespace Jakar.Database;
 
 
@@ -54,39 +58,39 @@ public static class MigrationExtensions
 
         public async ValueTask ApplyMigrations( CancellationToken token = default )
         {
-            await using AsyncServiceScope scope = self.Services.CreateAsyncScope();
-            Database                      db    = scope.ServiceProvider.GetRequiredService<Database>();
-            await db.MigrationManager.ApplyMigrations(token);
+            await using AsyncServiceScope scope  = self.Services.CreateAsyncScope();
+            Database                      db     = scope.ServiceProvider.GetRequiredService<Database>();
+            ILogger                       logger = scope.ServiceProvider.GetRequiredService<ILoggerFactory>().CreateLogger(nameof(ApplyMigrations));
+            await db.MigrationManager.ApplyMigrations(logger, token);
         }
 
-        public async Task RunWithMigrationsAsync( string[]? urls, Func<IServiceProvider, CancellationToken, ValueTask>? beforeRunHandler = null, string migrationsEndpoint = MigrationManager.MIGRATIONS, CancellationToken token = default )
-        {
-            self.TryUseMigrationsEndPoint(migrationsEndpoint);
-
-            try
-            {
-                self.InitializeLogging();
-                await self.ApplyMigrations(token);
-                if ( urls is not null ) { self.UseUrls(urls); }
-
-                if ( beforeRunHandler is not null )
-                {
-                    await using AsyncServiceScope scope = self.Services.CreateAsyncScope();
-                    await beforeRunHandler(scope.ServiceProvider, token);
-                }
-
-                await self.StartAsync(token).ConfigureAwait(false);
-
-                await self.WaitForShutdownAsync(token).ConfigureAwait(false);
-            }
-            finally { await self.DisposeAsync().ConfigureAwait(false); }
-        }
 
         public void TryUseMigrationsEndPoint( string endpoint = MigrationManager.MIGRATIONS )
         {
             if ( self.Environment.IsDevelopment() ) { self.UseMigrationsEndPoint(endpoint); }
         }
-
         public void UseMigrationsEndPoint( string endpoint = MigrationManager.MIGRATIONS ) => self.MapGet(endpoint, GetMigrationsAndRenderHtml);
+
+
+        public async Task RunWithMigrationsAsync( string[]? urls, Func<IServiceProvider, CancellationToken, ValueTask>? beforeRunHandler = null, string migrationsEndpoint = MigrationManager.MIGRATIONS, CancellationToken token = default )
+        {
+            self.TryUseMigrationsEndPoint(migrationsEndpoint);
+
+            self.InitializeLogging();
+
+            await self.ApplyMigrations(token);
+
+            if ( urls is not null ) { self.UseUrls(urls); }
+
+            if ( beforeRunHandler is not null )
+            {
+                await using AsyncServiceScope scope = self.Services.CreateAsyncScope();
+                await beforeRunHandler(scope.ServiceProvider, token);
+            }
+
+            await self.StartAsync(token).ConfigureAwait(false);
+
+            await self.WaitForShutdownAsync(token).ConfigureAwait(false);
+        }
     }
 }
