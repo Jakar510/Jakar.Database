@@ -9,8 +9,10 @@ namespace Jakar.Database;
 public sealed record UserRecoveryCodeRecord : Mapping<UserRecoveryCodeRecord, UserRecord, RecoveryCodeRecord>, ICreateMapping<UserRecoveryCodeRecord, UserRecord, RecoveryCodeRecord>
 {
     public const  string TABLE_NAME = "UserRecoveryCodes";
-    public static string TableName => TABLE_NAME;
 
+    // ReSharper disable once ReplaceWithFieldKeyword
+    private static readonly    SqlName __tableName = TABLE_NAME;
+    public static ref readonly SqlName TableName => ref __tableName;
 
     [ForeignKey<UserRecoveryCodeRecord, UserRecord>]         public override RecordID<UserRecord>         KeyID   { get; init; }
     [ForeignKey<UserRecoveryCodeRecord, RecoveryCodeRecord>] public override RecordID<RecoveryCodeRecord> ValueID { get; init; }

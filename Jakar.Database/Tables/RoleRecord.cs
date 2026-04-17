@@ -7,8 +7,10 @@ public sealed record RoleRecord : OwnedTableRecord<RoleRecord>, ITableRecord<Rol
 {
     public const string TABLE_NAME = "roles";
 
+    // ReSharper disable once ReplaceWithFieldKeyword
+    private static readonly    SqlName __tableName = TABLE_NAME;
+    public static ref readonly SqlName TableName => ref __tableName;
 
-    public static                                        string               TableName        => TABLE_NAME;
     [Fixed(CONCURRENCY_STAMP)]        public             string               ConcurrencyStamp { get; init; }
     [Fixed(NAME)] [Unique]            public             string               NameOfRole       { get; init; }
     [Fixed(NORMALIZED_NAME)] [Unique] public             string               NormalizedName   { get; init; }

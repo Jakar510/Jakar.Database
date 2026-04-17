@@ -9,8 +9,10 @@ namespace Jakar.Database;
 public sealed record UserRoleRecord : Mapping<UserRoleRecord, UserRecord, RoleRecord>, ICreateMapping<UserRoleRecord, UserRecord, RoleRecord>
 {
     public const  string TABLE_NAME = "user_roles";
-    public static string TableName => TABLE_NAME;
 
+    // ReSharper disable once ReplaceWithFieldKeyword
+    private static readonly    SqlName __tableName = TABLE_NAME;
+    public static ref readonly SqlName TableName => ref __tableName;
 
     [ForeignKey<UserRoleRecord, UserRecord>] public override RecordID<UserRecord> KeyID   { get; init; }
     [ForeignKey<UserRoleRecord, RoleRecord>] public override RecordID<RoleRecord> ValueID { get; init; }

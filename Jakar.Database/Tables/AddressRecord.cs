@@ -9,8 +9,10 @@ public sealed record AddressRecord : OwnedTableRecord<AddressRecord>, IAddress<A
 {
     public const string TABLE_NAME = "addresses";
 
+    // ReSharper disable once ReplaceWithFieldKeyword
+    private static readonly    SqlName __tableName = TABLE_NAME;
+    public static ref readonly SqlName TableName => ref __tableName;
 
-    public static                                                                                          string               TableName       => TABLE_NAME;
     [ProtectedPersonalData] [Indexed<AddressRecord>(nameof(Address))] [Fixed(4096)] public                 string?              Address         { get => field ??= GetAddress(); init; }
     [ProtectedPersonalData] [Indexed<AddressRecord>(nameof(City))] [Fixed(   512)]  public                 string               City            { get;                           init; } = EMPTY;
     [ProtectedPersonalData] [Indexed<AddressRecord>(nameof(Country))] [Fixed(512)]  public                 string               Country         { get;                           init; } = EMPTY;

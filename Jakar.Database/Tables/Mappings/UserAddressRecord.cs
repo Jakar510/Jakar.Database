@@ -10,8 +10,10 @@ namespace Jakar.Database;
 public sealed record UserAddressRecord : Mapping<UserAddressRecord, UserRecord, AddressRecord>, ICreateMapping<UserAddressRecord, UserRecord, AddressRecord>
 {
     public const  string TABLE_NAME = "user_adreesses";
-    public static string TableName => TABLE_NAME;
 
+    // ReSharper disable once ReplaceWithFieldKeyword
+    private static readonly    SqlName __tableName = TABLE_NAME;
+    public static ref readonly SqlName TableName => ref __tableName;
 
     [ForeignKey<UserAddressRecord, UserRecord>]    public override RecordID<UserRecord>    KeyID   { get; init; }
     [ForeignKey<UserAddressRecord, AddressRecord>] public override RecordID<AddressRecord> ValueID { get; init; }

@@ -6,10 +6,10 @@
 [SuppressMessage("ReSharper", "InconsistentNaming")]
 public sealed record UserRecord : PairRecord<UserRecord>, ITableRecord<UserRecord>, IUserModel, IUserSecurity, IUserDetails
 {
-    public const string TABLE_NAME = "users";
+    public const               string  TABLE_NAME = "users";
+    private static readonly    SqlName __sql_Name = TABLE_NAME;
+    public static ref readonly SqlName TableName => ref __sql_Name;
 
-
-    public static string                                              TableName           => TABLE_NAME;
     public        RecordID<UserRecord>?                               EscalateTo          { get; set; }
     Guid? IEscalateToUser<Guid>.                                      EscalateTo          => EscalateTo?.Value;
     Guid? IImageID<Guid>.                                             ImageID             => ImageID?.Value;

@@ -9,8 +9,10 @@ public sealed record GroupRecord : OwnedTableRecord<GroupRecord>, ITableRecord<G
     public const int    MAX_SIZE   = 1024;
     public const string TABLE_NAME = "groups";
 
+    // ReSharper disable once ReplaceWithFieldKeyword
+    private static readonly    SqlName __tableName = TABLE_NAME;
+    public static ref readonly SqlName TableName => ref __tableName;
 
-    public static string                                                       TableName      => TABLE_NAME;
     Guid? ICreatedByUser<Guid>.                                                CreatedBy      => UserID.Value;
     [Unique] [Fixed(MAX_SIZE)] public string                                   NameOfGroup    { get; init; }
     [Unique] [Fixed(MAX_SIZE)] public string?                                  NormalizedName { get; set; }

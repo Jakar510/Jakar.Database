@@ -8,7 +8,7 @@ public interface IDbTable : IConnectableDb
 {
     public ITableMetaData    MetaData  { [Pure] get; }
     FusionCacheEntryOptions? Options   { get; set; }
-    public string            TableName { [Pure] get; }
+    public SqlName           TableName { [Pure] get; }
 }
 
 

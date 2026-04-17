@@ -23,7 +23,15 @@ public class DbConnectionContext : IAsyncDisposable
     public virtual string?         ServerVersion => _connection?.ServerVersion;
     public virtual ConnectionState State         => _connection?.State ?? ConnectionState.Closed;
 
-    public virtual DbTransaction? Transaction { [HandlesResourceDisposal] get; protected set; }
+    public virtual DbTransaction? Transaction
+    {
+        [HandlesResourceDisposal] get;
+        protected set
+        {
+            field?.Dispose();
+            field = value;
+        }
+    }
 
     public virtual DatabaseType Type => _connection switch
                                         {
@@ -47,11 +55,11 @@ public class DbConnectionContext : IAsyncDisposable
     }
 
 
-    [MustDisposeResource] public static async ValueTask<DbConnectionContext> CreateAsync( Database database, CancellationToken token, IsolationLevel? traIsolationLevel = null )
+    [MustDisposeResource] public static async ValueTask<DbConnectionContext> CreateAsync( Database database, CancellationToken token, IsolationLevel? transactionIsolationLevel = null )
     {
         DbConnectionContext context = new(database);
         await context.EnsureConnection(token);
-        if ( traIsolationLevel.HasValue ) { await context.StartTransactionAsync(traIsolationLevel.Value, token); }
+        if ( transactionIsolationLevel.HasValue ) { await context.StartTransactionAsync(transactionIsolationLevel.Value, token); }
 
         return context;
     }
@@ -84,10 +92,10 @@ public class DbConnectionContext : IAsyncDisposable
 
         return connection;
     }
-    public virtual async ValueTask StartTransactionAsync( IsolationLevel level, CancellationToken token )
+    public virtual async ValueTask StartTransactionAsync( IsolationLevel transactionIsolationLevel, CancellationToken token )
     {
         DbConnection connection = await EnsureConnection(token);
-        Transaction ??= await connection.BeginTransactionAsync(level, token);
+        Transaction = await connection.BeginTransactionAsync(transactionIsolationLevel, token);
     }
 
 
@@ -103,7 +111,7 @@ public class DbConnectionContext : IAsyncDisposable
     }
     public virtual async ValueTask CommitAsync( CancellationToken token )
     {
-        if ( Transaction is not null ) { await Transaction.RollbackAsync(token); }
+        if ( Transaction is not null ) { await Transaction.CommitAsync(token); }
     }
     public virtual async ValueTask RollbackAsync( CancellationToken token )
     {
@@ -126,7 +134,7 @@ public class DbConnectionContext : IAsyncDisposable
         if ( Transaction is not null )
         {
             _rollbackIDs.Push(rollbackID);
-            await Transaction.RollbackAsync(rollbackID, token);
+            await Transaction.SaveAsync(rollbackID, token);
         }
     }
 
@@ -140,6 +148,14 @@ public class DbConnectionContext : IAsyncDisposable
 
 
     public virtual async ValueTask ExecuteNonQueryAsync( string sql, CommandParameters parameters, CancellationToken token ) => await ExecuteNonQueryAsync(SqlCommand.Create(sql, parameters), token);
+    public virtual async ValueTask ExecuteNonQueryAsync( string sql, CancellationToken token )
+    {
+        DbConnection          connection = await EnsureConnection(token);
+        await using DbCommand command    = connection.CreateCommand();
+        command.CommandText = sql;
+        command.CommandType = CommandType.Text;
+        await command.ExecuteNonQueryAsync(token);
+    }
     public virtual async ValueTask ExecuteNonQueryAsync( SqlCommand sql, CancellationToken token )
     {
         await using DbCommand command = sql.ToCommand(this);
@@ -153,7 +169,7 @@ public class DbConnectionContext : IAsyncDisposable
         Console.WriteLine($"ExecuteScalarAsync value: {value}");
 
         return value is T result
-                    ? result
+                   ? result
                    : default;
     }
     public virtual async IAsyncEnumerable<TSelf> ExecuteAsync<TSelf>( SqlCommand sql, [EnumeratorCancellation] CancellationToken token )
@@ -218,7 +234,7 @@ public class DbConnectionContext : IAsyncDisposable
 
         DbParameter p = cmd.CreateParameter();
         p.ParameterName = "@name";
-        p.Value         = TSelf.TableName;
+        p.Value         = TSelf.TableName.Value;
         cmd.Parameters.Add(p);
 
         object? result = await cmd.ExecuteScalarAsync(token);

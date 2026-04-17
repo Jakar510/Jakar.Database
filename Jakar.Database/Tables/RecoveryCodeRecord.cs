@@ -8,17 +8,18 @@ namespace Jakar.Database;
 [Table(TABLE_NAME)]
 public sealed record RecoveryCodeRecord : OwnedTableRecord<RecoveryCodeRecord>, ITableRecord<RecoveryCodeRecord>
 {
-    public const            string                             TABLE_NAME = "recovery_codes";
-    private static readonly PasswordHasher<RecoveryCodeRecord> __hasher   = new();
+    public const string TABLE_NAME = "recovery_codes";
 
+    // ReSharper disable once ReplaceWithFieldKeyword
+    private static readonly    SqlName __tableName = TABLE_NAME;
+    public static ref readonly SqlName TableName => ref __tableName;
 
-    public static                                                string               TableName => TABLE_NAME;
-    [Unique]                                     public          string               Code      { get; init; }
-    [ForeignKey<RecoveryCodeRecord, UserRecord>] public override RecordID<UserRecord> UserID    { get; init; }
+    [Unique]                                     public          string               Code   { get; init; }
+    [ForeignKey<RecoveryCodeRecord, UserRecord>] public override RecordID<UserRecord> UserID { get; init; }
 
 
     public RecoveryCodeRecord( string code, UserRecord                   user ) : this(code, RecordID<RecoveryCodeRecord>.New(), user.ID, DateTimeOffset.UtcNow) { }
-    public RecoveryCodeRecord( string code, RecordID<RecoveryCodeRecord> ID, RecordID<UserRecord> UserID, DateTimeOffset DateCreated, DateTimeOffset? LastModified = null ) : base(in UserID, in ID, in DateCreated, in LastModified) => Code = __hasher.HashPassword(this, code);
+    public RecoveryCodeRecord( string code, RecordID<RecoveryCodeRecord> ID, RecordID<UserRecord> UserID, DateTimeOffset DateCreated, DateTimeOffset? LastModified = null ) : base(in UserID, in ID, in DateCreated, in LastModified) => Code = Hasher.HashPassword(this, code);
 
 
     public override ValueTask Export( NpgsqlBinaryExporter exporter, CancellationToken token ) => default;
@@ -135,7 +136,7 @@ public sealed record RecoveryCodeRecord : OwnedTableRecord<RecoveryCodeRecord>, 
 
     [Pure] public static bool IsValid( string code, RecoveryCodeRecord record )
     {
-        PasswordVerificationResult result = __hasher.VerifyHashedPassword(record, record.Code, code);
+        PasswordVerificationResult result = Hasher.VerifyHashedPassword(record, record.Code, code);
 
         return result switch
                {
@@ -146,7 +147,7 @@ public sealed record RecoveryCodeRecord : OwnedTableRecord<RecoveryCodeRecord>, 
     }
     [Pure] public static bool IsValid( string code, ref RecoveryCodeRecord record )
     {
-        PasswordVerificationResult result = __hasher.VerifyHashedPassword(record, record.Code, code);
+        PasswordVerificationResult result = Hasher.VerifyHashedPassword(record, record.Code, code);
 
         switch ( result )
         {
@@ -157,7 +158,7 @@ public sealed record RecoveryCodeRecord : OwnedTableRecord<RecoveryCodeRecord>, 
                 return true;
 
             case PasswordVerificationResult.SuccessRehashNeeded:
-                record = record with { Code = __hasher.HashPassword(record, code) };
+                record = record with { Code = Hasher.HashPassword(record, code) };
 
                 return true;
 

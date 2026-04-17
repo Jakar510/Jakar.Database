@@ -11,7 +11,7 @@ namespace Jakar.Database;
 [SuppressMessage("ReSharper", "InconsistentNaming")]
 public interface ITableMetaData : IDisposable
 {
-    public const BindingFlags ATTRIBUTES = BindingFlags.Instance | BindingFlags.Public | BindingFlags.SetProperty | BindingFlags.GetProperty;
+    public const            BindingFlags ATTRIBUTES = BindingFlags.Instance | BindingFlags.Public | BindingFlags.SetProperty | BindingFlags.GetProperty;
 
     public abstract static ITableMetaData                                                                                                                                                          Default         { get; }
     public                 int                                                                                                                                                                     ColumnCount     { get; }
@@ -24,16 +24,16 @@ public interface ITableMetaData : IDisposable
     public ref readonly ColumnMetaData this[ string propertyName ] { get; }
     public ref readonly string this[ string         propertyName, DatabaseType type ] { get; }
     public PropertyColumn this[ int                 index ] { get; }
-    public int                                                                                                                            MaxLength_ColumnName        { get; }
-    public int                                                                                                                            MaxLength_DataType          { get; }
-    public int                                                                                                                            MaxLength_IndexColumnName   { get; }
-    public int                                                                                                                            MaxLength_KeyValuePair      { get; }
-    public int                                                                                                                            MaxLength_Variables         { get; }
-    public FrozenDictionary<string, ColumnMetaData>                                                                                       Properties                  { get; }
-    public string                                                                                                                         SetLastModifiedFunctionName { get; }
-    public ValueEnumerable<OrderBy<Select<TableMetaDataEnumerator, PropertyColumn, ColumnMetaData>, ColumnMetaData, int>, ColumnMetaData> SortedColumns               { [Pure] [MustUseReturnValue] [MustDisposeResource] get; }
-    public string                                                                                                                         TableName                   { [Pure] get; }
-    public ParameterSorter                                                                                                                Sorter                      { get; }
+    public              int                                                                                                                            MaxLength_ColumnName        { get; }
+    public              int                                                                                                                            MaxLength_DataType          { get; }
+    public              int                                                                                                                            MaxLength_IndexColumnName   { get; }
+    public              int                                                                                                                            MaxLength_KeyValuePair      { get; }
+    public              int                                                                                                                            MaxLength_Variables         { get; }
+    public              FrozenDictionary<string, ColumnMetaData>                                                                                       Properties                  { get; }
+    public              string                                                                                                                         SetLastModifiedFunctionName { get; }
+    public              ValueEnumerable<OrderBy<Select<TableMetaDataEnumerator, PropertyColumn, ColumnMetaData>, ColumnMetaData, int>, ColumnMetaData> SortedColumns               { [Pure] [MustUseReturnValue] [MustDisposeResource] get; }
+    public              ParameterSorter                                                                                                                Sorter                      { get; }
+    public ref readonly SqlName                                                                                                                        TableName                   { [Pure] get; }
 
 
     public string IndexName( string   propertyName );

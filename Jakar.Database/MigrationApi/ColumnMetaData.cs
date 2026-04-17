@@ -144,14 +144,14 @@ public sealed class ColumnMetaData : IEquatable<ColumnMetaData>, IComparable<Col
     }
 
 
-    internal      string KeyValuePair_Padded( ITableMetaData    table )    => KeyValuePair.GetPadded(table.MaxLength_KeyValuePair);
-    internal      string VariableName_Padded( ITableMetaData    table )    => VariableName.GetPadded(table.MaxLength_Variables);
-    internal      string CreateIndex( ITableMetaData            table )    => $"CREATE INDEX IF NOT EXISTS {IndexColumnName_Padded(table)} ON {table.TableName}({ColumnName});";
-    internal      string IndexColumnName_Padded( ITableMetaData table )    => Indexed?.Name.GetPadded(table.MaxLength_IndexColumnName) ?? ForeignKey?.Index(ColumnName, table.MaxLength_IndexColumnName) ?? EMPTY;
-    public static string GetColumnName( ColumnMetaData          column )   => column.ColumnName;
-    public static string GetVariableName( ColumnMetaData        column )   => column.VariableName;
-    public static string GetKeyValuePair( ColumnMetaData        column )   => column.KeyValuePair;
-    public static bool   IsDbKey( MemberInfo                    property ) => property.GetCustomAttribute<KeyAttribute>() is not null || property.GetCustomAttribute<System.ComponentModel.DataAnnotations.KeyAttribute>() is not null;
+    internal      string     KeyValuePair_Padded( ITableMetaData    table )    => KeyValuePair.GetPadded(table.MaxLength_KeyValuePair);
+    internal      string     VariableName_Padded( ITableMetaData    table )    => VariableName.GetPadded(table.MaxLength_Variables);
+    internal      SqlCommand CreateIndex( ITableMetaData            table )    => $"CREATE INDEX IF NOT EXISTS {IndexColumnName_Padded(table)} ON {table.TableName}({ColumnName});";
+    internal      string     IndexColumnName_Padded( ITableMetaData table )    => Indexed?.Name.Value.GetPadded(table.MaxLength_IndexColumnName) ?? ForeignKey?.Index(ColumnName, table.MaxLength_IndexColumnName) ?? EMPTY;
+    public static string     GetColumnName( ColumnMetaData          column )   => column.ColumnName;
+    public static string     GetVariableName( ColumnMetaData        column )   => column.VariableName;
+    public static string     GetKeyValuePair( ColumnMetaData        column )   => column.KeyValuePair;
+    public static bool       IsDbKey( MemberInfo                    property ) => property.GetCustomAttribute<KeyAttribute>() is not null || property.GetCustomAttribute<System.ComponentModel.DataAnnotations.KeyAttribute>() is not null;
 
 
     public Microsoft.Data.SqlClient.SqlParameter ToSqlParameter( object? value, [CallerArgumentExpression(nameof(value))] string parameterName = EMPTY, ParameterDirection direction = ParameterDirection.Input, DataRowVersion sourceVersion = DataRowVersion.Default )

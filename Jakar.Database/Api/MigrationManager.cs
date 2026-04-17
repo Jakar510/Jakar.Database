@@ -11,7 +11,8 @@ public class MigrationManager
 {
     public const       string                                              MIGRATIONS = "/_migrations";
     protected readonly Database                                            _db;
-    private readonly   SortedDictionary<long, Func<long, MigrationRecord>> __migrationFactories = new(Comparer<long>.Default);
+    private readonly   SortedDictionary<long, Func<long, MigrationRecord>> __migrationFactories     = new(Comparer<long>.Default);
+    private readonly   Lock                                                __migrationFactoriesLock = new();
     protected          FrozenSet<MigrationRecord>?                         _records;
     public             long                                                LastMigrationID => __migrationFactories.Count;
 
@@ -20,12 +21,14 @@ public class MigrationManager
     {
         get
         {
-            FrozenSet<MigrationRecord>? result = Interlocked.CompareExchange(ref _records, null, null);
+            FrozenSet<MigrationRecord>? result = Volatile.Read(ref _records);
             if ( result is not null ) { return result; }
 
-            result = __migrationFactories.Select(static pair => pair.Value(pair.Key)).ToFrozenSet();
-            Interlocked.Exchange(ref _records, result);
-            return result;
+            lock ( __migrationFactoriesLock )
+            {
+                result = __migrationFactories.Select(static pair => pair.Value(pair.Key)).ToFrozenSet();
+                return Interlocked.CompareExchange(ref _records, result, null) ?? result;
+            }
         }
     }
 
@@ -75,13 +78,23 @@ public class MigrationManager
         where TEnumerator : struct, IValueEnumerator<Func<long, MigrationRecord>>, allows ref struct
     {
         Interlocked.Exchange(ref _records, null);
-        foreach ( Func<long, MigrationRecord> func in enumerable ) { Add(LastMigrationID, func); }
+
+        lock ( __migrationFactoriesLock )
+        {
+            foreach ( Func<long, MigrationRecord> func in enumerable ) { AddInternal(LastMigrationID, func); }
+        }
 
         return this;
     }
     public MigrationManager Add( long migrationID, Func<long, MigrationRecord> func )
     {
         Interlocked.Exchange(ref _records, null);
+        lock ( __migrationFactoriesLock ) { AddInternal(migrationID, func); }
+
+        return this;
+    }
+    protected internal MigrationManager AddInternal( long migrationID, Func<long, MigrationRecord> func )
+    {
         if ( __migrationFactories.Values.Contains(func) ) { throw new InvalidOperationException("migration factory method has already been added"); }
 
         __migrationFactories.Add(migrationID, func);
@@ -159,8 +172,7 @@ public class MigrationManager
     {
         try
         {
-            SqlCommand command = SqlCommand.Create<MigrationRecord>(self.SQL);
-            await context.ExecuteNonQueryAsync(command, token);
+            await context.ExecuteNonQueryAsync(self.SQL, token);
             self.AppliedOn = DateTimeOffset.UtcNow;
         }
         catch ( Exception e ) { throw new DbSqlException(self.SQL, e); }

@@ -82,7 +82,7 @@ public static class TableExtensions
     {
         if ( !Debugger.IsAttached ) { return self; }
 
-        if ( !string.Equals(TSelf.TableName, TSelf.TableName.ToSnakeCase()) ) { throw new InvalidOperationException($"{typeof(TSelf).Name}: {nameof(TSelf.TableName)} is not snake_case: '{TSelf.TableName}'"); }
+        if ( !string.Equals(TSelf.TableName.Value, TSelf.TableName.Value.ToSnakeCase()) ) { throw new InvalidOperationException($"{typeof(TSelf).Name}: {nameof(TSelf.TableName)} is not snake_case: '{TSelf.TableName}'"); }
 
         CommandParameters parameters = self.ToDynamicParameters();
         int               length     = parameters.Count;
@@ -90,7 +90,7 @@ public static class TableExtensions
 
         if ( length == TSelf.PropertyCount ) { return self; }
 
-        HashSet<string>           missing = [.. TSelf.ClassProperties.Select(static x => x.Name)];
+        HashSet<string>      missing = [.. TSelf.ClassProperties.Select(static x => x.Name)];
         using ParameterNames buffer  = parameters.ParameterNames;
         missing.ExceptWith(buffer.Array);
 

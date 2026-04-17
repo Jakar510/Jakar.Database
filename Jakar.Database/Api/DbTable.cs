@@ -11,17 +11,15 @@ public partial class DbTable<TSelf> : IDbTable<TSelf>
 {
     protected readonly IConnectableDbRoot    _database;
     protected readonly IFusionCache          _cache;
-    public static      TSelf[]               Empty      => [];
-    public static      ImmutableArray<TSelf> EmptyArray => [];
-
-
-    public static TableMetaData<TSelf> MetaData                  { [Pure] get => TSelf.MetaData; }
-    public static FrozenSet<TSelf>     Set                       => FrozenSet<TSelf>.Empty;
-    ITableMetaData IDbTable.           MetaData                  { [Pure] get => MetaData; }
-    public FusionCacheEntryOptions?    Options                   { get; set; }
-    public RecordGenerator<TSelf>      Records                   => new(this);
-    public string                      TableName                 { [Pure] get => TSelf.TableName; }
-    public IsolationLevel              TransactionIsolationLevel => _database.TransactionIsolationLevel;
+    public static      TSelf[]               Empty                     => [];
+    public static      ImmutableArray<TSelf> EmptyArray                => [];
+    public static      TableMetaData<TSelf>  MetaData                  { [Pure] get => TSelf.MetaData; }
+    public static      FrozenSet<TSelf>      Set                       => FrozenSet<TSelf>.Empty;
+    ITableMetaData IDbTable.                 MetaData                  { [Pure] get => MetaData; }
+    public FusionCacheEntryOptions?          Options                   { get; set; }
+    public RecordGenerator<TSelf>            Records                   => new(this);
+    public SqlName                           TableName                 { [Pure] get => TSelf.TableName; }
+    public IsolationLevel                    TransactionIsolationLevel => _database.TransactionIsolationLevel;
 
 
     public DbTable( IConnectableDbRoot database, IFusionCache cache )

@@ -9,10 +9,12 @@ namespace Jakar.Database;
 [Table(TABLE_NAME)]
 public sealed record FileRecord : PairRecord<FileRecord>, ITableRecord<FileRecord>, IFileData<Guid>, IFileMetaData
 {
-    public const string TABLE_NAME = "files";
+    public const string TABLE_NAME = "files"; 
 
+    // ReSharper disable once ReplaceWithFieldKeyword
+    private static readonly    SqlName __tableName = TABLE_NAME;
+    public static ref readonly SqlName TableName => ref __tableName;
 
-    public static        string    TableName       => TABLE_NAME;
     [Fixed(1024)] public string?   FileDescription { get; set; }
     [Fixed(256)]  public string?   FileName        { get; set; }
     public               long      FileSize        { get; set; }

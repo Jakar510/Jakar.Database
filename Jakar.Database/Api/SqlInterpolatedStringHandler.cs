@@ -8,18 +8,35 @@ namespace Jakar.Database;
 public readonly record struct SqlRaw( string Value )
 {
     public readonly string Value = Value;
+    public          bool   IsValid                { [Pure] [MemberNotNullWhen(true, nameof(Value))] get => !string.IsNullOrWhiteSpace(Value); }
+    public          int    Length                 => Value.Length;
     public static   SqlRaw Create( string value ) => new(value);
+    public override string ToString()             => Value;
+}
+
+
+
+[UseWithCaution]
+public readonly record struct SqlName( string Value )
+{
+    public readonly                 string  Value = Value.SqlName();
+    public                          bool    IsValid                { [Pure] [MemberNotNullWhen(true, nameof(Value))] get => !string.IsNullOrWhiteSpace(Value); }
+    public                          int     Length                 => Value.Length;
+    public static                   SqlName Create( string value ) => new(value);
+    public static implicit operator SqlName( string        value ) => new(value);
+    public static implicit operator string( SqlName        value ) => value.Value;
+    public override                 string ToString()              => Value;
 }
 
 
 
 [InterpolatedStringHandler]
-public readonly ref struct SqlInterpolatedStringHandler<TSelf>( int literalLength, int formattedCount )
+public ref struct SqlInterpolatedStringHandler<TSelf>( int literalLength, int formattedCount )
     where TSelf : TableRecord<TSelf>, ITableRecord<TSelf>
 {
-    internal readonly StringBuilder     Sb          = new(literalLength);
-    internal readonly CommandParameters Parameters  = CommandParameters.Create<TSelf>(formattedCount);
-    internal readonly Stack<string>     ColumnNames = new(formattedCount);
+    internal readonly StringBuilder     Sb         = new(literalLength);
+    internal readonly CommandParameters Parameters = CommandParameters.Create<TSelf>(formattedCount);
+    private           string?           __lastColumnName;
 
 
     public void AppendLiteral( ReadOnlySpan<char> value )                                                                                            => Sb.Append(value);
@@ -66,16 +83,13 @@ public readonly ref struct SqlInterpolatedStringHandler<TSelf>( int literalLengt
     }
 
 
-    public void AppendFormatted<TValue>( TValue value, string? format = null, [CallerArgumentExpression(nameof(value))] string paramName = EMPTY )
+    public void AppendFormatted<TValue>( TValue value, string? format = null, [CallerArgumentExpression(nameof(value))] in string paramName = EMPTY )
     {
         char lastChar = Sb.Length > 0
                             ? Sb[^1]
                             : '\0';
 
         bool isParameter = lastChar == '@';
-        bool isNameOf    = paramName.StartsWith("nameof(", StringComparison.Ordinal);
-
-        if ( isNameOf && value is string s ) { ColumnNames.Push(s); }
 
         ParseFormat(ref format, out ushort indentLevel);
 
@@ -87,27 +101,29 @@ public readonly ref struct SqlInterpolatedStringHandler<TSelf>( int literalLengt
                 return;
 
             case string n:
+            {
+                bool isColumName = paramName.StartsWith("nameof(", StringComparison.Ordinal) || paramName == "columnName";
+
+                if ( isColumName )
+                {
+                    if ( __lastColumnName is not null ) { throw new FormatException($"Missing @parameter for '{paramName}' with a value of '{value}'"); }
+
+                    __lastColumnName = n;
+                }
+
                 switch ( n.Length )
                 {
-                    case > 0 when isNameOf:
+                    case > 0 when isColumName:
                         Sb.Append(n.SqlName());
                         return;
 
-                    case > 0 when paramName == "columnName":
-                    case > 0 when paramName.Contains("TABLE_NAME") || paramName.Contains("TableName"):
-                        Sb.Append(n);
-                        return;
-
                     case > 0 when isParameter:
-                        Sb.Append(paramName.Parameterize());
+                        string parameterName = paramName.Parameterize();
+                        Sb.Append(parameterName);
+                        if ( __lastColumnName is null ) { throw new FormatException($"Missing parameter (column_name) for '{paramName}' with a value of '{value}'"); }
 
-                        if ( ColumnNames.TryPop(out string? name) )
-                        {
-                            Parameters.Add(name, value, paramName);
-                            Debug.Assert(Parameters.Count > 0);
-                        }
-                        else { throw new FormatException($"Missing parameter (column_name) for {value}"); }
-
+                        Parameters.Add(__lastColumnName, value, parameterName);
+                        Debug.Assert(Parameters.Count > 0);
                         return;
 
                     case > 0:
@@ -118,8 +134,13 @@ public readonly ref struct SqlInterpolatedStringHandler<TSelf>( int literalLengt
                         AppendQuoted(EMPTY);
                         return;
                 }
+            }
 
             case SqlRaw n:
+                Sb.Append(n.Value);
+                return;
+
+            case SqlName n:
                 Sb.Append(n.Value);
                 return;
 
@@ -317,7 +338,7 @@ public readonly ref struct SqlInterpolatedStringHandler<TSelf>( int literalLengt
         while ( enumerator.MoveNext() )
         {
             Sb.Spacer(indentLevel);
-            AppendSingle(in destination, enumerator.Current, format, in needsQuotes);
+            AppendSingle(destination, enumerator.Current, format, in needsQuotes);
             Sb.Append(",\n");
         }
 
@@ -329,9 +350,9 @@ public readonly ref struct SqlInterpolatedStringHandler<TSelf>( int literalLengt
         where TValue : ISpanFormattable
     {
         Span<char> destination = stackalloc char[256];
-        AppendSingle(in destination, value, format, in needsQuotes);
+        AppendSingle(destination, value, format, in needsQuotes);
     }
-    private void AppendSingle<TValue>( scoped in Span<char> destination, TValue value, string? format, in bool needsQuotes = false )
+    private void AppendSingle<TValue>( scoped Span<char> destination, TValue value, string? format, in bool needsQuotes = false )
         where TValue : ISpanFormattable
     {
         if ( typeof(TValue).IsOneOf(typeof(DateTime), typeof(DateTimeOffset), typeof(DateOnly)) ) { format ??= "o"; }
@@ -364,7 +385,7 @@ public readonly ref struct SqlInterpolatedStringHandler<TSelf>( int literalLengt
                 for ( int i = 0; i < list.Count; i++ )
                 {
                     Sb.Spacer(indentLevel);
-                    AppendSingle(in destination, list[i], format, in needsQuotes);
+                    AppendSingle(destination, list[i], format, in needsQuotes);
                     if ( i < list.Count - 1 ) { Sb.Append(",\n"); }
                 }
 
@@ -376,7 +397,7 @@ public readonly ref struct SqlInterpolatedStringHandler<TSelf>( int literalLengt
                 for ( int i = 0; i < list.Count; i++ )
                 {
                     Sb.Spacer(indentLevel);
-                    AppendSingle(in destination, list[i], format, in needsQuotes);
+                    AppendSingle(destination, list[i], format, in needsQuotes);
                     if ( i < list.Count - 1 ) { Sb.Append(",\n"); }
                 }
 
@@ -390,7 +411,7 @@ public readonly ref struct SqlInterpolatedStringHandler<TSelf>( int literalLengt
                 while ( enumerator.MoveNext() )
                 {
                     Sb.Spacer(indentLevel);
-                    AppendSingle(in destination, enumerator.Current, format, in needsQuotes);
+                    AppendSingle(destination, enumerator.Current, format, in needsQuotes);
                     Sb.Append(",\n");
                 }
 
@@ -407,7 +428,7 @@ public readonly ref struct SqlInterpolatedStringHandler<TSelf>( int literalLengt
         for ( int i = 0; i < array.Length; i++ )
         {
             Sb.Spacer(indentLevel);
-            AppendSingle(in destination, array[i], format, in needsQuotes);
+            AppendSingle(destination, array[i], format, in needsQuotes);
             if ( i < array.Length - 1 ) { Sb.Append(",\n"); }
         }
     }
@@ -476,6 +497,28 @@ public readonly ref struct SqlInterpolatedStringHandler<TSelf>( int literalLengt
     public SqlCommand ToSqlCommand( in CommandType commandType = CommandType.Text ) => SqlCommand.Create(ToString(), Parameters, in commandType);
 
 
+    public static string SanitizeParameterName( ReadOnlySpan<char> name )
+    {
+        if ( name.IsNullOrWhiteSpace() ) { return "p"; }
+
+        // Keep only the last segment after '.'
+        int lastDot = name.LastIndexOf('.');
+        if ( lastDot >= 0 && lastDot < name.Length - 1 ) { name = name[( lastDot + 1 )..]; }
+
+        if ( name.IsNullOrWhiteSpace() ) { return "p"; }
+
+        Span<char> buffer = stackalloc char[name.Length];
+        int        index  = 0;
+
+        foreach ( char c in name )
+        {
+            buffer[index++] = char.IsLetterOrDigit(c) || c == '_'
+                                  ? c
+                                  : '_';
+        }
+
+        return buffer[..index].ToString();
+    }
     public static void ParseFormat( ref string? format, out ushort indentLevel )
     {
         ReadOnlySpan<char> span  = format;

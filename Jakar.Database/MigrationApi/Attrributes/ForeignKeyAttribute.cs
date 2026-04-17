@@ -27,12 +27,12 @@ public sealed class ForeignKeyAttribute<TSelf, TOtherTable>( OnAction onAction =
 
 
 [AttributeUsage(AttributeTargets.Property)]
-public class ForeignKeyAttribute( string tableName, string foreignTableName, OnAction onAction = OnAction.NotSet ) : Attribute
+public class ForeignKeyAttribute( SqlName tableName, SqlName foreignTableName, OnAction onAction = OnAction.NotSet ) : Attribute
 {
     public readonly OnAction Action    = onAction;
-    public readonly string   TableName = foreignTableName.SqlName();
+    public readonly SqlName  TableName = foreignTableName;
     public          bool     HasModifier { [Pure] get => Action is not OnAction.NotSet; }
-    public          bool     IsValid     { [Pure] [MemberNotNullWhen(true, nameof(TableName))] get => !string.IsNullOrWhiteSpace(TableName); }
+    public          bool     IsValid     { [Pure] [MemberNotNullWhen(true, nameof(TableName))] get => TableName.IsValid; }
 
     public string? Modifier => Action switch
                                {

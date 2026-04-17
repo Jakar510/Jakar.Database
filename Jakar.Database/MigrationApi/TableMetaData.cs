@@ -36,7 +36,7 @@ public class TableMetaData<TSelf> : ITableMetaData
     {
         [Pure] [MustDisposeResource] get
         {
-            DataTable table = new(TSelf.TableName);
+            DataTable table = new(TSelf.TableName.Value);
             foreach ( ColumnMetaData column in Properties.Values ) { table.Columns.Add(column.DataColumn); }
 
             return table;
@@ -58,17 +58,17 @@ public class TableMetaData<TSelf> : ITableMetaData
             return new PropertyColumn(propertyName, Properties[propertyName]);
         }
     }
-    public int                                                                                                                            MaxLength_ColumnName        { get; }
-    public int                                                                                                                            MaxLength_DataType          { get; }
-    public int                                                                                                                            MaxLength_IndexColumnName   { get; }
-    public int                                                                                                                            MaxLength_KeyValuePair      { get; }
-    public int                                                                                                                            MaxLength_Variables         { get; }
-    FrozenDictionary<string, ColumnMetaData> ITableMetaData.                                                                              Properties                  => Properties;
-    public string                                                                                                                         SetLastModifiedFunctionName => field ??= $"{TSelf.TableName}_{MigrationRecord.SetLastModifiedName}";
-    public ValueEnumerable<OrderBy<Select<TableMetaDataEnumerator, PropertyColumn, ColumnMetaData>, ColumnMetaData, int>, ColumnMetaData> SortedColumns               { [Pure] [MustUseReturnValue] get => Columns.OrderBy(static x => x.Index); }
-    public string                                                                                                                         TableName                   { [Pure] get => TSelf.TableName; }
-    public ValueEnumerable<TableMetaDataEnumerator, PropertyColumn>                                                                       Values                      => AsValueEnumerable();
-    public ParameterSorter                                                                                                                Sorter                      { get; }
+    public int                                                                                                                                         MaxLength_ColumnName        { get; }
+    public int                                                                                                                                         MaxLength_DataType          { get; }
+    public int                                                                                                                                         MaxLength_IndexColumnName   { get; }
+    public int                                                                                                                                         MaxLength_KeyValuePair      { get; }
+    public int                                                                                                                                         MaxLength_Variables         { get; }
+    FrozenDictionary<string, ColumnMetaData> ITableMetaData.                                                                                           Properties                  => Properties;
+    public              string                                                                                                                         SetLastModifiedFunctionName => field ??= $"{TSelf.TableName}_{MigrationRecord.SetLastModifiedName}";
+    public              ValueEnumerable<OrderBy<Select<TableMetaDataEnumerator, PropertyColumn, ColumnMetaData>, ColumnMetaData, int>, ColumnMetaData> SortedColumns               { [Pure] [MustUseReturnValue] get => Columns.OrderBy(static x => x.Index); }
+    public ref readonly SqlName                                                                                                                        TableName                   { [Pure] get => ref TSelf.TableName; }
+    public              ValueEnumerable<TableMetaDataEnumerator, PropertyColumn>                                                                       Values                      => AsValueEnumerable();
+    public              ParameterSorter                                                                                                                Sorter                      { get; }
 
 
     protected internal TableMetaData( FrozenDictionary<string, ColumnMetaData> properties )

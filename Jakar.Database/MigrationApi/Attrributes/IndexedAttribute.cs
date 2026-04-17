@@ -18,15 +18,15 @@ public sealed class IndexedAttribute<TSelf>( string propertyName ) : IndexedAttr
 
 
 [AttributeUsage(AttributeTargets.Property)]
-public class IndexedAttribute( string propertyName, string tableName ) : Attribute
+public class IndexedAttribute( string propertyName, SqlName tableName ) : Attribute
 {
-    public readonly string Name = propertyName.SqlIndexName(tableName);
-    public          bool   IsValid { [MemberNotNullWhen(true, nameof(Name))] get => !string.IsNullOrWhiteSpace(Name); }
+    public readonly SqlName Name = propertyName.SqlIndexName(tableName);
+    public          bool    IsValid { [MemberNotNullWhen(true, nameof(Name))] get => !string.IsNullOrWhiteSpace(Name.Value); }
 
-    public IndexedAttribute( ColumnIndex defaults, string tableName ) : this(defaults switch
-                                                                             {
-                                                                                 ColumnIndex.NotSet => "",
-                                                                                 _                  => throw new OutOfRangeException(defaults)
-                                                                             },
-                                                                             tableName) { }
+    public IndexedAttribute( ColumnIndex defaults, SqlName tableName ) : this(defaults switch
+                                                                              {
+                                                                                  ColumnIndex.NotSet => "",
+                                                                                  _                  => throw new OutOfRangeException(defaults)
+                                                                              },
+                                                                              tableName) { }
 }

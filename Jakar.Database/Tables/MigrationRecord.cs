@@ -15,9 +15,12 @@ public sealed record MigrationRecord : TableRecord<MigrationRecord>, ITableRecor
     public static readonly SqlCommand        SelectSql           = SqlCommand.Parse<MigrationRecord>($"SELECT * FROM {TABLE_NAME} ORDER BY {nameof(MigrationID)};");
     public static readonly string            SetLastModifiedName = nameof(SetLastModified).SqlName();
     internal readonly      string            RollbackID          = Randoms.RandomString(10);
+    
 
+    // ReSharper disable once ReplaceWithFieldKeyword
+    private static readonly    SqlName __tableName = TABLE_NAME;
+    public static ref readonly SqlName TableName => ref __tableName;
 
-    public static         string          TableName   => TABLE_NAME;
     public                DateTimeOffset? AppliedOn   { get; internal set; }
     public required       string          Description { get; init; }
     [Key] public required long            MigrationID { get; init; }
@@ -61,8 +64,7 @@ public sealed record MigrationRecord : TableRecord<MigrationRecord>, ITableRecor
     /// <returns> </returns>
     public static MigrationRecord AddPostgreSqlExtensions( long migrationID ) => Create<MigrationRecord>(migrationID,
                                                                                                          "Add PostgreSql extensions",
-
-                                                                                                         // ReSharper disable StringLiteralTypo
+                                                                                                          
                                                                                                          """
 
                                                                                                          CREATE EXTENSION pg_crypto;
@@ -71,8 +73,7 @@ public sealed record MigrationRecord : TableRecord<MigrationRecord>, ITableRecor
                                                                                                          CREATE EXTENSION pg_textsearch;
                                                                                                          CREATE EXTENSION uint128;
                                                                                                          """
-
-                                                                                                         // ReSharper restore StringLiteralTypo
+                                                                                                          
                                                                                                         );
 
 
@@ -122,7 +123,7 @@ public sealed record MigrationRecord : TableRecord<MigrationRecord>, ITableRecor
     }
 
 
-    public static MigrationRecord Create<TSelf>( long migrationID, string description, string sql )
+    public static MigrationRecord Create<TSelf>( long migrationID, string description, SqlCommand sql )
         where TSelf : TableRecord<TSelf>, ITableRecord<TSelf>
     {
         MigrationRecord record = new()

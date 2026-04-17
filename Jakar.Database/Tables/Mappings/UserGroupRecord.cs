@@ -8,9 +8,11 @@ namespace Jakar.Database;
 [Table(TABLE_NAME)]
 public sealed record UserGroupRecord : Mapping<UserGroupRecord, UserRecord, GroupRecord>, ICreateMapping<UserGroupRecord, UserRecord, GroupRecord>
 {
-    public const  string TABLE_NAME = "user_groups";
-    public static string TableName => TABLE_NAME;
+    public const string TABLE_NAME = "user_groups";
 
+    // ReSharper disable once ReplaceWithFieldKeyword
+    private static readonly    SqlName __tableName = TABLE_NAME;
+    public static ref readonly SqlName TableName => ref __tableName;
 
     [ForeignKey<UserGroupRecord, UserRecord>]  public override RecordID<UserRecord>  KeyID   { get; init; }
     [ForeignKey<UserGroupRecord, GroupRecord>] public override RecordID<GroupRecord> ValueID { get; init; }

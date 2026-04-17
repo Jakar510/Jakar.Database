@@ -11,8 +11,10 @@ public sealed record UserLoginProviderRecord : OwnedTableRecord<UserLoginProvide
 {
     public const string TABLE_NAME = "user_login_providers";
 
+    // ReSharper disable once ReplaceWithFieldKeyword
+    private static readonly    SqlName __tableName = TABLE_NAME;
+    public static ref readonly SqlName TableName => ref __tableName;
 
-    public static                                                                                   string               TableName           => TABLE_NAME;
     [Indexed<UserLoginProviderRecord>(nameof(LoginProvider))] public                                string               LoginProvider       { get; init; }
     public                                                                                          string?              ProviderDisplayName { get; init; }
     [Indexed<UserLoginProviderRecord>(nameof(ProviderKey))] [ProtectedPersonalData] public          string               ProviderKey         { get; init; }

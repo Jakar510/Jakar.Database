@@ -50,6 +50,85 @@ internal sealed class TestDatabase( IConfiguration configuration, IOptions<DbOpt
     }
 
 
+    public static string TestFormat<T>( T value, scoped in Span<char> destination, string format )
+        where T : ISpanFormattable
+    {
+        value.TryFormat(destination, out int charsWritten, format, CultureInfo.InvariantCulture);
+        return destination[..charsWritten].ToString();
+    }
+    public static void TestFormats( scoped in Span<char> destination )
+    {
+        Console.WriteLine();
+        WriteLine(TestFormat(DateTimeOffset.UtcNow, in destination, "o"));
+        WriteLine(TestFormat(DateTimeOffset.UtcNow, in destination, "r"));
+        WriteLine(TestFormat(DateTimeOffset.UtcNow, in destination, "s"));
+        WriteLine(TestFormat(DateTimeOffset.UtcNow, in destination, "u"));
+        Console.WriteLine();
+        WriteLine(TestFormat(TimeSpan.FromDays(5.1654654), in destination, "c"));
+        WriteLine(TestFormat(TimeSpan.FromDays(5.1654654), in destination, "t"));
+        WriteLine(TestFormat(TimeSpan.FromDays(5.1654654), in destination, "g"));
+        Console.WriteLine();
+    }
+    public static void WriteLine( string line, [CallerArgumentExpression(nameof(line))] string paramName = EMPTY )
+    {
+        string header = new('=', paramName.Length + 20);
+        Console.WriteLine();
+        Console.WriteLine(header);
+        Console.WriteLine(paramName.PadLeft(header.Length - 10).PadRight(header.Length));
+        Console.WriteLine(header);
+        Console.WriteLine();
+        Console.WriteLine(line);
+        Console.WriteLine();
+    }
+    public static void TestSQL()
+    {
+        const string           ADMIN      = "Admin";
+        DateTimeOffset         date       = DateTimeOffset.UtcNow - TimeSpan.FromDays(5);
+        RecordID<UserRecord>   userID     = RecordID<UserRecord>.New();
+        RecordID<RoleRecord>   id         = RecordID<RoleRecord>.New();
+        RecordPair<RoleRecord> pair       = new(id, date);
+        RoleRecord             record     = new(ADMIN, ADMIN, Randoms.RandomString(10), new UserRights(""), id, userID, date);
+        CommandParameters      parameters = CommandParameters.Create<RoleRecord>();
+        parameters.Add(nameof(RoleRecord.NameOfRole),     ADMIN);
+        parameters.Add(nameof(RoleRecord.NormalizedName), "Administrator");
+
+
+        WriteLine(SqlCommand.GetRandom<RoleRecord>().ToString());
+        WriteLine(SqlCommand.GetRandom<RoleRecord>(userID).ToString());
+        WriteLine(SqlCommand.WherePaged<RoleRecord>(parameters, 0, 10).ToString());
+        WriteLine(SqlCommand.WherePaged<RoleRecord>(userID,     0, 10).ToString());
+        WriteLine(SqlCommand.WherePaged<RoleRecord>(0,          10).ToString());
+        WriteLine(SqlCommand.WherePaged<RoleRecord>(date, 0, 10).ToString());
+        
+        WriteLine(SqlCommand.Where<RoleRecord>(parameters).ToString());
+        
+        WriteLine(SqlCommand.Parse<RoleRecord>($"SELECT * FROM {RoleRecord.TableName} WHERE {nameof(RoleRecord.NameOfRole)} = @{ADMIN};").ToString());
+        
+        WriteLine(SqlCommand.Get(id).ToString());
+        WriteLine(SqlCommand.Get(id, RecordID<RoleRecord>.New()).ToString());
+        
+        WriteLine(SqlCommand.Get<RoleRecord>(parameters).ToString());
+        WriteLine(SqlCommand.GetAll<RoleRecord>().ToString());
+        WriteLine(SqlCommand.GetFirst<RoleRecord>().ToString());
+        WriteLine(SqlCommand.GetLast<RoleRecord>().ToString());
+        WriteLine(SqlCommand.GetCount<RoleRecord>().ToString());
+        WriteLine(SqlCommand.GetSortedID<RoleRecord>().ToString());
+        WriteLine(SqlCommand.GetExists<RoleRecord>(parameters).ToString());
+        WriteLine(SqlCommand.GetDelete<RoleRecord>(parameters).ToString());
+        WriteLine(SqlCommand.GetDelete(id).ToString());
+        WriteLine(SqlCommand.GetDelete(id, RecordID<RoleRecord>.New()).ToString());
+        WriteLine(SqlCommand.GetDeleteAll<RoleRecord>().ToString());
+        WriteLine(SqlCommand.GetNext(pair).ToString());
+        WriteLine(SqlCommand.GetNextID(pair).ToString());
+        WriteLine(SqlCommand.GetCopy<RoleRecord>().ToString());
+        WriteLine(SqlCommand.GetInsert(record).ToString());
+        WriteLine(SqlCommand.GetInsert(record, record).ToString());
+        WriteLine(SqlCommand.GetUpdate(record).ToString());
+        WriteLine(SqlCommand.GetTryInsert(record, parameters).ToString());
+        WriteLine(SqlCommand.InsertOrUpdate(record, in parameters).ToString());
+    }
+
+
     public static async Task TestAsync( CancellationToken token = default )
     {
         WebApplicationBuilder      builder = Create();
