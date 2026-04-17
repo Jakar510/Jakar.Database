@@ -27,13 +27,13 @@ public abstract record Mapping<TSelf, TKey, TValue> : TableRecord<TSelf>
     where TKey : PairRecord<TKey>, ITableRecord<TKey>
     where TSelf : Mapping<TSelf, TKey, TValue>, ICreateMapping<TSelf, TKey, TValue>, ITableRecord<TSelf>
 {
-    private      WeakReference<TKey>?   __owner;
-    private      WeakReference<TValue>? __value;
-    [Key] public RecordID<TKey, TValue> ID => new(KeyID, ValueID);
+    private WeakReference<TKey>?   __owner;
+    private WeakReference<TValue>? __value;
 
 
-    public abstract RecordID<TKey>   KeyID   { get; init; }
-    public abstract RecordID<TValue> ValueID { get; init; }
+    [Key] public    RecordID<TKey, TValue> ID      => new(KeyID, ValueID);
+    public abstract RecordID<TKey>         KeyID   { get; init; }
+    public abstract RecordID<TValue>       ValueID { get; init; }
 
 
     protected Mapping( RecordID<TKey> key, RecordID<TValue> value ) : this(key, value, DateTimeOffset.UtcNow) { }
@@ -344,7 +344,7 @@ public abstract record Mapping<TSelf, TKey, TValue> : TableRecord<TSelf>
             list.Add(record);
         }
 
-        CommandParameters parameters = CommandParameters.Create(list);
+        CommandParameters parameters = CommandParameters.Create(list.AsSpan());
 
         SqlCommand command = SqlCommand.Parse<TSelf>($"""
                                                       INSERT INTO {TSelf.TableName} 

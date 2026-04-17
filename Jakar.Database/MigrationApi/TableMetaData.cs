@@ -24,14 +24,15 @@ public class TableMetaData<TSelf> : ITableMetaData
     where TSelf : TableRecord<TSelf>, ITableRecord<TSelf>
 {
     // ReSharper disable once StaticMemberInGenericType
-    public static readonly TableMetaData<TSelf> Instance = Create();
+    public static readonly TableMetaData<TSelf>                     Instance = Create();
+    public readonly        FrozenDictionary<int, string>            Indexes;
+    public readonly        FrozenDictionary<string, ColumnMetaData> Properties;
+    protected              MigrationRecord?                         _createTableSql;
 
-    public readonly FrozenDictionary<int, string>                                                                    Indexes;
-    public readonly FrozenDictionary<string, ColumnMetaData>                                                         Properties;
-    protected       MigrationRecord?                                                                                 _createTableSql;
-    public static   ITableMetaData                                                                                   Default     => Instance;
-    public          int                                                                                              ColumnCount => Properties.Count;
-    public          ValueEnumerable<Select<TableMetaDataEnumerator, PropertyColumn, ColumnMetaData>, ColumnMetaData> Columns     => Values.Select(static x => x.Column);
+
+    public static ITableMetaData                                                                                   Default     => Instance;
+    public        int                                                                                              ColumnCount => Properties.Count;
+    public        ValueEnumerable<Select<TableMetaDataEnumerator, PropertyColumn, ColumnMetaData>, ColumnMetaData> Columns     => Values.Select(static x => x.Column);
     public DataTable DataTable
     {
         [Pure] [MustDisposeResource] get

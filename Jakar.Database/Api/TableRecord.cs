@@ -50,6 +50,7 @@ public abstract record TableRecord<TSelf>( in DateTimeOffset DateCreated ) : IJs
 {
     protected internal static readonly ImmutableArray<PropertyInfo> Properties = typeof(TSelf).GetProperties(ITableMetaData.ATTRIBUTES).AsValueEnumerable().Where(static x => !x.HasAttribute<DbIgnoreAttribute>()).ToImmutableArray();
 
+
     protected                  DateTimeOffset?              _lastModified;
     public static              PasswordHasher<TSelf>        Hasher          { get; } = new();
     public static ref readonly ImmutableArray<PropertyInfo> ClassProperties { [Pure] get => ref Properties; }

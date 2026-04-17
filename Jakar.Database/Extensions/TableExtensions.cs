@@ -77,30 +77,21 @@ public static class TableExtensions
     }
 
 
-    [Pure] public static TSelf Validate<TSelf>( this TSelf self )
+
+    extension<TSelf>( TSelf self )
         where TSelf : TableRecord<TSelf>, ITableRecord<TSelf>
     {
-        if ( !Debugger.IsAttached ) { return self; }
-
-        if ( !string.Equals(TSelf.TableName.Value, TSelf.TableName.Value.ToSnakeCase()) ) { throw new InvalidOperationException($"{typeof(TSelf).Name}: {nameof(TSelf.TableName)} is not snake_case: '{TSelf.TableName}'"); }
-
-        CommandParameters parameters = self.ToDynamicParameters();
-        int               length     = parameters.Count;
-
-
-        if ( length == TSelf.PropertyCount ) { return self; }
-
-        HashSet<string>      missing = [.. TSelf.ClassProperties.Select(static x => x.Name)];
-        using ParameterNames buffer  = parameters.ParameterNames;
-        missing.ExceptWith(buffer.Array);
-
-        string message = $"""
-                          '{typeof(TSelf).Name}': {nameof(self.ToDynamicParameters)}.Length ({length}) != {nameof(TSelf.ClassProperties)}.Length ({TSelf.PropertyCount})
-                          {missing.ToJson()}
-                          """;
-
-        throw new InvalidOperationException(message);
+        [Pure] public TSelf Validate()
+        {
+        #if DEBUG
+            _ = self.ToDynamicParameters().Validate<TSelf>();
+            return self;
+        #else
+            return self;
+        #endif
+        }
     }
+
 
 
     public static string GetTableName( this Type type, bool convertToSnakeCase = true )

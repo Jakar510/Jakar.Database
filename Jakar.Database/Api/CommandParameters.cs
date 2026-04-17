@@ -2,6 +2,7 @@
 // 01/28/2026  18:42
 
 using ZLinq.Linq;
+using static Dapper.SqlMapper;
 
 
 
@@ -73,7 +74,18 @@ public readonly struct CommandParameters() : IEquatable<CommandParameters>
 
     public static CommandParameters Create<TSelf>()
         where TSelf : TableRecord<TSelf>, ITableRecord<TSelf> => new() { Table = TSelf.MetaData };
+    public static CommandParameters Create<TSelf>( TSelf self )
+        where TSelf : TableRecord<TSelf>, ITableRecord<TSelf> => self.ToDynamicParameters().Validate<TSelf>();
     public static CommandParameters Create<TSelf>( IEnumerable<TSelf> records )
+        where TSelf : TableRecord<TSelf>, ITableRecord<TSelf>
+    {
+        CommandParameters parameters = Create<TSelf>();
+        foreach ( TSelf record in records ) { parameters.AddGroup(record); }
+
+        return parameters;
+    }
+    public static CommandParameters Create<TEnumerator, TSelf>( ValueEnumerable<TEnumerator, TSelf> records )
+        where TEnumerator : struct, IValueEnumerator<TSelf>, allows ref struct
         where TSelf : TableRecord<TSelf>, ITableRecord<TSelf>
     {
         CommandParameters parameters = Create<TSelf>();
@@ -112,14 +124,12 @@ public readonly struct CommandParameters() : IEquatable<CommandParameters>
     public CommandParameters AddGroup<TSelf>( TSelf other )
         where TSelf : TableRecord<TSelf>, ITableRecord<TSelf>
     {
-        CommandParameters parameters = other.ToDynamicParameters();
+        CommandParameters parameters = Create(other);
         return AddGroup(in parameters);
     }
-    public CommandParameters AddGroup( in CommandParameters other )
+    public CommandParameters AddGroup( ref readonly CommandParameters other )
     {
-        SqlParameter[] array = [..other.Values];
-        Array.Sort(array, Comparer<SqlParameter>.Default);
-        __groups.Add(array.AsImmutableArray());
+        __groups.Add([..other.Values]);
         return this;
     }
 
@@ -140,13 +150,6 @@ public readonly struct CommandParameters() : IEquatable<CommandParameters>
     }
 
 
-    public CommandParameters Add<TSelf>( string propertyName, IRecordID value, [CallerArgumentExpression(nameof(value))] string parameterName = EMPTY, ParameterDirection direction = ParameterDirection.Input, DataRowVersion sourceVersion = DataRowVersion.Default )
-        where TSelf : PairRecord<TSelf>, ITableRecord<TSelf>
-    {
-        SqlParameter parameter = Table[propertyName].ToParameter(value.ID, parameterName, direction, sourceVersion);
-        AddInternal(in parameter);
-        return this;
-    }
     public CommandParameters Add<TSelf>( string propertyName, RecordID<TSelf> value, [CallerArgumentExpression(nameof(value))] string parameterName = EMPTY, ParameterDirection direction = ParameterDirection.Input, DataRowVersion sourceVersion = DataRowVersion.Default )
         where TSelf : PairRecord<TSelf>, ITableRecord<TSelf>
     {
@@ -192,6 +195,26 @@ public readonly struct CommandParameters() : IEquatable<CommandParameters>
         SqlParameter parameter = Table[propertyName].ToParameter(value, parameterName, direction, sourceVersion);
         AddInternal(in parameter);
         return this;
+    }
+
+
+    public CommandParameters Validate<TSelf>()
+        where TSelf : TableRecord<TSelf>, ITableRecord<TSelf>
+    {
+        if ( !string.Equals(TSelf.TableName.Value, TSelf.TableName.Value.ToSnakeCase()) ) { throw new InvalidOperationException($"{typeof(TSelf).Name}: {nameof(TSelf.TableName)} is not snake_case: '{TSelf.TableName}'"); }
+
+        if ( Count == TSelf.PropertyCount ) { return this; }
+
+        HashSet<string>           missing = [.. TSelf.MetaData.SortedColumns.Select(static x => x.PropertyName)];
+        using ArrayBuffer<string> buffer  = Values.AsValueEnumerable().Select(x => x.Column.PropertyName).ToArrayBuffer();
+        missing.ExceptWith(buffer.Array);
+
+        string message = $"""
+                          '{typeof(TSelf).FullName}': ToDynamicParameters.Length ({Count}) != {nameof(TSelf.ClassProperties)}.Length ({TSelf.PropertyCount})
+                          {missing.ToJson()}
+                          """;
+
+        throw new InvalidOperationException(message);
     }
 
 

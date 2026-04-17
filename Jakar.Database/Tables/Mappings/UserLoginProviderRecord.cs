@@ -107,7 +107,7 @@ public sealed record UserLoginProviderRecord : OwnedTableRecord<UserLoginProvide
 
     public static CommandParameters GetDynamicParameters( UserRecord user, string value )
     {
-        CommandParameters parameters = CommandParameters.Create<UserRecord>();
+        CommandParameters parameters = CommandParameters.Create<UserLoginProviderRecord>();
         parameters.Add(nameof(UserID), user.ID.Value);
         parameters.Add(nameof(Value),  value);
         return parameters;

@@ -8,7 +8,7 @@ namespace Jakar.Database;
 [Table(TABLE_NAME)]
 public sealed record UserRecoveryCodeRecord : Mapping<UserRecoveryCodeRecord, UserRecord, RecoveryCodeRecord>, ICreateMapping<UserRecoveryCodeRecord, UserRecord, RecoveryCodeRecord>
 {
-    public const  string TABLE_NAME = "UserRecoveryCodes";
+    public const string TABLE_NAME = "user_recovery_codes";
 
     // ReSharper disable once ReplaceWithFieldKeyword
     private static readonly    SqlName __tableName = TABLE_NAME;

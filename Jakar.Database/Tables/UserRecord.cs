@@ -10,11 +10,11 @@ public sealed record UserRecord : PairRecord<UserRecord>, ITableRecord<UserRecor
     private static readonly    SqlName __sql_Name = TABLE_NAME;
     public static ref readonly SqlName TableName => ref __sql_Name;
 
-    public        RecordID<UserRecord>?                               EscalateTo          { get; set; }
+    public RecordID<UserRecord>?                                      EscalateTo          { get; set; }
     Guid? IEscalateToUser<Guid>.                                      EscalateTo          => EscalateTo?.Value;
     Guid? IImageID<Guid>.                                             ImageID             => ImageID?.Value;
     [ForeignKey<UserRecord, FileRecord>] public RecordID<FileRecord>? ImageID             { get; set; }
-    public                                      bool                  IsValid             => !string.IsNullOrWhiteSpace(UserName) && ID.IsValid();
+    [DbIgnore]                           public bool                  IsValid             => !string.IsNullOrWhiteSpace(UserName) && ID.IsValid();
     public                                      SupportedLanguage     PreferredLanguage   { get; set; }
     public                                      DateTimeOffset?       SubscriptionExpires { get; set; }
     public                                      Guid?                 SubscriptionID      { get; set; }
@@ -384,6 +384,10 @@ public sealed record UserRecord : PairRecord<UserRecord>, ITableRecord<UserRecor
         parameters.Add(nameof(IsActive),               IsActive);
         parameters.Add(nameof(IsDisabled),             IsDisabled);
         parameters.Add(nameof(AdditionalData),         AdditionalData);
+        parameters.Add(nameof(UserID),                 UserID);
+        parameters.Add(nameof(SubscriptionID),         SubscriptionID);
+        parameters.Add(nameof(SubscriptionExpires),    SubscriptionExpires);
+        parameters.Add(nameof(ImageID),                ImageID);
         return parameters;
     }
 

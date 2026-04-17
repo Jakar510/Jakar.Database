@@ -61,7 +61,7 @@
         public ValueTask<ErrorOrResult<UserRecord>> FindByLoginAsync( string loginProvider, string providerKey, CancellationToken token ) => this.TryCall(FindByLoginAsync, loginProvider, providerKey, token);
         public virtual async ValueTask<ErrorOrResult<UserRecord>> FindByLoginAsync( DbConnectionContext context, string loginProvider, string providerKey, CancellationToken token )
         {
-            CommandParameters parameters = CommandParameters.Create<UserRecord>();
+            CommandParameters parameters = CommandParameters.Create<UserLoginProviderRecord>();
             parameters.Add(nameof(UserLoginProviderRecord.LoginProvider), loginProvider);
             parameters.Add(nameof(UserLoginProviderRecord.ProviderKey),   providerKey);
             ErrorOrResult<UserLoginProviderRecord> userLoginProvider = await UserLoginProviders.Get(context, parameters, token);

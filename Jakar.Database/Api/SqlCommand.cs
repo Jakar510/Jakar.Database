@@ -287,7 +287,7 @@ public readonly struct SqlCommand : IEquatable<SqlCommand>
     [OverloadResolutionPriority(3)] public static SqlCommand GetInsert<TSelf>( TSelf record )
         where TSelf : PairRecord<TSelf>, ITableRecord<TSelf>
     {
-        CommandParameters parameters = record.ToDynamicParameters();
+        CommandParameters parameters = CommandParameters.Create(record);
 
         return Parse<TSelf>($"""
                              INSERT INTO {TSelf.TableName} 
@@ -305,7 +305,7 @@ public readonly struct SqlCommand : IEquatable<SqlCommand>
     [OverloadResolutionPriority(1)] public static SqlCommand GetInsert<TSelf>( IEnumerable<TSelf> records )
         where TSelf : PairRecord<TSelf>, ITableRecord<TSelf>
     {
-        CommandParameters parameters = CommandParameters.Create(records);
+        CommandParameters parameters = CommandParameters.Create(records.AsValueEnumerable());
 
         return Parse<TSelf>($"""
                              INSERT INTO {TSelf.TableName} 
@@ -340,23 +340,10 @@ public readonly struct SqlCommand : IEquatable<SqlCommand>
     }
 
 
-    public static SqlCommand GetUpdate<TSelf>( TSelf record )
-        where TSelf : PairRecord<TSelf>, ITableRecord<TSelf>
-    {
-        CommandParameters parameters = record.ToDynamicParameters();
-
-        return Parse<TSelf>($"""
-                             UPDATE {TSelf.TableName} 
-                             SET 
-                             {parameters.KeyValuePairs(1, "AND")}
-                             WHERE 
-                                {nameof(IUniqueID.ID)} = @{nameof(IUniqueID.ID)};
-                             """);
-    }
     public static SqlCommand GetTryInsert<TSelf>( TSelf record, in CommandParameters parameters, string separator = "AND" )
         where TSelf : PairRecord<TSelf>, ITableRecord<TSelf>
     {
-        CommandParameters recordParameters = record.ToDynamicParameters();
+        CommandParameters recordParameters = CommandParameters.Create(record);
 
         return Parse<TSelf>($"""
                              IF NOT EXISTS (
@@ -387,10 +374,25 @@ public readonly struct SqlCommand : IEquatable<SqlCommand>
                              END
                              """);
     }
+
+
+    public static SqlCommand GetUpdate<TSelf>( TSelf record )
+        where TSelf : PairRecord<TSelf>, ITableRecord<TSelf>
+    {
+        CommandParameters parameters = record.ToDynamicParameters();
+
+        return Parse<TSelf>($"""
+                             UPDATE {TSelf.TableName} 
+                             SET 
+                             {parameters.KeyValuePairs(1, "AND")}
+                             WHERE 
+                                {nameof(IUniqueID.ID)} = @{nameof(IUniqueID.ID)};
+                             """);
+    }
     public static SqlCommand InsertOrUpdate<TSelf>( TSelf record, in CommandParameters parameters, string separator = "AND" )
         where TSelf : PairRecord<TSelf>, ITableRecord<TSelf>
     {
-        CommandParameters recordParameters = record.ToDynamicParameters();
+        CommandParameters recordParameters = CommandParameters.Create(record);
 
         return Parse<TSelf>($"""
                              IF NOT EXISTS 
