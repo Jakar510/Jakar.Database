@@ -11,11 +11,11 @@ namespace Jakar.Database;
 [Serializable]
 public sealed record MigrationRecord : TableRecord<MigrationRecord>, ITableRecord<MigrationRecord>
 {
-    public const           string            TABLE_NAME          = "migrations";
-    public static readonly SqlCommand        SelectSql           = SqlCommand.Parse<MigrationRecord>($"SELECT * FROM {TABLE_NAME} ORDER BY {nameof(MigrationID)};");
-    public static readonly string            SetLastModifiedName = nameof(SetLastModified).SqlName();
-    internal readonly      string            RollbackID          = Randoms.RandomString(10);
-    
+    public const           string     TABLE_NAME          = "migrations";
+    public static readonly SqlCommand SelectSql           = SqlCommand.Parse<MigrationRecord>($"SELECT * FROM {TABLE_NAME} ORDER BY {nameof(MigrationID)};");
+    public static readonly string     SetLastModifiedName = nameof(SetLastModified).SqlName();
+    internal readonly      string     RollbackID          = Randoms.RandomString(10);
+
 
     // ReSharper disable once ReplaceWithFieldKeyword
     private static readonly    SqlName __tableName = TABLE_NAME;
@@ -25,7 +25,8 @@ public sealed record MigrationRecord : TableRecord<MigrationRecord>, ITableRecor
     public required       string          Description { get; init; }
     [Key] public required long            MigrationID { get; init; }
     public                string?         ReferenceID { get; init; }
-    [DbIgnore] public     SqlCommand      SQL         { get; internal init; }
+    [DbIgnore] public     SqlCommand      UpSQL       { get; internal init; }
+    [DbIgnore] public     SqlCommand      DownSQL     { get; internal init; }
 
 
     public MigrationRecord() : base(DateTimeOffset.UtcNow) { }
@@ -41,15 +42,15 @@ public sealed record MigrationRecord : TableRecord<MigrationRecord>, ITableRecor
                                                                          {
                                                                              MigrationID = migrationID,
                                                                              Description = $"create {SetLastModifiedName} function",
-                                                                             SQL = $"""
-                                                                                    CREATE OR REPLACE FUNCTION {SetLastModifiedName}()
-                                                                                    RETURNS TRIGGER AS $$
-                                                                                    BEGIN
-                                                                                        NEW.{nameof(ILastModified.LastModified).SqlName()} = now();
-                                                                                        RETURN NEW;
-                                                                                    END;
-                                                                                    $$ LANGUAGE plpgsql;
-                                                                                    """
+                                                                             UpSQL = $"""
+                                                                                      CREATE OR REPLACE FUNCTION {SetLastModifiedName}()
+                                                                                      RETURNS TRIGGER AS $$
+                                                                                      BEGIN
+                                                                                          NEW.{nameof(ILastModified.LastModified).SqlName()} = now();
+                                                                                          RETURN NEW;
+                                                                                      END;
+                                                                                      $$ LANGUAGE plpgsql;
+                                                                                      """
                                                                          };
 
 
@@ -64,7 +65,6 @@ public sealed record MigrationRecord : TableRecord<MigrationRecord>, ITableRecor
     /// <returns> </returns>
     public static MigrationRecord AddPostgreSqlExtensions( long migrationID ) => Create<MigrationRecord>(migrationID,
                                                                                                          "Add PostgreSql extensions",
-                                                                                                          
                                                                                                          """
 
                                                                                                          CREATE EXTENSION pg_crypto;
@@ -72,9 +72,7 @@ public sealed record MigrationRecord : TableRecord<MigrationRecord>, ITableRecor
                                                                                                          CREATE EXTENSION pgaudit;
                                                                                                          CREATE EXTENSION pg_textsearch;
                                                                                                          CREATE EXTENSION uint128;
-                                                                                                         """
-                                                                                                          
-                                                                                                        );
+                                                                                                         """);
 
 
     public static MigrationRecord CreateTable( long migrationID ) => MetaData.CreateTable(migrationID);
@@ -109,7 +107,7 @@ public sealed record MigrationRecord : TableRecord<MigrationRecord>, ITableRecor
                                      MigrationID = migrationID,
                                      Description = $"create {tableName} table",
                                      ReferenceID = tableName,
-                                     SQL         = $"CREATE TYPE {tableName} AS ENUM ({getValues()})"
+                                     UpSQL       = $"CREATE TYPE {tableName} AS ENUM ({getValues()})"
                                  };
 
         return record.Validate();
@@ -131,7 +129,7 @@ public sealed record MigrationRecord : TableRecord<MigrationRecord>, ITableRecor
                                      MigrationID = migrationID,
                                      Description = description,
                                      ReferenceID = TSelf.TableName,
-                                     SQL         = sql
+                                     UpSQL       = sql
                                  };
 
         return record.Validate();

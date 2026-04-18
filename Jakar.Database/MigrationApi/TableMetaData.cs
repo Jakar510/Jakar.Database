@@ -285,7 +285,8 @@ public class TableMetaData<TSelf> : ITableMetaData
                                                                                       MigrationID = migrationID,
                                                                                       Description = $"Create {TableName} table",
                                                                                       ReferenceID = TableName,
-                                                                                      SQL         = CreateTableSql()
+                                                                                      UpSQL       = CreateTableSql(),
+                                                                                      DownSQL     = $"DROP TABLE IF EXISTS {TableName} CASCADE;"
                                                                                   };
 
 

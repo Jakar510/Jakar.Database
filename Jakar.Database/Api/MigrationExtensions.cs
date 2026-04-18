@@ -63,6 +63,13 @@ public static class MigrationExtensions
             ILogger                       logger = scope.ServiceProvider.GetRequiredService<ILoggerFactory>().CreateLogger(nameof(ApplyMigrations));
             await db.MigrationManager.ApplyMigrations(logger, token);
         }
+        public async ValueTask RevertMigrations( long migrateDownToInclusive, CancellationToken token = default )
+        {
+            await using AsyncServiceScope scope  = self.Services.CreateAsyncScope();
+            Database                      db     = scope.ServiceProvider.GetRequiredService<Database>();
+            ILogger                       logger = scope.ServiceProvider.GetRequiredService<ILoggerFactory>().CreateLogger(nameof(RevertMigrations));
+            await db.MigrationManager.RevertMigrations(logger, migrateDownToInclusive, token);
+        }
 
 
         public void TryUseMigrationsEndPoint( string endpoint = MigrationManager.MIGRATIONS )

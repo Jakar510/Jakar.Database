@@ -1,6 +1,10 @@
 ﻿// Jakar.Extensions :: Experiments
 // 09/28/2023  10:02 AM
 
+using ILogger = Microsoft.Extensions.Logging.ILogger;
+
+
+
 namespace Jakar.Database;
 
 
@@ -98,15 +102,15 @@ internal sealed class TestDatabase( IConfiguration configuration, IOptions<DbOpt
         WriteLine(SqlCommand.WherePaged<RoleRecord>(parameters, 0, 10).ToString());
         WriteLine(SqlCommand.WherePaged<RoleRecord>(userID,     0, 10).ToString());
         WriteLine(SqlCommand.WherePaged<RoleRecord>(0,          10).ToString());
-        WriteLine(SqlCommand.WherePaged<RoleRecord>(date, 0, 10).ToString());
-        
+        WriteLine(SqlCommand.WherePaged<RoleRecord>(date,       0, 10).ToString());
+
         WriteLine(SqlCommand.Where<RoleRecord>(parameters).ToString());
-        
+
         WriteLine(SqlCommand.Parse<RoleRecord>($"SELECT * FROM {RoleRecord.TableName} WHERE {nameof(RoleRecord.NameOfRole)} = @{ADMIN};").ToString());
-        
+
         WriteLine(SqlCommand.Get(id).ToString());
         WriteLine(SqlCommand.Get(id, RecordID<RoleRecord>.New()).ToString());
-        
+
         WriteLine(SqlCommand.Get<RoleRecord>(parameters).ToString());
         WriteLine(SqlCommand.GetAll<RoleRecord>().ToString());
         WriteLine(SqlCommand.GetFirst<RoleRecord>().ToString());
@@ -156,7 +160,7 @@ internal sealed class TestDatabase( IConfiguration configuration, IOptions<DbOpt
 
 
 
-    public sealed class TesterService( TestDatabase db ) : IHostedService
+    public sealed class TesterService( TestDatabase db, ILogger<TesterService> logger ) : IHostedService
     {
         public async Task StartAsync( CancellationToken token )
         {
@@ -170,7 +174,7 @@ internal sealed class TestDatabase( IConfiguration configuration, IOptions<DbOpt
             UserLoginProviderRecord loginProvider = await Add_UserLoginProvider(db, user, token);
             ( ImmutableArray<RecoveryCodeRecord> recoveryCodes, ImmutableArray<UserRecoveryCodeRecord> userRecoveryCodes ) = await Add_RecoveryCodes(db, user, token);
         }
-        public Task StopAsync( CancellationToken token ) => Task.CompletedTask;
+        public async Task StopAsync( CancellationToken token ) => await db.MigrationManager.RevertMigrations(logger, 0, token);
 
 
         public static async ValueTask<(UserRecord Admin, UserRecord User)> Add_Users( Database db, CancellationToken token = default )

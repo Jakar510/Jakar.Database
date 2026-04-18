@@ -135,10 +135,15 @@ public class MigrationManager
     }
 
 
+    public async ValueTask RevertMigrations( ILogger logger, long migrateDownToInclusive, CancellationToken token = default )
+    {
+        if ( migrateDownToInclusive < 0 ) { throw new ArgumentOutOfRangeException(nameof(migrateDownToInclusive), "Migration ID must be non-negative."); }
+
+        if ( migrateDownToInclusive <= LastMigrationID ) { throw new ArgumentOutOfRangeException(nameof(migrateDownToInclusive), "Migration ID must be less than or equal to the last applied migration ID."); }
+    }
     public async ValueTask ApplyMigrations( ILogger logger, CancellationToken token = default )
     {
         await using DbConnectionContext context = await _db.ConnectAsync(token);
-
         await context.EnsureTableExistsAsync<MigrationRecord>(token);
 
         await context.StartTransactionAsync(_db.TransactionIsolationLevel, token);
@@ -172,10 +177,10 @@ public class MigrationManager
     {
         try
         {
-            await context.ExecuteNonQueryAsync(self.SQL, token);
+            await context.ExecuteNonQueryAsync(self.UpSQL, token);
             self.AppliedOn = DateTimeOffset.UtcNow;
         }
-        catch ( Exception e ) { throw new DbSqlException(self.SQL, e); }
+        catch ( Exception e ) { throw new DbSqlException(self.UpSQL, e); }
 
         SqlCommand applySql = self.ApplySql();
 
