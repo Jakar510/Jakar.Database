@@ -166,7 +166,7 @@ public class DbConnectionContext : IAsyncDisposable
         await using DbCommand command = sql.ToCommand(this);
         object?               value   = await command.ExecuteScalarAsync(token).ConfigureAwait(false);
 
-        Console.WriteLine($"ExecuteScalarAsync value: {value}");
+        Debug.WriteLine($"ExecuteScalarAsync value: {value}");
 
         return value is T result
                    ? result

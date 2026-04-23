@@ -25,7 +25,10 @@ public sealed class DbOptions
     public static readonly Uri    Local_80                           = new("http://localhost:80");
 
 
-    public static   int                                                     ConcurrencyLevel                { get;                                 set; } = Environment.ProcessorCount;
+#pragma warning disable RS1035
+    public static int ConcurrencyLevel { get; set; } = Environment.ProcessorCount;
+#pragma warning restore RS1035
+
     public static   PasswordRequirements                                    PasswordRequirements            { get => PasswordRequirements.Current; set => PasswordRequirements.Current = value; }
     public          OpenTelemetryActivityEnricher                           ActivityEnricher                { [Pure] get => new(LoggerOptions, TelemetrySource); }
     public          AppInformation                                          AppInformation                  => TelemetrySource.Info;
@@ -151,7 +154,7 @@ public sealed class DbOptions
     {
         ValueTask<ConnectionString> task    = GetConnectionStringAsync(provider);
         ConnectionString            secured = task.CallSynchronously();
-        string                   value   = secured.ToString();
+        string                      value   = secured.ToString();
         return value;
     }
     public static async ValueTask<ConnectionString> GetConnectionStringAsync( IServiceProvider provider )
@@ -163,8 +166,8 @@ public sealed class DbOptions
     {
         DbOptions options = provider.GetRequiredService<IOptions<DbOptions>>().Value;
 
-        IConfiguration configuration = provider.GetRequiredService<IConfiguration>();
-        ConnectionString  secure        = await options.GetConnectionStringAsync(configuration, token);
+        IConfiguration   configuration = provider.GetRequiredService<IConfiguration>();
+        ConnectionString secure        = await options.GetConnectionStringAsync(configuration, token);
         return secure;
     }
     public async ValueTask<ConnectionString> GetConnectionStringAsync( IConfiguration configuration, CancellationToken token ) => await ConnectionStringResolver.GetSecuredStringAsync(configuration, token);

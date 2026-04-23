@@ -25,8 +25,10 @@ public static class PostgresParams
                                                                                             [nameof(IUserRecordID.UserID)]       = "user_id",
                                                                                             [nameof(IJsonModel.AdditionalData)]  = "additional_data"
                                                                                         };
-    private static readonly ConcurrentDictionary<(string Original, int MaxLength), string> __paddedCache        = new();
-    private static readonly ConcurrentDictionary<string, string>                           __parameterNameCache = new(Environment.ProcessorCount, DEFAULT_CAPACITY, StringComparer.InvariantCulture);
+    private static readonly ConcurrentDictionary<(string Original, int MaxLength), string> __paddedCache = new();
+#pragma warning disable RS1035
+    private static readonly ConcurrentDictionary<string, string> __parameterNameCache = new(Environment.ProcessorCount, DEFAULT_CAPACITY, StringComparer.InvariantCulture);
+#pragma warning restore RS1035
 
 
     public static string AddSqlName<TSelf>()

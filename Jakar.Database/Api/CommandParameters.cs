@@ -13,10 +13,12 @@ public readonly struct CommandParameters() : IEquatable<CommandParameters>
 {
     // internal readonly List<SqlParameter>                    parameters = [];
     // internal readonly List<ImmutableArray<SqlParameter>>    Extras     = [];
-    private readonly       List<SqlParameter>                 __parameters = [];
-    private readonly       List<ImmutableArray<SqlParameter>> __groups     = [];
-    private readonly       UInt128                            __id         = new((ulong)Random.Shared.NextInt64(), (ulong)Random.Shared.NextInt64());
-    public static readonly CommandParameters                  Empty        = new() { Table = null! };
+    private readonly List<SqlParameter>                 __parameters = [];
+    private readonly List<ImmutableArray<SqlParameter>> __groups     = [];
+#pragma warning disable RS1035
+    private readonly UInt128 __id = new((ulong)Random.Shared.NextInt64(), (ulong)Random.Shared.NextInt64());
+#pragma warning restore RS1035
+    public static readonly CommandParameters Empty = new() { Table = null! };
 
 
     public required ITableMetaData Table

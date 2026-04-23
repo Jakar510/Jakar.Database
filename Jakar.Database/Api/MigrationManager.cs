@@ -105,13 +105,13 @@ public class MigrationManager
     [Conditional("DEBUG")] public static void PrintSql( string sql, [CallerArgumentExpression(nameof(sql))] string variableName = EMPTY )
     {
         const string BOUNDARY = "================================";
-        Console.WriteLine(BOUNDARY);
-        Console.WriteLine();
-        Console.WriteLine(variableName);
-        Console.WriteLine();
-        Console.WriteLine(sql);
-        Console.WriteLine();
-        Console.WriteLine(BOUNDARY);
+        Debug.WriteLine(BOUNDARY);
+        Debug.WriteLine(EMPTY);
+        Debug.WriteLine(variableName);
+        Debug.WriteLine(EMPTY);
+        Debug.WriteLine(sql);
+        Debug.WriteLine(EMPTY);
+        Debug.WriteLine(BOUNDARY);
     }
 
 

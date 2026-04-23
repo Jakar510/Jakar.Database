@@ -62,27 +62,27 @@ internal sealed class TestDatabase( IConfiguration configuration, IOptions<DbOpt
     }
     public static void TestFormats( scoped in Span<char> destination )
     {
-        Console.WriteLine();
+        Debug.WriteLine(EMPTY);
         WriteLine(TestFormat(DateTimeOffset.UtcNow, in destination, "o"));
         WriteLine(TestFormat(DateTimeOffset.UtcNow, in destination, "r"));
         WriteLine(TestFormat(DateTimeOffset.UtcNow, in destination, "s"));
         WriteLine(TestFormat(DateTimeOffset.UtcNow, in destination, "u"));
-        Console.WriteLine();
+        Debug.WriteLine(EMPTY);
         WriteLine(TestFormat(TimeSpan.FromDays(5.1654654), in destination, "c"));
         WriteLine(TestFormat(TimeSpan.FromDays(5.1654654), in destination, "t"));
         WriteLine(TestFormat(TimeSpan.FromDays(5.1654654), in destination, "g"));
-        Console.WriteLine();
+        Debug.WriteLine(EMPTY);
     }
     public static void WriteLine( string line, [CallerArgumentExpression(nameof(line))] string paramName = EMPTY )
     {
         string header = new('=', paramName.Length + 20);
-        Console.WriteLine();
-        Console.WriteLine(header);
-        Console.WriteLine(paramName.PadLeft(header.Length - 10).PadRight(header.Length));
-        Console.WriteLine(header);
-        Console.WriteLine();
-        Console.WriteLine(line);
-        Console.WriteLine();
+        Debug.WriteLine(EMPTY);
+        Debug.WriteLine(header);
+        Debug.WriteLine(paramName.PadLeft(header.Length - 10).PadRight(header.Length));
+        Debug.WriteLine(header);
+        Debug.WriteLine(EMPTY);
+        Debug.WriteLine(line);
+        Debug.WriteLine(EMPTY);
     }
     public static void TestSQL()
     {
