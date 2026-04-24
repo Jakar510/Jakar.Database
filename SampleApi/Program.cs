@@ -50,7 +50,7 @@ app.MapGet("/Ping", static () => DateTimeOffset.UtcNow);
 app.MapPost("/auth/dev/cookie",
             async ( HttpContext context ) =>
             {
-                await context.SignInAsync(options.CookieAuthenticationScheme, CreatePrincipal(options.CookieAuthenticationScheme, "sample-cookie-user"));
+                await context.SignInAsync(options.CookieAuthenticationScheme, createPrincipal(options.CookieAuthenticationScheme, "sample-cookie-user"));
                 return Results.NoContent();
             });
 
@@ -59,7 +59,7 @@ app.MapGet("/auth/dev/token",
            {
                string accessToken = DbTokenHandler.Instance.CreateToken(new SecurityTokenDescriptor
                                                                         {
-                                                                            Subject            = (ClaimsIdentity)CreatePrincipal(options.BearerAuthenticationScheme, "sample-bearer-user").Identity!,
+                                                                            Subject            = (ClaimsIdentity)createPrincipal(options.BearerAuthenticationScheme, "sample-bearer-user").Identity!,
                                                                             Expires            = DateTime.UtcNow.AddMinutes(15),
                                                                             Issuer             = options.TokenIssuer,
                                                                             Audience           = options.TokenAudience,
@@ -70,22 +70,22 @@ app.MapGet("/auth/dev/token",
                return TypedResults.Ok(new { accessToken });
            });
 
-app.MapGet("/api/me", static ( ClaimsPrincipal user ) => TypedResults.Ok(DescribePrincipal(user))).RequireAuthorization();
-app.MapGet("/app/me", static ( ClaimsPrincipal user ) => TypedResults.Ok(DescribePrincipal(user))).RequireAuthorization();
+app.MapGet("/api/me", static ( ClaimsPrincipal user ) => TypedResults.Ok(describePrincipal(user))).RequireAuthorization();
+app.MapGet("/app/me", static ( ClaimsPrincipal user ) => TypedResults.Ok(describePrincipal(user))).RequireAuthorization();
 
 
 await app.RunWithMigrationsAsync(["localhost:8181", "0.0.0.0:8181"], SampleDatabase.TestAll);
 return;
 
 
-static ClaimsPrincipal CreatePrincipal( string scheme, string userName )
+static ClaimsPrincipal createPrincipal( string scheme, string userName )
 {
     Claim[] claims = [new Claim(ClaimType.UserName.ToClaimTypes(), userName), new Claim(ClaimType.UserID.ToClaimTypes(), Guid.CreateVersion7().ToString())];
 
     return new ClaimsPrincipal(new ClaimsIdentity(claims, scheme, ClaimType.UserName.ToClaimTypes(), ClaimType.Role.ToClaimTypes()));
 }
 
-static object DescribePrincipal( ClaimsPrincipal user )
+static object describePrincipal( ClaimsPrincipal user )
 {
     string authenticationType = user.Identity?.AuthenticationType                                                                  ?? "<none>";
     string userName           = user.Claims.FirstOrDefault(static claim => claim.Type == ClaimType.UserName.ToClaimTypes())?.Value ?? "<missing>";

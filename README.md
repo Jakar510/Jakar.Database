@@ -116,6 +116,29 @@ Focused validation now covers:
 - cookie-authenticated interactive requests
 - unauthenticated API requests returning `401`
 
+### Identity Services
+
+`DbServices.AddIdentityServices(...)` is the ASP.NET Identity registration entry point for the library's custom stores and managers.
+
+It now validates cleanly for the common `Identity` surface instead of relying on hidden follow-up registrations:
+
+- `IUserStore<UserRecord>` and the related login, claim, password, email, lockout, 2FA, authenticator-key, recovery-code, and phone-number store interfaces
+- `IRoleStore<RoleRecord>`
+- `UserManager<UserRecord>`, `RoleManager<RoleRecord>`, and `SignInManager<UserRecord>`
+- default ASP.NET Identity token flows for password reset, email confirmation, and authenticator tokens
+
+The default `IdentityOptions` token-provider mapping now aligns with the providers that `AddIdentityServices(...)` actually registers:
+
+- password reset uses `TokenOptions.DefaultProvider`
+- email confirmation and change-email use `TokenOptions.DefaultEmailProvider`
+- change-phone-number uses `TokenOptions.DefaultPhoneProvider`
+- authenticator tokens use `TokenOptions.DefaultAuthenticatorProvider`
+
+The generic overload also keeps a named custom provider registration for both:
+
+- `nameof(TTokenProvider)`
+- `options.AppInformation.AppName`
+
 ### Migrations
 
 `MigrationRecord` now treats rollback as a first-class concern:
@@ -158,6 +181,12 @@ Unit-style generator checks:
 
 ```powershell
 dotnet test Jakar.Database.Tests\Jakar.Database.Tests.csproj --filter GeneratedRecordTests --no-restore
+```
+
+Identity service checks:
+
+```powershell
+dotnet test Jakar.Database.Tests\Jakar.Database.Tests.csproj --filter IdentityServicesRegistrationTests --no-restore
 ```
 
 Integration tests require Docker because the existing fixture uses Testcontainers PostgreSQL:

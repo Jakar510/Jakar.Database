@@ -17,8 +17,8 @@ public sealed class DbOptions
     public const           string AUTHENTICATION_SCHEME_DISPLAY_NAME = "Hybrid Authentication";
     public const           string AUTHENTICATION_TYPE                = JwtBearerDefaults.AuthenticationScheme;
     public const           string BEARER_AUTHENTICATION_SCHEME       = JwtBearerDefaults.AuthenticationScheme;
-    public static readonly string COOKIE_AUTHENTICATION_SCHEME       = IdentityConstants.ApplicationScheme;
-    public static readonly string EXTERNAL_COOKIE_AUTHENTICATION_SCHEME = IdentityConstants.ExternalScheme;
+    public static readonly string Cookie_Authentication_Scheme       = IdentityConstants.ApplicationScheme;
+    public static readonly string External_Cookie_Authentication_Scheme = IdentityConstants.ExternalScheme;
     public const           int    COMMAND_TIMEOUT                    = 300;
     public const           string JWT_ALGORITHM                      = SecurityAlgorithms.HmacSha512Signature;
     public const           string JWT_KEY                            = "JWT";
@@ -42,13 +42,13 @@ public sealed class DbOptions
     public          string[]                                                BearerPathPrefixes              { get;                                                  set; } = ["/api"];
     public          TimeSpan                                                ClockSkew                       { get;                                                  set; } = TimeSpan.FromMinutes(1);
     public required int?                                                    CommandTimeout                  { get;                                                  set; } = COMMAND_TIMEOUT;
-    public          string                                                  CookieAuthenticationScheme      { get;                                                  set; } = COOKIE_AUTHENTICATION_SCHEME;
+    public          string                                                  CookieAuthenticationScheme      { get;                                                  set; } = Cookie_Authentication_Scheme;
     public          Action<CookieAuthenticationOptions>?                    ConfigureApplicationCookie      { get;                                                  set; }
     public          Action<AuthenticationOptions>?                          ConfigureAuthentication         { get;                                                  set; }
     public          Action<RedisBackplaneOptions>?                          ConfigureAuthenticationOptions  { get;                                                  set; }
     public          Action<CookieAuthenticationOptions>?                    ConfigureCookieAuth             { get;                                                  set; }
     public          Action<CookieAuthenticationOptions>?                    ConfigureExternalCookie         { get;                                                  set; }
-    public          string                                                  ExternalCookieAuthenticationScheme { get;                                               set; } = EXTERNAL_COOKIE_AUTHENTICATION_SCHEME;
+    public          string                                                  ExternalCookieAuthenticationScheme { get;                                               set; } = External_Cookie_Authentication_Scheme;
     public          Func<HttpContext, string>?                              ForwardDefaultSelector          { get;                                                  set; }
     public          Action<GoogleOptions>?                                  ConfigureGoogle                 { get;                                                  set; }
     public          Action<IdentityOptions>                                 ConfigureIdentityOptions        { get;                                                  set; }
@@ -168,11 +168,11 @@ public sealed class DbOptions
         options.Password.RequiredUniqueChars          = requirements.MinLength / 3;
         options.Password.RequiredLength               = requirements.MinLength;
         options.Tokens.AuthenticatorIssuer            = info.AppName;
-        options.Tokens.AuthenticatorTokenProvider     = info.AppName;
-        options.Tokens.ChangeEmailTokenProvider       = info.AppName;
-        options.Tokens.ChangePhoneNumberTokenProvider = info.AppName;
-        options.Tokens.EmailConfirmationTokenProvider = info.AppName;
-        options.Tokens.PasswordResetTokenProvider     = info.AppName;
+        options.Tokens.AuthenticatorTokenProvider     = TokenOptions.DefaultAuthenticatorProvider;
+        options.Tokens.ChangeEmailTokenProvider       = TokenOptions.DefaultEmailProvider;
+        options.Tokens.ChangePhoneNumberTokenProvider = TokenOptions.DefaultPhoneProvider;
+        options.Tokens.EmailConfirmationTokenProvider = TokenOptions.DefaultEmailProvider;
+        options.Tokens.PasswordResetTokenProvider     = TokenOptions.DefaultProvider;
         options.Lockout.DefaultLockoutTimeSpan        = TimeSpan.FromMinutes(15);
         options.Lockout.MaxFailedAccessAttempts       = 5;
         options.Lockout.AllowedForNewUsers            = true;

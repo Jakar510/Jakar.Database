@@ -253,6 +253,10 @@ public static class DbServices
             where TPhoneNumberTokenProvider : PhoneNumberTokenProvider
             where TAuthenticatorTokenProvider : OtpAuthenticatorTokenProvider
         {
+            self.AddHttpContextAccessor();
+            self.AddDataProtection();
+            self.TryAddSingleton(options.TelemetrySource);
+            self.TryAddTransient<IOptions<PasswordRequirements>>(static _ => PasswordRequirements.Current);
             self.AddOptions(options.ConfigureIdentityOptions);
 
             self.AddUserStore<TUserStore>();
@@ -265,6 +269,7 @@ public static class DbServices
                        .AddRoleStore<TRoleStore>()
                        .AddRoleManager<TRoleManager>()
                        .AddSignInManager<TSignInManager>()
+                       .AddPersonalDataProtection<PersonalDataLookupProtector, PersonalDataLookupProtectorKeyRing>()
                        .AddUserValidator<TUserValidator>()
                        .AddRoleValidator<TRoleValidator>()
                        .AddPasswordValidator<TUserPasswordValidator>()
@@ -272,7 +277,8 @@ public static class DbServices
                        .AddTokenProvider(TokenOptions.DefaultEmailProvider,         typeof(TEmailTokenProvider))
                        .AddTokenProvider(TokenOptions.DefaultPhoneProvider,         typeof(TPhoneNumberTokenProvider))
                        .AddTokenProvider(TokenOptions.DefaultAuthenticatorProvider, typeof(TAuthenticatorTokenProvider))
-                       .AddTokenProvider<TTokenProvider>(nameof(TTokenProvider));
+                       .AddTokenProvider<TTokenProvider>(options.AppInformation.AppName)
+                       .AddTokenProvider<TTokenProvider>(typeof(TTokenProvider).Name);
         }
 
         public IServiceCollection AddRoleStore<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)] TRoleStore>()
@@ -308,16 +314,9 @@ public static class DbServices
         public IServiceCollection AddOptions<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)] TValue>( Action<TValue> options, string? name = null )
             where TValue : class
         {
-            self.AddSingleton<TValue>();
-            self.Configure(name ?? Options.DefaultName, options);
-            self.AddTransient(getValue);
+            OptionsServiceCollectionExtensions.AddOptions<TValue>(self, name ?? Options.DefaultName).Configure(options);
+            self.TryAddTransient(static provider => provider.GetRequiredService<IOptions<TValue>>().Value);
             return self;
-
-            static IOptions<TValue> getValue( IServiceProvider provider )
-            {
-                TValue value = provider.GetRequiredService<TValue>();
-                return value as IOptions<TValue> ?? Options.Create(value);
-            }
         }
     }
 

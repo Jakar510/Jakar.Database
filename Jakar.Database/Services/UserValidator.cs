@@ -25,7 +25,7 @@ public class UserValidator : IUserValidator<UserRecord>
         }
         */
 
-        if ( !string.IsNullOrWhiteSpace(user.UserName) ) { errors.Add(new IdentityError { Description = $"{nameof(UserRecord.UserName)} is invalid" }); }
+        if ( string.IsNullOrWhiteSpace(user.UserName) ) { errors.Add(new IdentityError { Description = $"{nameof(UserRecord.UserName)} is invalid" }); }
     }
 
 

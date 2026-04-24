@@ -118,6 +118,26 @@ app.UseAuthentication();
 app.UseAuthorization();
 ```
 
+## Identity Services
+
+`DbServices.AddIdentityServices(...)` wires `Jakar.Database` into ASP.NET Core Identity without Entity Framework.
+
+The validated registration surface includes:
+
+- `IUserStore<UserRecord>` plus the login, claim, password, security-stamp, 2FA, email, lockout, authenticator-key, recovery-code, and phone-number store interfaces
+- `IRoleStore<RoleRecord>`
+- `UserManager<UserRecord>`, `RoleManager<RoleRecord>`, and `SignInManager<UserRecord>`
+- default token flows for password reset, email confirmation, and authenticator codes
+
+The default `IdentityOptions` token names are aligned with the registered providers:
+
+- `TokenOptions.DefaultProvider` for password reset
+- `TokenOptions.DefaultEmailProvider` for email confirmation and change-email
+- `TokenOptions.DefaultPhoneProvider` for change-phone-number
+- `TokenOptions.DefaultAuthenticatorProvider` for authenticator codes
+
+The generic overload also registers `TTokenProvider` under both `nameof(TTokenProvider)` and `options.AppInformation.AppName`, so custom token workflows can opt in explicitly without breaking the stock Identity methods.
+
 ## Migration Guidance
 
 Down migrations matter. Every migration that changes schema state should have an explicit rollback path.
@@ -153,6 +173,12 @@ Authentication host checks:
 
 ```powershell
 dotnet test ..\Jakar.Database.Tests\Jakar.Database.Tests.csproj --filter AuthenticationConfigurationTests --no-restore
+```
+
+Identity registration checks:
+
+```powershell
+dotnet test ..\Jakar.Database.Tests\Jakar.Database.Tests.csproj --filter IdentityServicesRegistrationTests --no-restore
 ```
 
 Full integration tests require Docker because the existing suite uses PostgreSQL Testcontainers.
