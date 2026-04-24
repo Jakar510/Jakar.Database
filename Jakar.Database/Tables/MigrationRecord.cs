@@ -11,8 +11,7 @@ namespace Jakar.Database;
 [Serializable]
 public sealed partial record MigrationRecord : TableRecord<MigrationRecord>, ITableRecord<MigrationRecord>
 {
-    public const           string     TABLE_NAME          = "migrations";
-    public static readonly SqlCommand SelectSql           = SqlCommand.Parse<MigrationRecord>($"SELECT * FROM {TABLE_NAME} ORDER BY {nameof(MigrationID)};");
+    public const           string     TABLE_NAME          = "migrations"; 
     public static readonly string     SetLastModifiedName = nameof(SetLastModified).SqlName();
     internal readonly      string     RollbackID          = Randoms.RandomString(10);
 
