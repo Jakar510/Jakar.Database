@@ -19,11 +19,11 @@ dotnet add package Jakar.Database
 - base records such as `TableRecord<TSelf>`, `PairRecord<TSelf>`, and `OwnedTableRecord<TSelf>`
 - migration metadata and table creation helpers
 - Dapper-friendly command parameter generation
-- optional source-generated implementations of `Create(DbDataReader)` and `ToDynamicParameters()`
+- optional source-generated implementations of common `ITableRecord<TSelf>` and `TableRecord<TSelf>` boilerplate
 
 ## Source Generator Contract
 
-The generator emits `Create(DbDataReader)` and `ToDynamicParameters()` when your record:
+The generator emits `Create(DbDataReader)` and the common abstract table-record members when your record:
 
 - is `partial`
 - implements `ITableRecord<TSelf>`
@@ -56,6 +56,67 @@ In that shape, the generator supplies:
 
 - `public static ExampleRecord Create(DbDataReader reader)`
 - `public override CommandParameters ToDynamicParameters()`
+- `public override ValueTask Export(NpgsqlBinaryExporter exporter, CancellationToken token)`
+- `public override ValueTask Import(NpgsqlBatchCommand batch, CancellationToken token)`
+- `protected override ValueTask Import(NpgsqlBinaryImporter importer, string propertyName, NpgsqlDbType postgresDbType, CancellationToken token)`
+
+Keep a manual implementation when a record needs special handling.
+
+## Authentication
+
+The package now defaults to a hybrid ASP.NET Core authentication setup intended to work across:
+
+- WebAPI endpoints using bearer tokens
+- Blazor or other interactive browser hosts using cookies
+- non-browser clients that always send JWT bearer headers
+
+`DbOptions.AddAuthentication(...)` registers:
+
+- a hybrid default scheme used by authorization
+- a named JWT bearer scheme
+- a primary cookie scheme
+- optional external provider cookies and remote auth handlers
+
+Default selection rules:
+
+- `Authorization: Bearer ...` header: use JWT bearer
+- request path under `BearerPathPrefixes` such as `/api`: use JWT bearer
+- everything else: use the primary cookie scheme
+
+Useful knobs in `DbOptions`:
+
+- `AuthenticationScheme`
+- `BearerAuthenticationScheme`
+- `CookieAuthenticationScheme`
+- `BearerPathPrefixes`
+- `ForwardDefaultSelector`
+
+Fast host pattern:
+
+```csharp
+DbOptions options = new()
+                    {
+                        TelemetrySource = ...,
+                        ConnectionStringResolver = ...,
+                        CommandTimeout = 30,
+                        TokenIssuer = "MyApp",
+                        TokenAudience = "MyApp",
+                        LoggerOptions = new AppLoggerOptions(),
+                        ConfigureCookieAuth = cookie =>
+                                              {
+                                                  cookie.Cookie.Name = "myapp.auth";
+                                                  cookie.LoginPath = "/account/login";
+                                                  cookie.AccessDeniedPath = "/account/access-denied";
+                                              }
+                    };
+
+builder.Services.AddAuthorization();
+options.AddAuthentication(builder);
+
+var app = builder.Build();
+app.UseAuthentication();
+app.UseAuthorization();
+```
 
 ## Migration Guidance
 
@@ -86,6 +147,12 @@ Fast generator-focused checks:
 
 ```powershell
 dotnet test ..\Jakar.Database.Tests\Jakar.Database.Tests.csproj --filter GeneratedRecordTests --no-restore
+```
+
+Authentication host checks:
+
+```powershell
+dotnet test ..\Jakar.Database.Tests\Jakar.Database.Tests.csproj --filter AuthenticationConfigurationTests --no-restore
 ```
 
 Full integration tests require Docker because the existing suite uses PostgreSQL Testcontainers.

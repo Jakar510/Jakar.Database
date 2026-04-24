@@ -12,6 +12,7 @@
 - Shared record metadata for common tables.
 - Reversible migrations, especially for tables, enums, and generated indexes.
 - Incremental source generation for `ITableRecord<TSelf>` plumbing.
+- Hybrid host authentication for WebAPI, Blazor, and other .NET clients.
 
 ## Repository Layout
 
@@ -65,9 +66,55 @@ That keeps the manual code focused on actual behavior:
 
 - validation
 - custom factory overloads
-- binary import/export
+- custom binary import/export when the generated path is not enough
 - comparison and equality logic
 - table-specific domain helpers
+
+The generator now also fills in the common abstract `TableRecord<TSelf>` members when they are missing:
+
+- `Export(NpgsqlBinaryExporter, CancellationToken)`
+- `Import(NpgsqlBatchCommand, CancellationToken)`
+- `Import(NpgsqlBinaryImporter, string, NpgsqlDbType, CancellationToken)`
+
+Records still keep manual implementations when they need non-standard behavior.
+
+### Authentication
+
+`DbOptions.AddAuthentication(...)` now registers a hybrid default scheme intended for mixed hosts:
+
+- bearer tokens are used automatically for requests with an `Authorization: Bearer ...` header
+- bearer tokens are also preferred for configured API path prefixes such as `/api`
+- cookies are used for interactive requests such as Blazor or MVC-style navigation
+
+Relevant `DbOptions` members:
+
+- `AuthenticationScheme`
+  The default hybrid scheme used by authorization.
+- `BearerAuthenticationScheme`
+  The named JWT bearer scheme.
+- `CookieAuthenticationScheme`
+  The primary cookie scheme for browser-based sign-in.
+- `BearerPathPrefixes`
+  Paths that should challenge/authenticate as APIs even without a bearer header.
+- `ForwardDefaultSelector`
+  Optional override for custom scheme selection.
+
+Minimal host order:
+
+```csharp
+builder.Services.AddAuthorization();
+options.AddAuthentication(builder);
+
+var app = builder.Build();
+app.UseAuthentication();
+app.UseAuthorization();
+```
+
+Focused validation now covers:
+
+- bearer-authenticated API requests
+- cookie-authenticated interactive requests
+- unauthenticated API requests returning `401`
 
 ### Migrations
 
@@ -124,7 +171,7 @@ dotnet test Jakar.Database.Tests\Jakar.Database.Tests.csproj
 If you want to keep pushing in the current direction, these are the next high-value steps:
 
 1. Move more provider-specific SQL generation behind `DatabaseType` instead of embedding PostgreSQL syntax in static query helpers.
-2. Expand generator coverage to reader-based import/export helpers where the pattern is stable enough.
+2. Expand generator coverage to more import/export helpers where the pattern is stable enough.
 3. Separate Docker-backed integration tests from pure unit tests so local verification is cheaper.
 4. Audit all public get-only properties on table records and mark non-persisted ones with `[DbIgnore]` consistently.
 5. Decide how the analyzer should be shipped through NuGet so consumers get the generator automatically, not only solution builds.

@@ -39,11 +39,12 @@ public static class DbServices
 
     public static JwtBearerOptions GetJwtBearerOptions( this IServiceProvider provider )
     {
-        JwtBearerOptions? bearer = provider.GetService<JwtBearerOptions>();
-        if ( bearer is not null ) { return bearer; }
+        DbOptions options = provider.GetRequiredService<DbOptions>();
+
+        IOptionsMonitor<JwtBearerOptions>? monitor = provider.GetService<IOptionsMonitor<JwtBearerOptions>>();
+        if ( monitor is not null ) { return monitor.Get(options.BearerAuthenticationScheme); }
 
         IConfiguration configuration = provider.GetRequiredService<IConfiguration>();
-        DbOptions      options       = provider.GetRequiredService<DbOptions>();
 
         JwtBearerOptions jwt = new()
                                {

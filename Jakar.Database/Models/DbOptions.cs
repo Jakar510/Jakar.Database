@@ -13,9 +13,12 @@ namespace Jakar.Database;
 [SuppressMessage("ReSharper", "MemberCanBeMadeStatic.Global")]
 public sealed class DbOptions
 {
-    public const           string AUTHENTICATION_SCHEME              = JwtBearerDefaults.AuthenticationScheme;
-    public const           string AUTHENTICATION_SCHEME_DISPLAY_NAME = $"Jwt.{AUTHENTICATION_SCHEME}";
+    public const           string AUTHENTICATION_SCHEME              = "Hybrid";
+    public const           string AUTHENTICATION_SCHEME_DISPLAY_NAME = "Hybrid Authentication";
     public const           string AUTHENTICATION_TYPE                = JwtBearerDefaults.AuthenticationScheme;
+    public const           string BEARER_AUTHENTICATION_SCHEME       = JwtBearerDefaults.AuthenticationScheme;
+    public static readonly string COOKIE_AUTHENTICATION_SCHEME       = IdentityConstants.ApplicationScheme;
+    public static readonly string EXTERNAL_COOKIE_AUTHENTICATION_SCHEME = IdentityConstants.ExternalScheme;
     public const           int    COMMAND_TIMEOUT                    = 300;
     public const           string JWT_ALGORITHM                      = SecurityAlgorithms.HmacSha512Signature;
     public const           string JWT_KEY                            = "JWT";
@@ -35,13 +38,18 @@ public sealed class DbOptions
     public          string                                                  AuthenticationScheme            { get;                                                  set; } = AUTHENTICATION_SCHEME;
     public          string                                                  AuthenticationSchemeDisplayName { get;                                                  set; } = AUTHENTICATION_SCHEME_DISPLAY_NAME;
     public          string                                                  AuthenticationType              { get;                                                  set; } = AUTHENTICATION_TYPE;
+    public          string                                                  BearerAuthenticationScheme      { get;                                                  set; } = BEARER_AUTHENTICATION_SCHEME;
+    public          string[]                                                BearerPathPrefixes              { get;                                                  set; } = ["/api"];
     public          TimeSpan                                                ClockSkew                       { get;                                                  set; } = TimeSpan.FromMinutes(1);
     public required int?                                                    CommandTimeout                  { get;                                                  set; } = COMMAND_TIMEOUT;
+    public          string                                                  CookieAuthenticationScheme      { get;                                                  set; } = COOKIE_AUTHENTICATION_SCHEME;
     public          Action<CookieAuthenticationOptions>?                    ConfigureApplicationCookie      { get;                                                  set; }
     public          Action<AuthenticationOptions>?                          ConfigureAuthentication         { get;                                                  set; }
     public          Action<RedisBackplaneOptions>?                          ConfigureAuthenticationOptions  { get;                                                  set; }
     public          Action<CookieAuthenticationOptions>?                    ConfigureCookieAuth             { get;                                                  set; }
     public          Action<CookieAuthenticationOptions>?                    ConfigureExternalCookie         { get;                                                  set; }
+    public          string                                                  ExternalCookieAuthenticationScheme { get;                                               set; } = EXTERNAL_COOKIE_AUTHENTICATION_SCHEME;
+    public          Func<HttpContext, string>?                              ForwardDefaultSelector          { get;                                                  set; }
     public          Action<GoogleOptions>?                                  ConfigureGoogle                 { get;                                                  set; }
     public          Action<IdentityOptions>                                 ConfigureIdentityOptions        { get;                                                  set; }
     public          Action<LoggerConfiguration>?                            ConfigureLoggerConfiguration    { get;                                                  set; }
@@ -76,19 +84,22 @@ public sealed class DbOptions
     private void DefaultConfigureAuthenticationOptions( AuthenticationOptions options )
     {
         options.DefaultAuthenticateScheme = AuthenticationScheme;
+        options.DefaultChallengeScheme    = AuthenticationScheme;
+        options.DefaultForbidScheme       = AuthenticationScheme;
         options.DefaultScheme             = AuthenticationScheme;
+        options.DefaultSignInScheme       = CookieAuthenticationScheme;
+        options.DefaultSignOutScheme      = CookieAuthenticationScheme;
     }
     public void AddAuthentication( WebApplicationBuilder application )
     {
         AuthenticationBuilder builder = application.Services.AddAuthentication(ConfigureAuthentication ?? DefaultConfigureAuthenticationOptions);
 
-        builder.AddJwtBearer(AuthenticationScheme, AuthenticationSchemeDisplayName, x => Configure(x, application));
+        builder.AddPolicyScheme(AuthenticationScheme, AuthenticationSchemeDisplayName, options => options.ForwardDefaultSelector = SelectAuthenticationScheme);
+        builder.AddJwtBearer(BearerAuthenticationScheme, BearerAuthenticationScheme, x => Configure(x, application));
+        builder.AddCookie(CookieAuthenticationScheme, ConfigurePrimaryCookie);
 
-        if ( ConfigureCookieAuth is not null ) { builder.AddCookie(AuthenticationScheme, IdentityConstants.BearerScheme, ConfigureCookieAuth); }
-
-        if ( ConfigureApplicationCookie is not null ) { builder.AddCookie(IdentityConstants.ApplicationScheme, ConfigureApplicationCookie); }
-
-        if ( ConfigureExternalCookie is not null ) { builder.AddCookie(IdentityConstants.ExternalScheme, ConfigureExternalCookie); }
+        if ( ConfigureApplicationCookie is not null && !string.Equals(CookieAuthenticationScheme, IdentityConstants.ApplicationScheme, StringComparison.Ordinal) ) { builder.AddCookie(IdentityConstants.ApplicationScheme, ConfigureApplicationCookie); }
+        if ( ConfigureExternalCookie is not null ) { builder.AddCookie(ExternalCookieAuthenticationScheme, ConfigureExternalCookie); }
 
         if ( ConfigureMicrosoftAccount is not null ) { builder.AddMicrosoftAccount(ConfigureMicrosoftAccount); }
 
@@ -101,10 +112,38 @@ public sealed class DbOptions
     private void Configure( JwtBearerOptions options, WebApplicationBuilder application )
     {
         options.TokenHandlers.Add(DbTokenHandler.Instance);
-        options.Audience                   = AppInformation.AppName;
-        options.Authority                  = AppInformation.AppName;
+        options.Audience                   = TokenAudience;
+        options.ClaimsIssuer               = TokenIssuer;
+        options.RequireHttpsMetadata       = false;
         options.UseSecurityTokenValidators = true;
         options.TokenValidationParameters  = application.GetTokenValidationParameters(this);
+
+        if ( Uri.TryCreate(TokenIssuer, UriKind.Absolute, out Uri? issuer) && string.Equals(issuer.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase) )
+        {
+            options.Authority            = issuer.ToString();
+            options.RequireHttpsMetadata = true;
+        }
+    }
+    private void ConfigurePrimaryCookie( CookieAuthenticationOptions options )
+    {
+        options.SlidingExpiration = true;
+        ConfigureCookieAuth?.Invoke(options);
+
+        if ( string.Equals(CookieAuthenticationScheme, IdentityConstants.ApplicationScheme, StringComparison.Ordinal) ) { ConfigureApplicationCookie?.Invoke(options); }
+    }
+    private string SelectAuthenticationScheme( HttpContext context )
+    {
+        if ( ForwardDefaultSelector is not null ) { return ForwardDefaultSelector(context); }
+
+        string? authorization = context.Request.Headers.Authorization;
+        if ( !string.IsNullOrWhiteSpace(authorization) && authorization.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase) ) { return BearerAuthenticationScheme; }
+
+        foreach ( string prefix in BearerPathPrefixes )
+        {
+            if ( !string.IsNullOrWhiteSpace(prefix) && context.Request.Path.StartsWithSegments(prefix, StringComparison.OrdinalIgnoreCase) ) { return BearerAuthenticationScheme; }
+        }
+
+        return CookieAuthenticationScheme;
     }
 
 
