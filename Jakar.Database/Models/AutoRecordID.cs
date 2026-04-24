@@ -15,7 +15,7 @@ public readonly struct AutoRecordID<TSelf>( long id ) : IEquatable<AutoRecordID<
 
     [Pure] public static AutoRecordID<TSelf>  Parse( string                    value )                       => Create(long.Parse(value));
     [Pure] public static AutoRecordID<TSelf>  Parse( params ReadOnlySpan<char> value )                       => Create(long.Parse(value));
-    [Pure] public static AutoRecordID<TSelf>  ID( DbDataReader                 reader )                      => Create(reader, nameof(IUniqueID.ID));
+    [Pure] public static AutoRecordID<TSelf>  ID( DbDataReader                 reader )                      => Create(reader, TSelf.MetaData.PrimaryKeyPropertyName);
     [Pure] public static AutoRecordID<TSelf>? UserID( DbDataReader             reader )                      => TryCreate(reader, nameof(IUserRecordID.UserID));
     [Pure] public static AutoRecordID<TSelf>? TryCreate( DbDataReader          reader, string propertyName ) => TryCreate(reader.GetFieldValue<long?>(TSelf.MetaData[propertyName].Index));
     [Pure] public static AutoRecordID<TSelf>  Create( DbDataReader             reader, string propertyName ) => Create(reader.GetFieldValue<long>(TSelf.MetaData[propertyName].Index));
@@ -75,8 +75,9 @@ public readonly struct AutoRecordID<TSelf>( long id ) : IEquatable<AutoRecordID<
     public UInt128 GetHash() => key.Hash128();
     [Pure] public CommandParameters ToDynamicParameters()
     {
-        CommandParameters parameters = CommandParameters.Create<TSelf>();
-        parameters.Add(nameof(IUniqueID.ID), Value);
+        string            primaryKeyPropertyName = TSelf.MetaData.PrimaryKeyPropertyName;
+        CommandParameters parameters             = CommandParameters.Create<TSelf>();
+        parameters.Add(primaryKeyPropertyName, Value);
         return parameters;
     }
 

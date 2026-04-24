@@ -43,11 +43,12 @@ public class TableMetaData<TSelf> : ITableMetaData
             return table;
         }
     }
-    public TableExtrasAttribute?                                                                                                                                                   Extras          { get; init; }
-    public int                                                                                                                                                                     ForeignKeyCount { get; }
-    public ValueEnumerable<SelectWhere<TableMetaDataEnumerator, PropertyColumn, ColumnMetaData>, ColumnMetaData>                                                                   ForeignKeys     { [Pure] get => Columns.Where(static x => x.HasForeignKeyConstraint); }
-    public ValueEnumerable<Select<SelectWhere<TableMetaDataEnumerator, PropertyColumn, ColumnMetaData>, ColumnMetaData, Func<long, MigrationRecord>>, Func<long, MigrationRecord>> IndexedColumns  { [Pure] [MustUseReturnValue] get => Columns.Where(static x => x.IsColumnIndexed).Select(CreateIndex); }
-    FrozenDictionary<int, string> ITableMetaData.                                                                                                                                  Indexes         => Indexes;
+    public TableExtrasAttribute?                                                                                                                                                   Extras                 { get; init; }
+    public int                                                                                                                                                                     ForeignKeyCount        { get; }
+    public ValueEnumerable<SelectWhere<TableMetaDataEnumerator, PropertyColumn, ColumnMetaData>, ColumnMetaData>                                                                   ForeignKeys            { [Pure] get => Columns.Where(static x => x.HasForeignKeyConstraint); }
+    public ValueEnumerable<Select<SelectWhere<TableMetaDataEnumerator, PropertyColumn, ColumnMetaData>, ColumnMetaData, Func<long, MigrationRecord>>, Func<long, MigrationRecord>> IndexedColumns         { [Pure] [MustUseReturnValue] get => Columns.Where(static x => x.IsColumnIndexed).Select(CreateIndex); }
+    FrozenDictionary<int, string> ITableMetaData.                                                                                                                                  Indexes                => Indexes;
+    public string                                                                                                                                                                  PrimaryKeyPropertyName => field ??= Columns.First(static x => x.IsPrimaryKey).PropertyName;
     public ref readonly ColumnMetaData this[ string propertyName ] => ref Properties[propertyName];
     public ref readonly string this[ string         propertyName, DatabaseType type ] => ref Properties[propertyName][type];
     public PropertyColumn this[ int index ]

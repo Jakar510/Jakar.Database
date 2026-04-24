@@ -3,6 +3,7 @@ using System.Net.Http.Headers;
 using System.Security.Claims;
 using Jakar.Extensions;
 using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
@@ -73,6 +74,43 @@ public sealed class AuthenticationConfigurationTests
         Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.Unauthorized));
     }
 
+    [Test]
+    public async Task Bearer_header_is_honored_for_non_api_requests()
+    {
+        await using TestHost host = await TestHost.CreateAsync();
+        using HttpClient client = host.App.GetTestClient();
+
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", host.CreateJwt("bearer-on-app"));
+
+        using HttpResponseMessage response = await client.GetAsync("/app/secure");
+        string                    body     = await response.Content.ReadAsStringAsync();
+
+        Assert.Multiple(() =>
+                        {
+                            Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK));
+                            Assert.That(body,                Does.Contain("Bearer"));
+                            Assert.That(body,                Does.Contain("bearer-on-app"));
+                        });
+    }
+
+    [Test]
+    public async Task Bearer_options_resolve_from_di_without_invalid_authority()
+    {
+        await using TestHost host = await TestHost.CreateAsync();
+
+        JwtBearerOptions options = host.App.Services.GetJwtBearerOptions();
+
+        Assert.Multiple(() =>
+                        {
+                            Assert.That(options.Audience,               Is.EqualTo(host.Options.TokenAudience));
+                            Assert.That(options.ClaimsIssuer,           Is.EqualTo(host.Options.TokenIssuer));
+                            Assert.That(options.Authority,              Is.Null.Or.Empty);
+                            Assert.That(options.RequireHttpsMetadata,   Is.False);
+                            Assert.That(options.TokenValidationParameters.ValidIssuer,   Is.EqualTo(host.Options.TokenIssuer));
+                            Assert.That(options.TokenValidationParameters.ValidAudience, Is.EqualTo(host.Options.TokenAudience));
+                        });
+    }
+
 
 
     private sealed class TestHost : IAsyncDisposable
@@ -115,6 +153,7 @@ public sealed class AuthenticationConfigurationTests
                                                           }
                                 };
 
+            builder.Services.AddSingleton(options);
             options.AddAuthentication(builder);
             builder.Services.AddAuthorization();
 
