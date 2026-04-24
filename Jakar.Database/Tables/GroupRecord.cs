@@ -4,7 +4,7 @@
 [Serializable]
 [Table(TABLE_NAME)]
 [SuppressMessage("ReSharper", "InconsistentNaming")]
-public sealed record GroupRecord : OwnedTableRecord<GroupRecord>, ITableRecord<GroupRecord>, IGroupModel<Guid>
+public sealed partial record GroupRecord : OwnedTableRecord<GroupRecord>, ITableRecord<GroupRecord>, IGroupModel<Guid>
 {
     public const int    MAX_SIZE   = 1024;
     public const string TABLE_NAME = "groups";
@@ -78,46 +78,6 @@ public sealed record GroupRecord : OwnedTableRecord<GroupRecord>, ITableRecord<G
     }
     public override int GetHashCode() => HashCode.Combine(base.GetHashCode(), NameOfGroup, Rights, NormalizedName);
 
-
-    public override ValueTask Export( NpgsqlBinaryExporter exporter, CancellationToken token ) => default;
-    protected override async ValueTask Import( NpgsqlBinaryImporter importer, string propertyName, NpgsqlDbType postgresDbType, CancellationToken token )
-    {
-        switch ( propertyName )
-        {
-            case nameof(ID):
-                await importer.WriteAsync(ID.Value, postgresDbType, token);
-                break;
-
-            case nameof(DateCreated):
-                await importer.WriteAsync(DateCreated, postgresDbType, token);
-                break;
-
-            case nameof(UserID):
-                await importer.WriteAsync(UserID.Value, postgresDbType, token);
-                break;
-
-            case nameof(Rights):
-                await importer.WriteAsync(Rights.Value, postgresDbType, token);
-                break;
-
-            case nameof(NameOfGroup):
-                await importer.WriteAsync(NameOfGroup, postgresDbType, token);
-                break;
-
-            case nameof(NormalizedName):
-                await importer.WriteAsync(NormalizedName, postgresDbType, token);
-                break;
-
-            case nameof(LastModified):
-                if ( LastModified.HasValue ) { await importer.WriteAsync(LastModified.Value, postgresDbType, token); }
-                else { await importer.WriteNullAsync(token); }
-
-                break;
-
-            default:
-                throw new InvalidOperationException($"Unknown column: {propertyName}");
-        }
-    }
     public override ValueTask Import( DataRow row, CancellationToken token )
     {
         row[MetaData[nameof(Rights)].DataColumn]         = Rights;

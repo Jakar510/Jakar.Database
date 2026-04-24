@@ -14,7 +14,7 @@ public class MigrationManager
     private readonly   SortedDictionary<long, Func<long, MigrationRecord>> __migrationFactories     = new(Comparer<long>.Default);
     private readonly   Lock                                                __migrationFactoriesLock = new();
     protected          FrozenSet<MigrationRecord>?                         _records;
-    public             long                                                LastMigrationID => __migrationFactories.Count;
+    public             long                                                LastMigrationID => __migrationFactories.Count <= 0 ? 0 : __migrationFactories.Keys.Max();
 
 
     public FrozenSet<MigrationRecord> Records
@@ -81,7 +81,11 @@ public class MigrationManager
 
         lock ( __migrationFactoriesLock )
         {
-            foreach ( Func<long, MigrationRecord> func in enumerable ) { AddInternal(LastMigrationID, func); }
+            long nextMigrationID = __migrationFactories.Count <= 0
+                                       ? 0
+                                       : LastMigrationID + 1;
+
+            foreach ( Func<long, MigrationRecord> func in enumerable ) { AddInternal(nextMigrationID++, func); }
         }
 
         return this;
@@ -139,7 +143,41 @@ public class MigrationManager
     {
         if ( migrateDownToInclusive < 0 ) { throw new ArgumentOutOfRangeException(nameof(migrateDownToInclusive), "Migration ID must be non-negative."); }
 
-        if ( migrateDownToInclusive <= LastMigrationID ) { throw new ArgumentOutOfRangeException(nameof(migrateDownToInclusive), "Migration ID must be less than or equal to the last applied migration ID."); }
+        if ( migrateDownToInclusive > LastMigrationID ) { throw new ArgumentOutOfRangeException(nameof(migrateDownToInclusive), "Migration ID must be less than or equal to the last configured migration ID."); }
+
+        await using DbConnectionContext context = await _db.ConnectAsync(token);
+        await context.EnsureTableExistsAsync<MigrationRecord>(token);
+        await context.StartTransactionAsync(_db.TransactionIsolationLevel, token);
+
+        try
+        {
+            ImmutableArray<MigrationRecord> applied         = await AllMigrations(context, token);
+            FrozenDictionary<long, MigrationRecord> current = Records.ToFrozenDictionary(static record => record.MigrationID);
+            ImmutableArray<MigrationRecord> rollbackRecords = [.. applied.Where(record => record.MigrationID > migrateDownToInclusive).OrderByDescending(static record => record.MigrationID)];
+
+            if ( rollbackRecords.IsDefaultOrEmpty )
+            {
+                logger.LogInformation("No migrations above {MigrationID} were applied; nothing to roll back.", migrateDownToInclusive);
+                await context.CommitAsync(token);
+                return;
+            }
+
+            foreach ( MigrationRecord appliedRecord in rollbackRecords )
+            {
+                if ( !current.TryGetValue(appliedRecord.MigrationID, out MigrationRecord? record) || record is null ) { throw new InvalidOperationException($"Migration {appliedRecord.MigrationID} is applied in the database but is not registered in {nameof(MigrationManager)}."); }
+
+                await Revert(context, record, token);
+                logger.LogInformation("Rolled back migration {MigrationID}.", record.MigrationID);
+            }
+
+            await context.CommitAsync(token);
+        }
+        catch ( Exception e )
+        {
+            logger.LogCritical(e, "{Source} has failed: {Message}", nameof(RevertMigrations), e.Message);
+            await context.RollbackAsync(token);
+            throw;
+        }
     }
     public async ValueTask ApplyMigrations( ILogger logger, CancellationToken token = default )
     {
@@ -171,6 +209,7 @@ public class MigrationManager
         {
             logger.LogCritical(e, "{Source} has failed: {Message}", nameof(ApplyMigrations), e.Message);
             await context.RollbackAsync(token);
+            throw;
         }
     }
     public virtual async Task Apply( DbConnectionContext context, MigrationRecord self, CancellationToken token )
@@ -186,6 +225,18 @@ public class MigrationManager
 
         try { await context.ExecuteNonQueryAsync(applySql, token); }
         catch ( Exception e ) { throw new DbSqlException(applySql, e) { RollbackID = self.RollbackID }; }
+    }
+    public virtual async Task Revert( DbConnectionContext context, MigrationRecord self, CancellationToken token )
+    {
+        if ( !self.CanRollback ) { throw new InvalidOperationException($"Migration {self.MigrationID} does not define {nameof(MigrationRecord.DownSQL)} and cannot be rolled back safely."); }
+
+        try { await context.ExecuteNonQueryAsync(self.DownSQL, token); }
+        catch ( Exception e ) { throw new DbSqlException(self.DownSQL, e) { RollbackID = self.RollbackID }; }
+
+        SqlCommand rollbackSql = self.RollbackSql();
+
+        try { await context.ExecuteNonQueryAsync(rollbackSql, token); }
+        catch ( Exception e ) { throw new DbSqlException(rollbackSql, e) { RollbackID = self.RollbackID }; }
     }
 
 

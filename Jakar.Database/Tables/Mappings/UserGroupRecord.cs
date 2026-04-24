@@ -6,7 +6,7 @@ namespace Jakar.Database;
 
 [Serializable]
 [Table(TABLE_NAME)]
-public sealed record UserGroupRecord : Mapping<UserGroupRecord, UserRecord, GroupRecord>, ICreateMapping<UserGroupRecord, UserRecord, GroupRecord>
+public sealed partial record UserGroupRecord : Mapping<UserGroupRecord, UserRecord, GroupRecord>, ICreateMapping<UserGroupRecord, UserRecord, GroupRecord>
 {
     public const string TABLE_NAME = "user_groups";
 
@@ -49,9 +49,6 @@ public sealed record UserGroupRecord : Mapping<UserGroupRecord, UserRecord, Grou
         // ReSharper disable once LoopCanBeConvertedToQuery
         foreach ( RecordID<GroupRecord> value in values ) { yield return Create(key, value); }
     }
-    [Pure] public static UserGroupRecord Create( DbDataReader reader ) => new UserGroupRecord(reader).Validate();
-
-
     public static bool operator >( UserGroupRecord  left, UserGroupRecord right ) => left.CompareTo(right) > 0;
     public static bool operator >=( UserGroupRecord left, UserGroupRecord right ) => left.CompareTo(right) >= 0;
     public static bool operator <( UserGroupRecord  left, UserGroupRecord right ) => left.CompareTo(right) < 0;

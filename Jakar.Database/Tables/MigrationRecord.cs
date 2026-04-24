@@ -9,7 +9,7 @@ namespace Jakar.Database;
 
 
 [Serializable]
-public sealed record MigrationRecord : TableRecord<MigrationRecord>, ITableRecord<MigrationRecord>
+public sealed partial record MigrationRecord : TableRecord<MigrationRecord>, ITableRecord<MigrationRecord>
 {
     public const           string     TABLE_NAME          = "migrations";
     public static readonly SqlCommand SelectSql           = SqlCommand.Parse<MigrationRecord>($"SELECT * FROM {TABLE_NAME} ORDER BY {nameof(MigrationID)};");
@@ -50,7 +50,10 @@ public sealed record MigrationRecord : TableRecord<MigrationRecord>, ITableRecor
                                                                                           RETURN NEW;
                                                                                       END;
                                                                                       $$ LANGUAGE plpgsql;
-                                                                                      """
+                                                                                      """,
+                                                                             DownSQL = $"""
+                                                                                        DROP FUNCTION IF EXISTS {SetLastModifiedName}();
+                                                                                        """
                                                                          };
 
 
@@ -72,6 +75,13 @@ public sealed record MigrationRecord : TableRecord<MigrationRecord>, ITableRecor
                                                                                                          CREATE EXTENSION pgaudit;
                                                                                                          CREATE EXTENSION pg_textsearch;
                                                                                                          CREATE EXTENSION uint128;
+                                                                                                         """,
+                                                                                                         """
+                                                                                                         DROP EXTENSION IF EXISTS uint128 CASCADE;
+                                                                                                         DROP EXTENSION IF EXISTS pg_textsearch CASCADE;
+                                                                                                         DROP EXTENSION IF EXISTS pgaudit CASCADE;
+                                                                                                         DROP EXTENSION IF EXISTS postgis CASCADE;
+                                                                                                         DROP EXTENSION IF EXISTS pg_crypto CASCADE;
                                                                                                          """);
 
 
@@ -93,6 +103,11 @@ public sealed record MigrationRecord : TableRecord<MigrationRecord>, ITableRecor
 
         return command;
     }
+    public SqlCommand RollbackSql() => SqlCommand.Parse<MigrationRecord>($"""
+                                                                           DELETE FROM {TABLE_NAME}
+                                                                           WHERE {nameof(MigrationID)} = {MigrationID};
+                                                                           """);
+    [DbIgnore] public bool CanRollback => !string.IsNullOrWhiteSpace(DownSQL.SQL);
 
 
     public static MigrationRecord FromEnum<TEnum>( long migrationID )
@@ -107,7 +122,8 @@ public sealed record MigrationRecord : TableRecord<MigrationRecord>, ITableRecor
                                      MigrationID = migrationID,
                                      Description = $"create {tableName} table",
                                      ReferenceID = tableName,
-                                     UpSQL       = $"CREATE TYPE {tableName} AS ENUM ({getValues()})"
+                                     UpSQL       = $"CREATE TYPE {tableName} AS ENUM ({getValues()})",
+                                     DownSQL     = $"DROP TYPE IF EXISTS {tableName};"
                                  };
 
         return record.Validate();
@@ -121,7 +137,7 @@ public sealed record MigrationRecord : TableRecord<MigrationRecord>, ITableRecor
     }
 
 
-    public static MigrationRecord Create<TSelf>( long migrationID, string description, SqlCommand sql )
+    public static MigrationRecord Create<TSelf>( long migrationID, string description, SqlCommand sql, SqlCommand downSql = default )
         where TSelf : TableRecord<TSelf>, ITableRecord<TSelf>
     {
         MigrationRecord record = new()
@@ -129,7 +145,8 @@ public sealed record MigrationRecord : TableRecord<MigrationRecord>, ITableRecor
                                      MigrationID = migrationID,
                                      Description = description,
                                      ReferenceID = TSelf.TableName,
-                                     UpSQL       = sql
+                                     UpSQL       = sql,
+                                     DownSQL     = downSql
                                  };
 
         return record.Validate();
@@ -142,35 +159,6 @@ public sealed record MigrationRecord : TableRecord<MigrationRecord>, ITableRecor
         return record.Validate();
     }
 
-
-    protected override async ValueTask Import( NpgsqlBinaryImporter importer, string propertyName, NpgsqlDbType postgresDbType, CancellationToken token )
-    {
-        switch ( propertyName )
-        {
-            case nameof(MigrationID):
-                await importer.WriteAsync(MigrationID, postgresDbType, token);
-                return;
-
-            case nameof(AppliedOn):
-                await importer.WriteAsync(AppliedOn, postgresDbType, token);
-                return;
-
-            case nameof(ReferenceID):
-                await importer.WriteAsync(ReferenceID, postgresDbType, token);
-                return;
-
-            case nameof(Description):
-                await importer.WriteAsync(Description, postgresDbType, token);
-                return;
-
-            case nameof(DateCreated):
-                await importer.WriteAsync(DateCreated, postgresDbType, token);
-                return;
-
-            default:
-                throw new InvalidOperationException($"Unknown column: {propertyName}");
-        }
-    }
     public override ValueTask Import( DataRow row, CancellationToken token )
     {
         row[MetaData[nameof(ReferenceID)].DataColumn] = ReferenceID;

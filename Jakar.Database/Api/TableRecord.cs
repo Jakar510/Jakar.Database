@@ -29,7 +29,7 @@ public interface ITableName
 
 
 
-public interface ITableRecord<TSelf> : ITableName
+public interface ITableRecord<TSelf> : ITableName, IEqualComparable<TSelf>
     where TSelf : TableRecord<TSelf>, ITableRecord<TSelf>
 {
     public abstract static ref readonly ImmutableArray<PropertyInfo> ClassProperties { [Pure] get; }
@@ -38,8 +38,12 @@ public interface ITableRecord<TSelf> : ITableName
     public abstract static              int                          PropertyCount   { get; }
 
 
-    // [Pure] public abstract static TSelf Create( SqlDataReader    reader );
-    [Pure] public abstract static TSelf Create( DbDataReader reader );
+    [Pure] public abstract static TSelf             Create( DbDataReader reader );
+    [Pure] public                 CommandParameters ToDynamicParameters();
+
+
+    public    ValueTask Export( NpgsqlBinaryExporter exporter, CancellationToken token ) => default;
+    public    ValueTask Import( DataRow              row,      CancellationToken token );
 }
 
 
@@ -109,8 +113,8 @@ public abstract record TableRecord<TSelf>( in DateTimeOffset DateCreated ) : IJs
 
 
     // IDataReader
-    public virtual ValueTask Export( NpgsqlBinaryExporter exporter, CancellationToken token ) => default;
-    public virtual ValueTask Import( NpgsqlBatchCommand   batch,    CancellationToken token ) => default;
+    public abstract ValueTask Export( NpgsqlBinaryExporter exporter, CancellationToken token );
+    public abstract ValueTask Import( NpgsqlBatchCommand   batch,    CancellationToken token );
     public async ValueTask Import( NpgsqlBinaryImporter importer, CancellationToken token )
     {
         await importer.StartRowAsync(token);

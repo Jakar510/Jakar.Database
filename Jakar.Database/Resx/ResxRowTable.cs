@@ -4,7 +4,7 @@
 /// <see cref="ResxString"/>
 [Serializable]
 [Table(TABLE_NAME)]
-public sealed record ResxRowRecord : TableRecord<ResxRowRecord>, ITableRecord<ResxRowRecord>, IResxString
+public sealed partial record ResxRowRecord : TableRecord<ResxRowRecord>, ITableRecord<ResxRowRecord>, IResxString
 {
     public const               string  TABLE_NAME = "resx";
     private static readonly    SqlName __sql_Name = TABLE_NAME;
@@ -66,90 +66,6 @@ public sealed record ResxRowRecord : TableRecord<ResxRowRecord>, ITableRecord<Re
         while ( await reader.ReadAsync(token) ) { yield return Create(reader); }
     }
 
-
-    public override ValueTask Export( NpgsqlBinaryExporter exporter, CancellationToken token ) => default;
-    protected override async ValueTask Import( NpgsqlBinaryImporter importer, string propertyName, NpgsqlDbType postgresDbType, CancellationToken token )
-    {
-        switch ( propertyName )
-        {
-            case nameof(DateCreated):
-                await importer.WriteAsync(DateCreated, postgresDbType, token);
-                return;
-
-            case nameof(LastModified):
-                if ( LastModified.HasValue ) { await importer.WriteAsync(LastModified.Value, postgresDbType, token); }
-                else { await importer.WriteNullAsync(token); }
-
-                return;
-
-            case nameof(Key):
-                await importer.WriteAsync(Key, postgresDbType, token);
-                return;
-
-            case nameof(KeyID):
-                await importer.WriteAsync(KeyID, postgresDbType, token);
-                return;
-
-            case nameof(Neutral):
-                await importer.WriteAsync(Neutral, postgresDbType, token);
-                return;
-
-            case nameof(English):
-                await importer.WriteAsync(English, postgresDbType, token);
-                return;
-
-            case nameof(Spanish):
-                await importer.WriteAsync(Spanish, postgresDbType, token);
-                return;
-
-            case nameof(French):
-                await importer.WriteAsync(French, postgresDbType, token);
-                return;
-
-            case nameof(Swedish):
-                await importer.WriteAsync(Swedish, postgresDbType, token);
-                return;
-
-            case nameof(German):
-                await importer.WriteAsync(German, postgresDbType, token);
-                return;
-
-            case nameof(Polish):
-                await importer.WriteAsync(Polish, postgresDbType, token);
-                return;
-
-            case nameof(Thai):
-                await importer.WriteAsync(Thai, postgresDbType, token);
-                return;
-
-            case nameof(Japanese):
-                await importer.WriteAsync(Japanese, postgresDbType, token);
-                return;
-
-            case nameof(Czech):
-                await importer.WriteAsync(Czech, postgresDbType, token);
-                return;
-
-            case nameof(Portuguese):
-                await importer.WriteAsync(Portuguese, postgresDbType, token);
-                return;
-
-            case nameof(Dutch):
-                await importer.WriteAsync(Dutch, postgresDbType, token);
-                return;
-
-            case nameof(Korean):
-                await importer.WriteAsync(Korean, postgresDbType, token);
-                return;
-
-            case nameof(Arabic):
-                await importer.WriteAsync(Arabic, postgresDbType, token);
-                return;
-
-            default:
-                throw new InvalidOperationException($"Unknown column: {propertyName}");
-        }
-    }
     public override ValueTask Import( DataRow row, CancellationToken token )
     {
         row[MetaData[nameof(KeyID)].DataColumn]      = KeyID;

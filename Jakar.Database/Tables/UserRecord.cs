@@ -4,7 +4,7 @@
 [Serializable]
 [Table(TABLE_NAME)]
 [SuppressMessage("ReSharper", "InconsistentNaming")]
-public sealed record UserRecord : PairRecord<UserRecord>, ITableRecord<UserRecord>, IUserModel, IUserSecurity, IUserDetails
+public sealed partial record UserRecord : PairRecord<UserRecord>, ITableRecord<UserRecord>, IUserModel, IUserSecurity, IUserDetails
 {
     public const               string  TABLE_NAME = "users";
     private static readonly    SqlName __sql_Name = TABLE_NAME;
@@ -108,7 +108,6 @@ public sealed record UserRecord : PairRecord<UserRecord>, ITableRecord<UserRecor
     public string GetDescription() => Description ??= IUserDetails.GetDescription(this);
 
 
-    public static UserRecord Create( DbDataReader reader ) => new UserRecord(reader).Validate();
     public static UserRecord Create<TUser>( ILoginRequest<TUser> request, UserRecord? caller = null )
         where TUser : class, IUserData<Guid>, IUserDetails => Create(request, request.Data.Rights, caller);
     public static UserRecord Create<TUser, TEnum>( ILoginRequest<TUser> request, scoped in Permissions<TEnum> rights, UserRecord? caller = null )
@@ -167,61 +166,33 @@ public sealed record UserRecord : PairRecord<UserRecord>, ITableRecord<UserRecor
     {
         switch ( propertyName )
         {
-            case nameof(ID):
-                await importer.WriteAsync(ID.Value, postgresDbType, token);
-                break;
+            case nameof(ID): await importer.WriteAsync(ID.Value, postgresDbType, token); break;
 
-            case nameof(DateCreated):
-                await importer.WriteAsync(DateCreated, postgresDbType, token);
-                break;
+            case nameof(DateCreated): await importer.WriteAsync(DateCreated, postgresDbType, token); break;
 
-            case nameof(Rights):
-                await importer.WriteAsync(Rights.Value, postgresDbType, token);
-                break;
+            case nameof(Rights): await importer.WriteAsync(Rights.Value, postgresDbType, token); break;
 
-            case nameof(UserName):
-                await importer.WriteAsync(UserName, postgresDbType, token);
-                break;
+            case nameof(UserName): await importer.WriteAsync(UserName, postgresDbType, token); break;
 
-            case nameof(FirstName):
-                await importer.WriteAsync(FirstName, postgresDbType, token);
-                break;
+            case nameof(FirstName): await importer.WriteAsync(FirstName, postgresDbType, token); break;
 
-            case nameof(LastName):
-                await importer.WriteAsync(LastName, postgresDbType, token);
-                break;
+            case nameof(LastName): await importer.WriteAsync(LastName, postgresDbType, token); break;
 
-            case nameof(FullName):
-                await importer.WriteAsync(FullName, postgresDbType, token);
-                break;
+            case nameof(FullName): await importer.WriteAsync(FullName, postgresDbType, token); break;
 
-            case nameof(Gender):
-                await importer.WriteAsync(Gender, postgresDbType, token);
-                break;
+            case nameof(Gender): await importer.WriteAsync(Gender, postgresDbType, token); break;
 
-            case nameof(Company):
-                await importer.WriteAsync(Company, postgresDbType, token);
-                break;
+            case nameof(Company): await importer.WriteAsync(Company, postgresDbType, token); break;
 
-            case nameof(Department):
-                await importer.WriteAsync(Department, postgresDbType, token);
-                break;
+            case nameof(Department): await importer.WriteAsync(Department, postgresDbType, token); break;
 
-            case nameof(Title):
-                await importer.WriteAsync(Title, postgresDbType, token);
-                break;
+            case nameof(Title): await importer.WriteAsync(Title, postgresDbType, token); break;
 
-            case nameof(Website):
-                await importer.WriteAsync(Website, postgresDbType, token);
-                break;
+            case nameof(Website): await importer.WriteAsync(Website, postgresDbType, token); break;
 
-            case nameof(PreferredLanguage):
-                await importer.WriteAsync(PreferredLanguage, postgresDbType, token);
-                break;
+            case nameof(PreferredLanguage): await importer.WriteAsync(PreferredLanguage, postgresDbType, token); break;
 
-            case nameof(Email):
-                await importer.WriteAsync(Email, postgresDbType, token);
-                break;
+            case nameof(Email): await importer.WriteAsync(Email, postgresDbType, token); break;
 
             case nameof(LastModified):
                 if ( LastModified.HasValue ) { await importer.WriteAsync(LastModified.Value, postgresDbType, token); }
@@ -259,13 +230,9 @@ public sealed record UserRecord : PairRecord<UserRecord>, ITableRecord<UserRecor
 
                 break;
 
-            case nameof(PasswordHash):
-                await importer.WriteAsync(PasswordHash, postgresDbType, token);
-                break;
+            case nameof(PasswordHash): await importer.WriteAsync(PasswordHash, postgresDbType, token); break;
 
-            case nameof(RefreshTokenHash):
-                await importer.WriteAsync(RefreshTokenHash, postgresDbType, token);
-                break;
+            case nameof(RefreshTokenHash): await importer.WriteAsync(RefreshTokenHash, postgresDbType, token); break;
 
             case nameof(RefreshTokenExpiryTime):
 
@@ -280,29 +247,17 @@ public sealed record UserRecord : PairRecord<UserRecord>, ITableRecord<UserRecor
 
                 break;
 
-            case nameof(IsActive):
-                await importer.WriteAsync(IsActive, postgresDbType, token);
-                break;
+            case nameof(IsActive): await importer.WriteAsync(IsActive, postgresDbType, token); break;
 
-            case nameof(IsDisabled):
-                await importer.WriteAsync(IsDisabled, postgresDbType, token);
-                break;
+            case nameof(IsDisabled): await importer.WriteAsync(IsDisabled, postgresDbType, token); break;
 
-            case nameof(SecurityStamp):
-                await importer.WriteAsync(SecurityStamp, postgresDbType, token);
-                break;
+            case nameof(SecurityStamp): await importer.WriteAsync(SecurityStamp, postgresDbType, token); break;
 
-            case nameof(ConcurrencyStamp):
-                await importer.WriteAsync(ConcurrencyStamp, postgresDbType, token);
-                break;
+            case nameof(ConcurrencyStamp): await importer.WriteAsync(ConcurrencyStamp, postgresDbType, token); break;
 
-            case nameof(AuthenticatorKey):
-                await importer.WriteAsync(AuthenticatorKey, postgresDbType, token);
-                break;
+            case nameof(AuthenticatorKey): await importer.WriteAsync(AuthenticatorKey, postgresDbType, token); break;
 
-            case nameof(AdditionalData):
-                await importer.WriteAsync(AdditionalData, postgresDbType, token);
-                break;
+            case nameof(AdditionalData): await importer.WriteAsync(AdditionalData, postgresDbType, token); break;
 
             case nameof(EscalateTo):
                 if ( EscalateTo.HasValue ) { await importer.WriteAsync(EscalateTo.Value, postgresDbType, token); }
@@ -310,8 +265,7 @@ public sealed record UserRecord : PairRecord<UserRecord>, ITableRecord<UserRecor
 
                 break;
 
-            default:
-                throw new InvalidOperationException($"Unknown column: {propertyName}");
+            default: throw new InvalidOperationException($"Unknown column: {propertyName}");
         }
     }
     public override ValueTask Import( DataRow row, CancellationToken token )
@@ -346,52 +300,6 @@ public sealed record UserRecord : PairRecord<UserRecord>, ITableRecord<UserRecor
         row[MetaData[nameof(EscalateTo)].DataColumn]             = EscalateTo;
         return base.Import(row, token);
     }
-    public override CommandParameters ToDynamicParameters()
-    {
-        CommandParameters parameters = base.ToDynamicParameters();
-        parameters.Add(nameof(UserName),               UserName);
-        parameters.Add(nameof(FirstName),              FirstName);
-        parameters.Add(nameof(LastName),               LastName);
-        parameters.Add(nameof(FullName),               FullName);
-        parameters.Add(nameof(Rights),                 Rights);
-        parameters.Add(nameof(Gender),                 Gender);
-        parameters.Add(nameof(Company),                Company);
-        parameters.Add(nameof(Department),             Department);
-        parameters.Add(nameof(Description),            Description);
-        parameters.Add(nameof(Title),                  Title);
-        parameters.Add(nameof(Website),                Website);
-        parameters.Add(nameof(PreferredLanguage),      PreferredLanguage);
-        parameters.Add(nameof(Email),                  Email);
-        parameters.Add(nameof(PhoneNumber),            PhoneNumber);
-        parameters.Add(nameof(Ext),                    Ext);
-        parameters.Add(nameof(EscalateTo),             EscalateTo);
-        parameters.Add(nameof(LastBadAttempt),         LastBadAttempt);
-        parameters.Add(nameof(LastLogin),              LastLogin);
-        parameters.Add(nameof(BadLogins),              BadLogins);
-        parameters.Add(nameof(LockDate),               LockDate);
-        parameters.Add(nameof(LockoutEnd),             LockoutEnd);
-        parameters.Add(nameof(PasswordHash),           PasswordHash);
-        parameters.Add(nameof(RefreshTokenHash),       RefreshTokenHash);
-        parameters.Add(nameof(RefreshTokenExpiryTime), RefreshTokenExpiryTime);
-        parameters.Add(nameof(SessionID),              SessionID);
-        parameters.Add(nameof(SecurityStamp),          SecurityStamp);
-        parameters.Add(nameof(ConcurrencyStamp),       ConcurrencyStamp);
-        parameters.Add(nameof(AuthenticatorKey),       AuthenticatorKey);
-        parameters.Add(nameof(IsEmailConfirmed),       IsEmailConfirmed);
-        parameters.Add(nameof(IsPhoneNumberConfirmed), IsPhoneNumberConfirmed);
-        parameters.Add(nameof(IsLocked),               IsLocked);
-        parameters.Add(nameof(IsTwoFactorEnabled),     IsTwoFactorEnabled);
-        parameters.Add(nameof(IsActive),               IsActive);
-        parameters.Add(nameof(IsDisabled),             IsDisabled);
-        parameters.Add(nameof(AdditionalData),         AdditionalData);
-        parameters.Add(nameof(UserID),                 UserID);
-        parameters.Add(nameof(SubscriptionID),         SubscriptionID);
-        parameters.Add(nameof(SubscriptionExpires),    SubscriptionExpires);
-        parameters.Add(nameof(ImageID),                ImageID);
-        return parameters;
-    }
-
-
     public static CommandParameters GetDynamicParameters( IUserDetails data )
     {
         CommandParameters parameters = CommandParameters.Create<UserRecord>();
@@ -506,7 +414,7 @@ public sealed record UserRecord : PairRecord<UserRecord>, ITableRecord<UserRecor
 
 
 
-    #region Security
+#region Security
 
     public                            UserRights Rights           { get; set; } = new();
     [Fixed(AUTHENTICATOR_KEY)] public string?    AuthenticatorKey { get; set; } = EMPTY;
@@ -531,11 +439,11 @@ public sealed record UserRecord : PairRecord<UserRecord>, ITableRecord<UserRecor
     [Fixed(SECURITY_STAMP)] public              string?         SecurityStamp          { get; set; }
     public                                      Guid?           SessionID              { get; set; }
 
-    #endregion Security
+#endregion Security
 
 
 
-    #region Details
+#region Details
 
     [Fixed(COMPANY)] [ProtectedPersonalData] public string?                                              Company     { get; set; } = EMPTY;
     Guid? ICreatedByUser<Guid>.                                                                          CreatedBy   => EscalateTo?.Value;
@@ -551,11 +459,11 @@ public sealed record UserRecord : PairRecord<UserRecord>, ITableRecord<UserRecor
     [Fixed(FULL_NAME)] [Indexed<UserRecord>( nameof(FullName))] [ProtectedPersonalData]   public string? FullName    { get; set; } = EMPTY;
     [Fixed(GENDER)] [ProtectedPersonalData]                                               public string? Gender      { get; set; } = EMPTY;
 
-    #endregion Details
+#endregion Details
 
 
 
-    #region Helpers
+#region Helpers
 
     public UserModel ToUserModel() => ToUserModel<UserModel>();
     public TSelf ToUserModel<TSelf>()
@@ -644,11 +552,11 @@ public sealed record UserRecord : PairRecord<UserRecord>, ITableRecord<UserRecor
     public async ValueTask<bool>                      IsPartOfGroup( DbConnectionContext context, GroupRecord       value, CancellationToken                          token )           => await UserGroupRecord.Exists(context, ID, value, token);
     public async ValueTask                            Remove( DbConnectionContext        context, GroupRecord       value, CancellationToken                          token )           => await UserGroupRecord.Delete(context, ID, value, token);
 
-    #endregion Helpers
+#endregion Helpers
 
 
 
-    #region Owners
+#region Owners
 
     public async ValueTask<ErrorOrResult<UserRecord>> GetBoss( DbConnectionContext context, Database db, CancellationToken token ) =>
         EscalateTo.HasValue
@@ -661,11 +569,11 @@ public sealed record UserRecord : PairRecord<UserRecord>, ITableRecord<UserRecor
     public bool Owns<TSelf>( TSelf record )
         where TSelf : TableRecord<TSelf>, IUserRecordID, ITableRecord<TSelf> => record.UserID == ID;
 
-    #endregion Owners
+#endregion Owners
 
 
 
-    #region Claims
+#region Claims
 
     public async ValueTask<Claim[]> GetUserClaims( DbConnectionContext context, Database db, ClaimType types, CancellationToken token )
     {
@@ -706,41 +614,25 @@ public sealed record UserRecord : PairRecord<UserRecord>, ITableRecord<UserRecor
 
         switch ( claim.Type )
         {
-            case ClaimTypes.NameIdentifier:
-                parameters.Add(nameof(UserName), claim.Value);
-                break;
+            case ClaimTypes.NameIdentifier: parameters.Add(nameof(UserName), claim.Value); break;
 
-            case ClaimTypes.Sid:
-                parameters.Add(nameof(ID), Guid.Parse(claim.Value));
-                break;
+            case ClaimTypes.Sid: parameters.Add(nameof(ID), Guid.Parse(claim.Value)); break;
 
-            case ClaimTypes.GivenName:
-                parameters.Add(nameof(FirstName), claim.Value);
-                break;
+            case ClaimTypes.GivenName: parameters.Add(nameof(FirstName), claim.Value); break;
 
-            case ClaimTypes.Surname:
-                parameters.Add(nameof(LastName), claim.Value);
-                break;
+            case ClaimTypes.Surname: parameters.Add(nameof(LastName), claim.Value); break;
 
-            case ClaimTypes.Name:
-                parameters.Add(nameof(FullName), claim.Value);
-                break;
+            case ClaimTypes.Name: parameters.Add(nameof(FullName), claim.Value); break;
 
-            case ClaimTypes.Email:
-                parameters.Add(nameof(Email), claim.Value);
-                break;
+            case ClaimTypes.Email: parameters.Add(nameof(Email), claim.Value); break;
 
-            case ClaimTypes.MobilePhone:
-                parameters.Add(nameof(PhoneNumber), claim.Value);
-                break;
+            case ClaimTypes.MobilePhone: parameters.Add(nameof(PhoneNumber), claim.Value); break;
 
-            case ClaimTypes.Webpage:
-                parameters.Add(nameof(Website), claim.Value);
-                break;
+            case ClaimTypes.Webpage: parameters.Add(nameof(Website), claim.Value); break;
         }
 
         await foreach ( UserRecord record in db.Users.Where(context, parameters, token) ) { yield return record; }
     }
 
-    #endregion Claims
+#endregion Claims
 }

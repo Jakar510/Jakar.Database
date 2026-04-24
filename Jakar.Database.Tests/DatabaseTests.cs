@@ -73,7 +73,6 @@ public sealed class DatabaseTests : Assert
         }
     }
 
-
     // ------------------------------------------------------------
     // USERS
     // ------------------------------------------------------------
@@ -141,7 +140,7 @@ public sealed class DatabaseTests : Assert
         ( UserRecord admin, UserRecord user ) = await Add_Users(__db);
         FileRecord file = await Add_File(__db, user);
 
-        That(user.ImageID, Is.EqualTo(file));
+        That(user.ImageID, Is.EqualTo(file.ID));
     }
 
     // ------------------------------------------------------------

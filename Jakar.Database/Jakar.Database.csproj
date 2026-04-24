@@ -66,13 +66,11 @@
 	</ItemGroup>
 	-->
 
-	<!--
 	<ItemGroup>
 		<ProjectReference Include="..\Jakar.Database.Generators\Jakar.Database.Generators.csproj"
 						  OutputItemType="Analyzer"
-						  ReferenceOutputAssembly="true" />
+						  ReferenceOutputAssembly="false" />
 	</ItemGroup>
-	-->
 
 	<ItemGroup>
 		<InternalsVisibleTo Include="Experiments" />

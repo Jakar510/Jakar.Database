@@ -5,7 +5,7 @@ namespace Jakar.Database;
 
 
 [Table(TABLE_NAME)]
-public sealed record AddressRecord : OwnedTableRecord<AddressRecord>, IAddress<AddressRecord, Guid>, ITableRecord<AddressRecord>
+public sealed partial record AddressRecord : OwnedTableRecord<AddressRecord>, IAddress<AddressRecord, Guid>, ITableRecord<AddressRecord>
 {
     public const string TABLE_NAME = "addresses";
 
@@ -125,20 +125,6 @@ public sealed record AddressRecord : OwnedTableRecord<AddressRecord>, IAddress<A
         row[MetaData[nameof(IsPrimary)].DataColumn]       = IsPrimary;
         return base.Import(row, token);
     }
-    [Pure] public override CommandParameters ToDynamicParameters()
-    {
-        CommandParameters parameters = base.ToDynamicParameters();
-        parameters.Add(nameof(Line1),           Line1);
-        parameters.Add(nameof(Line2),           Line2);
-        parameters.Add(nameof(City),            City);
-        parameters.Add(nameof(PostalCode),      PostalCode);
-        parameters.Add(nameof(StateOrProvince), StateOrProvince);
-        parameters.Add(nameof(Country),         Country);
-        parameters.Add(nameof(Address),         Address);
-        return parameters;
-    }
-
-
     public static AddressRecord Parse( string s, IFormatProvider? provider ) => Create(Regexes.Address.Match(s));
     public static bool TryParse( [NotNullWhen(true)] string? s, IFormatProvider? provider, [MaybeNullWhen(false)] out AddressRecord result )
     {
@@ -155,7 +141,6 @@ public sealed record AddressRecord : OwnedTableRecord<AddressRecord>, IAddress<A
     }
 
 
-    [Pure] public static AddressRecord Create( DbDataReader   reader )                                                                                                         => new AddressRecord(reader).Validate();
     [Pure] public static AddressRecord Create( Match          match )                                                                                                          => new(match);
     [Pure] public static AddressRecord Create( IAddress<Guid> address )                                                                                                        => new(address);
     public static        AddressRecord Create( string         line1, string line2, string city, string stateOrProvince, string postalCode, string country, Guid id = default ) => Create(line1, line2, city, stateOrProvince, postalCode, country, id, RecordID<UserRecord>.Empty);

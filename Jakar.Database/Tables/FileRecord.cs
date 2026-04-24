@@ -7,7 +7,7 @@ namespace Jakar.Database;
 
 [Serializable]
 [Table(TABLE_NAME)]
-public sealed record FileRecord : PairRecord<FileRecord>, ITableRecord<FileRecord>, IFileData<Guid>, IFileMetaData
+public sealed partial record FileRecord : PairRecord<FileRecord>, ITableRecord<FileRecord>, IFileData<Guid>, IFileMetaData
 {
     public const string TABLE_NAME = "files"; 
 
@@ -194,24 +194,6 @@ public sealed record FileRecord : PairRecord<FileRecord>, ITableRecord<FileRecor
         row[MetaData[nameof(FullPath)].DataColumn]        = FullPath;
         return base.Import(row, token);
     }
-    [Pure] public override CommandParameters ToDynamicParameters()
-    {
-        CommandParameters parameters = base.ToDynamicParameters();
-        parameters.Add(nameof(FileName),        FileName);
-        parameters.Add(nameof(FileDescription), FileDescription);
-        parameters.Add(nameof(FileType),        FileType);
-        parameters.Add(nameof(FileSize),        FileSize);
-        parameters.Add(nameof(Hash),            Hash);
-        parameters.Add(nameof(MimeType),        MimeType);
-        parameters.Add(nameof(Payload),         Payload);
-        parameters.Add(nameof(FullPath),        FullPath);
-        parameters.Add(nameof(ID),              ID);
-        parameters.Add(nameof(DateCreated),     DateCreated);
-        parameters.Add(nameof(LastModified),    LastModified);
-        return parameters;
-    }
-
-
     public override int CompareTo( FileRecord? other )
     {
         if ( ReferenceEquals(this, other) ) { return 0; }

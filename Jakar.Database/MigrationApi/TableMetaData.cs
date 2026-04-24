@@ -188,7 +188,8 @@ public class TableMetaData<TSelf> : ITableMetaData
     private static MigrationRecord CreateIndex( long migrationID, ColumnMetaData column )
     {
         Debug.Assert(column.IsColumnIndexed);
-        return MigrationRecord.Create<TSelf>(migrationID, $"Create Index for {column.PropertyName} on table {TSelf.TableName}", column.CreateIndex(Instance));
+        DatabaseType databaseType = Validate.ThrowIfNull(Database.Current).DatabaseType;
+        return MigrationRecord.Create<TSelf>(migrationID, $"Create Index for {column.PropertyName} on table {TSelf.TableName}", column.CreateIndex(Instance, databaseType), column.DropIndex(Instance, databaseType));
     }
 
 

@@ -7,7 +7,7 @@ namespace Jakar.Database;
 
 [Serializable]
 [Table(TABLE_NAME)]
-public sealed record UserLoginProviderRecord : OwnedTableRecord<UserLoginProviderRecord>, ITableRecord<UserLoginProviderRecord>
+public sealed partial record UserLoginProviderRecord : OwnedTableRecord<UserLoginProviderRecord>, ITableRecord<UserLoginProviderRecord>
 {
     public const string TABLE_NAME = "user_login_providers";
 
@@ -91,20 +91,6 @@ public sealed record UserLoginProviderRecord : OwnedTableRecord<UserLoginProvide
         row[MetaData[nameof(Value)].DataColumn]               = Value;
         return base.Import(row, token);
     }
-    public override CommandParameters ToDynamicParameters()
-    {
-        CommandParameters parameters = base.ToDynamicParameters();
-        parameters.Add(nameof(LoginProvider),       LoginProvider);
-        parameters.Add(nameof(ProviderDisplayName), ProviderDisplayName);
-        parameters.Add(nameof(ProviderKey),         ProviderKey);
-        parameters.Add(nameof(Value),               Value);
-        return parameters;
-    }
-
-
-    [Pure] public static UserLoginProviderRecord Create( DbDataReader reader ) => new UserLoginProviderRecord(reader).Validate();
-
-
     public static CommandParameters GetDynamicParameters( UserRecord user, string value )
     {
         CommandParameters parameters = CommandParameters.Create<UserLoginProviderRecord>();

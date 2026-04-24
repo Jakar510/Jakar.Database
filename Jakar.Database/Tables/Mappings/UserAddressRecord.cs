@@ -7,7 +7,7 @@ namespace Jakar.Database;
 [Serializable]
 [Table(TABLE_NAME)]
 [SuppressMessage("ReSharper", "LoopCanBeConvertedToQuery")]
-public sealed record UserAddressRecord : Mapping<UserAddressRecord, UserRecord, AddressRecord>, ICreateMapping<UserAddressRecord, UserRecord, AddressRecord>
+public sealed partial record UserAddressRecord : Mapping<UserAddressRecord, UserRecord, AddressRecord>, ICreateMapping<UserAddressRecord, UserRecord, AddressRecord>
 {
     public const  string TABLE_NAME = "user_adreesses";
 
@@ -49,9 +49,6 @@ public sealed record UserAddressRecord : Mapping<UserAddressRecord, UserRecord, 
     {
         foreach ( RecordID<AddressRecord> value in values ) { yield return Create(key, value); }
     }
-    [Pure] public static UserAddressRecord Create( DbDataReader reader ) => new UserAddressRecord(reader).Validate();
-
-
     public static bool operator >( UserAddressRecord  left, UserAddressRecord right ) => left.CompareTo(right) > 0;
     public static bool operator >=( UserAddressRecord left, UserAddressRecord right ) => left.CompareTo(right) >= 0;
     public static bool operator <( UserAddressRecord  left, UserAddressRecord right ) => left.CompareTo(right) < 0;

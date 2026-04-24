@@ -6,7 +6,7 @@ namespace Jakar.Database;
 
 [Serializable]
 [Table(TABLE_NAME)]
-public sealed record UserRoleRecord : Mapping<UserRoleRecord, UserRecord, RoleRecord>, ICreateMapping<UserRoleRecord, UserRecord, RoleRecord>
+public sealed partial record UserRoleRecord : Mapping<UserRoleRecord, UserRecord, RoleRecord>, ICreateMapping<UserRoleRecord, UserRecord, RoleRecord>
 {
     public const  string TABLE_NAME = "user_roles";
 
@@ -23,7 +23,6 @@ public sealed record UserRoleRecord : Mapping<UserRoleRecord, UserRecord, RoleRe
     internal UserRoleRecord( DbDataReader        reader ) : base(reader) { }
 
 
-    [Pure] public static UserRoleRecord Create( DbDataReader         reader )                          => new UserRoleRecord(reader).Validate();
     [Pure] public static UserRoleRecord Create( UserRecord           key, RoleRecord           value ) => new(key, value);
     [Pure] public static UserRoleRecord Create( RecordID<UserRecord> key, RecordID<RoleRecord> value ) => new(key, value);
     [Pure] public static ImmutableArray<UserRoleRecord> Create( UserRecord key, params ReadOnlySpan<RoleRecord> values )

@@ -6,7 +6,7 @@ namespace Jakar.Database;
 
 [Serializable]
 [Table(TABLE_NAME)]
-public sealed record RecoveryCodeRecord : OwnedTableRecord<RecoveryCodeRecord>, ITableRecord<RecoveryCodeRecord>
+public sealed partial record RecoveryCodeRecord : OwnedTableRecord<RecoveryCodeRecord>, ITableRecord<RecoveryCodeRecord>
 {
     public const string TABLE_NAME = "recovery_codes";
 
@@ -21,38 +21,6 @@ public sealed record RecoveryCodeRecord : OwnedTableRecord<RecoveryCodeRecord>, 
     public RecoveryCodeRecord( string code, UserRecord                   user ) : this(code, RecordID<RecoveryCodeRecord>.New(), user.ID, DateTimeOffset.UtcNow) { }
     public RecoveryCodeRecord( string code, RecordID<RecoveryCodeRecord> ID, RecordID<UserRecord> UserID, DateTimeOffset DateCreated, DateTimeOffset? LastModified = null ) : base(in UserID, in ID, in DateCreated, in LastModified) => Code = Hasher.HashPassword(this, code);
 
-
-    public override ValueTask Export( NpgsqlBinaryExporter exporter, CancellationToken token ) => default;
-    protected override async ValueTask Import( NpgsqlBinaryImporter importer, string propertyName, NpgsqlDbType postgresDbType, CancellationToken token )
-    {
-        switch ( propertyName )
-        {
-            case nameof(ID):
-                await importer.WriteAsync(ID.Value, postgresDbType, token);
-                break;
-
-            case nameof(DateCreated):
-                await importer.WriteAsync(DateCreated, postgresDbType, token);
-                break;
-
-            case nameof(UserID):
-                await importer.WriteAsync(UserID.Value, postgresDbType, token);
-                break;
-
-            case nameof(Code):
-                await importer.WriteAsync(Code, postgresDbType, token);
-                break;
-
-            case nameof(LastModified):
-                if ( LastModified.HasValue ) { await importer.WriteAsync(LastModified.Value, postgresDbType, token); }
-                else { await importer.WriteNullAsync(token); }
-
-                break;
-
-            default:
-                throw new InvalidOperationException($"Unknown column: {propertyName}");
-        }
-    }
     public override ValueTask Import( DataRow row, CancellationToken token )
     {
         row[MetaData[nameof(Code)].DataColumn] = Code;

@@ -3,7 +3,7 @@
 
 [Serializable]
 [Table(TABLE_NAME)]
-public sealed record RoleRecord : OwnedTableRecord<RoleRecord>, ITableRecord<RoleRecord>, IRoleModel<Guid>
+public sealed partial record RoleRecord : OwnedTableRecord<RoleRecord>, ITableRecord<RoleRecord>, IRoleModel<Guid>
 {
     public const string TABLE_NAME = "roles";
 
@@ -88,20 +88,8 @@ public sealed record RoleRecord : OwnedTableRecord<RoleRecord>, ITableRecord<Rol
                 throw new InvalidOperationException($"Unknown column: {propertyName}");
         }
     }
-    [Pure] public override CommandParameters ToDynamicParameters()
-    {
-        CommandParameters parameters = base.ToDynamicParameters();
-        parameters.Add(nameof(NameOfRole),       NameOfRole);
-        parameters.Add(nameof(NormalizedName),   NormalizedName);
-        parameters.Add(nameof(ConcurrencyStamp), ConcurrencyStamp);
-        parameters.Add(nameof(Rights),           Rights);
-        return parameters;
-    }
-
-
     [Pure] public static RoleRecord Create<TEnum>( string name, [HandlesResourceDisposal] Permissions<TEnum> rights, string? normalizedName = null, RecordID<UserRecord> userID = default, string? concurrencyStamp = null )
         where TEnum : unmanaged, Enum => new(name, normalizedName ?? name, concurrencyStamp ?? name.GetHash(), rights.ToStringAndDispose(), userID);
-    [Pure] public static RoleRecord Create( DbDataReader reader ) => new RoleRecord(reader).Validate();
 
 
     [Pure] public IAsyncEnumerable<UserRecord> GetUsers( DbConnectionContext context, Database db, CancellationToken token ) => UserRoleRecord.Where(context, db.Users, this, token);
