@@ -1,39 +1,111 @@
 # Jakar.Database
 
-`Jakar.Database` is a .NET ORM and schema-management library built around three ideas:
+`Jakar.Database` is a .NET ORM, schema-management, authentication, and host-wiring library built around explicit table records instead of Entity Framework entities.
 
-1. Stream records with `IAsyncEnumerable<T>` instead of materializing everything eagerly.
-2. Keep the common table model explicit so PostgreSQL and Microsoft SQL Server can share most of the shape.
-3. Push repetitive record boilerplate into code generation instead of hand-maintaining `Create(DbDataReader)` and `ToDynamicParameters()` everywhere.
+The library focuses on:
 
-## Current Focus
+- streaming table access with `IAsyncEnumerable<T>`
+- shared record metadata for PostgreSQL and Microsoft SQL Server targets
+- Dapper-friendly command parameter generation
+- reversible schema migrations
+- source-generated `ITableRecord<TSelf>` boilerplate
+- ASP.NET Core authentication and Identity wiring without Entity Framework stores
 
-- High-throughput table access over `DbDataReader` and batched commands.
-- Shared record metadata for common tables.
-- Reversible migrations, especially for tables, enums, and generated indexes.
-- Incremental source generation for `ITableRecord<TSelf>` plumbing.
-- Hybrid host authentication for WebAPI, Blazor, and other .NET clients.
+## Prerequisites
+
+- .NET 10 SDK
+- PostgreSQL for the current integration-test fixture and sample host
+- Docker when running the full integration test suite
 
 ## Repository Layout
 
 - `Jakar.Database/`
-  The main library, common records, migration metadata, database abstractions, and package README.
+  Main library, common records, database abstractions, migration metadata, authentication, Identity stores, and the package README.
 - `Jakar.Database.Generators/`
-  Incremental source generator that emits `Create(DbDataReader)` and `ToDynamicParameters()` for opt-in partial table records.
+  Incremental source generator for common `ITableRecord<TSelf>` and `TableRecord<TSelf>` members.
 - `Jakar.Database.Tests/`
-  Integration tests plus lightweight unit checks for generated record behavior.
+  Integration tests plus focused unit checks for generated records, authentication routing, migrations, and Identity service registration.
 - `SampleApi/`
-  Minimal sample host.
+  Minimal ASP.NET Core host showing database registration, hybrid auth, migrations, and test endpoints.
 - `Experiments/`
   Benchmarks and exploratory performance work.
 - `Jakar.SqlBuilder/`
   SQL builder utilities used alongside the ORM layer.
 
-## Design Notes
+## Install
 
-### Record Model
+From a consuming project:
 
-The library uses a small inheritance stack:
+```powershell
+dotnet add package Jakar.Database
+```
+
+The package targets `net10.0`. Source-generated record members are described below.
+
+## Quick Start
+
+Create a `Database` subclass for the provider you want to connect to. The current validated sample path uses PostgreSQL:
+
+```csharp
+using System.Data.Common;
+using Jakar.Database;
+using Microsoft.Extensions.Caching.Hybrid;
+using Microsoft.Extensions.Options;
+using Npgsql;
+
+public sealed class AppDatabase(IConfiguration configuration, IOptions<DbOptions> options, IFusionCache cache)
+    : Database(configuration, options, cache), IAppID
+{
+    public static Guid AppID { get; } = Guid.NewGuid();
+    public static string AppName => nameof(AppDatabase);
+    public static AppVersion AppVersion { get; } = new(1, 0, 0, 1);
+
+    public override DatabaseType DatabaseType => DatabaseType.PostgreSQL;
+
+    protected override DbConnection CreateConnection(in ConnectionString secure) => new NpgsqlConnection(secure);
+}
+```
+
+Register it in an ASP.NET Core host:
+
+```csharp
+using Jakar.Database;
+
+WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
+
+SecuredStringResolverOptions connectionString =
+    "User ID=dev;Password=dev;Host=localhost;Port=5432;Database=my_app";
+
+DbOptions options = new()
+{
+    TelemetrySource = new TelemetrySource(AppVersion.Default, Guid.NewGuid(), "MyApp", typeof(Program).Assembly.FullName),
+    ConnectionStringResolver = connectionString,
+    CommandTimeout = 30,
+    TokenIssuer = AppDatabase.AppName,
+    TokenAudience = AppDatabase.AppName,
+    LoggerOptions = new AppLoggerOptions(),
+    ConfigureCookieAuth = cookie =>
+    {
+        cookie.Cookie.Name = "my_app_auth";
+        cookie.LoginPath = "/auth/login";
+        cookie.AccessDeniedPath = "/auth/denied";
+    }
+};
+
+builder.AddDatabase<AppDatabase>(options);
+
+await using WebApplication app = builder.Build();
+app.UseAuthentication();
+app.UseAuthorization();
+
+await app.RunWithMigrationsAsync(["localhost:8181", "0.0.0.0:8181"]);
+```
+
+`AddDatabase<TDatabase>(...)` registers the database singleton, default logging, OpenTelemetry, FusionCache, ASP.NET Core Identity stores, data protection, authentication, authorization, and the multi-factor policy.
+
+## Table Records
+
+Table records are explicit .NET records. The inheritance stack captures the common columns:
 
 - `TableRecord<TSelf>`
   Base JSON model and shared metadata access.
@@ -46,141 +118,186 @@ The library uses a small inheritance stack:
 - `Mapping<TSelf, TKey, TValue>`
   Link-table pattern for many-to-many relationships.
 
-The generated metadata still comes from reflection over the public record shape. That keeps the table model obvious in code, while the generator removes only the mechanical translation code.
+Record metadata is still derived from the public record shape. That keeps table definitions visible in code while letting the generator remove the repetitive conversion members.
 
-### Source Generator
+Example record shape:
 
-The incremental generator is now active through `Jakar.Database.Generators`.
+```csharp
+using System.Data.Common;
+using Jakar.Database;
 
-If a table record:
+[Table(TABLE_NAME)]
+public sealed partial record ExampleRecord : PairRecord<ExampleRecord>, ITableRecord<ExampleRecord>
+{
+    public const string TABLE_NAME = "examples";
+
+    private static readonly SqlName __tableName = TABLE_NAME;
+    public static ref readonly SqlName TableName => ref __tableName;
+
+    public string Name { get; init; } = string.Empty;
+
+    internal ExampleRecord(DbDataReader reader) : base(reader)
+    {
+        Name = reader.GetFieldValue<ExampleRecord, string>(nameof(Name));
+    }
+}
+```
+
+The generated metadata ignores properties marked with `[DbIgnore]`. Public get-only properties that are not persisted should be marked with `[DbIgnore]` so the table shape remains intentional.
+
+## Source Generator
+
+`Jakar.Database.Generators` emits common record plumbing when a record:
 
 - is `partial`
 - implements `ITableRecord<TSelf>`
 - has a `DbDataReader` constructor
 - does not already declare `Create(DbDataReader)`
 - does not already override `ToDynamicParameters()`
+- does not already implement the common import/export members
 
-the generator emits those members automatically.
+Generated members can include:
 
-That keeps the manual code focused on actual behavior:
+- `public static TSelf Create(DbDataReader reader)`
+- `public override CommandParameters ToDynamicParameters()`
+- `public override ValueTask Export(NpgsqlBinaryExporter exporter, CancellationToken token)`
+- `public override ValueTask Import(NpgsqlBatchCommand batch, CancellationToken token)`
+- `protected override ValueTask Import(NpgsqlBinaryImporter importer, string propertyName, NpgsqlDbType postgresDbType, CancellationToken token)`
 
-- validation
-- custom factory overloads
-- custom binary import/export when the generated path is not enough
-- comparison and equality logic
-- table-specific domain helpers
+Keep manual implementations for validation, custom factory overloads, non-standard binary import/export behavior, comparison/equality logic, and table-specific domain helpers.
 
-The generator now also fills in the common abstract `TableRecord<TSelf>` members when they are missing:
+## Migrations
 
-- `Export(NpgsqlBinaryExporter, CancellationToken)`
-- `Import(NpgsqlBatchCommand, CancellationToken)`
-- `Import(NpgsqlBinaryImporter, string, NpgsqlDbType, CancellationToken)`
+`MigrationManager` registers built-in migrations for shared functions, enum types, common tables, and generated indexes. Hosts can apply migrations during startup with:
 
-Records still keep manual implementations when they need non-standard behavior.
+```csharp
+await app.ApplyMigrations();
+```
 
-### Authentication
+or use the full startup helper:
 
-`DbOptions.AddAuthentication(...)` now registers a hybrid default scheme intended for mixed hosts:
+```csharp
+await app.RunWithMigrationsAsync(["localhost:8181", "0.0.0.0:8181"]);
+```
 
-- bearer tokens are used automatically for requests with an `Authorization: Bearer ...` header
-- bearer tokens are also preferred for configured API path prefixes such as `/api`
-- cookies are used for interactive requests such as Blazor or MVC-style navigation
+Development hosts can expose the applied-migrations page at `/_migrations`:
+
+```csharp
+app.TryUseMigrationsEndPoint();
+```
+
+Rollback is first-class. `MigrationRecord` carries both `UpSQL` and `DownSQL`, and `MigrationManager.RevertMigrations(...)` executes rollback SQL in reverse order before removing applied migration rows:
+
+```csharp
+await app.RevertMigrations(migrateDownToInclusive: 12);
+```
+
+Current rollback support covers:
+
+- `SetLastModified` function setup
+- enum migrations
+- table creation migrations
+- generated index migrations
+
+If a migration cannot be rolled back safely, do not register it without making that decision explicit. Silent best-effort rollback logic is how schema drift starts.
+
+## Authentication
+
+`DbOptions.AddAuthentication(...)` registers a hybrid ASP.NET Core authentication setup for mixed hosts:
+
+- bearer tokens for requests with an `Authorization: Bearer ...` header
+- bearer tokens for configured API path prefixes such as `/api`
+- cookies for interactive browser requests such as Blazor, MVC, or Razor navigation
 
 Relevant `DbOptions` members:
 
 - `AuthenticationScheme`
-  The default hybrid scheme used by authorization.
 - `BearerAuthenticationScheme`
-  The named JWT bearer scheme.
 - `CookieAuthenticationScheme`
-  The primary cookie scheme for browser-based sign-in.
 - `BearerPathPrefixes`
-  Paths that should challenge/authenticate as APIs even without a bearer header.
 - `ForwardDefaultSelector`
-  Optional override for custom scheme selection.
+- `ConfigureCookieAuth`
+- `ConfigureApplicationCookie`
+- `ConfigureExternalCookie`
+- `ConfigureMicrosoftAccount`
+- `ConfigureGoogle`
+- `ConfigureOpenIdConnect`
 
-Minimal host order:
+Minimal middleware order:
 
 ```csharp
-builder.Services.AddAuthorization();
-options.AddAuthentication(builder);
-
-var app = builder.Build();
 app.UseAuthentication();
 app.UseAuthorization();
 ```
 
-Focused validation now covers:
+Focused tests validate bearer-authenticated API requests, cookie-authenticated interactive requests, and unauthenticated API requests returning `401`.
 
-- bearer-authenticated API requests
-- cookie-authenticated interactive requests
-- unauthenticated API requests returning `401`
+## Identity Services
 
-### Identity Services
+`DbServices.AddIdentityServices(...)` wires the library's custom stores and managers into ASP.NET Core Identity without Entity Framework.
 
-`DbServices.AddIdentityServices(...)` is the ASP.NET Identity registration entry point for the library's custom stores and managers.
+The validated registration surface includes:
 
-It now validates cleanly for the common `Identity` surface instead of relying on hidden follow-up registrations:
-
-- `IUserStore<UserRecord>` and the related login, claim, password, email, lockout, 2FA, authenticator-key, recovery-code, and phone-number store interfaces
+- `IUserStore<UserRecord>`
+- login, claim, password, security-stamp, 2FA, email, lockout, authenticator-key, recovery-code, and phone-number user-store interfaces
 - `IRoleStore<RoleRecord>`
-- `UserManager<UserRecord>`, `RoleManager<RoleRecord>`, and `SignInManager<UserRecord>`
-- default ASP.NET Identity token flows for password reset, email confirmation, and authenticator tokens
+- `UserManager<UserRecord>`
+- `RoleManager<RoleRecord>`
+- `SignInManager<UserRecord>`
+- personal-data protection through `IProtectedUserStore<UserRecord>`
+- default ASP.NET Identity token flows for password reset, email confirmation, change-email, change-phone-number, and authenticator tokens
 
-The default `IdentityOptions` token-provider mapping now aligns with the providers that `AddIdentityServices(...)` actually registers:
+Default token-provider mapping:
 
 - password reset uses `TokenOptions.DefaultProvider`
 - email confirmation and change-email use `TokenOptions.DefaultEmailProvider`
 - change-phone-number uses `TokenOptions.DefaultPhoneProvider`
 - authenticator tokens use `TokenOptions.DefaultAuthenticatorProvider`
 
-The generic overload also keeps a named custom provider registration for both:
+The generic overload also registers the app-specific token provider under:
 
-- `nameof(TTokenProvider)`
 - `options.AppInformation.AppName`
+- `typeof(TTokenProvider).Name`
 
-### Migrations
+That lets custom token workflows opt in explicitly while keeping the stock Identity methods aligned with the default provider names.
 
-`MigrationRecord` now treats rollback as a first-class concern:
-
-- `SetLastModified` defines `DownSQL`
-- enum migrations define `DownSQL`
-- generated index migrations define `DownSQL`
-- `MigrationManager.RevertMigrations(...)` actually executes rollback SQL in reverse order and removes applied migration rows
-
-If a migration cannot be rolled back safely, it should not be registered without an explicit decision. Silent “best effort” down migrations are how schema drift starts.
-
-## Current Provider Status
+## Provider Status
 
 The target remains PostgreSQL plus Microsoft SQL Server, but the implementation is not fully symmetric yet.
 
-What is in better shape now:
+In better shape:
 
 - shared table metadata
 - generated record parameterization
 - reversible migration definitions
 - provider-aware index create/drop SQL
 
-What still needs more work:
+Still PostgreSQL-biased:
 
-- some query helpers still emit PostgreSQL-first SQL such as `LIMIT`, `RETURNING`, or `RANDOM()`
+- some query helpers emit `LIMIT`, `RETURNING`, or `RANDOM()`
 - enum handling is PostgreSQL-native today
-- broader SQL Server query/dialect coverage still needs a deliberate pass
+- broader SQL Server query and dialect coverage needs a deliberate pass
 
-That means the table model is trending toward cross-provider, but parts of the query surface are still PostgreSQL-biased.
+Treat SQL Server support as in progress unless the specific surface has been validated.
 
-## Building
+## Build
 
 ```powershell
 dotnet build Jakar.Database.slnx
 ```
 
-## Testing
+## Test
 
-Unit-style generator checks:
+Generator checks:
 
 ```powershell
 dotnet test Jakar.Database.Tests\Jakar.Database.Tests.csproj --filter GeneratedRecordTests --no-restore
+```
+
+Authentication checks:
+
+```powershell
+dotnet test Jakar.Database.Tests\Jakar.Database.Tests.csproj --filter AuthenticationConfigurationTests --no-restore
 ```
 
 Identity service checks:
@@ -189,7 +306,13 @@ Identity service checks:
 dotnet test Jakar.Database.Tests\Jakar.Database.Tests.csproj --filter IdentityServicesRegistrationTests --no-restore
 ```
 
-Integration tests require Docker because the existing fixture uses Testcontainers PostgreSQL:
+Non-Docker test slice:
+
+```powershell
+dotnet test Jakar.Database.Tests\Jakar.Database.Tests.csproj --filter "FullyQualifiedName!~DatabaseTests" --no-restore
+```
+
+Full integration tests require Docker because the current fixture uses Testcontainers PostgreSQL:
 
 ```powershell
 dotnet test Jakar.Database.Tests\Jakar.Database.Tests.csproj
@@ -197,15 +320,14 @@ dotnet test Jakar.Database.Tests\Jakar.Database.Tests.csproj
 
 ## Immediate Improvement Areas
 
-If you want to keep pushing in the current direction, these are the next high-value steps:
-
 1. Move more provider-specific SQL generation behind `DatabaseType` instead of embedding PostgreSQL syntax in static query helpers.
 2. Expand generator coverage to more import/export helpers where the pattern is stable enough.
 3. Separate Docker-backed integration tests from pure unit tests so local verification is cheaper.
-4. Audit all public get-only properties on table records and mark non-persisted ones with `[DbIgnore]` consistently.
-5. Decide how the analyzer should be shipped through NuGet so consumers get the generator automatically, not only solution builds.
+4. Audit public get-only properties on table records and mark non-persisted ones with `[DbIgnore]` consistently.
+5. Decide how analyzer packaging should be validated so consumers reliably receive the generator from NuGet.
 
 ## Related Docs
 
 - [Package README](Jakar.Database/README.md)
 - [Database Type Notes](Jakar.Database/Features.md)
+- [Sample API](SampleApi/Program.cs)
