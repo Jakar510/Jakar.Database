@@ -78,6 +78,7 @@ public static class HostedServiceExtensions
         private readonly ILogger                  __logger;
         private readonly Thread                   __thread;
         private          CancellationTokenSource? __source;
+        private volatile bool                     __started;
 
 
         public ServiceThread( IHostedService service, ILoggerFactory factory, CancellationToken token = default ) : this(service, factory.CreateLogger<ServiceThread>(), token) { }
@@ -95,9 +96,18 @@ public static class HostedServiceExtensions
         }
         public bool Stop( in TimeSpan timeout )
         {
+            if ( !__started ) { return true; }
+
             __source?.Cancel();
-            __source?.Dispose();
-            return __thread.Join(timeout);
+            bool joined = __thread.Join(timeout);
+
+            if ( joined )
+            {
+                __source?.Dispose();
+                __source = null;
+            }
+
+            return joined;
         }
         public override ValueTask DisposeAsync()
         {
@@ -108,48 +118,43 @@ public static class HostedServiceExtensions
 
         public void Start()
         {
-            if ( IsAlive ) { return; }
+            if ( __started ) { return; }
 
+            // Create the cancellation source before the thread starts so a Stop() that races Start() cannot observe a null source.
+            __started = true;
+            __source  = CancellationTokenSource.CreateLinkedTokenSource(__token);
+            IsAlive   = true;
             __thread.Start();
         }
 
 
         public void Stop()
         {
+            if ( !__started ) { return; }
+
             __source?.Cancel();
-            __source?.Dispose();
             __thread.Join();
+            __source?.Dispose();
+            __source = null;
         }
-        private async void ThreadStart()
+
+        // Runs synchronously on the dedicated thread and blocks until the hosted service stops, so Stop()'s Join() actually waits for completion (an `async void` body would return at the first await and the thread would exit immediately).
+        private void ThreadStart()
         {
-            if ( IsAlive ) { return; }
+            CancellationTokenSource? source = __source;
+            if ( source is null ) { return; }
 
-            if ( __source is not null )
+            try
             {
-                await __source.CancelAsync().ConfigureAwait(false);
-
-                __source.Dispose();
+                try { __service.StartAsync(source.Token).GetAwaiter().GetResult(); }
+                finally { __service.StopAsync(CancellationToken.None).GetAwaiter().GetResult(); }
             }
-
-            __source = new CancellationTokenSource();
-
-            await using ( __token.Register(__source.Cancel) )
+            catch ( OperationCanceledException ) { }
+            catch ( Exception e ) { DbLog.ServiceError(__logger, e, this, __service); }
+            finally
             {
-                try
-                {
-                    IsAlive = true;
-
-                    try { await __service.StartAsync(__source.Token).ConfigureAwait(false); }
-                    finally { await __service.StopAsync(CancellationToken.None).ConfigureAwait(false); }
-                }
-                catch ( TaskCanceledException ) { }
-                catch ( Exception e ) { DbLog.ServiceError(__logger, e, this, __service); }
-                finally
-                {
-                    DbLog.ServiceStopped(__logger, this, __service, __token);
-                    IsAlive  = false;
-                    __source = null;
-                }
+                DbLog.ServiceStopped(__logger, this, __service, __token);
+                IsAlive = false;
             }
         }
     }

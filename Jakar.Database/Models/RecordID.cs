@@ -36,9 +36,9 @@ public readonly struct RecordID<TSelf>( Guid id ) : IRecordID, IEqualComparable<
     [Pure] public static RecordID<TSelf>? TryCreate( DbDataReader          reader, string propertyName ) => TryCreate(reader.GetFieldValue<Guid?>(TSelf.MetaData[propertyName].Index));
     [Pure] public static RecordID<TSelf>  Create( DbDataReader             reader, string propertyName ) => Create(reader.GetFieldValue<Guid>(TSelf.MetaData[propertyName].Index));
     [Pure] public static RecordID<TSelf>  Create( Guid                     id ) => new(id);
-    [Pure] public static RecordID<TSelf> Create( [NotNullIfNotNull(nameof(id))] Guid? id ) => id.HasValue
-                                                                                                  ? new RecordID<TSelf>(id.Value)
-                                                                                                  : New();
+    [Pure] public static RecordID<TSelf> Create( Guid? id ) => id.HasValue
+                                                                   ? new RecordID<TSelf>(id.Value)
+                                                                   : Empty;
     [Pure] public static RecordID<TSelf> Create<TValue>( TValue id )
         where TValue : IUniqueID<Guid> => Create(id.ID);
     [Pure] public static IEnumerable<RecordID<TSelf>> Create<TValue>( IEnumerable<TValue> ids )
@@ -113,9 +113,15 @@ public readonly struct RecordID<TSelf>( Guid id ) : IRecordID, IEqualComparable<
         if ( format is not "b64" ) { return Value.TryFormat(destination, out charsWritten, format); }
 
         ReadOnlySpan<char> span = Value.ToBase64();
+        if ( span.Length > destination.Length )
+        {
+            charsWritten = 0;
+            return false;
+        }
+
         span.CopyTo(destination);
         charsWritten = span.Length;
-        return span.Length > 0;
+        return true;
     }
 
 

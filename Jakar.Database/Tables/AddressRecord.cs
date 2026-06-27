@@ -61,9 +61,7 @@ public sealed partial record AddressRecord : OwnedTableRecord<AddressRecord>, IA
 
     private string GetAddress() => string.IsNullOrWhiteSpace(Line2)
                                        ? $"{Line1}. {City}, {StateOrProvince}. {Country}. {PostalCode}"
-                                       : $"{Line1} {Line2}. {City}, {StateOrProvince}. {Country}. {PostalCode}";
-    public override ValueTask Export( NpgsqlBinaryExporter exporter, CancellationToken token ) => default;
-    protected override async ValueTask Import( NpgsqlBinaryImporter importer, string propertyName, NpgsqlDbType postgresDbType, CancellationToken token )
+                                       : $"{Line1} {Line2}. {City}, {StateOrProvince}. {Country}. {PostalCode}";    protected override async ValueTask Import( NpgsqlBinaryImporter importer, string propertyName, NpgsqlDbType postgresDbType, CancellationToken token )
     {
         switch ( propertyName )
         {

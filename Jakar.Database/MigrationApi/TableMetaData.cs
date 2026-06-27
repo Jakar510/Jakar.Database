@@ -126,13 +126,41 @@ public class TableMetaData<TSelf> : ITableMetaData
         Dictionary<int, string> indexes = new(EqualityComparer<int>.Default);
         int                     i       = 0;
 
-        foreach ( ( string propertyName, ColumnMetaData column ) in SortedProperties(in properties) )
+        foreach ( ( string propertyName, ColumnMetaData column ) in OrderedColumns(in properties) )
         {
             column.Index = i;
             indexes[i++] = propertyName;
         }
 
         return indexes.ToFrozenDictionary();
+    }
+
+
+    /// <summary>
+    ///     Returns the columns in the build-time, size-packed order emitted by the source generator (<see cref="GeneratedColumnOrderAttribute"/>). When the attribute is absent or does not cover every column, the remaining columns fall back to <see cref="SortedProperties"/>, so ordering is always complete and correct even if the generated order is missing.
+    /// </summary>
+    private IEnumerable<KeyValuePair<string, ColumnMetaData>> OrderedColumns( in FrozenDictionary<string, ColumnMetaData> properties )
+    {
+        string[]? order = typeof(TSelf).GetCustomAttribute<GeneratedColumnOrderAttribute>()?.PropertyNames;
+        if ( order is null ) { return SortedProperties(in properties); }
+
+        List<KeyValuePair<string, ColumnMetaData>> result = new(properties.Count);
+        HashSet<string>                            seen   = new(StringComparer.Ordinal);
+
+        foreach ( string propertyName in order )
+        {
+            if ( properties.TryGetValue(propertyName, out ColumnMetaData? column) && seen.Add(propertyName) ) { result.Add(new KeyValuePair<string, ColumnMetaData>(propertyName, column)); }
+        }
+
+        if ( seen.Count < properties.Count )
+        {
+            foreach ( KeyValuePair<string, ColumnMetaData> pair in SortedProperties(in properties) )
+            {
+                if ( seen.Add(pair.Key) ) { result.Add(pair); }
+            }
+        }
+
+        return result;
     }
 
 

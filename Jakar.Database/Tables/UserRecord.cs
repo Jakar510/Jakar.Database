@@ -161,7 +161,6 @@ public sealed partial record UserRecord : PairRecord<UserRecord>, ITableRecord<U
                                                                                                                          }.WithPassword(password);
 
 
-    public override ValueTask Export( NpgsqlBinaryExporter exporter, CancellationToken token ) => default;
     protected override async ValueTask Import( NpgsqlBinaryImporter importer, string propertyName, NpgsqlDbType postgresDbType, CancellationToken token )
     {
         switch ( propertyName )

@@ -45,7 +45,6 @@ public sealed partial record RoleRecord : OwnedTableRecord<RoleRecord>, ITableRe
         where TRoleModel : class, IRoleModel<TRoleModel, Guid> => TRoleModel.Create(this);
 
 
-    public override ValueTask Export( NpgsqlBinaryExporter exporter, CancellationToken token ) => default;
     protected override async ValueTask Import( NpgsqlBinaryImporter importer, string propertyName, NpgsqlDbType postgresDbType, CancellationToken token )
     {
         switch ( propertyName )

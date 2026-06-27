@@ -42,7 +42,6 @@ public interface ITableRecord<TSelf> : ITableName, IEqualComparable<TSelf>
     [Pure] public                 CommandParameters ToDynamicParameters();
 
 
-    public    ValueTask Export( NpgsqlBinaryExporter exporter, CancellationToken token ) => default;
     public    ValueTask Import( DataRow              row,      CancellationToken token );
 }
 
@@ -113,7 +112,6 @@ public abstract record TableRecord<TSelf>( in DateTimeOffset DateCreated ) : IJs
 
 
     // IDataReader
-    public abstract ValueTask Export( NpgsqlBinaryExporter exporter, CancellationToken token );
     public abstract ValueTask Import( NpgsqlBatchCommand   batch,    CancellationToken token );
     public async ValueTask Import( NpgsqlBinaryImporter importer, CancellationToken token )
     {

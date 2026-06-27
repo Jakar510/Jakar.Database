@@ -34,7 +34,8 @@ public readonly struct CommandParameters() : IEquatable<CommandParameters>
     {
         get
         {
-            __parameters.Sort(Table.Sorter ?? Comparer<SqlParameter>.Default);
+            // Table is null for the Empty sentinel; fall back to the default comparer instead of throwing.
+            __parameters.Sort(Table?.Sorter ?? Comparer<SqlParameter>.Default);
             return __parameters;
         }
     }
@@ -64,8 +65,15 @@ public readonly struct CommandParameters() : IEquatable<CommandParameters>
     public   bool                IsGrouped           => __groups.Count > 0;
     public   ParameterNames      ParameterNames      { [Pure] [MustDisposeResource] get => new(this); }
     public   ExtraParameterNames GroupParameterNames { [Pure] [MustDisposeResource] get => new(this); }
-    internal int                 VariableNameLength  => Table.MaxLength_ColumnName * Table.ColumnCount + Parameters.Sum(static x => x.ParameterName.Length + 10);
-    public   IndexedEnumerator   IndexedParameters   => new(this);
+    internal int VariableNameLength
+    {
+        get
+        {
+            using ArrayBuffer<SqlParameter> buffer = Parameters;
+            return Table.MaxLength_ColumnName * Table.ColumnCount + buffer.Sum(static x => x.ParameterName.Length + 10);
+        }
+    }
+    public IndexedEnumerator IndexedParameters => new(this);
 
 
     internal int           KeyValuePairLength( int indentLevel )                                      => Table.Properties.Values.Sum(static x => x.KeyValuePair.Length) + ParameterCount * ( indentLevel * 4 + 3 );

@@ -21,7 +21,6 @@ public sealed partial record UserAddressRecord : Mapping<UserAddressRecord, User
 
     public UserAddressRecord( UserRecord            key, AddressRecord           value ) : base(key, value) { }
     public UserAddressRecord( RecordID<UserRecord>  key, RecordID<AddressRecord> value ) : base(key, value) { }
-    private UserAddressRecord( RecordID<UserRecord> key, RecordID<AddressRecord> value, DateTimeOffset dateCreated ) : base(key, value, dateCreated) { }
     internal UserAddressRecord( DbDataReader        reader ) : base(reader) { }
 
 

@@ -23,7 +23,7 @@ public sealed class TableRecordGenerator : IIncrementalGenerator
                                              GenerationCandidate candidate = values[i];
                                              if ( !candidate.ShouldGenerate || !set.Add(candidate) ) { continue; }
 
-                                             spc.AddSource($"{candidate.HintName}.g.cs", SourceText.From(Render(candidate), Encoding.Default));
+                                             spc.AddSource($"{candidate.HintName}.g.cs", SourceText.From(Render(candidate), Encoding.UTF8));
                                          }
                                      });
     }
@@ -45,17 +45,22 @@ public sealed class TableRecordGenerator : IIncrementalGenerator
         bool hasReaderCtor          = symbol.InstanceConstructors.Any(static ctor => ctor.Parameters.Length == 1 && IsDbDataReader(ctor.Parameters[0].Type));
         bool hasCreate              = HasMethod(symbol, "Create",              static method => method.IsStatic  && method.Parameters.Length == 1 && IsDbDataReader(method.Parameters[0].Type));
         bool hasToDynamicParameters = HasMethod(symbol, "ToDynamicParameters", static method => !method.IsStatic && method.Parameters.Length == 0);
-        bool hasExport              = HasMethod(symbol, "Export",              static method => !method.IsStatic && method.Parameters.Length == 2 && IsNpgsqlBinaryExporter(method.Parameters[0].Type) && IsCancellationToken(method.Parameters[1].Type));
+        bool hasExport              = HasMethod(symbol, "Export",              static method => method.IsStatic  && method.Parameters.Length == 2 && IsNpgsqlBinaryExporter(method.Parameters[0].Type) && IsCancellationToken(method.Parameters[1].Type));
         bool hasBatchImport         = HasMethod(symbol, "Import",              static method => !method.IsStatic && method.Parameters.Length == 2 && IsNpgsqlBatchCommand(method.Parameters[0].Type)   && IsCancellationToken(method.Parameters[1].Type));
         bool hasBinaryImport        = HasMethod(symbol, "Import",              static method => !method.IsStatic && method.Parameters.Length == 4 && IsNpgsqlBinaryImporter(method.Parameters[0].Type) && IsString(method.Parameters[1].Type) && IsNpgsqlDbType(method.Parameters[2].Type) && IsCancellationToken(method.Parameters[3].Type));
 
-        bool generateCreate              = hasReaderCtor                 && !hasCreate;
-        bool generateToDynamicParameters = declaredProperties.Length > 0 && !hasToDynamicParameters;
-        bool generateExport              = !hasExport;
-        bool generateBatchImport         = !hasBatchImport;
-        bool generateBinaryImport        = importProperties.Length > 0 && !hasBinaryImport;
+        // The generated Export factory adds a secondary constructor chained to the framework base ctor; a record with a primary constructor would require `: this(...)` instead, so skip Export for those.
+        bool hasPrimaryConstructor = syntax is RecordDeclarationSyntax { ParameterList: not null };
 
-        if ( !generateCreate && !generateToDynamicParameters && !generateExport && !generateBatchImport && !generateBinaryImport ) { return null; }
+        bool       generateCreate              = hasReaderCtor                 && !hasCreate;
+        bool       generateToDynamicParameters = declaredProperties.Length > 0 && !hasToDynamicParameters;
+        ExportPlan? exportPlan                 = hasExport || hasPrimaryConstructor ? null : GetExportPlan(symbol);
+        bool       generateBatchImport         = !hasBatchImport;
+        bool       generateBinaryImport        = importProperties.Length > 0 && !hasBinaryImport;
+
+        if ( !generateCreate && !generateToDynamicParameters && exportPlan is null && !generateBatchImport && !generateBinaryImport ) { return null; }
+
+        ImmutableArray<string> columnOrder = GetColumnOrder(symbol) ?? [];
 
         return new GenerationCandidate(symbol.ContainingNamespace.IsGlobalNamespace
                                            ? null
@@ -65,9 +70,10 @@ public sealed class TableRecordGenerator : IIncrementalGenerator
                                        GetTypeDeclaration(syntax),
                                        declaredProperties,
                                        importProperties,
+                                       columnOrder,
                                        generateCreate,
                                        generateToDynamicParameters,
-                                       generateExport,
+                                       exportPlan,
                                        generateBatchImport,
                                        generateBinaryImport);
     }
@@ -99,11 +105,471 @@ public sealed class TableRecordGenerator : IIncrementalGenerator
             {
                 if ( !seen.Add(property.Name) ) { continue; }
 
-                results.Add(new ImportProperty(property.Name, GetWriteExpression(property), IsNullableValueType(property.Type)));
+                results.Add(new ImportProperty(property.Name, GetWriteExpression(property), IsNullableValueType(property.Type), GetNullableValueExpression(property)));
             }
         }
 
         return [..results];
+    }
+
+    // Size-packed type ordering, ported from Jakar.Database.PostgresTypeComparer.GetSizeInfo so the column order can be computed at build time.
+    // SizeKind: 0 = Fixed, 1 = VariableFixed, 2 = VariableUnbounded. TYPE_ORDER_* values are a stable tiebreak between types that share a (kind, size).
+    private const int TYPE_ORDER_BOOLEAN          = 0;
+    private const int TYPE_ORDER_BYTE             = 1;
+    private const int TYPE_ORDER_SHORT            = 2;
+    private const int TYPE_ORDER_INT              = 3;
+    private const int TYPE_ORDER_SINGLE           = 4;
+    private const int TYPE_ORDER_LONG             = 5;
+    private const int TYPE_ORDER_DOUBLE           = 6;
+    private const int TYPE_ORDER_TIME             = 7;
+    private const int TYPE_ORDER_DATETIME         = 8;
+    private const int TYPE_ORDER_GUID             = 9;
+    private const int TYPE_ORDER_INT128           = 10;
+    private const int TYPE_ORDER_UINT128          = 11;
+    private const int TYPE_ORDER_DATETIMEOFFSET   = 12;
+    private const int TYPE_ORDER_DATE             = 13;
+    private const int TYPE_ORDER_DECIMAL          = 14;
+    private const int TYPE_ORDER_ENUM             = 15;
+    private const int TYPE_ORDER_STRING           = 16;
+    private const int TYPE_ORDER_JSON             = 17;
+    private const int TYPE_ORDER_XML              = 18;
+    private const int TYPE_ORDER_BINARY           = 19;
+    private const int TYPE_ORDER_SERIAL           = 20;
+
+    // Fully-qualified display that also carries nullable-reference annotations (string?, JObject?), so generated parameter/local types match the property's declared nullability.
+    private static readonly SymbolDisplayFormat FULLY_QUALIFIED_NULLABLE = SymbolDisplayFormat.FullyQualifiedFormat.AddMiscellaneousOptions(SymbolDisplayMiscellaneousOptions.IncludeNullableReferenceTypeModifier);
+
+
+    /// <summary> Computes the build-time, size-packed column order. Returns <c>null</c> when any column type cannot be confidently mapped, so the runtime falls back to its own ordering. </summary>
+    private static ImmutableArray<string>? GetColumnOrder( INamedTypeSymbol symbol )
+    {
+        ImmutableArray<IPropertySymbol>? sorted = GetSortedColumnProperties(symbol);
+        if ( sorted is null ) { return null; }
+
+        return [..sorted.Value.Select(static property => property.Name)];
+    }
+
+    /// <summary> Build-time, size-packed column property symbols (same order used for <see cref="GetColumnOrder"/>). Returns <c>null</c> when any column type cannot be confidently mapped. </summary>
+    private static ImmutableArray<IPropertySymbol>? GetSortedColumnProperties( INamedTypeSymbol symbol )
+    {
+        List<INamedTypeSymbol> hierarchy = [];
+        for ( INamedTypeSymbol? current = symbol; current is not null && !IsSystemObject(current); current = current.BaseType ) { hierarchy.Add(current); }
+
+        hierarchy.Reverse();
+
+        HashSet<string>  seen    = new(StringComparer.Ordinal);
+        List<ColumnSort> columns = [];
+
+        foreach ( INamedTypeSymbol current in hierarchy )
+        {
+            foreach ( IPropertySymbol property in current.GetMembers().OfType<IPropertySymbol>().Where(static property => property is { IsStatic: false, DeclaredAccessibility: Accessibility.Public, GetMethod: not null }).Where(static property => !HasAttribute(property, "DbIgnoreAttribute")).OrderBy(GetPropertyOrder) )
+            {
+                if ( !seen.Add(property.Name) ) { continue; }
+
+                DbKind? kind = GetDbKind(property.Type);
+                if ( kind is null ) { return null; }            // unknown type: let the runtime ordering handle it
+                if ( kind.Value.IsExcluded ) { continue; }      // not a real column (e.g. RecordID<,> maps to DbColumnType.NotSet)
+
+                columns.Add(new ColumnSort(property, kind.Value.Kind, kind.Value.Size, kind.Value.TypeOrder, HasAttribute(property, "FixedAttribute"), GetDbSizeMax(property)));
+            }
+        }
+
+        if ( columns.Count == 0 ) { return null; }
+
+        columns.Sort(static ( a, b ) =>
+                     {
+                         int compare = a.Kind.CompareTo(b.Kind);
+                         if ( compare != 0 ) { return compare; }
+
+                         compare = a.Size.CompareTo(b.Size);
+                         if ( compare != 0 ) { return compare; }
+
+                         compare = a.TypeOrder.CompareTo(b.TypeOrder);
+                         if ( compare != 0 ) { return compare; }
+
+                         compare = b.IsFixed.CompareTo(a.IsFixed); // [Fixed] columns first
+                         if ( compare != 0 ) { return compare; }
+
+                         compare = a.DbSize.CompareTo(b.DbSize); // no [DbSize] (-1) first, then ascending
+                         if ( compare != 0 ) { return compare; }
+
+                         return string.Compare(a.Name, b.Name, StringComparison.InvariantCultureIgnoreCase);
+                     });
+
+        return [..columns.Select(static column => column.Property)];
+    }
+
+    private static int GetDbSizeMax( IPropertySymbol property )
+    {
+        foreach ( AttributeData attribute in property.GetAttributes() )
+        {
+            if ( attribute.AttributeClass?.Name != "DbSizeAttribute" ) { continue; }
+
+            // DbSizeAttribute(int? min, int? max)
+            if ( attribute.ConstructorArguments.Length == 2 && attribute.ConstructorArguments[1].Value is int max ) { return max; }
+        }
+
+        return -1;
+    }
+
+    private static DbKind? GetDbKind( ITypeSymbol type )
+    {
+        if ( type is INamedTypeSymbol { OriginalDefinition.SpecialType: SpecialType.System_Nullable_T } nullable ) { type = nullable.TypeArguments[0]; }
+
+        if ( type.TypeKind == TypeKind.Enum ) { return new DbKind(1, 16, TYPE_ORDER_ENUM); }
+
+        switch ( type.SpecialType )
+        {
+            case SpecialType.System_Boolean: { return new DbKind(0, 1,  TYPE_ORDER_BOOLEAN); }
+            case SpecialType.System_Byte:    { return new DbKind(0, 1,  TYPE_ORDER_BYTE); }
+            case SpecialType.System_Int16:
+            case SpecialType.System_UInt16:  { return new DbKind(0, 2,  TYPE_ORDER_SHORT); }
+            case SpecialType.System_Int32:
+            case SpecialType.System_UInt32:  { return new DbKind(0, 4,  TYPE_ORDER_INT); }
+            case SpecialType.System_Int64:
+            case SpecialType.System_UInt64:  { return new DbKind(0, 8,  TYPE_ORDER_LONG); }
+            case SpecialType.System_Single:  { return new DbKind(0, 4,  TYPE_ORDER_SINGLE); }
+            case SpecialType.System_Double:  { return new DbKind(0, 8,  TYPE_ORDER_DOUBLE); }
+            case SpecialType.System_Decimal: { return new DbKind(1, 32, TYPE_ORDER_DECIMAL); }
+            case SpecialType.System_String:  { return new DbKind(1, 64, TYPE_ORDER_STRING); }
+        }
+
+        if ( type is IArrayTypeSymbol { ElementType.SpecialType: SpecialType.System_Byte } ) { return new DbKind(2, int.MaxValue, TYPE_ORDER_BINARY); }
+
+        if ( type is INamedTypeSymbol named )
+        {
+            if ( named.Name == "RecordID" )
+            {
+                return named.TypeArguments.Length switch
+                       {
+                           1 => new DbKind(0, 16, TYPE_ORDER_GUID),
+                           2 => DbKind.Excluded,
+                           _ => null
+                       };
+            }
+
+            if ( named.Name == "AutoRecordID" && named.TypeArguments.Length == 1 ) { return new DbKind(2, int.MaxValue, TYPE_ORDER_SERIAL); }
+
+            if ( named.Name == "UserRights" ) { return new DbKind(1, 64, TYPE_ORDER_STRING); }
+
+            switch ( type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) )
+            {
+                case "global::System.Guid":           { return new DbKind(0, 16, TYPE_ORDER_GUID); }
+                case "global::System.Int128":         { return new DbKind(0, 16, TYPE_ORDER_INT128); }
+                case "global::System.UInt128":        { return new DbKind(0, 16, TYPE_ORDER_UINT128); }
+                case "global::System.DateTime":       { return new DbKind(0, 8,  TYPE_ORDER_DATETIME); }
+                case "global::System.DateTimeOffset": { return new DbKind(0, 16, TYPE_ORDER_DATETIMEOFFSET); }
+                case "global::System.DateOnly":       { return new DbKind(0, 4,  TYPE_ORDER_DATE); }
+                case "global::System.TimeOnly":
+                case "global::System.TimeSpan":       { return new DbKind(0, 8,  TYPE_ORDER_TIME); }
+            }
+
+            if ( IsJsonType(named) ) { return new DbKind(2, int.MaxValue, TYPE_ORDER_JSON); }
+
+            if ( IsXmlType(named) ) { return new DbKind(2, int.MaxValue, TYPE_ORDER_XML); }
+        }
+
+        return null;
+    }
+
+    private static bool IsJsonType( INamedTypeSymbol type )
+    {
+        for ( INamedTypeSymbol? current = type; current is not null; current = current.BaseType )
+        {
+            switch ( current.Name )
+            {
+                case "JToken":
+                case "JObject":
+                case "JArray":
+                case "JValue":
+                case "JsonNode":
+                case "JsonObject":
+                case "JsonArray":
+                case "JsonDocument":
+                case "JsonElement": { return true; }
+            }
+        }
+
+        return false;
+    }
+
+    private static bool IsXmlType( INamedTypeSymbol type )
+    {
+        for ( INamedTypeSymbol? current = type; current is not null; current = current.BaseType )
+        {
+            if ( current.Name is "XmlNode" or "XmlDocument" or "XmlElement" ) { return true; }
+        }
+
+        return false;
+    }
+
+
+    // ----- Export (binary COPY TO STDOUT) read -> TSelf factory ------------------------------------------------------------------------------------------------------------------------
+    // Reads each column positionally (build-time column order) with Read<T> and constructs the record via a generated positional constructor that chains to the framework base ctor.
+    // Returns null (no Export generated) when the base type or any column type cannot be confidently handled, so this never breaks a build.
+
+    private static BaseCtorKind? GetBaseCtorKind( INamedTypeSymbol symbol ) =>
+        symbol.BaseType?.Name switch
+        {
+            "OwnedTableRecord"   => BaseCtorKind.OwnedTableRecord,
+            "Mapping"            => BaseCtorKind.Mapping,
+            "PairRecord"         => BaseCtorKind.PairRecord,
+            "LastModifiedRecord" => BaseCtorKind.LastModifiedRecord,
+            "TableRecord"        => BaseCtorKind.TableRecord,
+            _                    => null
+        };
+
+    private static FrameworkRole GetFrameworkRole( string name ) =>
+        name switch
+        {
+            "DateCreated"    => FrameworkRole.DateCreated,
+            "LastModified"   => FrameworkRole.LastModified,
+            "ID"             => FrameworkRole.Id,
+            "UserID"         => FrameworkRole.UserId,
+            "AdditionalData" => FrameworkRole.AdditionalData,
+            "KeyID"          => FrameworkRole.KeyId,
+            "ValueID"        => FrameworkRole.ValueId,
+            _                => FrameworkRole.Leaf
+        };
+
+    private static ExportPlan? GetExportPlan( INamedTypeSymbol symbol )
+    {
+        BaseCtorKind? baseKind = GetBaseCtorKind(symbol);
+        if ( baseKind is null ) { return null; }
+
+        ImmutableArray<IPropertySymbol>? sorted = GetSortedColumnProperties(symbol);
+        if ( sorted is null ) { return null; }
+
+        List<ExportColumn> columns = [];
+
+        foreach ( IPropertySymbol property in sorted.Value )
+        {
+            ExportColumn? column = GetExportColumn(property);
+            if ( column is null ) { return null; } // a column we cannot read back: skip Export for this type
+
+            columns.Add(column);
+        }
+
+        return HasRequiredFramework(baseKind.Value, columns)
+                   ? new ExportPlan(baseKind.Value, [..columns])
+                   : null;
+    }
+
+    private static bool HasRequiredFramework( BaseCtorKind baseKind, List<ExportColumn> columns )
+    {
+        bool has( FrameworkRole role ) => columns.Any(column => column.Role == role);
+
+        return baseKind switch
+               {
+                   BaseCtorKind.TableRecord        => has(FrameworkRole.DateCreated),
+                   BaseCtorKind.LastModifiedRecord => has(FrameworkRole.DateCreated) && has(FrameworkRole.LastModified),
+                   BaseCtorKind.PairRecord         => has(FrameworkRole.Id)    && has(FrameworkRole.DateCreated) && has(FrameworkRole.AdditionalData) && has(FrameworkRole.LastModified),
+                   BaseCtorKind.OwnedTableRecord   => has(FrameworkRole.UserId) && has(FrameworkRole.Id)         && has(FrameworkRole.DateCreated)    && has(FrameworkRole.LastModified) && has(FrameworkRole.AdditionalData),
+                   BaseCtorKind.Mapping            => has(FrameworkRole.KeyId)  && has(FrameworkRole.ValueId)    && has(FrameworkRole.DateCreated),
+                   _                               => false
+               };
+    }
+
+    private static ExportColumn? GetExportColumn( IPropertySymbol property )
+    {
+        ITypeSymbol   type        = property.Type;
+        string        typeDisplay = type.ToDisplayString(FULLY_QUALIFIED_NULLABLE);
+        string        localName   = ToLocalName(property.Name);
+        FrameworkRole role        = GetFrameworkRole(property.Name);
+        bool          settable    = property.SetMethod is not null; // get-only computed columns are read (to advance the stream) but not constructed
+
+        bool nullable = false;
+        if ( type is INamedTypeSymbol { OriginalDefinition.SpecialType: SpecialType.System_Nullable_T } wrapper )
+        {
+            nullable = true;
+            type     = wrapper.TypeArguments[0];
+        }
+
+        string underlying = type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+
+        if ( type is INamedTypeSymbol jsonType && IsJsonType(jsonType) ) { return new ExportColumn(property.Name, localName, typeDisplay, ReadKind.AdditionalData, "string", role, settable); }
+
+        if ( type is INamedTypeSymbol { Name: "RecordID" } recordId && recordId.TypeArguments.Length == 1 ) { return new ExportColumn(property.Name, localName, typeDisplay, nullable ? ReadKind.NullableRecordId : ReadKind.RecordIdValue, underlying, role, settable); }
+
+        if ( type.TypeKind == TypeKind.Enum ) { return new ExportColumn(property.Name, localName, typeDisplay, nullable ? ReadKind.NullableEnum : ReadKind.EnumValue, underlying, role, settable); }
+
+        if ( type.SpecialType == SpecialType.System_String ) { return new ExportColumn(property.Name, localName, typeDisplay, ReadKind.NullSafeDirect, "string", role, settable); }
+
+        if ( IsDirectlyReadable(type) ) { return new ExportColumn(property.Name, localName, typeDisplay, nullable ? ReadKind.NullableDirect : ReadKind.Direct, underlying, role, settable); }
+
+        return null; // UserRights, byte[], Xml, and anything else: skip Export for this type
+    }
+
+    private static bool IsDirectlyReadable( ITypeSymbol type )
+    {
+        switch ( type.SpecialType )
+        {
+            case SpecialType.System_Boolean:
+            case SpecialType.System_Int16:
+            case SpecialType.System_UInt16:
+            case SpecialType.System_Int32:
+            case SpecialType.System_UInt32:
+            case SpecialType.System_Int64:
+            case SpecialType.System_UInt64:
+            case SpecialType.System_Single:
+            case SpecialType.System_Double:
+            case SpecialType.System_Decimal: { return true; }
+        }
+
+        switch ( type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) )
+        {
+            case "global::System.Guid":
+            case "global::System.Int128":
+            case "global::System.UInt128":
+            case "global::System.DateTime":
+            case "global::System.DateTimeOffset":
+            case "global::System.DateOnly":
+            case "global::System.TimeOnly":
+            case "global::System.TimeSpan": { return true; }
+        }
+
+        return false;
+    }
+
+    private static string ToLocalName( string name ) => name.Length == 0
+                                                            ? name
+                                                            : char.ToLowerInvariant(name[0]) + name.Substring(1);
+
+
+    private static List<ExportColumn> FrameworkOrder( ExportPlan plan )
+    {
+        ExportColumn byRole( FrameworkRole role ) => plan.Columns.First(column => column.Role == role);
+
+        return plan.BaseKind switch
+               {
+                   BaseCtorKind.TableRecord        => [byRole(FrameworkRole.DateCreated)],
+                   BaseCtorKind.LastModifiedRecord => [byRole(FrameworkRole.DateCreated), byRole(FrameworkRole.LastModified)],
+                   BaseCtorKind.PairRecord         => [byRole(FrameworkRole.Id), byRole(FrameworkRole.DateCreated), byRole(FrameworkRole.AdditionalData), byRole(FrameworkRole.LastModified)],
+                   BaseCtorKind.OwnedTableRecord   => [byRole(FrameworkRole.UserId), byRole(FrameworkRole.Id), byRole(FrameworkRole.DateCreated), byRole(FrameworkRole.LastModified), byRole(FrameworkRole.AdditionalData)],
+                   BaseCtorKind.Mapping            => [byRole(FrameworkRole.KeyId), byRole(FrameworkRole.ValueId), byRole(FrameworkRole.DateCreated)],
+                   _                               => []
+               };
+    }
+
+    private static void RenderExport( StringBuilder sb, ExportPlan plan, string typeName )
+    {
+        List<ExportColumn> frameworkOrder = FrameworkOrder(plan);
+
+        // get-only computed columns are still read (below, to advance the export stream) but cannot be assigned, so they are excluded from construction
+        List<ExportColumn> leaf             = plan.Columns.Where(static column => column.Role == FrameworkRole.Leaf && column.IsSettable).ToList();
+        List<ExportColumn> constructorOrder = [..frameworkOrder, ..leaf];
+
+        HashSet<string> constructed = new(constructorOrder.Select(static column => column.Name), StringComparer.Ordinal);
+
+        sb.AppendLine("    /// <summary>Reads the current binary-export row (COPY TO STDOUT) and constructs the record. The caller must call <c>StartRowAsync</c> before each row.</summary>");
+        sb.Append("    public static async ValueTask<").Append(typeName).AppendLine("> Export( NpgsqlBinaryExporter exporter, CancellationToken token )");
+        sb.AppendLine("    {");
+
+        foreach ( ExportColumn column in plan.Columns )
+        {
+            if ( constructed.Contains(column.Name) ) { AppendRead(sb, column); }
+            else { AppendConsume(sb, column); } // get-only computed column: consume from the stream and discard
+        }
+
+        sb.AppendLine();
+        sb.Append("        return new ").Append(typeName).Append('(');
+
+        for ( int i = 0; i < constructorOrder.Count; i++ )
+        {
+            if ( i > 0 ) { sb.Append(','); }
+
+            sb.Append(' ').Append(constructorOrder[i].LocalName);
+        }
+
+        sb.AppendLine(" ).Validate();");
+        sb.AppendLine("    }");
+
+        sb.AppendLine();
+        sb.AppendLine("    [global::System.Diagnostics.CodeAnalysis.SetsRequiredMembers]");
+        sb.Append("    private ").Append(typeName).Append('(');
+
+        for ( int i = 0; i < constructorOrder.Count; i++ )
+        {
+            if ( i > 0 ) { sb.Append(','); }
+
+            sb.Append(' ').Append(constructorOrder[i].TypeDisplay).Append(' ').Append(constructorOrder[i].LocalName);
+        }
+
+        sb.Append(" ) : base(");
+
+        for ( int i = 0; i < frameworkOrder.Count; i++ )
+        {
+            if ( i > 0 ) { sb.Append(','); }
+
+            sb.Append(' ').Append(frameworkOrder[i].LocalName);
+        }
+
+        sb.AppendLine(" )");
+        sb.AppendLine("    {");
+
+        foreach ( ExportColumn column in leaf ) { sb.Append("        ").Append(column.Name).Append(" = ").Append(column.LocalName).AppendLine(";"); }
+
+        sb.AppendLine("    }");
+    }
+
+    private static void AppendRead( StringBuilder sb, ExportColumn column )
+    {
+        sb.Append("        ").Append(column.TypeDisplay).Append(' ').Append(column.LocalName).AppendLine(";");
+
+        switch ( column.ReadKind )
+        {
+            case ReadKind.Direct:
+                sb.Append("        ").Append(column.LocalName).Append(" = await exporter.ReadAsync<").Append(column.ReadType).AppendLine(">(token);");
+                return;
+
+            case ReadKind.EnumValue:
+                sb.Append("        ").Append(column.LocalName).Append(" = (").Append(column.ReadType).AppendLine(")await exporter.ReadAsync<long>(token);");
+                return;
+
+            case ReadKind.RecordIdValue:
+                sb.Append("        ").Append(column.LocalName).Append(" = ").Append(column.ReadType).AppendLine(".Create(await exporter.ReadAsync<global::System.Guid>(token));");
+                return;
+
+            case ReadKind.NullSafeDirect:
+            case ReadKind.NullableDirect:
+                AppendNullableRead(sb, column, $"await exporter.ReadAsync<{column.ReadType}>(token)");
+                return;
+
+            case ReadKind.NullableEnum:
+                AppendNullableRead(sb, column, $"({column.ReadType})await exporter.ReadAsync<long>(token)");
+                return;
+
+            case ReadKind.NullableRecordId:
+                AppendNullableRead(sb, column, $"{column.ReadType}.Create(await exporter.ReadAsync<global::System.Guid>(token))");
+                return;
+
+            case ReadKind.AdditionalData:
+                AppendNullableRead(sb, column, "(await exporter.ReadAsync<string>(token))?.GetAdditionalData()");
+                return;
+        }
+    }
+
+    private static void AppendNullableRead( StringBuilder sb, ExportColumn column, string readExpression )
+    {
+        sb.Append("        if ( exporter.IsNull ) { await exporter.SkipAsync(token); ").Append(column.LocalName).AppendLine(" = default!; }");
+        sb.Append("        else { ").Append(column.LocalName).Append(" = ").Append(readExpression).AppendLine("; }");
+    }
+
+    /// <summary> Consumes a column from the export stream and discards it (used for get-only computed columns that cannot be assigned during construction). </summary>
+    private static void AppendConsume( StringBuilder sb, ExportColumn column )
+    {
+        string rawType = column.ReadKind switch
+                         {
+                             ReadKind.RecordIdValue or ReadKind.NullableRecordId => "global::System.Guid",
+                             ReadKind.EnumValue or ReadKind.NullableEnum         => "long",
+                             ReadKind.AdditionalData                             => "string",
+                             _                                                   => column.ReadType
+                         };
+
+        bool nullable = column.ReadKind is ReadKind.NullableDirect or ReadKind.NullableEnum or ReadKind.NullableRecordId or ReadKind.NullSafeDirect or ReadKind.AdditionalData;
+
+        if ( nullable ) { sb.Append("        if ( exporter.IsNull ) { await exporter.SkipAsync(token); } else { _ = await exporter.ReadAsync<").Append(rawType).AppendLine(">(token); }"); }
+        else { sb.Append("        _ = await exporter.ReadAsync<").Append(rawType).AppendLine(">(token);"); }
     }
 
     private static int  GetPropertyOrder( IPropertySymbol        property )                                                 => property.Locations.FirstOrDefault(static location => location.IsInSource)?.SourceSpan.Start ?? int.MaxValue;
@@ -127,8 +593,21 @@ public sealed class TableRecordGenerator : IIncrementalGenerator
         return property.Name;
     }
 
+    // Expression written inside the `if ( X.HasValue )` branch for a nullable value-type column.
+    // For a nullable RecordID<T>? / UserRights? the underlying struct still needs its own `.Value` (the Guid / long), so it is `X.Value.Value`; otherwise just `X.Value`.
+    private static string GetNullableValueExpression( IPropertySymbol property )
+    {
+        if ( property.Type is INamedTypeSymbol { OriginalDefinition.SpecialType: SpecialType.System_Nullable_T } nullable )
+        {
+            ITypeSymbol underlying = nullable.TypeArguments[0];
+            if ( IsRecordId(underlying) || IsUserRights(underlying) ) { return $"{property.Name}.Value.Value"; }
+        }
+
+        return $"{property.Name}.Value";
+    }
+
     private static bool IsRecordId( ITypeSymbol   type ) => type is INamedTypeSymbol { Name: "RecordID", ContainingNamespace: { } ns } && ns.ToDisplayString() == "Jakar.Database";
-    private static bool IsUserRights( ITypeSymbol type ) => type.Name == "UserRights";
+    private static bool IsUserRights( ITypeSymbol type ) => type is INamedTypeSymbol { Name: "UserRights", ContainingNamespace: { } ns } && ns.ToDisplayString().StartsWith("Jakar.", StringComparison.Ordinal);
 
     private static string GetHintPrefix( INamedTypeSymbol symbol )
     {
@@ -152,6 +631,8 @@ public sealed class TableRecordGenerator : IIncrementalGenerator
     {
         StringBuilder sb = new();
         sb.AppendLine("// <auto-generated/>");
+        sb.AppendLine("#nullable enable");
+        sb.AppendLine("using System;");
         sb.AppendLine("using System.CodeDom.Compiler;");
         sb.AppendLine("using System.Data.Common;");
         sb.AppendLine("using System.Threading;");
@@ -167,6 +648,21 @@ public sealed class TableRecordGenerator : IIncrementalGenerator
         }
 
         sb.AppendLine("[GeneratedCode(\"Jakar.Database.TableRecordGenerator\", \"1.0.0\")]");
+
+        if ( !candidate.ColumnOrder.IsDefaultOrEmpty )
+        {
+            sb.Append("[global::Jakar.Database.GeneratedColumnOrder(");
+
+            for ( int i = 0; i < candidate.ColumnOrder.Length; i++ )
+            {
+                if ( i > 0 ) { sb.Append(", "); }
+
+                sb.Append('"').Append(candidate.ColumnOrder[i]).Append('"');
+            }
+
+            sb.AppendLine(")]");
+        }
+
         sb.Append(candidate.TypeDeclaration).Append(' ').Append(candidate.TypeName).AppendLine();
         sb.AppendLine("{");
 
@@ -193,11 +689,11 @@ public sealed class TableRecordGenerator : IIncrementalGenerator
             needsBlankLine = true;
         }
 
-        if ( candidate.GenerateExport )
+        if ( candidate.ExportPlan is not null )
         {
             if ( needsBlankLine ) { sb.AppendLine(); }
 
-            sb.AppendLine("    public override ValueTask Export( NpgsqlBinaryExporter exporter, CancellationToken token ) => default;");
+            RenderExport(sb, candidate.ExportPlan, candidate.TypeName);
             needsBlankLine = true;
         }
 
@@ -205,7 +701,25 @@ public sealed class TableRecordGenerator : IIncrementalGenerator
         {
             if ( needsBlankLine ) { sb.AppendLine(); }
 
-            sb.AppendLine("    public override ValueTask Import( NpgsqlBatchCommand batch, CancellationToken token ) => default;");
+            sb.AppendLine("    /// <summary>Adds one parameter per column to the batch command so it can be sent as part of a single <see cref=\"NpgsqlBatch\"/> round trip.</summary>");
+            sb.AppendLine("    /// <remarks>The caller is responsible for setting <c>batch.CommandText</c>; parameter names match the property names (e.g. <c>@PropertyName</c>).</remarks>");
+            sb.AppendLine("    public override ValueTask Import( NpgsqlBatchCommand batch, CancellationToken token )");
+            sb.AppendLine("    {");
+
+            foreach ( ImportProperty property in candidate.ImportProperties )
+            {
+                if ( property.IsNullableValueType )
+                {
+                    sb.Append("        batch.Parameters.Add(new NpgsqlParameter(nameof(").Append(property.Name).Append("), ").Append(property.Name).Append(".HasValue ? (object)").Append(property.NullableValueExpression).AppendLine(" : DBNull.Value));");
+                    continue;
+                }
+
+                sb.Append("        batch.Parameters.Add(new NpgsqlParameter(nameof(").Append(property.Name).Append("), (object?)").Append(property.WriteExpression).AppendLine(" ?? DBNull.Value));");
+            }
+
+            sb.AppendLine();
+            sb.AppendLine("        return token.IsCancellationRequested ? ValueTask.FromCanceled(token) : default;");
+            sb.AppendLine("    }");
             needsBlankLine = true;
         }
 
@@ -226,7 +740,7 @@ public sealed class TableRecordGenerator : IIncrementalGenerator
                 {
                     sb.Append("                if ( ").Append(property.Name).AppendLine(".HasValue )");
                     sb.AppendLine("                {");
-                    sb.Append("                    await importer.WriteAsync(").Append(property.Name).AppendLine(".Value, postgresDbType, token);");
+                    sb.Append("                    await importer.WriteAsync(").Append(property.NullableValueExpression).AppendLine(", postgresDbType, token);");
                     sb.AppendLine("                }");
                     sb.AppendLine("                else");
                     sb.AppendLine("                {");
@@ -255,32 +769,49 @@ public sealed class TableRecordGenerator : IIncrementalGenerator
 
 
 
-    private sealed class GenerationCandidate( string?                        ns,
-                                              string                         typeName,
-                                              string                         hintName,
-                                              string                         typeDeclaration,
-                                              ImmutableArray<string>         declaredProperties,
-                                              ImmutableArray<ImportProperty> importProperties,
-                                              bool                           generateCreate,
-                                              bool                           generateToDynamicParameters,
-                                              bool                           generateExport,
-                                              bool                           generateBatchImport,
-                                              bool                           generateBinaryImport ) : IEquatable<GenerationCandidate>
+    private sealed class GenerationCandidate : IEquatable<GenerationCandidate>
     {
-        public string?                        Namespace                   { get; } = ns;
-        public string                         TypeName                    { get; } = typeName;
-        public string                         HintName                    { get; } = hintName;
-        public string                         TypeDeclaration             { get; } = typeDeclaration;
-        public ImmutableArray<string>         DeclaredProperties          { get; } = declaredProperties;
-        public ImmutableArray<ImportProperty> ImportProperties            { get; } = importProperties;
-        public bool                           GenerateCreate              { get; } = generateCreate;
-        public bool                           GenerateToDynamicParameters { get; } = generateToDynamicParameters;
-        public bool                           GenerateExport              { get; } = generateExport;
-        public bool                           GenerateBatchImport         { get; } = generateBatchImport;
-        public bool                           GenerateBinaryImport        { get; } = generateBinaryImport;
-        public bool                           ShouldGenerate              => GenerateCreate || GenerateToDynamicParameters || GenerateExport || GenerateBatchImport || GenerateBinaryImport;
+        public string?                        Namespace                   { get; }
+        public string                         TypeName                    { get; }
+        public string                         HintName                    { get; }
+        public string                         TypeDeclaration             { get; }
+        public ImmutableArray<string>         DeclaredProperties          { get; }
+        public ImmutableArray<ImportProperty> ImportProperties            { get; }
+        public ImmutableArray<string>         ColumnOrder                 { get; }
+        public bool                           GenerateCreate              { get; }
+        public bool                           GenerateToDynamicParameters { get; }
+        public ExportPlan?                    ExportPlan                  { get; }
+        public bool                           GenerateBatchImport         { get; }
+        public bool                           GenerateBinaryImport        { get; }
+        public bool                           ShouldGenerate              => GenerateCreate || GenerateToDynamicParameters || ExportPlan is not null || GenerateBatchImport || GenerateBinaryImport;
 
 
+        public GenerationCandidate( string?                        nameSpace,
+                                    string                         typeName,
+                                    string                         hintName,
+                                    string                         typeDeclaration,
+                                    ImmutableArray<string>         declaredProperties,
+                                    ImmutableArray<ImportProperty> importProperties,
+                                    ImmutableArray<string>         columnOrder,
+                                    bool                           generateCreate,
+                                    bool                           generateToDynamicParameters,
+                                    ExportPlan?                    exportPlan,
+                                    bool                           generateBatchImport,
+                                    bool                           generateBinaryImport )
+        {
+            Namespace                   = nameSpace;
+            TypeName                    = typeName;
+            HintName                    = hintName;
+            TypeDeclaration             = typeDeclaration;
+            DeclaredProperties          = declaredProperties;
+            ImportProperties            = importProperties;
+            ColumnOrder                 = columnOrder;
+            GenerateCreate              = generateCreate;
+            GenerateToDynamicParameters = generateToDynamicParameters;
+            ExportPlan                  = exportPlan;
+            GenerateBatchImport         = generateBatchImport;
+            GenerateBinaryImport        = generateBinaryImport;
+        }
         public bool Equals( GenerationCandidate? other )
         {
             if ( other is null ) { return false; }
@@ -297,10 +828,111 @@ public sealed class TableRecordGenerator : IIncrementalGenerator
 
 
 
-    private readonly struct ImportProperty( string name, string writeExpression, bool isNullableValueType )
+    private readonly struct ImportProperty( string name, string writeExpression, bool isNullableValueType, string nullableValueExpression )
     {
-        public string Name                { get; } = name;
-        public string WriteExpression     { get; } = writeExpression;
-        public bool   IsNullableValueType { get; } = isNullableValueType;
+        public string Name                    { get; } = name;
+        public string WriteExpression         { get; } = writeExpression;
+        public bool   IsNullableValueType     { get; } = isNullableValueType;
+        public string NullableValueExpression { get; } = nullableValueExpression;
+    }
+
+
+
+    private readonly struct DbKind
+    {
+        public int  Kind       { get; }
+        public int  Size       { get; }
+        public int  TypeOrder  { get; }
+        public bool IsExcluded { get; }
+
+
+        public DbKind( int kind, int size, int typeOrder )
+        {
+            Kind       = kind;
+            Size       = size;
+            TypeOrder  = typeOrder;
+            IsExcluded = false;
+        }
+        private DbKind( bool isExcluded )
+        {
+            Kind       = 0;
+            Size       = 0;
+            TypeOrder  = 0;
+            IsExcluded = isExcluded;
+        }
+        public static DbKind Excluded { get; } = new(true);
+    }
+
+
+
+    private readonly struct ColumnSort( IPropertySymbol property, int kind, int size, int typeOrder, bool isFixed, int dbSize )
+    {
+        public IPropertySymbol Property  { get; } = property;
+        public string          Name      => Property.Name;
+        public int             Kind      { get; } = kind;
+        public int             Size      { get; } = size;
+        public int             TypeOrder { get; } = typeOrder;
+        public bool            IsFixed   { get; } = isFixed;
+        public int             DbSize    { get; } = dbSize;
+    }
+
+
+
+    private enum BaseCtorKind
+    {
+        TableRecord,
+        LastModifiedRecord,
+        PairRecord,
+        OwnedTableRecord,
+        Mapping
+    }
+
+
+
+    private enum FrameworkRole
+    {
+        Leaf,
+        DateCreated,
+        LastModified,
+        Id,
+        UserId,
+        AdditionalData,
+        KeyId,
+        ValueId
+    }
+
+
+
+    private enum ReadKind
+    {
+        Direct,
+        EnumValue,
+        RecordIdValue,
+        NullSafeDirect,
+        NullableDirect,
+        NullableEnum,
+        NullableRecordId,
+        AdditionalData
+    }
+
+
+
+    private sealed class ExportColumn( string name, string localName, string typeDisplay, ReadKind readKind, string readType, FrameworkRole role, bool isSettable )
+    {
+        public string        Name        { get; } = name;
+        public string        LocalName   { get; } = localName;
+        public string        TypeDisplay { get; } = typeDisplay;
+        public ReadKind      ReadKind    { get; } = readKind;
+        public string        ReadType    { get; } = readType;
+        public FrameworkRole Role        { get; } = role;
+        public bool          IsSettable  { get; } = isSettable;
+    }
+
+
+
+    private sealed class ExportPlan( BaseCtorKind baseKind, ImmutableArray<ExportColumn> columns )
+    {
+        public BaseCtorKind                 BaseKind { get; } = baseKind;
+        public ImmutableArray<ExportColumn> Columns  { get; } = columns;
     }
 }

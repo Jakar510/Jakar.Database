@@ -19,7 +19,6 @@ public sealed partial record UserRoleRecord : Mapping<UserRoleRecord, UserRecord
 
 
     public UserRoleRecord( RecordID<UserRecord>  key, RecordID<RoleRecord> value ) : base(key, value) { }
-    private UserRoleRecord( RecordID<UserRecord> key, RecordID<RoleRecord> value, DateTimeOffset dateCreated ) : base(key, value, dateCreated) { }
     internal UserRoleRecord( DbDataReader        reader ) : base(reader) { }
 
 

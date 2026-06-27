@@ -19,7 +19,6 @@ public sealed partial record UserRecoveryCodeRecord : Mapping<UserRecoveryCodeRe
 
 
     public UserRecoveryCodeRecord( RecordID<UserRecord> key, RecordID<RecoveryCodeRecord> value ) : base(key, value) { }
-    public UserRecoveryCodeRecord( RecordID<UserRecord> key, RecordID<RecoveryCodeRecord> value, DateTimeOffset dateCreated ) : base(key, value, dateCreated) { }
     internal UserRecoveryCodeRecord( DbDataReader       reader ) : base(reader) { }
 
 

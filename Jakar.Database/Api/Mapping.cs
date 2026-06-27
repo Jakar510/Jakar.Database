@@ -80,8 +80,6 @@ public abstract record Mapping<TSelf, TKey, TValue> : TableRecord<TSelf>
 
     public bool IsValid() => KeyID.IsValid() && ValueID.IsValid();
 
-
-    public override ValueTask Export( NpgsqlBinaryExporter exporter, CancellationToken token ) => default;
     protected override async ValueTask Import( NpgsqlBinaryImporter importer, string propertyName, NpgsqlDbType postgresDbType, CancellationToken token )
     {
         switch ( propertyName )
@@ -125,7 +123,7 @@ public abstract record Mapping<TSelf, TKey, TValue> : TableRecord<TSelf>
         if ( ReferenceEquals(this, other) ) { return 0; }
 
         int ownerComparision = KeyID.CompareTo(other.KeyID);
-        if ( ownerComparision == 0 ) { return ownerComparision; }
+        if ( ownerComparision != 0 ) { return ownerComparision; }
 
         return ValueID.CompareTo(other.ValueID);
     }
@@ -205,6 +203,7 @@ public abstract record Mapping<TSelf, TKey, TValue> : TableRecord<TSelf>
                                                       SELECT *
                                                       FROM {TValue.TableName} v
                                                         LEFT JOIN {TSelf.TableName} s
+                                                          ON s.{nameof(ValueID)} = v.{nameof(IUniqueID.ID)}
                                                       WHERE
                                                             v.{nameof(IUniqueID.ID)} != s.{nameof(ValueID)}
                                                           AND
@@ -313,7 +312,7 @@ public abstract record Mapping<TSelf, TKey, TValue> : TableRecord<TSelf>
                                                       FROM {TValue.TableName} v
                                                       INNER JOIN {TSelf.TableName} s
                                                         ON s.{nameof(ValueID)} = v.{nameof(IUniqueID.ID)}
-                                                      WHERE s.{nameof(KeyID)} = @{key.Value}
+                                                      WHERE s.{nameof(KeyID)} = {key.Value}
                                                       """);
 
         return valueTable.Where(context, command, token);

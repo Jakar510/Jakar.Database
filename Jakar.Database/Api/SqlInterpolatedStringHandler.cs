@@ -335,14 +335,16 @@ public ref struct SqlInterpolatedStringHandler<TSelf>( int literalLength, int fo
 
         using ValueEnumerator<TEnumerator, TValue> enumerator = value.GetEnumerator();
 
+        bool first = true;
+
         while ( enumerator.MoveNext() )
         {
+            if ( !first ) { Sb.Append(",\n"); }
+
+            first = false;
             Sb.Spacer(indentLevel);
             AppendSingle(destination, enumerator.Current, format, in needsQuotes);
-            Sb.Append(",\n");
         }
-
-        Sb.Length -= 3;
     }
 
 
@@ -408,14 +410,17 @@ public ref struct SqlInterpolatedStringHandler<TSelf>( int literalLength, int fo
             {
                 using IEnumerator<TValue> enumerator = enumerable.GetEnumerator();
 
+                bool first = true;
+
                 while ( enumerator.MoveNext() )
                 {
+                    if ( !first ) { Sb.Append(",\n"); }
+
+                    first = false;
                     Sb.Spacer(indentLevel);
                     AppendSingle(destination, enumerator.Current, format, in needsQuotes);
-                    Sb.Append(",\n");
                 }
 
-                Sb.Length -= 3;
                 return;
             }
         }
@@ -468,13 +473,16 @@ public ref struct SqlInterpolatedStringHandler<TSelf>( int literalLength, int fo
             {
                 using IEnumerator<string> enumerator = enumerable.GetEnumerator();
 
+                bool first = true;
+
                 while ( enumerator.MoveNext() )
                 {
+                    if ( !first ) { Sb.Append(",\n"); }
+
+                    first = false;
                     AppendQuoted(enumerator.Current, indentLevel);
-                    Sb.Append(",\n");
                 }
 
-                Sb.Length -= 3;
                 return;
             }
         }
