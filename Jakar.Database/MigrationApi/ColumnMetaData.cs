@@ -2,7 +2,7 @@
 
 
 [SuppressMessage("ReSharper", "InconsistentNaming")]
-public sealed class ColumnMetaData : IEquatable<ColumnMetaData>, IComparable<ColumnMetaData>, IComparable
+public sealed class ColumnMetaData : IEquatable<ColumnMetaData>, IComparable<ColumnMetaData>, IComparable, Jakar.SqlBuilder.ISqlColumn
 {
     public readonly              bool                                   IsAlwaysIdentity;
     public readonly              bool                                   IsDefaultIdentity;
@@ -60,6 +60,17 @@ public sealed class ColumnMetaData : IEquatable<ColumnMetaData>, IComparable<Col
     public NpgsqlDbType PostgresDbType          => __postgresDbType ??= DbType.ToNpgsqlDbType();
     public SqlDbType    SqlDbType               => __sqlDbType ??= DbType.ToSqlDbType();
     public ref readonly string this[ DatabaseType type ] => ref DataTypes[type];
+
+
+    // ---- Jakar.SqlBuilder.ISqlColumn (lean, driver-agnostic view) ----
+    string Jakar.SqlBuilder.ISqlColumn.PropertyName => PropertyName;
+    string Jakar.SqlBuilder.ISqlColumn.ColumnName   => ColumnName;
+    Type   Jakar.SqlBuilder.ISqlColumn.ClrType      => PropertyType;
+    bool   Jakar.SqlBuilder.ISqlColumn.IsNullable   => IsNullable;
+    bool   Jakar.SqlBuilder.ISqlColumn.IsPrimaryKey => IsPrimaryKey;
+    bool   Jakar.SqlBuilder.ISqlColumn.IsIdentity   => IsAlwaysIdentity || IsDefaultIdentity || DbType is DbColumnType.BigSerial or DbColumnType.Serial or DbColumnType.SmallSerial;
+    string Jakar.SqlBuilder.ISqlColumn.GetTypeName( Jakar.SqlBuilder.SqlDialectKind dialect ) => this[DatabaseTypeMap.ToDatabaseType(dialect)];
+    string Jakar.SqlBuilder.ISqlColumn.GetColumnName( Jakar.SqlBuilder.SqlDialectKind dialect ) => ColumnName;
 
 
     public ColumnMetaData( in PropertyInfo property )

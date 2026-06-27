@@ -13,6 +13,9 @@ namespace Jakar.Database;
 [SuppressMessage("ReSharper", "MemberCanBeMadeStatic.Global")]
 public sealed class DbOptions
 {
+    /// <summary> Tunables for the validated Jakar.SqlBuilder (strict types, alias projections, buffer size). </summary>
+    public Jakar.SqlBuilder.SqlBuilderOptions SqlBuilder { get; set; } = Jakar.SqlBuilder.SqlBuilderOptions.Default;
+
     public const           string AUTHENTICATION_SCHEME              = "Hybrid";
     public const           string AUTHENTICATION_SCHEME_DISPLAY_NAME = "Hybrid Authentication";
     public const           string AUTHENTICATION_TYPE                = JwtBearerDefaults.AuthenticationScheme;

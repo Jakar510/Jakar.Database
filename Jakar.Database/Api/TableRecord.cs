@@ -29,7 +29,7 @@ public interface ITableName
 
 
 
-public interface ITableRecord<TSelf> : ITableName, IEqualComparable<TSelf>
+public interface ITableRecord<TSelf> : ITableName, Jakar.SqlBuilder.ISqlTable<TSelf>, IJsonModel<TSelf>, IEqualComparable<TSelf>
     where TSelf : TableRecord<TSelf>, ITableRecord<TSelf>
 {
     public abstract static ref readonly ImmutableArray<PropertyInfo> ClassProperties { [Pure] get; }
@@ -38,11 +38,17 @@ public interface ITableRecord<TSelf> : ITableName, IEqualComparable<TSelf>
     public abstract static              int                          PropertyCount   { get; }
 
 
-    [Pure] public abstract static TSelf             Create( DbDataReader reader );
-    [Pure] public                 CommandParameters ToDynamicParameters();
+    [Pure] public abstract static TSelf Create( DbDataReader reader );
+
+    [Pure] public CommandParameters ToDynamicParameters();
+    [Pure] public UInt128           GetHash();
+    public        TSelf             Modified();
 
 
-    public    ValueTask Import( DataRow              row,      CancellationToken token );
+    // IDataReader
+    public ValueTask Import( NpgsqlBatchCommand   batch,    CancellationToken token );
+    public ValueTask Import( NpgsqlBinaryImporter importer, CancellationToken token );
+    public ValueTask Import( DataRow              row,      CancellationToken token );
 }
 
 
@@ -59,6 +65,11 @@ public abstract record TableRecord<TSelf>( in DateTimeOffset DateCreated ) : IJs
     public static ref readonly ImmutableArray<PropertyInfo> ClassProperties { [Pure] get => ref Properties; }
     public static              TableMetaData<TSelf>         MetaData        => TableMetaData<TSelf>.Instance;
     public static              int                          PropertyCount   => Properties.Length;
+
+    // ---- Jakar.SqlBuilder.ISqlTable<TSelf> (lean, driver-agnostic view for the validated SQL builder) ----
+    public static              string                                          SqlTableName => TSelf.TableName.Value;
+    public static              IReadOnlyList<Jakar.SqlBuilder.ISqlColumn>       SqlColumns   => TableMetaData<TSelf>.Instance.SqlColumns;
+    public static              bool TrySqlColumn( string propertyName, out Jakar.SqlBuilder.ISqlColumn? column ) => TableMetaData<TSelf>.Instance.TrySqlColumn(propertyName, out column);
 
 
     protected internal TableRecord( DbDataReader reader ) : this(reader.DateCreated<TSelf>()) { }
@@ -112,7 +123,7 @@ public abstract record TableRecord<TSelf>( in DateTimeOffset DateCreated ) : IJs
 
 
     // IDataReader
-    public abstract ValueTask Import( NpgsqlBatchCommand   batch,    CancellationToken token );
+    public abstract ValueTask Import( NpgsqlBatchCommand batch, CancellationToken token );
     public async ValueTask Import( NpgsqlBinaryImporter importer, CancellationToken token )
     {
         await importer.StartRowAsync(token);

@@ -20,6 +20,7 @@ dotnet add package Jakar.Database
 - migration metadata and table creation helpers
 - Dapper-friendly command parameter generation
 - optional source-generated implementations of common `ITableRecord<TSelf>` and `TableRecord<TSelf>` boilerplate
+- integration with `Jakar.SqlBuilder`: `ITableRecord<TSelf>` implements `Jakar.SqlBuilder.ISqlTable<TSelf>`, so records work with the validated, dialect-aware fluent SQL builder's strongly-typed `nameof`-based overloads
 
 ## Source Generator Contract
 

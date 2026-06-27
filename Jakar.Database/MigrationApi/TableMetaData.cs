@@ -51,6 +51,20 @@ public class TableMetaData<TSelf> : ITableMetaData
     public string                                                                                                                                                                  PrimaryKeyPropertyName => field ??= Columns.First(static x => x.IsPrimaryKey).PropertyName;
     public ref readonly ColumnMetaData this[ string propertyName ] => ref Properties[propertyName];
     public ref readonly string this[ string         propertyName, DatabaseType type ] => ref Properties[propertyName][type];
+
+    // ---- Jakar.SqlBuilder lean view ----
+    public  IReadOnlyList<Jakar.SqlBuilder.ISqlColumn>  SqlColumns => field ??= Properties.Values.OrderBy(static x => x.Index).ToArray();
+    public  bool TrySqlColumn( string propertyName, out Jakar.SqlBuilder.ISqlColumn? column )
+    {
+        if ( Properties.TryGetValue(propertyName, out ColumnMetaData? found) )
+        {
+            column = found;
+            return true;
+        }
+
+        column = null;
+        return false;
+    }
     public PropertyColumn this[ int index ]
     {
         get

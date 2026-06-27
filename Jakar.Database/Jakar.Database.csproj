@@ -70,6 +70,7 @@
 		<ProjectReference Include="..\Jakar.Database.Generators\Jakar.Database.Generators.csproj"
 						  OutputItemType="Analyzer"
 						  ReferenceOutputAssembly="false" />
+		<ProjectReference Include="..\Jakar.SqlBuilder\Jakar.SqlBuilder.csproj" />
 	</ItemGroup>
 
 	<ItemGroup>

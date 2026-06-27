@@ -30,7 +30,7 @@ The library focuses on:
 - `Experiments/`
   Benchmarks and exploratory performance work.
 - `Jakar.SqlBuilder/`
-  SQL builder utilities used alongside the ORM layer.
+  Lean, dependency-free, dialect-aware fluent SQL builder (`ref struct` stages, validated output) for SQLite / SQL Server / PostgreSQL. Jakar.Database references it; see [SQL Builder](#sql-builder).
 
 ## Install
 
@@ -101,7 +101,7 @@ app.UseAuthorization();
 await app.RunWithMigrationsAsync(["localhost:8181", "0.0.0.0:8181"]);
 ```
 
-`AddDatabase<TDatabase>(...)` registers the database singleton, default logging, OpenTelemetry, FusionCache, ASP.NET Core Identity stores, data protection, authentication, authorization, and the multi-factor policy.
+`AddDatabase<TDatabase>(...)` registers the database singleton, default logging, OpenTelemetry, FusionCache, ASP.NET Core Identity stores, data protection, authentication, authorization, and the multi-factor policy. It also registers the `SqlBuilderOptions` from `DbOptions.SqlBuilder` and points the PostgreSQL identifier folder at the curated `PostgresParams.SqlName` so the SQL builder reproduces existing snake_case column names; see [SQL Builder](#sql-builder).
 
 ## Table Records
 
@@ -261,73 +261,30 @@ The generic overload also registers the app-specific token provider under:
 
 That lets custom token workflows opt in explicitly while keeping the stock Identity methods aligned with the default provider names.
 
+## SQL Builder
+
+`Jakar.SqlBuilder` is a separate, dependency-free project (referenced by `Jakar.Database`) that builds validated, dialect-correct SQL from a fluent `ref struct` chain. It targets SQLite, Microsoft SQL Server, and PostgreSQL, chosen either by name or at runtime:
+
+```csharp
+using Jakar.SqlBuilder;
+
+// Named dialect
+SqlResult a = SqlBuilder.PostgreSQL.Select("id", "name").From("users")
+                        .Where("active").EqualTo(true).Build();
+
+// Runtime dialect from the live Database (db.Dialect maps DatabaseType -> SqlDialectKind)
+SqlResult b = SqlBuilder.For(db.Dialect).Select("*").From("users").Build();
+```
+
+`SqlResult` carries `.Sql` and a `.Parameters` set. PostgreSQL folds identifiers to bare `snake_case`/lower (`name`); SQL Server and SQLite quote (`[name]` / `"name"`).
+
+The integration with the ORM is contracts-based and additive — it does **not** replace the legacy `SqlCommand` / `SqlInterpolatedStringHandler` paths:
+
+- `ITableRecord<TSelf>` now also implements `Jakar.SqlBuilder.ISqlTable<TSelf>`, and `ColumnMetaData` implements `ISqlColumn`, so any `TableRecord` works with the strongly-typed `<T>` overloads (`Select<User>(nameof(User.Name))`, `Where<User>(...)`, etc.), which validate the property is a mapped column and translate it to the real column name.
+- `Database.Dialect` exposes the builder dialect; `DbOptions.SqlBuilder` carries `SqlBuilderOptions`.
+
+Core `Jakar.SqlBuilder` takes **no** dependency on Jakar.Database (no Npgsql / SqlClient / Identity). See [SQL Builder README](Jakar.SqlBuilder/README.md), the [specification](Jakar.SqlBuilder/SPECIFICATION.md), and the [dependency rationale](Jakar.SqlBuilder/DEPENDENCY-REFACTOR.md).
+
 ## Provider Status
 
-The target remains PostgreSQL plus Microsoft SQL Server, but the implementation is not fully symmetric yet.
-
-In better shape:
-
-- shared table metadata
-- generated record parameterization
-- reversible migration definitions
-- provider-aware index create/drop SQL
-
-Still PostgreSQL-biased:
-
-- some query helpers emit `LIMIT`, `RETURNING`, or `RANDOM()`
-- enum handling is PostgreSQL-native today
-- broader SQL Server query and dialect coverage needs a deliberate pass
-
-Treat SQL Server support as in progress unless the specific surface has been validated.
-
-## Build
-
-```powershell
-dotnet build Jakar.Database.slnx
-```
-
-## Test
-
-Generator checks:
-
-```powershell
-dotnet test Jakar.Database.Tests\Jakar.Database.Tests.csproj --filter GeneratedRecordTests --no-restore
-```
-
-Authentication checks:
-
-```powershell
-dotnet test Jakar.Database.Tests\Jakar.Database.Tests.csproj --filter AuthenticationConfigurationTests --no-restore
-```
-
-Identity service checks:
-
-```powershell
-dotnet test Jakar.Database.Tests\Jakar.Database.Tests.csproj --filter IdentityServicesRegistrationTests --no-restore
-```
-
-Non-Docker test slice:
-
-```powershell
-dotnet test Jakar.Database.Tests\Jakar.Database.Tests.csproj --filter "FullyQualifiedName!~DatabaseTests" --no-restore
-```
-
-Full integration tests require Docker because the current fixture uses Testcontainers PostgreSQL:
-
-```powershell
-dotnet test Jakar.Database.Tests\Jakar.Database.Tests.csproj
-```
-
-## Immediate Improvement Areas
-
-1. Move more provider-specific SQL generation behind `DatabaseType` instead of embedding PostgreSQL syntax in static query helpers.
-2. Expand generator coverage to more import/export helpers where the pattern is stable enough.
-3. Separate Docker-backed integration tests from pure unit tests so local verification is cheaper.
-4. Audit public get-only properties on table records and mark non-persisted ones with `[DbIgnore]` consistently.
-5. Decide how analyzer packaging should be validated so consumers reliably receive the generator from NuGet.
-
-## Related Docs
-
-- [Package README](Jakar.Database/README.md)
-- [Database Type Notes](Jakar.Database/Features.md)
-- [Sample API](SampleApi/Program.cs)
+The target remains PostgreSQL plus Microsoft SQL Server, 

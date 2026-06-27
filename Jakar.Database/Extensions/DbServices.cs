@@ -190,6 +190,10 @@ public static class DbServices
         {
             self.Services.AddSingleton(options);
 
+            // ---- Jakar.SqlBuilder wiring: bind the dialect + options, and preserve the curated PostgreSQL snake_case naming ----
+            self.Services.AddSingleton(options.SqlBuilder);
+            Jakar.SqlBuilder.SqlDialects.PostgresIdentifierFolder = static name => name.SqlName();
+
             self.Services.AddScoped<IOptions<DbOptions>>(static provider => provider.GetRequiredService<DbOptions>().Wrapper);
 
             self.AddOpenTelemetry<TestDatabase>(options);
