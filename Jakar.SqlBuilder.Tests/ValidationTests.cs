@@ -51,7 +51,8 @@ public sealed class ValidationTests
     }
 
     // ---- result behavior ----
-    [Test] public void Parameters_Empty_WhenNoneBound() => Assert.That(SqlBuilder.PostgreSQL.Select("*").From("t").Build().Parameters.IsEmpty, Is.True);
+    [Test] public void Parameters_Empty_WhenNoneBound()
+        => Assert.That(SqlBuilder.PostgreSQL.Select("*").From("t").Build().Parameters.IsEmpty, Is.True);
 
     [Test] public void Result_ImplicitStringConversion()
     {
@@ -61,8 +62,8 @@ public sealed class ValidationTests
 
     [Test] public void Result_Deconstruct()
     {
-        ( string sql, SqlParameterSet parameters ) = SqlBuilder.PostgreSQL.Select("*").From("t").Where("a").EqualTo(SqlValue.Param(1)).Build();
-        Assert.That(sql,              Is.EqualTo("SELECT * FROM t WHERE a = $1;"));
+        (string sql, SqlParameterSet parameters) = SqlBuilder.PostgreSQL.Select("*").From("t").Where("a").EqualTo(SqlValue.Param(1)).Build();
+        Assert.That(sql, Is.EqualTo("SELECT * FROM t WHERE a = $1;"));
         Assert.That(parameters.Count, Is.EqualTo(1));
     }
 
@@ -72,7 +73,9 @@ public sealed class ValidationTests
         Assert.That(SqlBuilder.PostgreSQLWith(opts).Select("*").From("t").Build().Sql, Is.EqualTo("SELECT * FROM t"));
     }
 
-    [Test] public void Result_DialectRecorded() => Assert.That(SqlBuilder.Sqlite.Select("*").From("t").Build().Dialect, Is.EqualTo(SqlDialectKind.Sqlite));
+    [Test] public void Result_DialectRecorded()
+        => Assert.That(SqlBuilder.Sqlite.Select("*").From("t").Build().Dialect, Is.EqualTo(SqlDialectKind.Sqlite));
 
-    [Test] public void EmptyParameterSet_Singleton() => Assert.That(SqlParameterSet.Empty.IsEmpty, Is.True);
+    [Test] public void EmptyParameterSet_Singleton()
+        => Assert.That(SqlParameterSet.Empty.IsEmpty, Is.True);
 }
