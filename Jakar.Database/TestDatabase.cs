@@ -8,7 +8,7 @@ using ILogger = Microsoft.Extensions.Logging.ILogger;
 namespace Jakar.Database;
 
 
-internal sealed class TestDatabase( IConfiguration configuration, IOptions<DbOptions> options, IFusionCache cache ) : Database(configuration, options, cache), IAppID
+public sealed class TestDatabase( IConfiguration configuration, IOptions<DbOptions> options, IFusionCache cache ) : Database(configuration, options, cache), IAppID
 {
     public static readonly TelemetrySource Source;
     public static          Guid            AppID        { get; }

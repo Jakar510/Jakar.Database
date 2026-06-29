@@ -8,19 +8,29 @@ public class RoleValidator : RoleValidator<RoleRecord>
 {
     public override Task<IdentityResult> ValidateAsync( RoleManager<RoleRecord> manager, RoleRecord role )
     {
-        IdentityResult result = string.IsNullOrWhiteSpace(role.NameOfRole)
-                                    ? IdentityResult.Failed(new IdentityError
-                                                            {
-                                                                Description = "AppName of Role Invalid",
-                                                                Code        = nameof(RoleRecord.NameOfRole)
-                                                            })
-                                    : string.IsNullOrWhiteSpace(role.NormalizedName)
-                                        ? IdentityResult.Failed(new IdentityError
-                                                                {
-                                                                    Description = "NormalizedName of Role Invalid",
-                                                                    Code        = nameof(RoleRecord.NormalizedName)
-                                                                })
-                                        : IdentityResult.Success;
+        List<IdentityError> errors = [];
+
+        if ( string.IsNullOrWhiteSpace(role.NameOfRole) )
+        {
+            errors.Add(new IdentityError
+                       {
+                           Description = "AppName of Role Invalid",
+                           Code        = nameof(RoleRecord.NameOfRole)
+                       });
+        }
+
+        if ( string.IsNullOrWhiteSpace(role.NormalizedName) )
+        {
+            errors.Add(new IdentityError
+                       {
+                           Description = "NormalizedName of Role Invalid",
+                           Code        = nameof(RoleRecord.NormalizedName)
+                       });
+        }
+
+        IdentityResult result = errors.Count > 0
+                                    ? IdentityResult.Failed([..errors])
+                                    : IdentityResult.Success;
 
         return Task.FromResult(result);
     }

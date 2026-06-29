@@ -11,9 +11,9 @@ public sealed partial record RoleRecord : OwnedTableRecord<RoleRecord>, ITableRe
     private static readonly    SqlName __tableName = TABLE_NAME;
     public static ref readonly SqlName TableName => ref __tableName;
 
-    [Fixed(CONCURRENCY_STAMP)]        public             string               ConcurrencyStamp { get; init; }
-    [Fixed(NAME)] [Unique]            public             string               NameOfRole       { get; init; }
-    [Fixed(NORMALIZED_NAME)] [Unique] public             string               NormalizedName   { get; init; }
+    [Fixed(CONCURRENCY_STAMP)]                                                            public             string               ConcurrencyStamp { get; init; }
+    [Fixed(NAME)] [Unique] [StringCompare(StringComparison.InvariantCultureIgnoreCase)]   public             string               NameOfRole       { get; init; }
+    [Fixed(NORMALIZED_NAME)] [Unique] [StringCompare(StringComparison.InvariantCultureIgnoreCase)] public    string               NormalizedName   { get; init; }
     public                                               UserRights           Rights           { get; set; }
     [ForeignKey<RoleRecord, UserRecord>] public override RecordID<UserRecord> UserID           { get; init; }
 
@@ -45,48 +45,6 @@ public sealed partial record RoleRecord : OwnedTableRecord<RoleRecord>, ITableRe
         where TRoleModel : class, IRoleModel<TRoleModel, Guid> => TRoleModel.Create(this);
 
 
-    protected override async ValueTask Import( NpgsqlBinaryImporter importer, string propertyName, NpgsqlDbType postgresDbType, CancellationToken token )
-    {
-        switch ( propertyName )
-        {
-            case nameof(ID):
-                await importer.WriteAsync(ID.Value, postgresDbType, token);
-                return;
-
-            case nameof(DateCreated):
-                await importer.WriteAsync(DateCreated, postgresDbType, token);
-                return;
-
-            case nameof(UserID):
-                await importer.WriteAsync(UserID.Value, postgresDbType, token);
-                return;
-
-            case nameof(Rights):
-                await importer.WriteAsync(Rights.Value, postgresDbType, token);
-                return;
-
-            case nameof(NameOfRole):
-                await importer.WriteAsync(NameOfRole, postgresDbType, token);
-                return;
-
-            case nameof(NormalizedName):
-                await importer.WriteAsync(NormalizedName, postgresDbType, token);
-                return;
-
-            case nameof(ConcurrencyStamp):
-                await importer.WriteAsync(ConcurrencyStamp, postgresDbType, token);
-                return;
-
-            case nameof(LastModified):
-                if ( LastModified.HasValue ) { await importer.WriteAsync(LastModified.Value, postgresDbType, token); }
-                else { await importer.WriteNullAsync(token); }
-
-                return;
-
-            default:
-                throw new InvalidOperationException($"Unknown column: {propertyName}");
-        }
-    }
     [Pure] public static RoleRecord Create<TEnum>( string name, [HandlesResourceDisposal] Permissions<TEnum> rights, string? normalizedName = null, RecordID<UserRecord> userID = default, string? concurrencyStamp = null )
         where TEnum : unmanaged, Enum => new(name, normalizedName ?? name, concurrencyStamp ?? name.GetHash(), rights.ToStringAndDispose(), userID);
 
@@ -102,36 +60,4 @@ public sealed partial record RoleRecord : OwnedTableRecord<RoleRecord>, ITableRe
                                                    };
 
 
-    public override bool Equals( RoleRecord? other )
-    {
-        if ( other is null ) { return false; }
-
-        if ( ReferenceEquals(this, other) ) { return true; }
-
-        return base.Equals(other) && string.Equals(NameOfRole, other.NameOfRole, StringComparison.InvariantCultureIgnoreCase) && string.Equals(NormalizedName, other.NormalizedName, StringComparison.InvariantCultureIgnoreCase);
-    }
-    public override int GetHashCode() => HashCode.Combine(base.GetHashCode(), NameOfRole, NormalizedName, Rights);
-    public override int CompareTo( RoleRecord? other )
-    {
-        if ( other is null ) { return 1; }
-
-        if ( ReferenceEquals(this, other) ) { return 0; }
-
-        int nameComparison = string.Compare(NameOfRole, other.NameOfRole, StringComparison.Ordinal);
-        if ( nameComparison != 0 ) { return nameComparison; }
-
-        int normalizedNameComparison = string.Compare(NormalizedName, other.NormalizedName, StringComparison.Ordinal);
-        if ( normalizedNameComparison != 0 ) { return normalizedNameComparison; }
-
-        int concurrencyComparison = string.Compare(ConcurrencyStamp, other.ConcurrencyStamp, StringComparison.Ordinal);
-        if ( concurrencyComparison != 0 ) { return concurrencyComparison; }
-
-        return base.CompareTo(other);
-    }
-
-
-    public static bool operator >( RoleRecord  left, RoleRecord right ) => left.CompareTo(right) > 0;
-    public static bool operator >=( RoleRecord left, RoleRecord right ) => left.CompareTo(right) >= 0;
-    public static bool operator <( RoleRecord  left, RoleRecord right ) => left.CompareTo(right) < 0;
-    public static bool operator <=( RoleRecord left, RoleRecord right ) => left.CompareTo(right) <= 0;
 }

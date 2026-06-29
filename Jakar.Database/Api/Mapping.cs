@@ -80,26 +80,6 @@ public abstract record Mapping<TSelf, TKey, TValue> : TableRecord<TSelf>
 
     public bool IsValid() => KeyID.IsValid() && ValueID.IsValid();
 
-    protected override async ValueTask Import( NpgsqlBinaryImporter importer, string propertyName, NpgsqlDbType postgresDbType, CancellationToken token )
-    {
-        switch ( propertyName )
-        {
-            case nameof(DateCreated):
-                await importer.WriteAsync(DateCreated, postgresDbType, token);
-                break;
-
-            case nameof(KeyID):
-                await importer.WriteAsync(KeyID.Value, postgresDbType, token);
-                break;
-
-            case nameof(ValueID):
-                await importer.WriteAsync(ValueID.Value, postgresDbType, token);
-                break;
-
-            default:
-                throw new InvalidOperationException($"Unknown column: {propertyName}");
-        }
-    }
     public override ValueTask Import( DataRow row, CancellationToken token )
     {
         row[MetaData[nameof(KeyID)].DataColumn]   = KeyID;
@@ -115,19 +95,19 @@ public abstract record Mapping<TSelf, TKey, TValue> : TableRecord<TSelf>
     }
 
 
-    public override bool Equals( TSelf? other ) => ReferenceEquals(this, other) || ( other is not null && KeyID == other.KeyID && ValueID == other.ValueID );
+    public override bool Equals( TSelf? other ) => other is not null && KeyID == other.KeyID && ValueID == other.ValueID;
     public override int CompareTo( TSelf? other )
     {
-        if ( other is null ) { return -1; }
+        if ( other is null ) { return 1; }
 
         if ( ReferenceEquals(this, other) ) { return 0; }
 
-        int ownerComparision = KeyID.CompareTo(other.KeyID);
-        if ( ownerComparision != 0 ) { return ownerComparision; }
+        int compare = KeyID.CompareTo(other.KeyID);
+        if ( compare != 0 ) { return compare; }
 
         return ValueID.CompareTo(other.ValueID);
     }
-    public override int GetHashCode() => HashCode.Combine(KeyID, ValueID);
+    public override int GetHashCode() => HashCode.Combine(base.GetHashCode(), KeyID, ValueID);
 
 
     public async ValueTask<TKey?> Get( DbConnectionContext context, DbTable<TKey> table, CancellationToken token )

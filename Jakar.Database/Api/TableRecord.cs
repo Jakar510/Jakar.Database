@@ -29,7 +29,7 @@ public interface ITableName
 
 
 
-public interface ITableRecord<TSelf> : ITableName, Jakar.SqlBuilder.ISqlTable<TSelf>, IJsonModel<TSelf>, IEqualComparable<TSelf>
+public interface ITableRecord<TSelf> : ITableName, SqlBuilder.ISqlTable<TSelf>, IJsonModel<TSelf>, IEqualComparable<TSelf>
     where TSelf : TableRecord<TSelf>, ITableRecord<TSelf>
 {
     public abstract static ref readonly ImmutableArray<PropertyInfo> ClassProperties { [Pure] get; }
@@ -87,8 +87,24 @@ public abstract record TableRecord<TSelf>( in DateTimeOffset DateCreated ) : IJs
     }
 
 
-    public abstract bool Equals( TSelf?    other );
-    public abstract int  CompareTo( TSelf? other );
+    // Concrete, virtual roots for the IEqualComparable<TSelf> chain. The generated partial on each end record overrides these,
+    // calls base.Equals / base.CompareTo / base.GetHashCode to fold in every inherited framework column, then adds its own declared columns.
+    public virtual bool Equals( TSelf? other )
+    {
+        if ( other is null ) { return false; }
+
+        if ( ReferenceEquals(this, other) ) { return true; }
+
+        return DateCreated.Equals(other.DateCreated);
+    }
+    public virtual int CompareTo( TSelf? other )
+    {
+        if ( other is null ) { return 1; }
+
+        if ( ReferenceEquals(this, other) ) { return 0; }
+
+        return DateCreated.CompareTo(other.DateCreated);
+    }
     public int CompareTo( object? other )
     {
         if ( other is null ) { return 1; }
@@ -99,6 +115,7 @@ public abstract record TableRecord<TSelf>( in DateTimeOffset DateCreated ) : IJs
                    ? CompareTo(t)
                    : throw new ExpectedValueTypeException(nameof(other), other, typeof(TSelf));
     }
+    public override int GetHashCode() => DateCreated.GetHashCode();
 
 
     public static bool TryFromJson( string? json, [NotNullWhen(true)] out TSelf? result )
@@ -122,15 +139,10 @@ public abstract record TableRecord<TSelf>( in DateTimeOffset DateCreated ) : IJs
     public static TSelf FromJson( string json ) => json.FromJson<TSelf>();
 
 
-    // IDataReader
-    public abstract ValueTask Import( NpgsqlBatchCommand batch, CancellationToken token );
-    public async ValueTask Import( NpgsqlBinaryImporter importer, CancellationToken token )
-    {
-        await importer.StartRowAsync(token);
-        using ArrayBuffer<ColumnMetaData> buffer = MetaData.SortedColumns.ToArrayBuffer();
-        foreach ( ColumnMetaData column in buffer.Array ) { await Import(importer, column.PropertyName, column.PostgresDbType, token); }
-    }
-    protected abstract ValueTask Import( NpgsqlBinaryImporter importer, string propertyName, NpgsqlDbType postgresDbType, CancellationToken token );
+    // IDataReader. The batch and binary-importer overloads are emitted by the generator on every end record (the binary overload
+    // now writes its columns directly, so the previous protected per-column dispatch helper is no longer needed).
+    public abstract ValueTask Import( NpgsqlBatchCommand   batch,    CancellationToken token );
+    public abstract ValueTask Import( NpgsqlBinaryImporter importer, CancellationToken token );
     public virtual ValueTask Import( DataRow row, CancellationToken token )
     {
         row[MetaData[nameof(DateCreated)].DataColumn] = DateCreated;
@@ -164,6 +176,22 @@ public abstract record LastModifiedRecord<TSelf> : TableRecord<TSelf>, ILastModi
         LastModified = lastModified;
     }
     protected internal LastModifiedRecord( DbDataReader reader ) : base(reader) => LastModified = reader.LastModified<TSelf>();
+
+
+    public override bool Equals( TSelf? other ) => base.Equals(other) && other is not null && Nullable.Equals(LastModified, other.LastModified);
+    public override int CompareTo( TSelf? other )
+    {
+        if ( other is null ) { return 1; }
+
+        if ( ReferenceEquals(this, other) ) { return 0; }
+
+        int compare = base.CompareTo(other);
+        if ( compare != 0 ) { return compare; }
+
+        return Nullable.Compare(LastModified, other.LastModified);
+    }
+    public override int GetHashCode() => HashCode.Combine(base.GetHashCode(), LastModified);
+
 
     public override ValueTask Import( DataRow row, CancellationToken token )
     {
@@ -213,8 +241,22 @@ public abstract record PairRecord<TSelf> : LastModifiedRecord<TSelf>, IUniqueID
         __id = id;
         return (TSelf)this;
     }
-    [Pure] public   RecordPair<TSelf> ToPair()      => new(ID, DateCreated);
-    public override int               GetHashCode() => ID.GetHashCode();
+    [Pure] public RecordPair<TSelf> ToPair() => new(ID, DateCreated);
+
+
+    public override bool Equals( TSelf? other ) => base.Equals(other) && other is not null && ID.Equals(other.ID);
+    public override int CompareTo( TSelf? other )
+    {
+        if ( other is null ) { return 1; }
+
+        if ( ReferenceEquals(this, other) ) { return 0; }
+
+        int compare = base.CompareTo(other);
+        if ( compare != 0 ) { return compare; }
+
+        return ID.CompareTo(other.ID);
+    }
+    public override int GetHashCode() => HashCode.Combine(base.GetHashCode(), ID);
 
 
     public TSelf WithAdditionalData( IJsonModel value ) => WithAdditionalData(value.AdditionalData);
@@ -321,12 +363,17 @@ public abstract record OwnedTableRecord<TSelf> : PairRecord<TSelf>, IUserRecordI
     public bool  DoesNotOwn( UserRecord record ) => UserID != record.ID;
 
 
+    public override bool Equals( TSelf? other ) => base.Equals(other) && other is not null && UserID.Equals(other.UserID);
     public override int CompareTo( TSelf? other )
     {
         if ( other is null ) { return 1; }
 
         if ( ReferenceEquals(this, other) ) { return 0; }
 
+        int compare = base.CompareTo(other);
+        if ( compare != 0 ) { return compare; }
+
         return UserID.CompareTo(other.UserID);
     }
+    public override int GetHashCode() => HashCode.Combine(base.GetHashCode(), UserID);
 }

@@ -48,10 +48,4 @@ public sealed partial record UserRoleRecord : Mapping<UserRoleRecord, UserRecord
         // ReSharper disable once LoopCanBeConvertedToQuery
         foreach ( RecordID<RoleRecord> value in values ) { yield return Create(key, value); }
     }
-
-
-    public static bool operator >( UserRoleRecord  left, UserRoleRecord right ) => left.CompareTo(right) > 0;
-    public static bool operator >=( UserRoleRecord left, UserRoleRecord right ) => left.CompareTo(right) >= 0;
-    public static bool operator <( UserRoleRecord  left, UserRoleRecord right ) => left.CompareTo(right) < 0;
-    public static bool operator <=( UserRoleRecord left, UserRoleRecord right ) => left.CompareTo(right) <= 0;
 }

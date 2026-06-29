@@ -9,7 +9,7 @@ namespace Jakar.Database;
 [Table(TABLE_NAME)]
 public sealed partial record FileRecord : PairRecord<FileRecord>, ITableRecord<FileRecord>, IFileData<Guid>, IFileMetaData
 {
-    public const string TABLE_NAME = "files"; 
+    public const string TABLE_NAME = "files";
 
     // ReSharper disable once ReplaceWithFieldKeyword
     private static readonly    SqlName __tableName = TABLE_NAME;
@@ -18,8 +18,8 @@ public sealed partial record FileRecord : PairRecord<FileRecord>, ITableRecord<F
     [Fixed(1024)] public string?   FileDescription { get; set; }
     [Fixed(256)]  public string?   FileName        { get; set; }
     public               long      FileSize        { get; set; }
-    [Fixed(256)] public  string?   FileType        { get; set; }
-    [Unique]     public  string?   FullPath        { get; init; }
+    [Fixed(256)] [StringCompare(StringComparison.InvariantCultureIgnoreCase)] public string? FileType { get; set; }
+    [Unique]     [StringCompare(StringComparison.OrdinalIgnoreCase)]          public string? FullPath { get; init; }
     public               string    Hash            { get; set; } = EMPTY;
     public               MimeType? MimeType        { get; set; }
     public               string    Payload         { get; set; } = EMPTY;
@@ -123,132 +123,4 @@ public sealed partial record FileRecord : PairRecord<FileRecord>, ITableRecord<F
     }
 
 
-    protected override async ValueTask Import( NpgsqlBinaryImporter importer, string propertyName, NpgsqlDbType postgresDbType, CancellationToken token )
-    {
-        switch ( propertyName )
-        {
-            case nameof(ID):
-                await importer.WriteAsync(ID.Value, postgresDbType, token);
-                return;
-
-            case nameof(DateCreated):
-                await importer.WriteAsync(DateCreated, postgresDbType, token);
-                return;
-
-            case nameof(LastModified):
-                if ( LastModified.HasValue ) { await importer.WriteAsync(LastModified.Value, postgresDbType, token); }
-                else { await importer.WriteNullAsync(token); }
-
-                return;
-
-            case nameof(FileDescription):
-                await importer.WriteAsync(FileDescription, postgresDbType, token);
-                return;
-
-            case nameof(FileName):
-                await importer.WriteAsync(FileName, postgresDbType, token);
-                return;
-
-            case nameof(FileType):
-                if ( string.IsNullOrWhiteSpace(FileType) ) { await importer.WriteAsync(FileType, postgresDbType, token); }
-                else { await importer.WriteNullAsync(token); }
-
-                return;
-
-            case nameof(FileSize):
-                await importer.WriteAsync(FileSize, postgresDbType, token);
-                return;
-
-            case nameof(Hash):
-                await importer.WriteAsync(Hash, postgresDbType, token);
-                return;
-
-            case nameof(MimeType):
-                await importer.WriteAsync(MimeType, postgresDbType, token);
-                return;
-
-            case nameof(Payload):
-                await importer.WriteAsync(Payload, postgresDbType, token);
-                return;
-
-            case nameof(FullPath):
-                if ( string.IsNullOrWhiteSpace(FullPath) ) { await importer.WriteAsync(FullPath, postgresDbType, token); }
-                else { await importer.WriteNullAsync(token); }
-
-                return;
-
-            default:
-                throw new InvalidOperationException($"Unknown column: {propertyName}");
-        }
-    }
-    public override ValueTask Import( DataRow row, CancellationToken token )
-    {
-        row[MetaData[nameof(FileName)].DataColumn]        = FileName;
-        row[MetaData[nameof(FileDescription)].DataColumn] = FileDescription;
-        row[MetaData[nameof(FileType)].DataColumn]        = FileType;
-        row[MetaData[nameof(FileSize)].DataColumn]        = FileSize;
-        row[MetaData[nameof(Hash)].DataColumn]            = Hash;
-        row[MetaData[nameof(MimeType)].DataColumn]        = MimeType;
-        row[MetaData[nameof(Payload)].DataColumn]         = Payload;
-        row[MetaData[nameof(FullPath)].DataColumn]        = FullPath;
-        return base.Import(row, token);
-    }
-    public override int CompareTo( FileRecord? other )
-    {
-        if ( ReferenceEquals(this, other) ) { return 0; }
-
-        if ( other is null ) { return 1; }
-
-        int fileTypeComparison = string.Compare(FileType, other.FileType, StringComparison.Ordinal);
-        if ( fileTypeComparison != 0 ) { return fileTypeComparison; }
-
-        int fileNameComparison = string.Compare(FileName, other.FileName, StringComparison.Ordinal);
-        if ( fileNameComparison != 0 ) { return fileNameComparison; }
-
-        int fileDescriptionComparison = string.Compare(FileDescription, other.FileDescription, StringComparison.Ordinal);
-        if ( fileDescriptionComparison != 0 ) { return fileDescriptionComparison; }
-
-        int fileSizeComparison = FileSize.CompareTo(other.FileSize);
-        if ( fileSizeComparison != 0 ) { return fileSizeComparison; }
-
-        int hashComparison = string.Compare(Hash, other.Hash, StringComparison.Ordinal);
-        if ( hashComparison != 0 ) { return hashComparison; }
-
-        int mimeTypeComparison = Nullable.Compare(MimeType, other.MimeType);
-        if ( mimeTypeComparison != 0 ) { return mimeTypeComparison; }
-
-        int payloadComparison = string.Compare(Payload, other.Payload, StringComparison.Ordinal);
-        if ( payloadComparison != 0 ) { return payloadComparison; }
-
-        return string.Compare(FullPath, other.FullPath, StringComparison.Ordinal);
-    }
-    public override bool Equals( FileRecord? other )
-    {
-        if ( other is null ) { return false; }
-
-        if ( ReferenceEquals(this, other) ) { return true; }
-
-        return base.Equals(other) && Nullable.Equals(MimeType, other.MimeType) && string.Equals(FileType, other.FileType, StringComparison.InvariantCultureIgnoreCase) && string.Equals(Hash, other.Hash, StringComparison.Ordinal) && string.Equals(FullPath, other.FullPath, StringComparison.OrdinalIgnoreCase);
-    }
-    public override int GetHashCode()
-    {
-        HashCode hashCode = new();
-        hashCode.Add(base.GetHashCode());
-        hashCode.Add(AdditionalData);
-        hashCode.Add(FileName);
-        hashCode.Add(FileDescription);
-        hashCode.Add(FileType);
-        hashCode.Add(FileSize);
-        hashCode.Add(Hash);
-        hashCode.Add(MimeType);
-        hashCode.Add(Payload);
-        hashCode.Add(FullPath);
-        return hashCode.ToHashCode();
-    }
-
-
-    public static bool operator >( FileRecord  left, FileRecord right ) => left.CompareTo(right) > 0;
-    public static bool operator >=( FileRecord left, FileRecord right ) => left.CompareTo(right) >= 0;
-    public static bool operator <( FileRecord  left, FileRecord right ) => left.CompareTo(right) < 0;
-    public static bool operator <=( FileRecord left, FileRecord right ) => left.CompareTo(right) <= 0;
 }

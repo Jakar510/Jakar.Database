@@ -51,40 +51,6 @@ public sealed partial record GroupRecord : OwnedTableRecord<GroupRecord>, ITable
         where TGroupModel : class, IGroupModel<TGroupModel, Guid> => TGroupModel.Create(this);
 
 
-    public override int CompareTo( GroupRecord? other )
-    {
-        if ( ReferenceEquals(this, other) ) { return 0; }
-
-        if ( other is null ) { return 1; }
-
-        int nameOfGroupComparison = string.Compare(NameOfGroup, other.NameOfGroup, StringComparison.Ordinal);
-        if ( nameOfGroupComparison != 0 ) { return nameOfGroupComparison; }
-
-        int normalizedNameComparison = string.Compare(NormalizedName, other.NormalizedName, StringComparison.Ordinal);
-        if ( normalizedNameComparison != 0 ) { return normalizedNameComparison; }
-
-        int lastModifiedComparison = Nullable.Compare(LastModified, other.LastModified);
-        if ( lastModifiedComparison != 0 ) { return lastModifiedComparison; }
-
-        return DateCreated.CompareTo(other.DateCreated);
-    }
-    public override bool Equals( GroupRecord? other )
-    {
-        if ( other is null ) { return false; }
-
-        if ( ReferenceEquals(this, other) ) { return true; }
-
-        return base.Equals(other) && NameOfGroup == other.NameOfGroup && Rights == other.Rights && NormalizedName == other.NormalizedName;
-    }
-    public override int GetHashCode() => HashCode.Combine(base.GetHashCode(), NameOfGroup, Rights, NormalizedName);
-
-    public override ValueTask Import( DataRow row, CancellationToken token )
-    {
-        row[MetaData[nameof(Rights)].DataColumn]         = Rights;
-        row[MetaData[nameof(NameOfGroup)].DataColumn]    = NameOfGroup;
-        row[MetaData[nameof(NormalizedName)].DataColumn] = NormalizedName;
-        return base.Import(row, token);
-    }
     [Pure] public override CommandParameters ToDynamicParameters()
     {
         CommandParameters parameters = base.ToDynamicParameters();
@@ -98,10 +64,4 @@ public sealed partial record GroupRecord : OwnedTableRecord<GroupRecord>, ITable
 
     [Pure] public async ValueTask<ErrorOrResult<UserRecord>> GetOwner( DbConnectionContext context, Database db, CancellationToken token ) => await db.Users.Get(context, UserID, token);
     [Pure] public       IAsyncEnumerable<UserRecord>         GetUsers( DbConnectionContext context, Database db, CancellationToken token ) => UserGroupRecord.Where(context, db.Users, ID, token);
-
-
-    public static bool operator >( GroupRecord  left, GroupRecord right ) => left.CompareTo(right) > 0;
-    public static bool operator >=( GroupRecord left, GroupRecord right ) => left.CompareTo(right) >= 0;
-    public static bool operator <( GroupRecord  left, GroupRecord right ) => left.CompareTo(right) < 0;
-    public static bool operator <=( GroupRecord left, GroupRecord right ) => left.CompareTo(right) <= 0;
 }

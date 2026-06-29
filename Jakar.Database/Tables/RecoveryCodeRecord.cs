@@ -14,18 +14,13 @@ public sealed partial record RecoveryCodeRecord : OwnedTableRecord<RecoveryCodeR
     private static readonly    SqlName __tableName = TABLE_NAME;
     public static ref readonly SqlName TableName => ref __tableName;
 
-    [Unique]                                     public          string               Code   { get; init; }
+    [Unique] [StringCompare(StringComparison.InvariantCultureIgnoreCase)] public          string               Code   { get; init; }
     [ForeignKey<RecoveryCodeRecord, UserRecord>] public override RecordID<UserRecord> UserID { get; init; }
 
 
     public RecoveryCodeRecord( string code, UserRecord                   user ) : this(code, RecordID<RecoveryCodeRecord>.New(), user.ID, DateTimeOffset.UtcNow) { }
     public RecoveryCodeRecord( string code, RecordID<RecoveryCodeRecord> ID, RecordID<UserRecord> UserID, DateTimeOffset DateCreated, DateTimeOffset? LastModified = null ) : base(in UserID, in ID, in DateCreated, in LastModified) => Code = Hasher.HashPassword(this, code);
 
-    public override ValueTask Import( DataRow row, CancellationToken token )
-    {
-        row[MetaData[nameof(Code)].DataColumn] = Code;
-        return base.Import(row, token);
-    }
     [Pure] public override CommandParameters ToDynamicParameters()
     {
         CommandParameters parameters = base.ToDynamicParameters();
@@ -134,24 +129,6 @@ public sealed partial record RecoveryCodeRecord : OwnedTableRecord<RecoveryCodeR
                 throw new OutOfRangeException(result);
         }
     }
-
-
-    public override bool Equals( RecoveryCodeRecord? other )
-    {
-        if ( other is null ) { return false; }
-
-        if ( ReferenceEquals(this, other) ) { return true; }
-
-        return base.Equals(other) && string.Equals(Code, other.Code, StringComparison.InvariantCultureIgnoreCase);
-    }
-    public override int GetHashCode() => HashCode.Combine(base.GetHashCode(), Code);
-
-
-    public static bool operator >( RecoveryCodeRecord  left, RecoveryCodeRecord right ) => left.CompareTo(right) > 0;
-    public static bool operator >=( RecoveryCodeRecord left, RecoveryCodeRecord right ) => left.CompareTo(right) >= 0;
-    public static bool operator <( RecoveryCodeRecord  left, RecoveryCodeRecord right ) => left.CompareTo(right) < 0;
-    public static bool operator <=( RecoveryCodeRecord left, RecoveryCodeRecord right ) => left.CompareTo(right) <= 0;
-
 
 
     public sealed class Codes()

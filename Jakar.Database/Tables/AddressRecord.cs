@@ -59,70 +59,6 @@ public sealed partial record AddressRecord : OwnedTableRecord<AddressRecord>, IA
     }
 
 
-    private string GetAddress() => string.IsNullOrWhiteSpace(Line2)
-                                       ? $"{Line1}. {City}, {StateOrProvince}. {Country}. {PostalCode}"
-                                       : $"{Line1} {Line2}. {City}, {StateOrProvince}. {Country}. {PostalCode}";    protected override async ValueTask Import( NpgsqlBinaryImporter importer, string propertyName, NpgsqlDbType postgresDbType, CancellationToken token )
-    {
-        switch ( propertyName )
-        {
-            case nameof(ID):
-                await importer.WriteAsync(ID.Value, postgresDbType, token);
-                return;
-
-            case nameof(DateCreated):
-                await importer.WriteAsync(DateCreated, postgresDbType, token);
-                return;
-
-            case nameof(UserID):
-                await importer.WriteAsync(UserID.Value, postgresDbType, token);
-                return;
-
-            case nameof(Address):
-                await importer.WriteAsync(Address, postgresDbType, token);
-                return;
-
-            case nameof(City):
-                await importer.WriteAsync(City, postgresDbType, token);
-                return;
-
-            case nameof(Country):
-                await importer.WriteAsync(Country, postgresDbType, token);
-                return;
-
-            case nameof(StateOrProvince):
-                await importer.WriteAsync(StateOrProvince, postgresDbType, token);
-                return;
-
-            case nameof(Line1):
-                await importer.WriteAsync(Line1, postgresDbType, token);
-                return;
-
-            case nameof(Line2):
-                await importer.WriteAsync(Line2, postgresDbType, token);
-                return;
-
-            case nameof(LastModified):
-                if ( LastModified.HasValue ) { await importer.WriteAsync(LastModified.Value, postgresDbType, token); }
-                else { await importer.WriteNullAsync(token); }
-
-                return;
-
-            default:
-                throw new InvalidOperationException($"Unknown column: {propertyName}");
-        }
-    }
-    public override ValueTask Import( DataRow row, CancellationToken token )
-    {
-        row[MetaData[nameof(Line1)].DataColumn]           = Line1;
-        row[MetaData[nameof(Line2)].DataColumn]           = Line2;
-        row[MetaData[nameof(City)].DataColumn]            = City;
-        row[MetaData[nameof(StateOrProvince)].DataColumn] = StateOrProvince;
-        row[MetaData[nameof(Country)].DataColumn]         = Country;
-        row[MetaData[nameof(PostalCode)].DataColumn]      = PostalCode;
-        row[MetaData[nameof(Address)].DataColumn]         = Address;
-        row[MetaData[nameof(IsPrimary)].DataColumn]       = IsPrimary;
-        return base.Import(row, token);
-    }
     public static AddressRecord Parse( string s, IFormatProvider? provider ) => Create(Regexes.Address.Match(s));
     public static bool TryParse( [NotNullWhen(true)] string? s, IFormatProvider? provider, [MaybeNullWhen(false)] out AddressRecord result )
     {
@@ -180,25 +116,15 @@ public sealed partial record AddressRecord : OwnedTableRecord<AddressRecord>, IA
 
         switch ( claim.Type )
         {
-            case ClaimTypes.StreetAddress:
-                parameters.Add(nameof(Line1), claim.Value);
-                break;
+            case ClaimTypes.StreetAddress: parameters.Add(nameof(Line1), claim.Value); break;
 
-            case ClaimTypes.Locality:
-                parameters.Add(nameof(Line2), claim.Value);
-                break;
+            case ClaimTypes.Locality: parameters.Add(nameof(Line2), claim.Value); break;
 
-            case ClaimTypes.StateOrProvince:
-                parameters.Add(nameof(StateOrProvince), claim.Value);
-                break;
+            case ClaimTypes.StateOrProvince: parameters.Add(nameof(StateOrProvince), claim.Value); break;
 
-            case ClaimTypes.Country:
-                parameters.Add(nameof(Country), claim.Value);
-                break;
+            case ClaimTypes.Country: parameters.Add(nameof(Country), claim.Value); break;
 
-            case ClaimTypes.PostalCode:
-                parameters.Add(nameof(PostalCode), claim.Value);
-                break;
+            case ClaimTypes.PostalCode: parameters.Add(nameof(PostalCode), claim.Value); break;
         }
 
         await foreach ( AddressRecord record in db.Addresses.Where(context, parameters, token) ) { yield return record; }
@@ -223,7 +149,9 @@ public sealed partial record AddressRecord : OwnedTableRecord<AddressRecord>, IA
         static bool hasFlag( ClaimType value, ClaimType flag ) => ( value & flag ) != 0;
     }
 
-
+    public string GetAddress() => string.IsNullOrWhiteSpace(Line2)
+                                      ? $"{Line1}. {City}, {StateOrProvince}. {Country}. {PostalCode}"
+                                      : $"{Line1} {Line2}. {City}, {StateOrProvince}. {Country}. {PostalCode}";
     public UserAddress ToAddressModel() => UserAddress.Create(this);
     public TAddress ToAddressModel<TAddress>()
         where TAddress : class, IAddress<TAddress, Guid> => TAddress.Create(this);
@@ -239,19 +167,4 @@ public sealed partial record AddressRecord : OwnedTableRecord<AddressRecord>, IA
             Country = value.Country,
             PostalCode = value.PostalCode
         };
-    public override bool Equals( AddressRecord? other )
-    {
-        if ( other is null ) { return false; }
-
-        if ( ReferenceEquals(this, other) ) { return true; }
-
-        return base.Equals(other) && Line1 == other.Line1 && Line2 == other.Line2 && City == other.City && PostalCode == other.PostalCode && StateOrProvince == other.StateOrProvince && Country == other.Country && Address == other.Address;
-    }
-    public override int GetHashCode() => HashCode.Combine(base.GetHashCode(), Line1, Line2, City, PostalCode, StateOrProvince, Country, Address);
-
-
-    public static bool operator >( AddressRecord  left, AddressRecord right ) => left.CompareTo(right) > 0;
-    public static bool operator >=( AddressRecord left, AddressRecord right ) => left.CompareTo(right) >= 0;
-    public static bool operator <( AddressRecord  left, AddressRecord right ) => left.CompareTo(right) < 0;
-    public static bool operator <=( AddressRecord left, AddressRecord right ) => left.CompareTo(right) <= 0;
 }

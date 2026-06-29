@@ -20,7 +20,7 @@ public sealed partial record UserRecord : PairRecord<UserRecord>, ITableRecord<U
     public                                      Guid?                 SubscriptionID      { get; set; }
     public                                      Guid                  UserID              => ID.Value;
     RecordID<UserRecord> IUserRecordID.                               UserID              => ID;
-    [Fixed(USER_NAME)] [ProtectedPersonalData] public string          UserName            { get; init; } = EMPTY;
+    [Fixed(USER_NAME)] [ProtectedPersonalData] [StringCompare(StringComparison.InvariantCultureIgnoreCase)] public string          UserName            { get; init; } = EMPTY;
     [DbIgnore]                                 public bool            HasPassword         { [MemberNotNullWhen(true, nameof(PasswordHash))] get => !string.IsNullOrWhiteSpace(PasswordHash); }
 
 
@@ -161,112 +161,6 @@ public sealed partial record UserRecord : PairRecord<UserRecord>, ITableRecord<U
                                                                                                                          }.WithPassword(password);
 
 
-    protected override async ValueTask Import( NpgsqlBinaryImporter importer, string propertyName, NpgsqlDbType postgresDbType, CancellationToken token )
-    {
-        switch ( propertyName )
-        {
-            case nameof(ID): await importer.WriteAsync(ID.Value, postgresDbType, token); break;
-
-            case nameof(DateCreated): await importer.WriteAsync(DateCreated, postgresDbType, token); break;
-
-            case nameof(Rights): await importer.WriteAsync(Rights.Value, postgresDbType, token); break;
-
-            case nameof(UserName): await importer.WriteAsync(UserName, postgresDbType, token); break;
-
-            case nameof(FirstName): await importer.WriteAsync(FirstName, postgresDbType, token); break;
-
-            case nameof(LastName): await importer.WriteAsync(LastName, postgresDbType, token); break;
-
-            case nameof(FullName): await importer.WriteAsync(FullName, postgresDbType, token); break;
-
-            case nameof(Gender): await importer.WriteAsync(Gender, postgresDbType, token); break;
-
-            case nameof(Company): await importer.WriteAsync(Company, postgresDbType, token); break;
-
-            case nameof(Department): await importer.WriteAsync(Department, postgresDbType, token); break;
-
-            case nameof(Title): await importer.WriteAsync(Title, postgresDbType, token); break;
-
-            case nameof(Website): await importer.WriteAsync(Website, postgresDbType, token); break;
-
-            case nameof(PreferredLanguage): await importer.WriteAsync(PreferredLanguage, postgresDbType, token); break;
-
-            case nameof(Email): await importer.WriteAsync(Email, postgresDbType, token); break;
-
-            case nameof(LastModified):
-                if ( LastModified.HasValue ) { await importer.WriteAsync(LastModified.Value, postgresDbType, token); }
-                else { await importer.WriteNullAsync(token); }
-
-                break;
-
-            case nameof(LastBadAttempt):
-                if ( LastBadAttempt.HasValue ) { await importer.WriteAsync(LastBadAttempt.Value, postgresDbType, token); }
-                else { await importer.WriteNullAsync(token); }
-
-                break;
-
-            case nameof(LastLogin):
-                if ( LastLogin.HasValue ) { await importer.WriteAsync(LastLogin.Value, postgresDbType, token); }
-                else { await importer.WriteNullAsync(token); }
-
-                break;
-
-            case nameof(BadLogins):
-                if ( BadLogins.HasValue ) { await importer.WriteAsync(BadLogins.Value, postgresDbType, token); }
-                else { await importer.WriteNullAsync(token); }
-
-                break;
-
-            case nameof(LockDate):
-                if ( LockDate.HasValue ) { await importer.WriteAsync(LockDate.Value, postgresDbType, token); }
-                else { await importer.WriteNullAsync(token); }
-
-                break;
-
-            case nameof(LockoutEnd):
-                if ( LockoutEnd.HasValue ) { await importer.WriteAsync(LockoutEnd.Value, postgresDbType, token); }
-                else { await importer.WriteNullAsync(token); }
-
-                break;
-
-            case nameof(PasswordHash): await importer.WriteAsync(PasswordHash, postgresDbType, token); break;
-
-            case nameof(RefreshTokenHash): await importer.WriteAsync(RefreshTokenHash, postgresDbType, token); break;
-
-            case nameof(RefreshTokenExpiryTime):
-
-                if ( RefreshTokenExpiryTime.HasValue ) { await importer.WriteAsync(RefreshTokenExpiryTime.Value, postgresDbType, token); }
-                else { await importer.WriteNullAsync(token); }
-
-                break;
-
-            case nameof(SessionID):
-                if ( SessionID.HasValue ) { await importer.WriteAsync(SessionID.Value, postgresDbType, token); }
-                else { await importer.WriteNullAsync(token); }
-
-                break;
-
-            case nameof(IsActive): await importer.WriteAsync(IsActive, postgresDbType, token); break;
-
-            case nameof(IsDisabled): await importer.WriteAsync(IsDisabled, postgresDbType, token); break;
-
-            case nameof(SecurityStamp): await importer.WriteAsync(SecurityStamp, postgresDbType, token); break;
-
-            case nameof(ConcurrencyStamp): await importer.WriteAsync(ConcurrencyStamp, postgresDbType, token); break;
-
-            case nameof(AuthenticatorKey): await importer.WriteAsync(AuthenticatorKey, postgresDbType, token); break;
-
-            case nameof(AdditionalData): await importer.WriteAsync(AdditionalData, postgresDbType, token); break;
-
-            case nameof(EscalateTo):
-                if ( EscalateTo.HasValue ) { await importer.WriteAsync(EscalateTo.Value, postgresDbType, token); }
-                else { await importer.WriteNullAsync(token); }
-
-                break;
-
-            default: throw new InvalidOperationException($"Unknown column: {propertyName}");
-        }
-    }
     public override ValueTask Import( DataRow row, CancellationToken token )
     {
         row[MetaData[nameof(Rights)].DataColumn]                 = Rights;
@@ -341,63 +235,6 @@ public sealed partial record UserRecord : PairRecord<UserRecord>, ITableRecord<U
     }
 
 
-    public override bool Equals( UserRecord? other )
-    {
-        if ( other is null ) { return false; }
-
-        if ( ReferenceEquals(this, other) ) { return true; }
-
-        return base.Equals(other) && string.Equals(UserName, other.UserName, StringComparison.InvariantCultureIgnoreCase) && string.Equals(FullName, other.FullName, StringComparison.InvariantCultureIgnoreCase) && string.Equals(FirstName, other.FirstName, StringComparison.InvariantCultureIgnoreCase) && string.Equals(LastName, other.LastName, StringComparison.InvariantCultureIgnoreCase);
-    }
-    public override int CompareTo( UserRecord? other )
-    {
-        if ( other is null ) { return 1; }
-
-        if ( ReferenceEquals(this, other) ) { return 0; }
-
-
-        int userNameComparison = string.Compare(UserName, other.UserName, StringComparison.Ordinal);
-        if ( userNameComparison != 0 ) { return userNameComparison; }
-
-        int firstNameComparison = string.Compare(FirstName, other.FirstName, StringComparison.Ordinal);
-        if ( firstNameComparison != 0 ) { return firstNameComparison; }
-
-        int lastNameComparison = string.Compare(LastName, other.LastName, StringComparison.Ordinal);
-        if ( lastNameComparison != 0 ) { return lastNameComparison; }
-
-        int fullNameComparison = string.Compare(FullName, other.FullName, StringComparison.Ordinal);
-        if ( fullNameComparison != 0 ) { return fullNameComparison; }
-
-        int descriptionComparison = string.Compare(Description, other.Description, StringComparison.Ordinal);
-        if ( descriptionComparison != 0 ) { return descriptionComparison; }
-
-        int websiteComparison = string.Compare(Website, other.Website, StringComparison.Ordinal);
-        if ( websiteComparison != 0 ) { return websiteComparison; }
-
-        int emailComparison = string.Compare(Email, other.Email, StringComparison.Ordinal);
-        if ( emailComparison != 0 ) { return emailComparison; }
-
-        int phoneNumberComparison = string.Compare(PhoneNumber, other.PhoneNumber, StringComparison.Ordinal);
-        if ( phoneNumberComparison != 0 ) { return phoneNumberComparison; }
-
-        int extComparison = string.Compare(Ext, other.Ext, StringComparison.Ordinal);
-        if ( extComparison != 0 ) { return extComparison; }
-
-        int titleComparison = string.Compare(Title, other.Title, StringComparison.Ordinal);
-        if ( titleComparison != 0 ) { return titleComparison; }
-
-        int departmentComparison = string.Compare(Department, other.Department, StringComparison.Ordinal);
-        if ( departmentComparison != 0 ) { return departmentComparison; }
-
-        return string.Compare(Company, other.Company, StringComparison.Ordinal);
-    }
-    public override int GetHashCode() => HashCode.Combine(base.GetHashCode(), UserName);
-
-
-    public static bool operator >( UserRecord  left, UserRecord right ) => left.CompareTo(right) > 0;
-    public static bool operator >=( UserRecord left, UserRecord right ) => left.CompareTo(right) >= 0;
-    public static bool operator <( UserRecord  left, UserRecord right ) => left.CompareTo(right) < 0;
-    public static bool operator <=( UserRecord left, UserRecord right ) => left.CompareTo(right) <= 0;
 
 
     public event PropertyChangedEventHandler? PropertyChanged;
@@ -450,12 +287,12 @@ public sealed partial record UserRecord : PairRecord<UserRecord>, ITableRecord<U
     [Fixed(DESCRIPTION)]                                                                  public string? Description { get; set; }
     [Fixed(EMAIL)] [Indexed<UserRecord>(nameof(Email))] [ProtectedPersonalData]           public string? Email       { get; set; } = EMPTY;
     [Fixed(WEBSITE)] [ProtectedPersonalData]                                              public string? Website     { get; set; } = EMPTY;
-    [Fixed(LAST_NAME)] [Indexed<UserRecord>(nameof(LastName))] [ProtectedPersonalData]    public string? LastName    { get; set; } = EMPTY;
+    [Fixed(LAST_NAME)] [Indexed<UserRecord>(nameof(LastName))] [ProtectedPersonalData] [StringCompare(StringComparison.InvariantCultureIgnoreCase)]    public string? LastName    { get; set; } = EMPTY;
     [Fixed(PHONE)] [Indexed<UserRecord>(    nameof(PhoneNumber))] [ProtectedPersonalData] public string? PhoneNumber { get; set; } = EMPTY;
     [Fixed(PHONE_EXT)] [ProtectedPersonalData]                                            public string? Ext         { get; set; } = EMPTY;
     [Fixed(TITLE)]                                                                        public string? Title       { get; set; } = EMPTY;
-    [Fixed(FIRST_NAME)] [Indexed<UserRecord>(nameof(FirstName))] [ProtectedPersonalData]  public string? FirstName   { get; set; } = EMPTY;
-    [Fixed(FULL_NAME)] [Indexed<UserRecord>( nameof(FullName))] [ProtectedPersonalData]   public string? FullName    { get; set; } = EMPTY;
+    [Fixed(FIRST_NAME)] [Indexed<UserRecord>(nameof(FirstName))] [ProtectedPersonalData] [StringCompare(StringComparison.InvariantCultureIgnoreCase)]  public string? FirstName   { get; set; } = EMPTY;
+    [Fixed(FULL_NAME)] [Indexed<UserRecord>( nameof(FullName))] [ProtectedPersonalData] [StringCompare(StringComparison.InvariantCultureIgnoreCase)]   public string? FullName    { get; set; } = EMPTY;
     [Fixed(GENDER)] [ProtectedPersonalData]                                               public string? Gender      { get; set; } = EMPTY;
 
 #endregion Details

@@ -66,26 +66,6 @@ public sealed partial record ResxRowRecord : TableRecord<ResxRowRecord>, ITableR
         while ( await reader.ReadAsync(token) ) { yield return Create(reader); }
     }
 
-    public override ValueTask Import( DataRow row, CancellationToken token )
-    {
-        row[MetaData[nameof(KeyID)].DataColumn]      = KeyID;
-        row[MetaData[nameof(Key)].DataColumn]        = Key;
-        row[MetaData[nameof(Neutral)].DataColumn]    = Neutral;
-        row[MetaData[nameof(English)].DataColumn]    = English;
-        row[MetaData[nameof(Spanish)].DataColumn]    = Spanish;
-        row[MetaData[nameof(French)].DataColumn]     = French;
-        row[MetaData[nameof(Swedish)].DataColumn]    = Swedish;
-        row[MetaData[nameof(German)].DataColumn]     = German;
-        row[MetaData[nameof(Polish)].DataColumn]     = Polish;
-        row[MetaData[nameof(Thai)].DataColumn]       = Thai;
-        row[MetaData[nameof(Japanese)].DataColumn]   = Japanese;
-        row[MetaData[nameof(Czech)].DataColumn]      = Czech;
-        row[MetaData[nameof(Portuguese)].DataColumn] = Portuguese;
-        row[MetaData[nameof(Dutch)].DataColumn]      = Dutch;
-        row[MetaData[nameof(Korean)].DataColumn]     = Korean;
-        row[MetaData[nameof(Arabic)].DataColumn]     = Arabic;
-        return base.Import(row, token);
-    }
     public override CommandParameters ToDynamicParameters()
     {
         CommandParameters parameters = base.ToDynamicParameters();
@@ -107,37 +87,6 @@ public sealed partial record ResxRowRecord : TableRecord<ResxRowRecord>, ITableR
         parameters.Add(nameof(Korean),     Korean);
         parameters.Add(nameof(Arabic),     Arabic);
         return parameters;
-    }
-
-
-    public override int CompareTo( ResxRowRecord? other )
-    {
-        if ( other is null ) { return 1; }
-
-        if ( ReferenceEquals(this, other) ) { return 0; }
-
-        return string.Compare(Neutral, other.Neutral, StringComparison.Ordinal);
-    }
-    public override int GetHashCode()
-    {
-        HashCode hashCode = new();
-        hashCode.Add(base.GetHashCode());
-        hashCode.Add(Neutral);
-        hashCode.Add(English);
-        hashCode.Add(Spanish);
-        hashCode.Add(French);
-        hashCode.Add(Swedish);
-        hashCode.Add(German);
-        hashCode.Add(Chinese);
-        hashCode.Add(Polish);
-        hashCode.Add(Thai);
-        hashCode.Add(Japanese);
-        hashCode.Add(Czech);
-        hashCode.Add(Portuguese);
-        hashCode.Add(Dutch);
-        hashCode.Add(Korean);
-        hashCode.Add(Arabic);
-        return hashCode.ToHashCode();
     }
 
 
@@ -182,18 +131,4 @@ public sealed partial record ResxRowRecord : TableRecord<ResxRowRecord>, ITableR
                                                                    _                             => throw new OutOfRangeException(language)
                                                                } ??
                                                                Neutral;
-    public override bool Equals( ResxRowRecord? other )
-    {
-        if ( other is null ) { return false; }
-
-        if ( ReferenceEquals(this, other) ) { return true; }
-
-        return Neutral == other.Neutral || KeyID == other.KeyID;
-    }
-
-
-    public static bool operator >( ResxRowRecord  left, ResxRowRecord right ) => left.CompareTo(right) > 0;
-    public static bool operator >=( ResxRowRecord left, ResxRowRecord right ) => left.CompareTo(right) >= 0;
-    public static bool operator <( ResxRowRecord  left, ResxRowRecord right ) => left.CompareTo(right) < 0;
-    public static bool operator <=( ResxRowRecord left, ResxRowRecord right ) => left.CompareTo(right) <= 0;
 }

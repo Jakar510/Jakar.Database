@@ -8,9 +8,33 @@ namespace Jakar.Database.Generators;
 [Generator]
 public sealed class TableRecordGenerator : IIncrementalGenerator
 {
+    // Reported when a concrete type implements ITableRecord<TSelf> but is neither 'sealed' nor 'abstract'. End records must be sealed (or abstract for intermediate bases).
+    private static readonly DiagnosticDescriptor MUST_BE_SEALED_OR_ABSTRACT = new("JDB001",
+                                                                                  "ITableRecord must be sealed or abstract",
+                                                                                  "'{0}' implements ITableRecord<TSelf> and must be declared 'sealed' or 'abstract'",
+                                                                                  "Jakar.Database.Generators",
+                                                                                  DiagnosticSeverity.Error,
+                                                                                  true);
+
+    // Reported when [StringCompare] is applied to a property whose type is not 'string'; the attribute is ignored in that case.
+    private static readonly DiagnosticDescriptor STRING_COMPARE_ON_NON_STRING = new("JDB002",
+                                                                                    "StringCompare is only valid on string properties",
+                                                                                    "[StringCompare] on '{0}' is ignored because its type is not 'string'",
+                                                                                    "Jakar.Database.Generators",
+                                                                                    DiagnosticSeverity.Warning,
+                                                                                    true);
+
+
     public void Initialize( IncrementalGeneratorInitializationContext context )
     {
         IncrementalValuesProvider<GenerationCandidate> candidates = context.SyntaxProvider.CreateSyntaxProvider(static ( node, _ ) => node is TypeDeclarationSyntax { Modifiers: var modifiers } && modifiers.Any(SyntaxKind.PartialKeyword), static ( ctx, _ ) => GetCandidate(ctx)).Where(static candidate => candidate is not null).Select(static ( candidate, _ ) => candidate!);
+
+        IncrementalValuesProvider<Diagnostic> diagnostics = context.SyntaxProvider.CreateSyntaxProvider(static ( node, _ ) => node is TypeDeclarationSyntax, static ( ctx, _ ) => GetDiagnostic(ctx)).Where(static diagnostic => diagnostic is not null).Select(static ( diagnostic, _ ) => diagnostic!);
+
+        IncrementalValuesProvider<Diagnostic> stringCompareDiagnostics = context.SyntaxProvider.CreateSyntaxProvider(static ( node, _ ) => node is PropertyDeclarationSyntax { AttributeLists.Count: > 0 }, static ( ctx, _ ) => GetStringCompareDiagnostic(ctx)).Where(static diagnostic => diagnostic is not null).Select(static ( diagnostic, _ ) => diagnostic!);
+
+        context.RegisterSourceOutput(diagnostics,              static ( SourceProductionContext spc, Diagnostic diagnostic ) => spc.ReportDiagnostic(diagnostic));
+        context.RegisterSourceOutput(stringCompareDiagnostics, static ( SourceProductionContext spc, Diagnostic diagnostic ) => spc.ReportDiagnostic(diagnostic));
 
         context.RegisterSourceOutput(candidates.Collect(),
                                      static ( SourceProductionContext spc, ImmutableArray<GenerationCandidate> values ) =>
@@ -47,18 +71,20 @@ public sealed class TableRecordGenerator : IIncrementalGenerator
         bool hasToDynamicParameters = HasMethod(symbol, "ToDynamicParameters", static method => !method.IsStatic && method.Parameters.Length == 0);
         bool hasExport              = HasMethod(symbol, "Export",              static method => method.IsStatic  && method.Parameters.Length == 2 && IsNpgsqlBinaryExporter(method.Parameters[0].Type) && IsCancellationToken(method.Parameters[1].Type));
         bool hasBatchImport         = HasMethod(symbol, "Import",              static method => !method.IsStatic && method.Parameters.Length == 2 && IsNpgsqlBatchCommand(method.Parameters[0].Type)   && IsCancellationToken(method.Parameters[1].Type));
-        bool hasBinaryImport        = HasMethod(symbol, "Import",              static method => !method.IsStatic && method.Parameters.Length == 4 && IsNpgsqlBinaryImporter(method.Parameters[0].Type) && IsString(method.Parameters[1].Type) && IsNpgsqlDbType(method.Parameters[2].Type) && IsCancellationToken(method.Parameters[3].Type));
+        bool hasBinaryImport        = HasMethod(symbol, "Import",              static method => !method.IsStatic && method.Parameters.Length == 2 && IsNpgsqlBinaryImporter(method.Parameters[0].Type) && IsCancellationToken(method.Parameters[1].Type));
+        bool hasDataRowImport       = HasMethod(symbol, "Import",              static method => !method.IsStatic && method.Parameters.Length == 2 && IsDataRow(method.Parameters[0].Type)             && IsCancellationToken(method.Parameters[1].Type));
 
         // The generated Export factory adds a secondary constructor chained to the framework base ctor; a record with a primary constructor would require `: this(...)` instead, so skip Export for those.
         bool hasPrimaryConstructor = syntax is RecordDeclarationSyntax { ParameterList: not null };
 
-        bool       generateCreate              = hasReaderCtor                 && !hasCreate;
-        bool       generateToDynamicParameters = declaredProperties.Length > 0 && !hasToDynamicParameters;
-        ExportPlan? exportPlan                 = hasExport || hasPrimaryConstructor ? null : GetExportPlan(symbol);
-        bool       generateBatchImport         = !hasBatchImport;
-        bool       generateBinaryImport        = importProperties.Length > 0 && !hasBinaryImport;
+        ImmutableArray<EqualityProperty> equalityProperties = GetEqualityProperties(symbol);
 
-        if ( !generateCreate && !generateToDynamicParameters && exportPlan is null && !generateBatchImport && !generateBinaryImport ) { return null; }
+        bool        generateCreate              = hasReaderCtor                 && !hasCreate;
+        bool        generateToDynamicParameters = declaredProperties.Length > 0 && !hasToDynamicParameters;
+        ExportPlan? exportPlan                  = hasExport || hasPrimaryConstructor ? null : GetExportPlan(symbol);
+        bool        generateBatchImport         = !hasBatchImport;
+        bool        generateBinaryImport        = !hasBinaryImport;
+        bool        generateDataRowImport       = declaredProperties.Length > 0 && !hasDataRowImport;
 
         ImmutableArray<string> columnOrder = GetColumnOrder(symbol) ?? [];
 
@@ -70,12 +96,45 @@ public sealed class TableRecordGenerator : IIncrementalGenerator
                                        GetTypeDeclaration(syntax),
                                        declaredProperties,
                                        importProperties,
+                                       equalityProperties,
                                        columnOrder,
                                        generateCreate,
                                        generateToDynamicParameters,
                                        exportPlan,
                                        generateBatchImport,
-                                       generateBinaryImport);
+                                       generateBinaryImport,
+                                       generateDataRowImport);
+    }
+
+
+    private static Diagnostic? GetDiagnostic( GeneratorSyntaxContext context )
+    {
+        if ( context.Node is not TypeDeclarationSyntax syntax ) { return null; }
+
+        if ( context.SemanticModel.GetDeclaredSymbol(syntax) is not INamedTypeSymbol symbol ) { return null; }
+
+        if ( symbol.IsAbstract || symbol.IsSealed || symbol.IsValueType ) { return null; }
+
+        if ( !ImplementsITableRecord(symbol) ) { return null; }
+
+        // A partial type has multiple declarations; only report once (on the first declaring syntax) to avoid duplicate diagnostics.
+        if ( symbol.DeclaringSyntaxReferences.Length > 0 && symbol.DeclaringSyntaxReferences[0].GetSyntax() != context.Node ) { return null; }
+
+        return Diagnostic.Create(MUST_BE_SEALED_OR_ABSTRACT, syntax.Identifier.GetLocation(), symbol.Name);
+    }
+
+
+    private static Diagnostic? GetStringCompareDiagnostic( GeneratorSyntaxContext context )
+    {
+        if ( context.Node is not PropertyDeclarationSyntax syntax ) { return null; }
+
+        if ( context.SemanticModel.GetDeclaredSymbol(syntax) is not IPropertySymbol symbol ) { return null; }
+
+        if ( !HasAttribute(symbol, "StringCompareAttribute") ) { return null; }
+
+        if ( symbol.Type.SpecialType == SpecialType.System_String ) { return null; }
+
+        return Diagnostic.Create(STRING_COMPARE_ON_NON_STRING, syntax.Identifier.GetLocation(), symbol.Name);
     }
 
     private static ImmutableArray<string> GetDeclaredProperties( INamedTypeSymbol symbol ) =>
@@ -88,6 +147,68 @@ public sealed class TableRecordGenerator : IIncrementalGenerator
                 .OrderBy(GetPropertyOrder)
                 .Select(static property => property.Name)
     ];
+
+    // Declared (this-type-only) public instance properties that have BOTH a getter and a setter (init counts), excluding [DbIgnore].
+    // Ordered by [SortOrder(priority)] ascending (lower compared first), then declaration order. Used for the generated Equals / CompareTo / GetHashCode.
+    private static ImmutableArray<EqualityProperty> GetEqualityProperties( INamedTypeSymbol symbol ) =>
+    [
+        ..symbol.GetMembers()
+                .OfType<IPropertySymbol>()
+                .Where(static property => property is { IsStatic: false, DeclaredAccessibility: Accessibility.Public, GetMethod: not null, SetMethod: not null })
+                .Where(property => SymbolEqualityComparer.Default.Equals(property.ContainingType, symbol))
+                .Where(static property => !HasAttribute(property, "DbIgnoreAttribute"))
+                .OrderBy(GetSortOrder)
+                .ThenBy(GetPropertyOrder)
+                .Select(static property => CreateEqualityProperty(property))
+    ];
+
+    private static EqualityProperty CreateEqualityProperty( IPropertySymbol property )
+    {
+        bool isString = property.Type.SpecialType == SpecialType.System_String;
+
+        // Strings use string.Equals / string.Compare with an explicit StringComparison ([StringCompare] or Ordinal by default); [StringCompare] on non-string properties is ignored (warned via JDB002).
+        string? stringComparison = isString
+                                       ? $"global::System.StringComparison.{GetStringComparison(property) ?? "Ordinal"}"
+                                       : null;
+
+        return new EqualityProperty(property.Name, property.Type.ToDisplayString(FULLY_QUALIFIED_NULLABLE), isString, stringComparison);
+    }
+
+    private static int GetSortOrder( IPropertySymbol property )
+    {
+        foreach ( AttributeData attribute in property.GetAttributes() )
+        {
+            if ( attribute.AttributeClass?.Name != "SortOrderAttribute" ) { continue; }
+
+            if ( attribute.ConstructorArguments.Length == 1 && attribute.ConstructorArguments[0].Value is int priority ) { return priority; }
+        }
+
+        return int.MaxValue;
+    }
+
+    private static string? GetStringComparison( IPropertySymbol property )
+    {
+        foreach ( AttributeData attribute in property.GetAttributes() )
+        {
+            if ( attribute.AttributeClass?.Name != "StringCompareAttribute" ) { continue; }
+
+            if ( attribute.ConstructorArguments.Length == 1 && attribute.ConstructorArguments[0].Value is int value )
+            {
+                return value switch
+                       {
+                           0 => "CurrentCulture",
+                           1 => "CurrentCultureIgnoreCase",
+                           2 => "InvariantCulture",
+                           3 => "InvariantCultureIgnoreCase",
+                           4 => "Ordinal",
+                           5 => "OrdinalIgnoreCase",
+                           _ => "Ordinal"
+                       };
+            }
+        }
+
+        return null;
+    }
 
     private static ImmutableArray<ImportProperty> GetImportProperties( INamedTypeSymbol symbol )
     {
@@ -582,9 +703,8 @@ public sealed class TableRecordGenerator : IIncrementalGenerator
     private static bool IsNpgsqlBinaryExporter( ITypeSymbol      type ) => type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) == "global::Npgsql.NpgsqlBinaryExporter";
     private static bool IsNpgsqlBatchCommand( ITypeSymbol        type ) => type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) == "global::Npgsql.NpgsqlBatchCommand";
     private static bool IsNpgsqlBinaryImporter( ITypeSymbol      type ) => type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) == "global::Npgsql.NpgsqlBinaryImporter";
-    private static bool IsNpgsqlDbType( ITypeSymbol              type ) => type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) == "global::NpgsqlTypes.NpgsqlDbType";
     private static bool IsCancellationToken( ITypeSymbol         type ) => type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) == "global::System.Threading.CancellationToken";
-    private static bool IsString( ITypeSymbol                    type ) => type.SpecialType                                               == SpecialType.System_String;
+    private static bool IsDataRow( ITypeSymbol                   type ) => type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) == "global::System.Data.DataRow";
 
     private static string GetWriteExpression( IPropertySymbol property )
     {
@@ -634,6 +754,7 @@ public sealed class TableRecordGenerator : IIncrementalGenerator
         sb.AppendLine("#nullable enable");
         sb.AppendLine("using System;");
         sb.AppendLine("using System.CodeDom.Compiler;");
+        sb.AppendLine("using System.Data;");
         sb.AppendLine("using System.Data.Common;");
         sb.AppendLine("using System.Threading;");
         sb.AppendLine("using System.Threading.Tasks;");
@@ -727,77 +848,245 @@ public sealed class TableRecordGenerator : IIncrementalGenerator
         {
             if ( needsBlankLine ) { sb.AppendLine(); }
 
-            sb.AppendLine("    protected override async ValueTask Import( NpgsqlBinaryImporter importer, string propertyName, NpgsqlDbType postgresDbType, CancellationToken token )");
-            sb.AppendLine("    {");
-            sb.AppendLine("        switch ( propertyName )");
-            sb.AppendLine("        {");
-
-            foreach ( ImportProperty property in candidate.ImportProperties )
-            {
-                sb.Append("            case nameof(").Append(property.Name).AppendLine("):");
-
-                if ( property.IsNullableValueType )
-                {
-                    sb.Append("                if ( ").Append(property.Name).AppendLine(".HasValue )");
-                    sb.AppendLine("                {");
-                    sb.Append("                    await importer.WriteAsync(").Append(property.NullableValueExpression).AppendLine(", postgresDbType, token);");
-                    sb.AppendLine("                }");
-                    sb.AppendLine("                else");
-                    sb.AppendLine("                {");
-                    sb.AppendLine("                    await importer.WriteNullAsync(token);");
-                    sb.AppendLine("                }");
-                    sb.AppendLine();
-                    sb.AppendLine("                return;");
-                    sb.AppendLine();
-                    continue;
-                }
-
-                sb.Append("                await importer.WriteAsync(").Append(property.WriteExpression).AppendLine(", postgresDbType, token);");
-                sb.AppendLine("                return;");
-                sb.AppendLine();
-            }
-
-            sb.AppendLine("            default:");
-            sb.AppendLine("                throw new InvalidOperationException($\"Unknown column: {propertyName}\");");
-            sb.AppendLine("        }");
-            sb.AppendLine("    }");
+            RenderBinaryImport(sb, candidate);
+            needsBlankLine = true;
         }
+
+        if ( candidate.GenerateDataRowImport )
+        {
+            if ( needsBlankLine ) { sb.AppendLine(); }
+
+            sb.AppendLine("    /// <summary>Writes the declared columns of this record into the <see cref=\"DataRow\"/>, then chains to the framework columns on the base type.</summary>");
+            sb.AppendLine("    public override ValueTask Import( DataRow row, CancellationToken token )");
+            sb.AppendLine("    {");
+
+            foreach ( string propertyName in candidate.DeclaredProperties ) { sb.Append("        row[MetaData[nameof(").Append(propertyName).Append(")].DataColumn] = ").Append(propertyName).AppendLine(";"); }
+
+            sb.AppendLine("        return base.Import(row, token);");
+            sb.AppendLine("    }");
+            needsBlankLine = true;
+        }
+
+        if ( needsBlankLine ) { sb.AppendLine(); }
+
+        RenderEquals(sb, candidate);
+        sb.AppendLine();
+        RenderGetHashCode(sb, candidate);
+        sb.AppendLine();
+        RenderCompareTo(sb, candidate);
+        sb.AppendLine();
+        RenderComparisonOperators(sb, candidate);
 
         sb.AppendLine("}");
         return sb.ToString();
     }
 
 
+    // ----- IEqualComparable<TSelf> : Equals / GetHashCode / CompareTo / ordering operators --------------------------------------------------------------------------------------------
+    // base.Equals / base.CompareTo / base.GetHashCode fold in every inherited framework column; the generated bodies append the declared columns (get + set) in [SortOrder] order.
+
+    private static void RenderEquals( StringBuilder sb, GenerationCandidate candidate )
+    {
+        sb.Append("    public override bool Equals( ").Append(candidate.TypeName).AppendLine("? other )");
+        sb.AppendLine("    {");
+        sb.AppendLine("        if ( other is null ) { return false; }");
+        sb.AppendLine();
+        sb.AppendLine("        if ( ReferenceEquals(this, other) ) { return true; }");
+        sb.AppendLine();
+
+        if ( candidate.EqualityProperties.IsDefaultOrEmpty ) { sb.AppendLine("        return base.Equals(other);"); }
+        else
+        {
+            sb.Append("        return base.Equals(other)");
+
+            foreach ( EqualityProperty property in candidate.EqualityProperties )
+            {
+                sb.AppendLine();
+
+                if ( property.IsString ) { sb.Append("            && string.Equals(").Append(property.Name).Append(", other.").Append(property.Name).Append(", ").Append(property.StringComparison).Append(")"); }
+                else { sb.Append("            && global::System.Collections.Generic.EqualityComparer<").Append(property.TypeDisplay).Append(">.Default.Equals(").Append(property.Name).Append(", other.").Append(property.Name).Append(")"); }
+            }
+
+            sb.AppendLine(";");
+        }
+
+        sb.AppendLine("    }");
+    }
+
+    private static void RenderGetHashCode( StringBuilder sb, GenerationCandidate candidate )
+    {
+        if ( candidate.EqualityProperties.IsDefaultOrEmpty )
+        {
+            sb.AppendLine("    public override int GetHashCode() => base.GetHashCode();");
+            return;
+        }
+
+        sb.AppendLine("    public override int GetHashCode()");
+        sb.AppendLine("    {");
+        sb.AppendLine("        global::System.HashCode hash = new global::System.HashCode();");
+        sb.AppendLine("        hash.Add(base.GetHashCode());");
+
+        foreach ( EqualityProperty property in candidate.EqualityProperties )
+        {
+            if ( property.IsString ) { sb.Append("        hash.Add(").Append(property.Name).Append(", global::System.StringComparer.FromComparison(").Append(property.StringComparison).AppendLine("));"); }
+            else { sb.Append("        hash.Add(").Append(property.Name).AppendLine(");"); }
+        }
+
+        sb.AppendLine("        return hash.ToHashCode();");
+        sb.AppendLine("    }");
+    }
+
+    private static void RenderCompareTo( StringBuilder sb, GenerationCandidate candidate )
+    {
+        sb.Append("    public override int CompareTo( ").Append(candidate.TypeName).AppendLine("? other )");
+        sb.AppendLine("    {");
+        sb.AppendLine("        if ( other is null ) { return 1; }");
+        sb.AppendLine();
+        sb.AppendLine("        if ( ReferenceEquals(this, other) ) { return 0; }");
+        sb.AppendLine();
+        sb.AppendLine("        int compare = base.CompareTo(other);");
+        sb.AppendLine("        if ( compare != 0 ) { return compare; }");
+
+        foreach ( EqualityProperty property in candidate.EqualityProperties )
+        {
+            sb.AppendLine();
+
+            if ( property.IsString ) { sb.Append("        compare = string.Compare(").Append(property.Name).Append(", other.").Append(property.Name).Append(", ").Append(property.StringComparison).AppendLine(");"); }
+            else { sb.Append("        compare = global::System.Collections.Generic.Comparer<").Append(property.TypeDisplay).Append(">.Default.Compare(").Append(property.Name).Append(", other.").Append(property.Name).AppendLine(");"); }
+
+            sb.AppendLine("        if ( compare != 0 ) { return compare; }");
+        }
+
+        sb.AppendLine();
+        sb.AppendLine("        return compare;");
+        sb.AppendLine("    }");
+    }
+
+    private static void RenderComparisonOperators( StringBuilder sb, GenerationCandidate candidate )
+    {
+        string name = candidate.TypeName;
+
+        // Record types already synthesize == / != from their equality contract; only non-record types need them generated here.
+        if ( candidate.TypeDeclaration.IndexOf("record", StringComparison.Ordinal) < 0 )
+        {
+            sb.Append("    public static bool operator ==( ").Append(name).Append("? left, ").Append(name).AppendLine("? right ) => left is null ? right is null : left.Equals(right);");
+            sb.Append("    public static bool operator !=( ").Append(name).Append("? left, ").Append(name).AppendLine("? right ) => !( left == right );");
+        }
+
+        sb.Append("    public static bool operator >( ").Append(name).Append("  left, ").Append(name).AppendLine(" right ) => left.CompareTo(right) > 0;");
+        sb.Append("    public static bool operator >=( ").Append(name).Append(" left, ").Append(name).AppendLine(" right ) => left.CompareTo(right) >= 0;");
+        sb.Append("    public static bool operator <( ").Append(name).Append("  left, ").Append(name).AppendLine(" right ) => left.CompareTo(right) < 0;");
+        sb.Append("    public static bool operator <=( ").Append(name).Append(" left, ").Append(name).AppendLine(" right ) => left.CompareTo(right) <= 0;");
+    }
+
+
+    // ----- Binary COPY import (public 2-param) ----------------------------------------------------------------------------------------------------------------------------------------
+    // When the build-time column order is known, the columns are written straight-line in that exact order (the same order the runtime assigns via [GeneratedColumnOrder]); the
+    // per-column NpgsqlDbType is still resolved from MetaData. When the order cannot be computed, falls back to iterating the runtime SortedColumns and dispatching per property name.
+
+    private static void RenderBinaryImport( StringBuilder sb, GenerationCandidate candidate )
+    {
+        sb.AppendLine("    /// <summary>Writes one row to the binary COPY stream (column order matches the table definition).</summary>");
+        sb.AppendLine("    public override async ValueTask Import( NpgsqlBinaryImporter importer, CancellationToken token )");
+        sb.AppendLine("    {");
+        sb.AppendLine("        await importer.StartRowAsync(token);");
+
+        if ( !candidate.ColumnOrder.IsDefaultOrEmpty )
+        {
+            foreach ( string columnName in candidate.ColumnOrder )
+            {
+                if ( !TryGetImportProperty(candidate, columnName, out ImportProperty property) ) { continue; }
+
+                AppendBinaryWrite(sb, property, $"MetaData[nameof({property.Name})].PostgresDbType", "        ");
+            }
+
+            sb.AppendLine("    }");
+            return;
+        }
+
+        // Fallback: drive the writes from the runtime column order.
+        sb.AppendLine();
+        sb.AppendLine("        foreach ( global::Jakar.Database.ColumnMetaData column in MetaData.SortedColumns )");
+        sb.AppendLine("        {");
+        sb.AppendLine("            switch ( column.PropertyName )");
+        sb.AppendLine("            {");
+
+        foreach ( ImportProperty property in candidate.ImportProperties )
+        {
+            sb.Append("                case nameof(").Append(property.Name).AppendLine("):");
+            AppendBinaryWrite(sb, property, "column.PostgresDbType", "                    ");
+            sb.AppendLine("                    break;");
+        }
+
+        sb.AppendLine("                default:");
+        sb.AppendLine("                    throw new InvalidOperationException($\"Unknown column: {column.PropertyName}\");");
+        sb.AppendLine("            }");
+        sb.AppendLine("        }");
+        sb.AppendLine("    }");
+    }
+
+    private static void AppendBinaryWrite( StringBuilder sb, ImportProperty property, string dbTypeExpression, string indent )
+    {
+        if ( property.IsNullableValueType )
+        {
+            sb.Append(indent).Append("if ( ").Append(property.Name).Append(".HasValue ) { await importer.WriteAsync(").Append(property.NullableValueExpression).Append(", ").Append(dbTypeExpression).AppendLine(", token); }");
+            sb.Append(indent).AppendLine("else { await importer.WriteNullAsync(token); }");
+            return;
+        }
+
+        sb.Append(indent).Append("await importer.WriteAsync(").Append(property.WriteExpression).Append(", ").Append(dbTypeExpression).AppendLine(", token);");
+    }
+
+    private static bool TryGetImportProperty( GenerationCandidate candidate, string name, out ImportProperty property )
+    {
+        foreach ( ImportProperty candidateProperty in candidate.ImportProperties )
+        {
+            if ( !string.Equals(candidateProperty.Name, name, StringComparison.Ordinal) ) { continue; }
+
+            property = candidateProperty;
+            return true;
+        }
+
+        property = default;
+        return false;
+    }
+
+
 
     private sealed class GenerationCandidate : IEquatable<GenerationCandidate>
     {
-        public string?                        Namespace                   { get; }
-        public string                         TypeName                    { get; }
-        public string                         HintName                    { get; }
-        public string                         TypeDeclaration             { get; }
-        public ImmutableArray<string>         DeclaredProperties          { get; }
-        public ImmutableArray<ImportProperty> ImportProperties            { get; }
-        public ImmutableArray<string>         ColumnOrder                 { get; }
-        public bool                           GenerateCreate              { get; }
-        public bool                           GenerateToDynamicParameters { get; }
-        public ExportPlan?                    ExportPlan                  { get; }
-        public bool                           GenerateBatchImport         { get; }
-        public bool                           GenerateBinaryImport        { get; }
-        public bool                           ShouldGenerate              => GenerateCreate || GenerateToDynamicParameters || ExportPlan is not null || GenerateBatchImport || GenerateBinaryImport;
+        public string?                          Namespace                   { get; }
+        public string                           TypeName                    { get; }
+        public string                           HintName                    { get; }
+        public string                           TypeDeclaration             { get; }
+        public ImmutableArray<string>           DeclaredProperties          { get; }
+        public ImmutableArray<ImportProperty>   ImportProperties            { get; }
+        public ImmutableArray<EqualityProperty> EqualityProperties          { get; }
+        public ImmutableArray<string>           ColumnOrder                 { get; }
+        public bool                             GenerateCreate              { get; }
+        public bool                             GenerateToDynamicParameters { get; }
+        public ExportPlan?                      ExportPlan                  { get; }
+        public bool                             GenerateBatchImport         { get; }
+        public bool                             GenerateBinaryImport        { get; }
+        public bool                             GenerateDataRowImport       { get; }
+        // Equals / GetHashCode / CompareTo / comparison operators are always generated, so a valid candidate always produces output.
+        public bool                             ShouldGenerate              => true;
 
 
-        public GenerationCandidate( string?                        nameSpace,
-                                    string                         typeName,
-                                    string                         hintName,
-                                    string                         typeDeclaration,
-                                    ImmutableArray<string>         declaredProperties,
-                                    ImmutableArray<ImportProperty> importProperties,
-                                    ImmutableArray<string>         columnOrder,
-                                    bool                           generateCreate,
-                                    bool                           generateToDynamicParameters,
-                                    ExportPlan?                    exportPlan,
-                                    bool                           generateBatchImport,
-                                    bool                           generateBinaryImport )
+        public GenerationCandidate( string?                          nameSpace,
+                                    string                           typeName,
+                                    string                           hintName,
+                                    string                           typeDeclaration,
+                                    ImmutableArray<string>           declaredProperties,
+                                    ImmutableArray<ImportProperty>   importProperties,
+                                    ImmutableArray<EqualityProperty> equalityProperties,
+                                    ImmutableArray<string>           columnOrder,
+                                    bool                             generateCreate,
+                                    bool                             generateToDynamicParameters,
+                                    ExportPlan?                      exportPlan,
+                                    bool                             generateBatchImport,
+                                    bool                             generateBinaryImport,
+                                    bool                             generateDataRowImport )
         {
             Namespace                   = nameSpace;
             TypeName                    = typeName;
@@ -805,12 +1094,14 @@ public sealed class TableRecordGenerator : IIncrementalGenerator
             TypeDeclaration             = typeDeclaration;
             DeclaredProperties          = declaredProperties;
             ImportProperties            = importProperties;
+            EqualityProperties          = equalityProperties;
             ColumnOrder                 = columnOrder;
             GenerateCreate              = generateCreate;
             GenerateToDynamicParameters = generateToDynamicParameters;
             ExportPlan                  = exportPlan;
             GenerateBatchImport         = generateBatchImport;
             GenerateBinaryImport        = generateBinaryImport;
+            GenerateDataRowImport       = generateDataRowImport;
         }
         public bool Equals( GenerationCandidate? other )
         {
@@ -834,6 +1125,16 @@ public sealed class TableRecordGenerator : IIncrementalGenerator
         public string WriteExpression         { get; } = writeExpression;
         public bool   IsNullableValueType     { get; } = isNullableValueType;
         public string NullableValueExpression { get; } = nullableValueExpression;
+    }
+
+
+
+    private readonly struct EqualityProperty( string name, string typeDisplay, bool isString, string? stringComparison )
+    {
+        public string  Name             { get; } = name;
+        public string  TypeDisplay      { get; } = typeDisplay;
+        public bool    IsString         { get; } = isString;
+        public string? StringComparison { get; } = stringComparison;
     }
 
 

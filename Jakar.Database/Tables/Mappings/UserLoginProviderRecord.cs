@@ -15,11 +15,11 @@ public sealed partial record UserLoginProviderRecord : OwnedTableRecord<UserLogi
     private static readonly    SqlName __tableName = TABLE_NAME;
     public static ref readonly SqlName TableName => ref __tableName;
 
-    [Indexed<UserLoginProviderRecord>(nameof(LoginProvider))] public                                string               LoginProvider       { get; init; }
-    public                                                                                          string?              ProviderDisplayName { get; init; }
-    [Indexed<UserLoginProviderRecord>(nameof(ProviderKey))] [ProtectedPersonalData] public          string               ProviderKey         { get; init; }
+    [Indexed<UserLoginProviderRecord>(nameof(LoginProvider))] [StringCompare(StringComparison.InvariantCultureIgnoreCase)] public                                string               LoginProvider       { get; init; }
+    [StringCompare(StringComparison.InvariantCultureIgnoreCase)]                                                           public                                string?              ProviderDisplayName { get; init; }
+    [Indexed<UserLoginProviderRecord>(nameof(ProviderKey))] [ProtectedPersonalData] [StringCompare(StringComparison.InvariantCultureIgnoreCase)] public          string               ProviderKey         { get; init; }
     [ForeignKey<UserLoginProviderRecord, UserRecord>]                               public override RecordID<UserRecord> UserID              { get; init; }
-    [Indexed<UserLoginProviderRecord>(nameof(Value))] [ProtectedPersonalData]       public          string?              Value               { get; init; }
+    [Indexed<UserLoginProviderRecord>(nameof(Value))] [ProtectedPersonalData] [StringCompare(StringComparison.InvariantCultureIgnoreCase)]       public          string?              Value               { get; init; }
 
 
     public UserLoginProviderRecord( UserRecord user, UserLoginInfo info ) : this(user, info.LoginProvider, info.ProviderKey, info.ProviderDisplayName) { }
@@ -40,48 +40,6 @@ public sealed partial record UserLoginProviderRecord : OwnedTableRecord<UserLogi
     }
 
 
-    protected override async ValueTask Import( NpgsqlBinaryImporter importer, string propertyName, NpgsqlDbType postgresDbType, CancellationToken token )
-    {
-        switch ( propertyName )
-        {
-            case nameof(ID):
-                await importer.WriteAsync(ID.Value, postgresDbType, token);
-                break;
-
-            case nameof(DateCreated):
-                await importer.WriteAsync(DateCreated, postgresDbType, token);
-                break;
-
-            case nameof(UserID):
-                await importer.WriteAsync(UserID.Value, postgresDbType, token);
-                break;
-
-            case nameof(LoginProvider):
-                await importer.WriteAsync(LoginProvider, postgresDbType, token);
-                break;
-
-            case nameof(ProviderDisplayName):
-                await importer.WriteAsync(ProviderDisplayName, postgresDbType, token);
-                break;
-
-            case nameof(ProviderKey):
-                await importer.WriteAsync(ProviderKey, postgresDbType, token);
-                break;
-
-            case nameof(Value):
-                await importer.WriteAsync(Value, postgresDbType, token);
-                break;
-
-            case nameof(LastModified):
-                if ( LastModified.HasValue ) { await importer.WriteAsync(LastModified.Value, postgresDbType, token); }
-                else { await importer.WriteNullAsync(token); }
-
-                break;
-
-            default:
-                throw new InvalidOperationException($"Unknown column: {propertyName}");
-        }
-    }
     public override ValueTask Import( DataRow row, CancellationToken token )
     {
         row[MetaData[nameof(LoginProvider)].DataColumn]       = LoginProvider;
@@ -107,34 +65,6 @@ public sealed partial record UserLoginProviderRecord : OwnedTableRecord<UserLogi
     }
 
     [Pure] public UserLoginInfo ToUserLoginInfo() => new(LoginProvider, ProviderKey, ProviderDisplayName);
-
-
-    public override bool Equals( UserLoginProviderRecord? other )
-    {
-        if ( other is null ) { return false; }
-
-        if ( ReferenceEquals(this, other) ) { return true; }
-
-        return base.Equals(other)                                                                                         &&
-               string.Equals(LoginProvider,       other.LoginProvider,       StringComparison.InvariantCultureIgnoreCase) &&
-               string.Equals(ProviderDisplayName, other.ProviderDisplayName, StringComparison.InvariantCultureIgnoreCase) &&
-               string.Equals(ProviderKey,         other.ProviderKey,         StringComparison.InvariantCultureIgnoreCase) &&
-               string.Equals(Value,               other.Value,               StringComparison.InvariantCultureIgnoreCase);
-    }
-    public override int GetHashCode()
-    {
-        HashCode hashCode = new();
-        hashCode.Add(base.GetHashCode());
-        hashCode.Add(LoginProvider,       StringComparer.InvariantCultureIgnoreCase);
-        hashCode.Add(ProviderDisplayName, StringComparer.InvariantCultureIgnoreCase);
-        hashCode.Add(ProviderKey,         StringComparer.InvariantCultureIgnoreCase);
-        hashCode.Add(Value,               StringComparer.InvariantCultureIgnoreCase);
-        return hashCode.ToHashCode();
-    }
-    public static bool operator >( UserLoginProviderRecord  left, UserLoginProviderRecord right ) => left.CompareTo(right) > 0;
-    public static bool operator >=( UserLoginProviderRecord left, UserLoginProviderRecord right ) => left.CompareTo(right) >= 0;
-    public static bool operator <( UserLoginProviderRecord  left, UserLoginProviderRecord right ) => left.CompareTo(right) < 0;
-    public static bool operator <=( UserLoginProviderRecord left, UserLoginProviderRecord right ) => left.CompareTo(right) <= 0;
 
 
     public static implicit operator UserLoginInfo( UserLoginProviderRecord value ) => value.ToUserLoginInfo();

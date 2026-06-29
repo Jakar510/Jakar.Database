@@ -9,7 +9,7 @@ namespace Jakar.Database;
 [SuppressMessage("ReSharper", "LoopCanBeConvertedToQuery")]
 public sealed partial record UserAddressRecord : Mapping<UserAddressRecord, UserRecord, AddressRecord>, ICreateMapping<UserAddressRecord, UserRecord, AddressRecord>
 {
-    public const  string TABLE_NAME = "user_adreesses";
+    public const string TABLE_NAME = "user_adreesses";
 
     // ReSharper disable once ReplaceWithFieldKeyword
     private static readonly    SqlName __tableName = TABLE_NAME;
@@ -19,9 +19,9 @@ public sealed partial record UserAddressRecord : Mapping<UserAddressRecord, User
     [ForeignKey<UserAddressRecord, AddressRecord>] public override RecordID<AddressRecord> ValueID { get; init; }
 
 
-    public UserAddressRecord( UserRecord            key, AddressRecord           value ) : base(key, value) { }
-    public UserAddressRecord( RecordID<UserRecord>  key, RecordID<AddressRecord> value ) : base(key, value) { }
-    internal UserAddressRecord( DbDataReader        reader ) : base(reader) { }
+    public UserAddressRecord( UserRecord           key, AddressRecord           value ) : base(key, value) { }
+    public UserAddressRecord( RecordID<UserRecord> key, RecordID<AddressRecord> value ) : base(key, value) { }
+    internal UserAddressRecord( DbDataReader       reader ) : base(reader) { }
 
 
     [Pure] public static UserAddressRecord Create( UserRecord           key, AddressRecord           value ) => new(key, value);
@@ -48,8 +48,4 @@ public sealed partial record UserAddressRecord : Mapping<UserAddressRecord, User
     {
         foreach ( RecordID<AddressRecord> value in values ) { yield return Create(key, value); }
     }
-    public static bool operator >( UserAddressRecord  left, UserAddressRecord right ) => left.CompareTo(right) > 0;
-    public static bool operator >=( UserAddressRecord left, UserAddressRecord right ) => left.CompareTo(right) >= 0;
-    public static bool operator <( UserAddressRecord  left, UserAddressRecord right ) => left.CompareTo(right) < 0;
-    public static bool operator <=( UserAddressRecord left, UserAddressRecord right ) => left.CompareTo(right) <= 0;
 }
