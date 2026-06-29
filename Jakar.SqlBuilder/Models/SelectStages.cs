@@ -64,7 +64,7 @@ public ref struct SelectStage
     {
         if ( __w.Dialect is SqlDialectKind.SqlServer )
         {
-            __w.Word("TOP");
+            __w.Word("TOP ");
             __w.OpenCall();
             __w.InlineNumber(count);
             __w.CloseParen();

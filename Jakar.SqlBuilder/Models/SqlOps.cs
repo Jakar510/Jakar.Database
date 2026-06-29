@@ -63,7 +63,7 @@ internal static class SqlOps
 
     public static void In( scoped ref SqlWriter writer, scoped ReadOnlySpan<long> values )
     {
-        writer.Word("IN");
+        writer.Word("IN ");
         writer.OpenCall();
         bool has = false;
         foreach ( long value in values )
@@ -78,7 +78,7 @@ internal static class SqlOps
     }
     public static void InParams( scoped ref SqlWriter writer, scoped ReadOnlySpan<object?> values )
     {
-        writer.Word("IN");
+        writer.Word("IN ");
         writer.OpenCall();
         bool has = false;
         foreach ( object? value in values )

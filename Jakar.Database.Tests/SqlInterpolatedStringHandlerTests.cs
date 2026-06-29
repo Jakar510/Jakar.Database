@@ -4,6 +4,8 @@
 using System.Data;
 using Jakar.Extensions;
 
+
+
 namespace Jakar.Database.Tests;
 
 
@@ -20,13 +22,13 @@ public sealed class SqlInterpolatedStringHandlerTests : Assert
 
         Multiple(() =>
                  {
-                     That(name.Value,         Is.EqualTo("name_of_role"));
-                     That(name.IsValid,       Is.True);
-                     That(name.Length,        Is.EqualTo("name_of_role".Length));
-                     That(name.ToString(),    Is.EqualTo("name_of_role"));
-                     That(implicitFrom.Value, Is.EqualTo("first_name"));
-                     That(implicitToText,     Is.EqualTo("name_of_role"));
-                     That(new SqlName("").IsValid, Is.False);
+                     That(name.Value,            Is.EqualTo("name_of_role"));
+                     That(name.IsValid,          Is.True);
+                     That(name.Length,           Is.EqualTo("name_of_role".Length));
+                     That(name.ToString(),       Is.EqualTo("name_of_role"));
+                     That(implicitFrom.Value,    Is.EqualTo("first_name"));
+                     That(implicitToText,        Is.EqualTo("name_of_role"));
+                     That(SqlName.Empty.IsValid, Is.False);
                  });
     }
 
@@ -36,10 +38,10 @@ public sealed class SqlInterpolatedStringHandlerTests : Assert
 
         Multiple(() =>
                  {
-                     That(raw.Value,    Is.EqualTo("SELECT 1"));
-                     That(raw.IsValid,  Is.True);
-                     That(raw.Length,   Is.EqualTo("SELECT 1".Length));
-                     That(raw.ToString(), Is.EqualTo("SELECT 1"));
+                     That(raw.Value,                 Is.EqualTo("SELECT 1"));
+                     That(raw.IsValid,               Is.True);
+                     That(raw.Length,                Is.EqualTo("SELECT 1".Length));
+                     That(raw.ToString(),            Is.EqualTo("SELECT 1"));
                      That(new SqlRaw("   ").IsValid, Is.False);
                  });
     }
@@ -103,8 +105,8 @@ public sealed class SqlInterpolatedStringHandlerTests : Assert
 
         Multiple(() =>
                  {
-                     That(command.SQL, Does.Contain("name_of_role = @admin_name"));
-                     That(command.Parameters.HasValue, Is.True);
+                     That(command.SQL,                     Does.Contain("name_of_role = @admin_name"));
+                     That(command.Parameters.HasValue,     Is.True);
                      That(command.Parameters!.Value.Count, Is.EqualTo(1));
                  });
     }
@@ -121,7 +123,7 @@ public sealed class SqlInterpolatedStringHandlerTests : Assert
 
         Multiple(() =>
                  {
-                     That(SqlCommand.Parse<RoleRecord>($"SELECT {'A'}").SQL, Does.Contain("'A'"));
+                     That(SqlCommand.Parse<RoleRecord>($"SELECT {'A'}").SQL,  Does.Contain("'A'"));
                      That(SqlCommand.Parse<RoleRecord>($"SELECT {guid}").SQL, Does.Contain($"'{guid}'"));
                  });
     }
@@ -135,8 +137,7 @@ public sealed class SqlInterpolatedStringHandlerTests : Assert
                  });
     }
 
-    [Test] public void SqlRaw_is_emitted_without_escaping()
-        => That(SqlCommand.Parse<RoleRecord>($"SELECT {SqlRaw.Create("RAW_TOKEN")}").SQL, Does.Contain("RAW_TOKEN"));
+    [Test] public void SqlRaw_is_emitted_without_escaping() => That(SqlCommand.Parse<RoleRecord>($"SELECT {SqlRaw.Create("RAW_TOKEN")}").SQL, Does.Contain("RAW_TOKEN"));
 
     [Test] public void Numeric_sequences_are_expanded()
     {
@@ -150,8 +151,7 @@ public sealed class SqlInterpolatedStringHandlerTests : Assert
                  });
     }
 
-    [Test] public void Parse_honours_explicit_command_type()
-        => That(SqlCommand.Parse<RoleRecord>($"CALL do_thing()", CommandType.StoredProcedure).CommandType, Is.EqualTo(CommandType.StoredProcedure));
+    [Test] public void Parse_honours_explicit_command_type() => That(SqlCommand.Parse<RoleRecord>($"CALL do_thing()", CommandType.StoredProcedure).CommandType, Is.EqualTo(CommandType.StoredProcedure));
 
 #endregion
 }

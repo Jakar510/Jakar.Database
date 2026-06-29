@@ -19,7 +19,10 @@ public readonly record struct SqlRaw( string Value )
 [UseWithCaution]
 public readonly record struct SqlName( string Value )
 {
-    public readonly                 string  Value = Value.SqlName();
+    public static readonly SqlName Empty = new(string.Empty);
+    public readonly string Value = string.IsNullOrWhiteSpace(Value)
+                                       ? string.Empty
+                                       : Value.SqlName();
     public                          bool    IsValid                { [Pure] [MemberNotNullWhen(true, nameof(Value))] get => !string.IsNullOrWhiteSpace(Value); }
     public                          int     Length                 => Value.Length;
     public static                   SqlName Create( string value ) => new(value);

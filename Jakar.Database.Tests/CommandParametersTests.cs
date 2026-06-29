@@ -95,6 +95,7 @@ public sealed class CommandParametersTests : Assert
         CommandParameters parameters = CommandParameters.Create(CreateRole());
 
         using ParameterNames   names = parameters.ParameterNames;
+        names.Reset();
         ImmutableArray<string> array = names.Array;
 
         Multiple(() =>
