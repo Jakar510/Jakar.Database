@@ -129,7 +129,10 @@ public sealed class CommandParametersTests : Assert
                      That(variables,    Does.Contain("@"));
                      That(columnNames,  Is.Not.Empty);
                      That(keyValuePair, Does.Contain(" = @"));
-                     That(keyValuePair, Does.Contain("AND"));
+
+                     // Pairs are comma-separated and every line is aligned at indentLevel * 4 spaces.
+                     That(keyValuePair, Does.Contain(",\n    "));
+                     That(keyValuePair, Does.Not.Contain("\n    ,"));
                  });
     }
 

@@ -27,26 +27,17 @@ public readonly struct KeyValuePairs
     {
         Parameters = parameters;
         Value      = new StringBuilder(parameters.KeyValuePairLength(indentLevel));
-        int                        index  = 0;
-        int                        count  = parameters.Count;
         ReadOnlySpan<SqlParameter> buffer = parameters.Values;
 
+        // Every pair is emitted at the same indentation so the block stays aligned.
+        // Continuation-line alignment relative to the surrounding statement is handled by the interpolated-string handler (hang indent).
         for ( int i = 0; i < buffer.Length; i++ )
         {
             ref readonly SqlParameter parameter = ref buffer[i];
-            if ( i > 0 && !separator.IsEmpty ) { indentLevel++; }
+            if ( i > 0 ) { Value.Append(",\n"); }
 
-            Value.Append(' ', indentLevel * 4).Append(parameter.Column.ColumnName).Append(" = @").Append(parameter.ParameterName);
-
-            if ( index++ >= count - 1 ) { continue; }
-
-            if ( i > 0 && !separator.IsEmpty )
-            {
-                indentLevel--;
-                Value.Append('\n').Append(' ', indentLevel * 4).Append(separator);
-            }
-
-            Value.Append(",\n");
+            Value.Append(' ', indentLevel * 4);
+            parameter.AppendAssignment(Value);
         }
     }
     public override string ToString() => Value.ToString();
@@ -66,7 +57,12 @@ public readonly struct VariableNames
 
         if ( !parameters.IsGrouped )
         {
-            foreach ( ref readonly SqlParameter parameter in parameters.Values ) { Value.Append(' ', indentLevel * 4).Append('@').Append(parameter.ParameterName).Append(",\n"); }
+            foreach ( ref readonly SqlParameter parameter in parameters.Values )
+            {
+                Value.Append(' ', indentLevel * 4);
+                parameter.AppendValue(Value);
+                Value.Append(",\n");
+            }
         }
         else
         {
@@ -74,7 +70,13 @@ public readonly struct VariableNames
             {
                 Value.Append(' ', indentLevel * 4).Append('(');
                 indentLevel++;
-                foreach ( ref readonly SqlParameter parameter in parameters.Values ) { Value.Append(' ', indentLevel * 4).Append('@').Append(parameter.ParameterName).Append(",\n"); }
+
+                foreach ( ref readonly SqlParameter parameter in parameters.Values )
+                {
+                    Value.Append(' ', indentLevel * 4);
+                    parameter.AppendValue(Value);
+                    Value.Append(",\n");
+                }
 
                 Value.Append("),\n");
                 indentLevel--;
@@ -91,7 +93,8 @@ public readonly struct VariableNames
 
                 foreach ( ref readonly SqlParameter parameter in array.AsSpan() )
                 {
-                    Value.Append(' ', indentLevel * 4).Append('@').Append(parameter.ParameterName);
+                    Value.Append(' ', indentLevel * 4);
+                    parameter.AppendValue(Value);
                     if ( i < span.Length ) { Value.Append(",\n"); }
                 }
 

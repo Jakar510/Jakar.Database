@@ -288,7 +288,7 @@ public abstract record PairRecord<TSelf> : LastModifiedRecord<TSelf>, IUniqueID
     [Pure] public override CommandParameters ToDynamicParameters()
     {
         CommandParameters parameters = base.ToDynamicParameters();
-        parameters.Add(nameof(ID),             ID.Value);
+        parameters.Add(nameof(ID),             ID);
         parameters.Add(nameof(AdditionalData), AdditionalData);
         return parameters;
     }
@@ -330,7 +330,7 @@ public abstract record OwnedTableRecord<TSelf> : PairRecord<TSelf>, IUserRecordI
     public static CommandParameters GetDynamicParameters( UserRecord user )
     {
         CommandParameters parameters = CommandParameters.Create<TSelf>();
-        parameters.Add(nameof(UserID), user.ID.Value);
+        parameters.Add(nameof(UserID), user.ID);
         return parameters;
     }
     protected static CommandParameters GetDynamicParameters( OwnedTableRecord<TSelf> record )

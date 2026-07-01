@@ -75,6 +75,38 @@ public sealed class SqlInterpolatedStringHandlerTests : Assert
                  });
     }
 
+    [Test] public void Clean_strips_trailing_whitespace_and_collapses_blank_lines()
+    {
+        string cleaned = SqlInterpolatedStringHandler<RoleRecord>.Clean("SELECT * FROM roles   \nWHERE \n\n\n    id = '019f';   \n\n");
+
+        Multiple(() =>
+                 {
+                     That(cleaned,              Is.EqualTo("SELECT * FROM roles\nWHERE\n\n    id = '019f';"));
+                     That(cleaned.EndsWith('\n'), Is.False);
+                     That(cleaned,              Does.Not.Contain(" \n"));
+                     That(cleaned,              Does.Not.Contain("\n\n\n"));
+                 });
+    }
+
+    [Test] public void AppendLiteral_inlines_non_injectable_values()
+    {
+        Guid                       guid        = Guid.Parse("019f1ef9-49ca-7a30-b254-eab2321f9e51");
+        System.Text.StringBuilder  guidBuilder = new();
+        System.Text.StringBuilder  intBuilder  = new();
+        System.Text.StringBuilder  nullBuilder = new();
+
+        SqlParameter.AppendLiteral(guidBuilder, guid);
+        SqlParameter.AppendLiteral(intBuilder,  42);
+        SqlParameter.AppendLiteral(nullBuilder, null);
+
+        Multiple(() =>
+                 {
+                     That(guidBuilder.ToString(), Is.EqualTo($"'{guid}'"));
+                     That(intBuilder.ToString(),  Is.EqualTo("42"));
+                     That(nullBuilder.ToString(), Is.EqualTo("NULL"));
+                 });
+    }
+
     [Test] public void ParseFormat_extracts_indent_level()
     {
         string? indentOnly = "2";

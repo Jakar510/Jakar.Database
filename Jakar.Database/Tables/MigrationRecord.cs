@@ -90,7 +90,7 @@ public sealed partial record MigrationRecord : TableRecord<MigrationRecord>, ITa
         CommandParameters parameters = ToDynamicParameters();
 
         SqlCommand command = SqlCommand.Parse<MigrationRecord>($"""
-                                                                INSERT INTO {TABLE_NAME} 
+                                                                INSERT INTO {TableName}
                                                                 (
                                                                 {MetaData.ColumnNames(1)}
                                                                 )
@@ -103,7 +103,7 @@ public sealed partial record MigrationRecord : TableRecord<MigrationRecord>, ITa
         return command;
     }
     public SqlCommand RollbackSql() => SqlCommand.Parse<MigrationRecord>($"""
-                                                                           DELETE FROM {TABLE_NAME}
+                                                                           DELETE FROM {TableName}
                                                                            WHERE {nameof(MigrationID)} = {MigrationID};
                                                                            """);
     [DbIgnore] public bool CanRollback => !string.IsNullOrWhiteSpace(DownSQL.SQL);

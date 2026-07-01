@@ -83,6 +83,17 @@ public sealed class TestDatabase( IConfiguration configuration, IOptions<DbOptio
         Debug.WriteLine(EMPTY);
         Debug.WriteLine(line);
         Debug.WriteLine(EMPTY);
+
+
+        #pragma warning disable RS1035
+        Console.WriteLine(EMPTY);
+        Console.WriteLine(header);
+        Console.WriteLine(paramName.PadLeft(header.Length - 10).PadRight(header.Length));
+        Console.WriteLine(header);
+        Console.WriteLine(EMPTY);
+        Console.WriteLine(line);
+        Console.WriteLine(EMPTY);
+        #pragma warning restore RS1035
     }
     public static void TestSQL()
     {
@@ -103,14 +114,14 @@ public sealed class TestDatabase( IConfiguration configuration, IOptions<DbOptio
         WriteLine(SqlCommand.WherePaged<RoleRecord>(userID,     0, 10).ToString());
         WriteLine(SqlCommand.WherePaged<RoleRecord>(0,          10).ToString());
         WriteLine(SqlCommand.WherePaged<RoleRecord>(date,       0, 10).ToString());
-
+        
         WriteLine(SqlCommand.Where<RoleRecord>(parameters).ToString());
-
+        
         WriteLine(SqlCommand.Parse<RoleRecord>($"SELECT * FROM {RoleRecord.TableName} WHERE {nameof(RoleRecord.NameOfRole)} = @{ADMIN};").ToString());
-
+        
         WriteLine(SqlCommand.Get(id).ToString());
         WriteLine(SqlCommand.Get(id, RecordID<RoleRecord>.New()).ToString());
-
+        
         WriteLine(SqlCommand.Get<RoleRecord>(parameters).ToString());
         WriteLine(SqlCommand.GetAll<RoleRecord>().ToString());
         WriteLine(SqlCommand.GetFirst<RoleRecord>().ToString());

@@ -79,7 +79,6 @@ public sealed class DbOptions : IOptions<DbOptions>
     public required string                                                  TokenAudience                      { get;                                                  init; }
     public required string                                                  TokenIssuer                        { get;                                                  init; }
     public          string                                                  UserExists                         { get;                                                  set; } = USER_EXISTS;
-    internal        IOptions<DbOptions>                                     Wrapper                            => field ??= Options.Create(this);
 
 
     public DbOptions() => ConfigureIdentityOptions = DefaultConfigureIdentityOptions;

@@ -20,8 +20,11 @@ public sealed partial record UserRecord : PairRecord<UserRecord>, ITableRecord<U
     public                                      Guid?                 SubscriptionID      { get; set; }
     public                                      Guid                  UserID              => ID.Value;
     RecordID<UserRecord> IUserRecordID.                               UserID              => ID;
-    [Fixed(USER_NAME)] [ProtectedPersonalData] [StringCompare(StringComparison.InvariantCultureIgnoreCase)] public string          UserName            { get; init; } = EMPTY;
-    [DbIgnore]                                 public bool            HasPassword         { [MemberNotNullWhen(true, nameof(PasswordHash))] get => !string.IsNullOrWhiteSpace(PasswordHash); }
+
+    [Fixed(USER_NAME)] [ProtectedPersonalData] [StringCompare(StringComparison.InvariantCultureIgnoreCase)]
+    public string UserName { get; init; } = EMPTY;
+
+    [DbIgnore] public bool HasPassword { [MemberNotNullWhen(true, nameof(PasswordHash))] get => !string.IsNullOrWhiteSpace(PasswordHash); }
 
 
     public UserRecord( in RecordID<UserRecord> ID ) : this(in ID, null, DateTimeOffset.UtcNow) { }
@@ -235,8 +238,6 @@ public sealed partial record UserRecord : PairRecord<UserRecord>, ITableRecord<U
     }
 
 
-
-
     public event PropertyChangedEventHandler? PropertyChanged;
     private void                              OnPropertyChanged( [CallerMemberName] string? propertyName = null ) { PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName)); }
     private bool SetField<T>( ref T field, T value, [CallerMemberName] string? propertyName = null )
@@ -281,19 +282,27 @@ public sealed partial record UserRecord : PairRecord<UserRecord>, ITableRecord<U
 
 #region Details
 
-    [Fixed(COMPANY)] [ProtectedPersonalData] public string?                                              Company     { get; set; } = EMPTY;
-    Guid? ICreatedByUser<Guid>.                                                                          CreatedBy   => EscalateTo?.Value;
-    [Fixed(DEPARTMENT)]                                                                   public string? Department  { get; set; } = EMPTY;
-    [Fixed(DESCRIPTION)]                                                                  public string? Description { get; set; }
-    [Fixed(EMAIL)] [Indexed<UserRecord>(nameof(Email))] [ProtectedPersonalData]           public string? Email       { get; set; } = EMPTY;
-    [Fixed(WEBSITE)] [ProtectedPersonalData]                                              public string? Website     { get; set; } = EMPTY;
-    [Fixed(LAST_NAME)] [Indexed<UserRecord>(nameof(LastName))] [ProtectedPersonalData] [StringCompare(StringComparison.InvariantCultureIgnoreCase)]    public string? LastName    { get; set; } = EMPTY;
-    [Fixed(PHONE)] [Indexed<UserRecord>(    nameof(PhoneNumber))] [ProtectedPersonalData] public string? PhoneNumber { get; set; } = EMPTY;
-    [Fixed(PHONE_EXT)] [ProtectedPersonalData]                                            public string? Ext         { get; set; } = EMPTY;
-    [Fixed(TITLE)]                                                                        public string? Title       { get; set; } = EMPTY;
-    [Fixed(FIRST_NAME)] [Indexed<UserRecord>(nameof(FirstName))] [ProtectedPersonalData] [StringCompare(StringComparison.InvariantCultureIgnoreCase)]  public string? FirstName   { get; set; } = EMPTY;
-    [Fixed(FULL_NAME)] [Indexed<UserRecord>( nameof(FullName))] [ProtectedPersonalData] [StringCompare(StringComparison.InvariantCultureIgnoreCase)]   public string? FullName    { get; set; } = EMPTY;
-    [Fixed(GENDER)] [ProtectedPersonalData]                                               public string? Gender      { get; set; } = EMPTY;
+    [Fixed(COMPANY)] [ProtectedPersonalData] public string?                                    Company     { get; set; } = EMPTY;
+    Guid? ICreatedByUser<Guid>.                                                                CreatedBy   => EscalateTo?.Value;
+    [Fixed(DEPARTMENT)]                                                         public string? Department  { get; set; } = EMPTY;
+    [Fixed(DESCRIPTION)]                                                        public string? Description { get; set; }
+    [Fixed(EMAIL)] [Indexed<UserRecord>(nameof(Email))] [ProtectedPersonalData] public string? Email       { get; set; } = EMPTY;
+    [Fixed(WEBSITE)] [ProtectedPersonalData]                                    public string? Website     { get; set; } = EMPTY;
+
+    [Fixed(LAST_NAME)] [Indexed<UserRecord>(nameof(LastName))] [ProtectedPersonalData] [StringCompare(StringComparison.InvariantCultureIgnoreCase)]
+    public string? LastName { get; set; } = EMPTY;
+
+    [Fixed(PHONE)] [Indexed<UserRecord>(nameof(PhoneNumber))] [ProtectedPersonalData] public string? PhoneNumber { get; set; } = EMPTY;
+    [Fixed(PHONE_EXT)] [ProtectedPersonalData]                                        public string? Ext         { get; set; } = EMPTY;
+    [Fixed(TITLE)]                                                                    public string? Title       { get; set; } = EMPTY;
+
+    [Fixed(FIRST_NAME)] [Indexed<UserRecord>(nameof(FirstName))] [ProtectedPersonalData] [StringCompare(StringComparison.InvariantCultureIgnoreCase)]
+    public string? FirstName { get; set; } = EMPTY;
+
+    [Fixed(FULL_NAME)] [Indexed<UserRecord>(nameof(FullName))] [ProtectedPersonalData] [StringCompare(StringComparison.InvariantCultureIgnoreCase)]
+    public string? FullName { get; set; } = EMPTY;
+
+    [Fixed(GENDER)] [ProtectedPersonalData] public string? Gender { get; set; } = EMPTY;
 
 #endregion Details
 

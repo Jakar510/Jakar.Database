@@ -231,7 +231,7 @@ public abstract record Mapping<TSelf, TKey, TValue> : TableRecord<TSelf>
                                                       INSERT INTO {TSelf.TableName} ({nameof(KeyID)}, {nameof(ValueID)}, {nameof(DateCreated)})
                                                       SELECT v.KeyID, v.ValueID, NOW()
                                                       FROM (VALUES
-                                                      {sb}) AS v(KeyID, ValueID) ON CONFLICT ({nameof(KeyID)}, {nameof(ValueID)}) DO NOTHING;
+                                                      {sb}) AS v(KeyID, ValueID) ON CONFLICT DO NOTHING;
                                                       """);
 
         await context.ExecuteNonQueryAsync(command, token);

@@ -51,7 +51,7 @@ public sealed partial record UserLoginProviderRecord : OwnedTableRecord<UserLogi
     public static CommandParameters GetDynamicParameters( UserRecord user, string value )
     {
         CommandParameters parameters = CommandParameters.Create<UserLoginProviderRecord>();
-        parameters.Add(nameof(UserID), user.ID.Value);
+        parameters.Add(nameof(UserID), user.ID);
         parameters.Add(nameof(Value),  value);
         return parameters;
     }

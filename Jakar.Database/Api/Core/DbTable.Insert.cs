@@ -1,6 +1,10 @@
 ﻿// Jakar.Extensions :: Jakar.Database
 // 03/12/2023  1:09 PM
 
+using Microsoft.Data.SqlClient;
+
+
+
 namespace Jakar.Database;
 
 
@@ -35,17 +39,23 @@ public partial class DbTable<TSelf>
     {
         ReadOnlySpan<TSelf> array   = [..records];
         SqlCommand          command = SqlCommand.GetInsert<TSelf>(array);
-        return await context.ExecuteAsync<TSelf>(command, token).ToImmutableArray(array.Length, token);
+
+        try { return await context.ExecuteAsync<TSelf>(command, token).ToImmutableArray(array.Length, token); }
+        catch ( Exception e ) { throw new DbSqlException(command, e); }
     }
     public virtual async ValueTask<ImmutableArray<TSelf>> Insert( DbConnectionContext context, ReadOnlyMemory<TSelf> records, [EnumeratorCancellation] CancellationToken token = default )
     {
         SqlCommand command = SqlCommand.GetInsert<TSelf>(records.Span);
-        return await context.ExecuteAsync<TSelf>(command, token).ToImmutableArray(records.Length, token);
+
+        try { return await context.ExecuteAsync<TSelf>(command, token).ToImmutableArray(records.Length, token); }
+        catch ( Exception e ) { throw new DbSqlException(command, e); }
     }
     public virtual async ValueTask<ImmutableArray<TSelf>> Insert( DbConnectionContext context, ImmutableArray<TSelf> records, [EnumeratorCancellation] CancellationToken token = default )
     {
         SqlCommand command = SqlCommand.GetInsert<TSelf>(records);
-        return await context.ExecuteAsync<TSelf>(command, token).ToImmutableArray(records.Length, token);
+
+        try { return await context.ExecuteAsync<TSelf>(command, token).ToImmutableArray(records.Length, token); }
+        catch ( Exception e ) { throw new DbSqlException(command, e); }
     }
     public virtual async IAsyncEnumerable<TSelf> Insert( DbConnectionContext context, IAsyncEnumerable<TSelf> records, [EnumeratorCancellation] CancellationToken token = default )
     {

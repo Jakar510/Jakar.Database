@@ -159,35 +159,35 @@ public sealed class ColumnMetaData : IEquatable<ColumnMetaData>, IComparable<Col
     internal string KeyValuePair_Padded( ITableMetaData table ) => KeyValuePair.GetPadded(table.MaxLength_KeyValuePair);
     internal string VariableName_Padded( ITableMetaData table ) => VariableName.GetPadded(table.MaxLength_Variables);
     public SqlCommand CreateIndex( ITableMetaData table, in DatabaseType type ) => type switch
-                                                                                     {
-                                                                                         DatabaseType.MicrosoftSqlServer => $"""
-                                                                                                                             IF NOT EXISTS (
-                                                                                                                                 SELECT 1
-                                                                                                                                 FROM sys.indexes
-                                                                                                                                 WHERE name = N'{IndexName}'
-                                                                                                                                   AND object_id = OBJECT_ID(N'{table.TableName.Value}')
-                                                                                                                             )
-                                                                                                                             BEGIN
-                                                                                                                                 CREATE INDEX {IndexName} ON {table.TableName}({ColumnName});
-                                                                                                                             END;
-                                                                                                                             """,
-                                                                                         _ => $"CREATE INDEX IF NOT EXISTS {IndexName} ON {table.TableName}({ColumnName});"
-                                                                                     };
-    public  SqlCommand DropIndex( ITableMetaData table, in DatabaseType type ) => type switch
-                                                                                  {
-                                                                                      DatabaseType.MicrosoftSqlServer => $"""
-                                                                                                                          IF EXISTS (
-                                                                                                                              SELECT 1
-                                                                                                                              FROM sys.indexes
-                                                                                                                              WHERE name = N'{IndexName}'
-                                                                                                                                AND object_id = OBJECT_ID(N'{table.TableName.Value}')
-                                                                                                                          )
-                                                                                                                          BEGIN
-                                                                                                                              DROP INDEX {IndexName} ON {table.TableName};
-                                                                                                                          END;
-                                                                                                                          """,
-                                                                                      _ => $"DROP INDEX IF EXISTS {IndexName};"
-                                                                                  };
+                                                                                   {
+                                                                                       DatabaseType.MicrosoftSqlServer => $"""
+                                                                                                                           IF NOT EXISTS (
+                                                                                                                               SELECT 1
+                                                                                                                               FROM sys.indexes
+                                                                                                                               WHERE name = N'{IndexName}'
+                                                                                                                                 AND object_id = OBJECT_ID(N'{table.TableName.Value}')
+                                                                                                                           )
+                                                                                                                           BEGIN
+                                                                                                                               CREATE INDEX {IndexName} ON {table.TableName}({ColumnName});
+                                                                                                                           END;
+                                                                                                                           """,
+                                                                                       _ => $"CREATE INDEX IF NOT EXISTS {IndexName} ON {table.TableName}({ColumnName});"
+                                                                                   };
+    public SqlCommand DropIndex( ITableMetaData table, in DatabaseType type ) => type switch
+                                                                                 {
+                                                                                     DatabaseType.MicrosoftSqlServer => $"""
+                                                                                                                         IF EXISTS (
+                                                                                                                             SELECT 1
+                                                                                                                             FROM sys.indexes
+                                                                                                                             WHERE name = N'{IndexName}'
+                                                                                                                               AND object_id = OBJECT_ID(N'{table.TableName.Value}')
+                                                                                                                         )
+                                                                                                                         BEGIN
+                                                                                                                             DROP INDEX {IndexName} ON {table.TableName};
+                                                                                                                         END;
+                                                                                                                         """,
+                                                                                     _ => $"DROP INDEX IF EXISTS {IndexName};"
+                                                                                 };
     public        string IndexColumnName_Padded( ITableMetaData table )    => IndexName.GetPadded(table.MaxLength_IndexColumnName);
     public static string GetColumnName( ColumnMetaData          column )   => column.ColumnName;
     public static string GetVariableName( ColumnMetaData        column )   => column.VariableName;
@@ -219,7 +219,7 @@ public sealed class ColumnMetaData : IEquatable<ColumnMetaData>, IComparable<Col
 
         return parameter;
     }
-    public SqlParameter ToParameter( object? value, [CallerArgumentExpression(nameof(value))] string parameterName = EMPTY, ParameterDirection direction = ParameterDirection.Input, DataRowVersion sourceVersion = DataRowVersion.Default )
+    public SqlParameter ToParameter<T>( T? value, [CallerArgumentExpression(nameof(value))] string parameterName = EMPTY, ParameterDirection direction = ParameterDirection.Input, DataRowVersion sourceVersion = DataRowVersion.Default )
     {
         Debug.Assert(Index >= 0);
         SqlParameter parameter = new(value, parameterName.Parameterize(), this, direction, sourceVersion);

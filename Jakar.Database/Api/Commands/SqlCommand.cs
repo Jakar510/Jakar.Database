@@ -51,7 +51,12 @@ public readonly struct SqlCommand : IEquatable<SqlCommand>
 
         if ( Parameters is null ) { return command; }
 
-        foreach ( ref readonly SqlParameter parameter in Parameters.Value.Parameters ) { command.Parameters.Add(parameter.ToSqlParameter()); }
+        foreach ( ref readonly SqlParameter parameter in Parameters.Value.Parameters )
+        {
+            if ( !IsParameterReferenced(SQL, parameter.ParameterName) ) { continue; }
+
+            command.Parameters.Add(parameter.ToSqlParameter());
+        }
 
         return command;
     }
@@ -71,13 +76,49 @@ public readonly struct SqlCommand : IEquatable<SqlCommand>
 
         if ( Parameters is null ) { return command; }
 
-        foreach ( ref readonly SqlParameter parameter in Parameters.Value.Parameters ) { command.Parameters.Add(parameter.ToPostgresParameter()); }
+        foreach ( ref readonly SqlParameter parameter in Parameters.Value.Parameters )
+        {
+            if ( !IsParameterReferenced(SQL, parameter.ParameterName) ) { continue; }
+
+            command.Parameters.Add(parameter.ToPostgresParameter());
+        }
 
         return command;
     }
 
 
     public override string ToString() => DbSqlException.GetMessage(nameof(SqlCommand), SQL, Parameters);
+
+
+    /// <summary>
+    ///     Determines whether <paramref name="parameterName"/> is actually referenced (as <c>@name</c>) in <paramref name="sql"/>. Literal values are inlined directly into the SQL text and therefore are not bound as
+    ///     parameters; only referenced names need to be sent to the database.
+    /// </summary>
+    private static bool IsParameterReferenced( ReadOnlySpan<char> sql, ReadOnlySpan<char> parameterName )
+    {
+        if ( parameterName.IsEmpty ) { return false; }
+
+        int offset = 0;
+
+        while ( offset < sql.Length )
+        {
+            int at = sql[offset..].IndexOf('@');
+            if ( at < 0 ) { return false; }
+
+            int nameStart = offset + at + 1;
+
+            if ( sql[nameStart..].StartsWith(parameterName) )
+            {
+                int after = nameStart + parameterName.Length;
+                if ( after >= sql.Length || !IsIdentifierChar(sql[after]) ) { return true; }
+            }
+
+            offset = nameStart;
+        }
+
+        return false;
+    }
+    private static bool IsIdentifierChar( char c ) => char.IsLetterOrDigit(c) || c is '_';
 
 
     public static SqlCommand Create( string sql, in CommandParameters? parameters = null, in CommandType commandType = CommandType.Text ) => new(in sql, in parameters, in commandType);
@@ -149,8 +190,8 @@ public readonly struct SqlCommand : IEquatable<SqlCommand>
     [OverloadResolutionPriority(3)] public static SqlCommand Get<TSelf>( in RecordID<TSelf> id )
         where TSelf : PairRecord<TSelf>, ITableRecord<TSelf> => Parse<TSelf>($"""
                                                                               SELECT * FROM {TSelf.TableName}
-                                                                              WHERE 
-                                                                              {nameof(IUniqueID.ID)} = {id};
+                                                                              WHERE
+                                                                                  {nameof(IUniqueID.ID)} = {id};
                                                                               """);
     [OverloadResolutionPriority(1)] public static SqlCommand Get<TSelf>( IEnumerable<RecordID<TSelf>> ids )
         where TSelf : PairRecord<TSelf>, ITableRecord<TSelf> => Parse<TSelf>($"""
@@ -245,11 +286,11 @@ public readonly struct SqlCommand : IEquatable<SqlCommand>
                                                                               WHERE ( 
                                                                                     id = IFNULL(
                                                                                             (
-                                                                                            SELECT MIN(
-                                                                                                {nameof(IDateCreated.DateCreated)}) FROM {TSelf.TableName} 
-                                                                                                    WHERE {nameof(IDateCreated.DateCreated)} > {pair.DateCreated}
-                                                                                                    )
-                                                                                                LIMIT 2
+                                                                                                SELECT MIN(
+                                                                                                    {nameof(IDateCreated.DateCreated)}) FROM {TSelf.TableName} 
+                                                                                                        WHERE {nameof(IDateCreated.DateCreated)} > {pair.DateCreated}
+                                                                                                        )
+                                                                                                    LIMIT 2
                                                                                             ),
                                                                                             0
                                                                                         )
@@ -261,9 +302,9 @@ public readonly struct SqlCommand : IEquatable<SqlCommand>
                                                                               WHERE (
                                                                                   id = IFNULL(
                                                                                           (
-                                                                                          SELECT MIN({nameof(IDateCreated.DateCreated)}) FROM {TSelf.TableName}
-                                                                                              WHERE {nameof(IDateCreated.DateCreated)} > {pair.DateCreated}
-                                                                                          LIMIT 2
+                                                                                              SELECT MIN({nameof(IDateCreated.DateCreated)}) FROM {TSelf.TableName}
+                                                                                                  WHERE {nameof(IDateCreated.DateCreated)} > {pair.DateCreated}
+                                                                                              LIMIT 2
                                                                                           ),
                                                                                           0
                                                                                       )
@@ -347,25 +388,25 @@ public readonly struct SqlCommand : IEquatable<SqlCommand>
 
         return Parse<TSelf>($"""
                              IF NOT EXISTS (
-                             SELECT * FROM {TSelf.TableName} 
-                                 WHERE 
-                                    {nameof(IUniqueID.ID)} = @{record.ID}
-                                 OR 
-                                     (
-                                     {parameters.KeyValuePairs(3, separator)}
-                                     )
+                                 SELECT * FROM {TSelf.TableName} 
+                                     WHERE 
+                                        {nameof(IUniqueID.ID)} = @{record.ID}
+                                     OR 
+                                         (
+                                         {parameters.KeyValuePairs(4, separator)}
+                                         )
                              )
 
                              BEGIN
-                             INSERT INTO {TSelf.TableName}
-                                 (
-                                 {recordParameters.ColumnNames(2)}
-                                 )
-                             VALUES
-                                 (
-                                 {recordParameters.VariableNames(2)}
-                                 ) 
-                             RETURNING {nameof(IUniqueID.ID)};
+                                 INSERT INTO {TSelf.TableName}
+                                     (
+                                     {recordParameters.ColumnNames(3)}
+                                     )
+                                 VALUES
+                                     (
+                                     {recordParameters.VariableNames(3)}
+                                     ) 
+                                 RETURNING {nameof(IUniqueID.ID)};
                              END
 
                              ELSE
@@ -386,7 +427,7 @@ public readonly struct SqlCommand : IEquatable<SqlCommand>
                              SET 
                              {parameters.KeyValuePairs(1, "AND")}
                              WHERE 
-                                {nameof(IUniqueID.ID)} = @{nameof(IUniqueID.ID)};
+                                {nameof(IUniqueID.ID)} = @{record.ID};
                              """);
     }
     public static SqlCommand InsertOrUpdate<TSelf>( TSelf record, in CommandParameters parameters, string separator = "AND" )
@@ -402,31 +443,31 @@ public readonly struct SqlCommand : IEquatable<SqlCommand>
                                     {nameof(IUniqueID.ID)} = @{record.ID}
                                  OR 
                                      (
-                                     {parameters.KeyValuePairs(4, separator)}
+                                     {parameters.KeyValuePairs(2, separator)}
                                      )
                              )
 
                              BEGIN
-                             INSERT INTO {TSelf.TableName}
-                             (
-                             {recordParameters.ColumnNames(2)}
-                             )
-                             VALUES 
-                             (
-                             {recordParameters.VariableNames(2)}
-                             )
-                             RETURNING {nameof(IUniqueID.ID)};
+                                 INSERT INTO {TSelf.TableName}
+                                 (
+                                 {recordParameters.ColumnNames(3)}
+                                 )
+                                 VALUES 
+                                 (
+                                 {recordParameters.VariableNames(3)}
+                                 )
+                                 RETURNING {nameof(IUniqueID.ID)};
                              END
 
                              ELSE
                              BEGIN
-                             UPDATE {TSelf.TableName} 
-                                 SET
-                                 {recordParameters.KeyValuePairs(3, null)}
-                                 WHERE 
-                                    {nameof(IUniqueID.ID)} = @{nameof(IUniqueID.ID)};
+                                 UPDATE {TSelf.TableName}
+                                     SET
+                                     {recordParameters.KeyValuePairs(2, null)}
+                                     WHERE
+                                        {nameof(IUniqueID.ID)} = @{nameof(IUniqueID.ID)};
 
-                             SELECT @{nameof(IUniqueID.ID)};
+                                 SELECT @{nameof(IUniqueID.ID)};
                              END
                              """);
     }

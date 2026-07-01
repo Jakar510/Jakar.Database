@@ -184,22 +184,22 @@ public abstract partial class Database
     {
         SqlCommand command = SqlCommand.Parse<UserRecord>($"""
                                                            SELECT u.{nameof(UserRecord.Rights)}
-                                                           FROM {UserRecord.TABLE_NAME} u
+                                                           FROM {UserRecord.TableName} u
                                                            WHERE u.{nameof(UserRecord.ID)} = '{userID}'
 
                                                            UNION ALL
 
                                                            SELECT g.{nameof(UserRecord.Rights)}
-                                                           FROM {UserGroupRecord.TABLE_NAME} ug
-                                                           INNER JOIN {GroupRecord.TABLE_NAME} g
+                                                           FROM {UserGroupRecord.TableName} ug
+                                                           INNER JOIN {GroupRecord.TableName} g
                                                            ON ug.{nameof(UserGroupRecord.ValueID)} = g.{nameof(UserRecord.ID)}
                                                            WHERE ug.{nameof(UserGroupRecord.KeyID)} = '{userID}'
 
                                                            UNION ALL
 
                                                            SELECT r.{nameof(UserRecord.Rights)}
-                                                           FROM {UserRoleRecord.TABLE_NAME} ur
-                                                           INNER JOIN {RoleRecord.TABLE_NAME} r
+                                                           FROM {UserRoleRecord.TableName} ur
+                                                           INNER JOIN {RoleRecord.TableName} r
                                                            ON ur.{nameof(UserRoleRecord.ValueID)} = r.{nameof(UserRecord.ID)}
                                                            WHERE ur.{nameof(UserRoleRecord.KeyID)} = '{userID}'
                                                            """);

@@ -9,7 +9,10 @@ try
 {
     "Hello World!".WriteToConsole();
     Console.WriteLine();
-    await TestDatabase.TestAsync();
+ 
+    TestDatabase.TestSQL();
+
+    // await TestDatabase.TestAsync();
 }
 catch ( Exception e ) { e.WriteToConsole(); }
 finally { "Bye".WriteToConsole(); }

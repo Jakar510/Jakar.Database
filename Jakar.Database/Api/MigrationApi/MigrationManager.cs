@@ -134,7 +134,7 @@ public class MigrationManager
     }
     public virtual async ValueTask<ImmutableArray<MigrationRecord>> AllMigrations( DbConnectionContext context, CancellationToken token )
     {
-        SqlCommand                      command = SqlCommand.Parse<MigrationRecord>($"SELECT * FROM {MigrationRecord.TABLE_NAME} ORDER BY {nameof(MigrationRecord.MigrationID)};");
+        SqlCommand                      command = SqlCommand.Parse<MigrationRecord>($"SELECT * FROM {MigrationRecord.TableName} ORDER BY {nameof(MigrationRecord.MigrationID)};");
         ImmutableArray<MigrationRecord> records = await context.ExecuteAsync<MigrationRecord>(command, token).ToImmutableArray(__migrationFactories.Count, token);
         return records;
     }

@@ -2,6 +2,7 @@
 // 01/26/2026  09:59
 
 using System.Collections.Immutable;
+using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Text.RegularExpressions;
 using Jakar.Extensions;
@@ -22,49 +23,53 @@ namespace Jakar.Database.Tests;
 [SuppressMessage("ReSharper", "UnusedVariable")] // DB + migrations → avoid parallel runs
 public sealed class DatabaseTests : Assert
 {
-    private WebApplication       __app   = null!;
-    private IServiceScope        __scope = null!;
-    private TestDatabase         __db    = null!;
+    private WebApplication?      __app;
+    private IServiceScope?       __scope;
+    private TestDatabase?        __db;
     private PostgreSqlContainer? __postgreSqlContainer;
+
+
     [OneTimeSetUp] public async Task OneTimeSetup()
     {
-        const string      USER             = "dev";
-        const string      PASSWORD         = "dev";
         PostgreSqlBuilder containerBuilder = new("postgres:18.1");
-        containerBuilder.WithUsername(USER);
-        containerBuilder.WithPassword(PASSWORD);
-        containerBuilder.WithDatabase(TestDatabase.AppName);
+        containerBuilder.WithDatabase(TestDatabase.AppName).WithAutoRemove(true).WithCleanUp(true);
 
         __postgreSqlContainer = containerBuilder.Build();
         await __postgreSqlContainer.StartAsync();
+        WebApplicationBuilder builder = WebApplication.CreateBuilder();
+        string                cs      = __postgreSqlContainer.GetConnectionString();
 
-        WebApplicationBuilder        builder          = WebApplication.CreateBuilder();
-        SecuredStringResolverOptions connectionString = $"User ID={USER};Password={PASSWORD};Host={__postgreSqlContainer.IpAddress};Port={__postgreSqlContainer.GetMappedPublicPort()};Database={TestDatabase.AppName}";
+        try
+        {
+            SecuredStringResolverOptions connectionString = cs;
 
-        DbOptions options = new()
-                            {
-                                TelemetrySource          = new TelemetrySource(AppVersion.Default, Guid.NewGuid(), nameof(DatabaseTests), typeof(DatabaseTests).Assembly.FullName),
-                                ConnectionStringResolver = connectionString,
-                                CommandTimeout           = 30,
-                                TokenIssuer              = TestDatabase.AppName,
-                                TokenAudience            = TestDatabase.AppName,
-                                LoggerOptions            = new AppLoggerOptions()
-                            };
+            DbOptions options = new()
+                                {
+                                    TelemetrySource          = new TelemetrySource(AppVersion.Default, Guid.NewGuid(), nameof(DatabaseTests), typeof(DatabaseTests).Assembly.FullName),
+                                    ConnectionStringResolver = connectionString,
+                                    CommandTimeout           = 30,
+                                    TokenIssuer              = TestDatabase.AppName,
+                                    TokenAudience            = TestDatabase.AppName,
+                                    LoggerOptions            = new AppLoggerOptions()
+                                };
 
-        builder.AddDatabase<TestDatabase>(options);
+            builder.AddDatabase<TestDatabase>(options);
+            
+            __app = builder.Build();
+            await __app.ApplyMigrations();
 
-        __app = builder.Build();
-        await __app.ApplyMigrations();
-
-        __scope = __app.Services.CreateScope();
-        __db    = __scope.ServiceProvider.GetRequiredService<TestDatabase>();
+            __scope = __app.Services.CreateScope();
+            __db    = __scope.ServiceProvider.GetRequiredService<TestDatabase>();
+        }
+        catch ( Exception e ) { throw new InvalidOperationException($"Failed to setup database with connection string: '{cs}'", e); }
     }
 
     [OneTimeTearDown] public async Task OneTimeTearDown()
     {
-        __scope.Dispose();
-        await __app.DisposeAsync();
-        await __db.DisposeAsync();
+        __scope?.Dispose();
+        if ( __app is not null ) { await __app.DisposeAsync(); }
+
+        if ( __db is not null ) { await __db.DisposeAsync(); }
 
         if ( __postgreSqlContainer is not null )
         {
