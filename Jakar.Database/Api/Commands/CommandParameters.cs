@@ -15,9 +15,9 @@ public readonly struct CommandParameters() : IEquatable<CommandParameters>
     // internal readonly List<ImmutableArray<SqlParameter>>    Extras     = [];
     private readonly List<SqlParameter>                 __parameters = [];
     private readonly List<ImmutableArray<SqlParameter>> __groups     = [];
-#pragma warning disable RS1035
+    #pragma warning disable RS1035
     private readonly UInt128 __id = new((ulong)Random.Shared.NextInt64(), (ulong)Random.Shared.NextInt64());
-#pragma warning restore RS1035
+    #pragma warning restore RS1035
     public static readonly CommandParameters Empty = new() { Table = null! };
 
 
@@ -61,10 +61,10 @@ public readonly struct CommandParameters() : IEquatable<CommandParameters>
             return buffer;
         }
     }
-    public   int                 Capacity            => __parameters.Capacity;
-    public   bool                IsGrouped           => __groups.Count > 0;
-    public   ParameterNames      ParameterNames      { [Pure] [MustDisposeResource] get => new(this); }
-    public   ExtraParameterNames GroupParameterNames { [Pure] [MustDisposeResource] get => new(this); }
+    public int                 Capacity            => __parameters.Capacity;
+    public bool                IsGrouped           => __groups.Count > 0;
+    public ParameterNames      ParameterNames      { [Pure] [MustDisposeResource] get => new(this); }
+    public ExtraParameterNames GroupParameterNames { [Pure] [MustDisposeResource] get => new(this); }
     internal int VariableNameLength
     {
         get
@@ -145,7 +145,7 @@ public readonly struct CommandParameters() : IEquatable<CommandParameters>
         SqlParameter[]             group  = new SqlParameter[values.Length];
         for ( int i = 0; i < values.Length; i++ ) { group[i] = values[i].WithSuffix(suffix); }
 
-        __groups.Add([..group]);
+        __groups.Add(group.AsImmutableArray());
         return this;
     }
 
