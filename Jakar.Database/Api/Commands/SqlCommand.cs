@@ -333,11 +333,11 @@ public readonly struct SqlCommand : IEquatable<SqlCommand>
         return Parse<TSelf>($"""
                              INSERT INTO {TSelf.TableName} 
                                  (
-                             {TSelf.MetaData.ColumnNames(2)}
+                                {parameters.ColumnNames(1)}
                                  )
                              VALUES
                                  (
-                             {parameters.VariableNames(2)}
+                                {parameters.VariableNames(1)}
                                  )
 
                              RETURNING {nameof(IUniqueID.ID)};
@@ -351,12 +351,10 @@ public readonly struct SqlCommand : IEquatable<SqlCommand>
         return Parse<TSelf>($"""
                              INSERT INTO {TSelf.TableName} 
                                  (
-                             {TSelf.MetaData.ColumnNames(2)}                 
+                                {parameters.ColumnNames(1)}                 
                                  )
                              VALUES
-                                 (
-                             {parameters.VariableNames(2)}
-                                 )
+                                {parameters.VariableNames(1)}
 
                              RETURNING {nameof(IUniqueID.ID)};
                              """);
@@ -369,12 +367,10 @@ public readonly struct SqlCommand : IEquatable<SqlCommand>
         return Parse<TSelf>($"""
                              INSERT INTO {TSelf.TableName}
                                  (
-                             {TSelf.MetaData.ColumnNames(2)}
+                                {parameters.ColumnNames(1)}
                                  )
                              VALUES
-                                 (
-                             {parameters.VariableNames(2)}
-                                 )
+                                {parameters.VariableNames(1)}
 
                              RETURNING {nameof(IUniqueID.ID)};
                              """);
@@ -393,18 +389,18 @@ public readonly struct SqlCommand : IEquatable<SqlCommand>
                                         {nameof(IUniqueID.ID)} = @{record.ID}
                                      OR 
                                          (
-                                         {parameters.KeyValuePairs(4, separator)}
+                                         {parameters.KeyValuePairs(1, separator)}
                                          )
                              )
 
                              BEGIN
                                  INSERT INTO {TSelf.TableName}
                                      (
-                                     {recordParameters.ColumnNames(3)}
+                                     {recordParameters.ColumnNames(1)}
                                      )
                                  VALUES
                                      (
-                                     {recordParameters.VariableNames(3)}
+                                     {recordParameters.VariableNames(1)}
                                      ) 
                                  RETURNING {nameof(IUniqueID.ID)};
                              END
@@ -443,18 +439,18 @@ public readonly struct SqlCommand : IEquatable<SqlCommand>
                                     {nameof(IUniqueID.ID)} = @{record.ID}
                                  OR 
                                      (
-                                     {parameters.KeyValuePairs(2, separator)}
+                                     {parameters.KeyValuePairs(1, separator)}
                                      )
                              )
 
                              BEGIN
                                  INSERT INTO {TSelf.TableName}
                                  (
-                                 {recordParameters.ColumnNames(3)}
+                                 {recordParameters.ColumnNames(1)}
                                  )
                                  VALUES 
                                  (
-                                 {recordParameters.VariableNames(3)}
+                                 {recordParameters.VariableNames(1)}
                                  )
                                  RETURNING {nameof(IUniqueID.ID)};
                              END
@@ -463,7 +459,7 @@ public readonly struct SqlCommand : IEquatable<SqlCommand>
                              BEGIN
                                  UPDATE {TSelf.TableName}
                                      SET
-                                     {recordParameters.KeyValuePairs(2, null)}
+                                     {recordParameters.KeyValuePairs(1, null)}
                                      WHERE
                                         {nameof(IUniqueID.ID)} = @{nameof(IUniqueID.ID)};
 

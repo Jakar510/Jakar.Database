@@ -5,46 +5,6 @@
 namespace Jakar.Database;
 
 
-public readonly struct ColumnNames
-{
-    internal readonly StringBuilder Value;
-    public ColumnNames( CommandParameters parameters, int indentLevel )
-    {
-        Value = new StringBuilder();
-        parameters.Table.ColumnNames(Value, ref indentLevel);
-    }
-    public override string ToString() => Value.ToString();
-}
-
-
-
-public readonly struct KeyValuePairs
-{
-    internal readonly CommandParameters          Parameters;
-    internal readonly StringBuilder              Value;
-    public            ReadOnlySpan<SqlParameter> Values => Parameters.Values;
-    public KeyValuePairs( CommandParameters parameters, int indentLevel, params ReadOnlySpan<char> separator )
-    {
-        Parameters = parameters;
-        Value      = new StringBuilder(parameters.KeyValuePairLength(indentLevel));
-        ReadOnlySpan<SqlParameter> buffer = parameters.Values;
-
-        // Every pair is emitted at the same indentation so the block stays aligned.
-        // Continuation-line alignment relative to the surrounding statement is handled by the interpolated-string handler (hang indent).
-        for ( int i = 0; i < buffer.Length; i++ )
-        {
-            ref readonly SqlParameter parameter = ref buffer[i];
-            if ( i > 0 ) { Value.Append(",\n"); }
-
-            Value.Append(' ', indentLevel * 4);
-            parameter.AppendAssignment(Value);
-        }
-    }
-    public override string ToString() => Value.ToString();
-}
-
-
-
 public readonly struct VariableNames
 {
     internal readonly CommandParameters          Parameters;
@@ -57,53 +17,52 @@ public readonly struct VariableNames
 
         if ( !parameters.IsGrouped )
         {
-            foreach ( ref readonly SqlParameter parameter in parameters.Values )
-            {
-                Value.Append(' ', indentLevel * 4);
-                parameter.AppendValue(Value);
-                Value.Append(",\n");
-            }
+            AppendValues(Value, parameters.Values, indentLevel);
+            return;
         }
-        else
+
+        // Multi-row insert: emit one parenthesized tuple per row, separated by commas. Parameter names were suffixed per row in CommandParameters.AddGroup so they stay unique.
+        bool first = true;
+
+        if ( parameters.Count > 0 )
         {
-            if ( parameters.Count > 0 )
-            {
-                Value.Append(' ', indentLevel * 4).Append('(');
-                indentLevel++;
-
-                foreach ( ref readonly SqlParameter parameter in parameters.Values )
-                {
-                    Value.Append(' ', indentLevel * 4);
-                    parameter.AppendValue(Value);
-                    Value.Append(",\n");
-                }
-
-                Value.Append("),\n");
-                indentLevel--;
-            }
-
-            ReadOnlySpan<ImmutableArray<SqlParameter>> span = parameters.Groups;
-
-            for ( int i = 0; i < span.Length; i++ )
-            {
-                ref readonly ImmutableArray<SqlParameter> array = ref span[i];
-                Value.Append(' ', indentLevel * 4).Append("(\n");
-
-                indentLevel++;
-
-                foreach ( ref readonly SqlParameter parameter in array.AsSpan() )
-                {
-                    Value.Append(' ', indentLevel * 4);
-                    parameter.AppendValue(Value);
-                    if ( i < span.Length ) { Value.Append(",\n"); }
-                }
-
-                indentLevel--;
-                Value.Append(' ', indentLevel * 4).Append("),\n");
-            }
+            AppendTuple(Value, parameters.Values, indentLevel);
+            first = false;
         }
 
-        Value.Length -= 2;
+        foreach ( ref readonly ImmutableArray<SqlParameter> array in parameters.Groups )
+        {
+            if ( !first ) { Value.Append(",\n"); }
+
+            AppendTuple(Value, array.AsSpan(), indentLevel);
+            first = false;
+        }
     }
+
+
+    /// <summary> Appends a comma-and-newline separated list of values, one per line, with no wrapping parentheses and no trailing comma. </summary>
+    private static void AppendValues( StringBuilder builder, ReadOnlySpan<SqlParameter> values, int indentLevel )
+    {
+        for ( int i = 0; i < values.Length; i++ )
+        {
+            builder.Append(' ', indentLevel * 4);
+            values[i].AppendValue(builder);
+            if ( i < values.Length - 1 ) { builder.Append(','); }
+            builder.Append('\n');
+        }
+
+        if ( values.Length > 0 ) { builder.Length--; } // drop the trailing newline
+    }
+
+
+    /// <summary> Appends a single parenthesized VALUES tuple for one row. </summary>
+    private static void AppendTuple( StringBuilder builder, ReadOnlySpan<SqlParameter> values, int indentLevel )
+    {
+        builder.Append(' ', indentLevel * 4).Append("(\n");
+        AppendValues(builder, values, indentLevel + 1);
+        builder.Append('\n').Append(' ', indentLevel * 4).Append(')');
+    }
+
+
     public override string ToString() => Value.ToString();
 }

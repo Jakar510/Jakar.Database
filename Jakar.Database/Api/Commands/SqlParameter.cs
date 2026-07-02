@@ -4,13 +4,30 @@
 namespace Jakar.Database;
 
 
-public readonly struct SqlParameter( object? value, string parameterName, ColumnMetaData column, ParameterDirection direction, DataRowVersion sourceVersion ) : IEqualComparable<SqlParameter>
+public readonly struct SqlParameter : IEqualComparable<SqlParameter>
 {
-    public readonly object?            Value         = value;
-    public readonly string             ParameterName = parameterName.SqlName();
-    public readonly ColumnMetaData     Column        = column;
-    public readonly ParameterDirection Direction     = direction;
-    public readonly DataRowVersion     SourceVersion = sourceVersion;
+    public readonly object?            Value;
+    public readonly string             ParameterName;
+    public readonly ColumnMetaData     Column;
+    public readonly ParameterDirection Direction;
+    public readonly DataRowVersion     SourceVersion;
+
+
+    public SqlParameter( object? value, string parameterName, ColumnMetaData column, ParameterDirection direction, DataRowVersion sourceVersion ) : this(value, parameterName, column, direction, sourceVersion, true) { }
+    private SqlParameter( object? value, string parameterName, ColumnMetaData column, ParameterDirection direction, DataRowVersion sourceVersion, bool normalize )
+    {
+        Value         = value;
+        ParameterName = normalize
+                            ? parameterName.SqlName()
+                            : parameterName;
+        Column        = column;
+        Direction     = direction;
+        SourceVersion = sourceVersion;
+    }
+
+
+    /// <summary> Returns a copy of this parameter whose name carries a numeric suffix, used to keep per-row parameter names unique when several records are inserted in one command (e.g. <c>normalized_name1</c> , <c>normalized_name2</c>). The suffix is appended to the already-normalized name so it is not re-processed by snake-casing. </summary>
+    public SqlParameter WithSuffix( int suffix ) => new(Value, $"{ParameterName}{suffix}", Column, Direction, SourceVersion, false);
 
     /// <summary>
     ///     A value is a literal (safe to inline directly into the SQL text) when it cannot carry a SQL-injection payload: numbers, booleans, dates/times, GUIDs, enums and record ids.

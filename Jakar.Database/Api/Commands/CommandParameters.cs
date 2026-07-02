@@ -139,7 +139,13 @@ public readonly struct CommandParameters() : IEquatable<CommandParameters>
     }
     public CommandParameters AddGroup( ref readonly CommandParameters other )
     {
-        __groups.Add([..other.Values]);
+        // Each row inserted in a single command needs unique parameter names, so suffix this group's parameters with its 1-based position (e.g. normalized_name1, normalized_name2).
+        int                        suffix = __groups.Count + 1;
+        ReadOnlySpan<SqlParameter> values = other.Values;
+        SqlParameter[]             group  = new SqlParameter[values.Length];
+        for ( int i = 0; i < values.Length; i++ ) { group[i] = values[i].WithSuffix(suffix); }
+
+        __groups.Add([..group]);
         return this;
     }
 

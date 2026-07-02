@@ -63,6 +63,22 @@ public sealed class SqlInterpolatedStringHandlerTests : Assert
                  });
     }
 
+    [Test] public void GetInsert_numbers_parameters_per_row_for_multiple_records()
+    {
+        RoleRecord first  = new("Admin");
+        RoleRecord second = new("User");
+        string     sql    = SqlCommand.GetInsert(first, second).SQL;
+
+        Multiple(() =>
+                 {
+                     That(sql, Does.Contain("@normalized_name1"));
+                     That(sql, Does.Contain("@normalized_name2"));
+                     That(sql, Does.Contain("@name_of_role1"));
+                     That(sql, Does.Contain("@name_of_role2"));
+                     That(sql, Does.Not.Contain("@normalized_name,")); // the un-suffixed name must not appear
+                 });
+    }
+
     [Test] public void NeedsQuotes_is_true_for_string_like_types_only()
     {
         Multiple(() =>
