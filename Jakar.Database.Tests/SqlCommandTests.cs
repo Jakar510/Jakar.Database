@@ -76,6 +76,34 @@ public sealed class SqlCommandTests : Assert
                  });
     }
 
+    [Test] public void Address_created_without_user_is_unowned_with_generated_id()
+    {
+        AddressRecord address = AddressRecord.Create("line1", "line2", "city", "state", "postal", "country");
+
+        Multiple(() =>
+                 {
+                     // Shared/unowned: no user is inlined as an empty Guid FK; it is left NULL.
+                     That(address.UserID, Is.Null);
+                     // A missing id must be generated, not left as an empty Guid.
+                     That(address.ID.Value, Is.Not.EqualTo(Guid.Empty));
+                 });
+    }
+
+    [Test] public void GetUpdate_inlines_id_as_literal_not_operator()
+    {
+        RoleRecord role = CreateRole();
+
+        string sql = SqlCommand.GetUpdate(role).SQL;
+
+        Multiple(() =>
+                 {
+                     That(sql, Does.Contain("UPDATE").And.Contain("roles"));
+                     // "@'guid'" reads @ as the Postgres abs() operator applied to a string, throwing "invalid input syntax for type double precision".
+                     That(sql, Does.Not.Contain("@'"), "the id must be inlined as a literal, not prefixed with @");
+                     That(sql, Does.Contain($"id = '{role.ID.Value}'"));
+                 });
+    }
+
     [Test] public void GetInsert_multi_row_binds_every_placeholder()
     {
         RoleRecord[] roles = [CreateRole("Admin"), CreateRole("Editor"), CreateRole("Viewer")];

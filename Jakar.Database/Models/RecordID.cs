@@ -8,7 +8,7 @@ namespace Jakar.Database;
 [DefaultMember(nameof(Empty))]
 public readonly record struct RecordID<TKey, TValue>( RecordID<TKey> Key, RecordID<TValue> Value )
     where TKey : class, IPairRecord<TKey>, ITableRecord<TKey>
-    where TValue : class, IOwnedTableRecord<TValue>, ITableRecord<TValue>
+    where TValue : class, IPairRecord<TValue>, ITableRecord<TValue>
 {
     public static readonly RecordID<TKey, TValue> Empty = new(RecordID<TKey>.Empty, RecordID<TValue>.Empty);
     public readonly        RecordID<TKey>         Key   = Key;
@@ -33,8 +33,9 @@ public readonly struct RecordID<TSelf>( Guid id ) : IRecordID, IEqualComparable<
     [Pure] public static RecordID<TSelf>  Parse( params ReadOnlySpan<char> value )                       => Create(Guid.Parse(value));
     [Pure] public static RecordID<TSelf>  ID( DbDataReader                 reader )                      => Create(reader, nameof(IUniqueID.ID));
     [Pure] public static RecordID<TSelf>  UserID( DbDataReader             reader )                      => Create(reader, nameof(IUserRecordID.UserID));
-    [Pure] public static RecordID<TSelf>? TryCreate( DbDataReader          reader, string propertyName ) => TryCreate(reader.GetFieldValue<Guid?>(TSelf.MetaData[propertyName].Index));
-    [Pure] public static RecordID<TSelf>  Create( DbDataReader             reader, string propertyName ) => Create(reader.GetFieldValue<Guid>(TSelf.MetaData[propertyName].Index));
+    // Resolve the ordinal from the reader's own result set by column name, not from TSelf.MetaData: for a foreign-key field (e.g. UserID) TSelf is the referenced table (UserRecord), whose column index does not match the row being read (e.g. a recovery_codes row).
+    [Pure] public static RecordID<TSelf>? TryCreate( DbDataReader          reader, string propertyName ) => TryCreate(reader.GetFieldValue<Guid?>(reader.GetOrdinal(propertyName.SqlName())));
+    [Pure] public static RecordID<TSelf>  Create( DbDataReader             reader, string propertyName ) => Create(reader.GetFieldValue<Guid>(reader.GetOrdinal(propertyName.SqlName())));
     [Pure] public static RecordID<TSelf>  Create( Guid                     id ) => new(id);
     [Pure] public static RecordID<TSelf> Create( Guid? id ) => id.HasValue
                                                                    ? new RecordID<TSelf>(id.Value)

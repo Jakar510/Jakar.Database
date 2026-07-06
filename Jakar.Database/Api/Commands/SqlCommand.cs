@@ -388,7 +388,7 @@ public readonly struct SqlCommand : IEquatable<SqlCommand>
                              IF NOT EXISTS (
                                  SELECT * FROM {TSelf.TableName} 
                                      WHERE 
-                                        {nameof(IUniqueID.ID)} = @{record.ID}
+                                        {nameof(IUniqueID.ID)} = {record.ID}
                                      OR 
                                          (
                                          {parameters.KeyValuePairs(1, separator)}
@@ -425,7 +425,7 @@ public readonly struct SqlCommand : IEquatable<SqlCommand>
                              SET 
                              {parameters.KeyValuePairs(1, "AND")}
                              WHERE 
-                                {nameof(IUniqueID.ID)} = @{record.ID};
+                                {nameof(IUniqueID.ID)} = {record.ID};
                              """);
     }
     public static SqlCommand InsertOrUpdate<TSelf>( TSelf record, in CommandParameters parameters, string separator = "AND" )
@@ -438,7 +438,7 @@ public readonly struct SqlCommand : IEquatable<SqlCommand>
                              (
                              SELECT * FROM {TSelf.TableName}
                              WHERE
-                                    {nameof(IUniqueID.ID)} = @{record.ID}
+                                    {nameof(IUniqueID.ID)} = {record.ID}
                                  OR 
                                      (
                                      {parameters.KeyValuePairs(1, separator)}

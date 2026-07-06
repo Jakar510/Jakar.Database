@@ -59,6 +59,7 @@ public class MigrationManager
         Add(18, UserGroupRecord.MetaData.CreateTable);
         Add(19, AddressRecord.MetaData.CreateTable);
         Add(20, UserAddressRecord.MetaData.CreateTable);
+        Add(21, UserLoginProviderRecord.MetaData.CreateTable);
 
 
         Add(ResxRowRecord.MetaData.IndexedColumns.Union(FileRecord.MetaData.IndexedColumns)
@@ -70,7 +71,8 @@ public class MigrationManager
                          .Union(GroupRecord.MetaData.IndexedColumns)
                          .Union(UserGroupRecord.MetaData.IndexedColumns)
                          .Union(AddressRecord.MetaData.IndexedColumns)
-                         .Union(UserAddressRecord.MetaData.IndexedColumns));
+                         .Union(UserAddressRecord.MetaData.IndexedColumns)
+                         .Union(UserLoginProviderRecord.MetaData.IndexedColumns));
     }
 
 

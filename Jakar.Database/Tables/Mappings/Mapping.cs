@@ -2,7 +2,7 @@
 
 
 public interface ICreateMapping<TSelf, TKey, TValue> : ITableRecord<TSelf>
-    where TValue : class, IOwnedTableRecord<TValue>, ITableRecord<TValue>
+    where TValue : class, IPairRecord<TValue>, ITableRecord<TValue>
     where TKey : class, IPairRecord<TKey>, ITableRecord<TKey>
     where TSelf : class, ITableRecord<TSelf>, ICreateMapping<TSelf, TKey, TValue>
 {
@@ -23,7 +23,7 @@ public interface ICreateMapping<TSelf, TKey, TValue> : ITableRecord<TSelf>
 [Serializable]
 [TableExtras(nameof(KeyID), nameof(ValueID))]
 public abstract record Mapping<TSelf, TKey, TValue> : TableRecord<TSelf>
-    where TValue : class, IOwnedTableRecord<TValue>, ITableRecord<TValue>
+    where TValue : class, IPairRecord<TValue>, ITableRecord<TValue>
     where TKey : class, IPairRecord<TKey>, ITableRecord<TKey>
     where TSelf : Mapping<TSelf, TKey, TValue>, ICreateMapping<TSelf, TKey, TValue>, ITableRecord<TSelf>
 {
@@ -145,9 +145,9 @@ public abstract record Mapping<TSelf, TKey, TValue> : TableRecord<TSelf>
                                                       {TSelf.MetaData.ColumnNames(1)}
                                                       )
                                                       VALUES
+                                                      (
                                                       {parameters.VariableNames(1)}
-
-                                                      RETURNING {nameof(IUniqueID.ID)};
+                                                      );
                                                       """);
 
         await context.ExecuteNonQueryAsync(command, token);
@@ -166,9 +166,9 @@ public abstract record Mapping<TSelf, TKey, TValue> : TableRecord<TSelf>
                                                       {TSelf.MetaData.ColumnNames(1)}
                                                       )
                                                       VALUES
+                                                      (
                                                       {parameters.VariableNames(1)}
-
-                                                      RETURNING {nameof(IUniqueID.ID)};
+                                                      );
                                                       """);
 
         await context.ExecuteNonQueryAsync(command, token);
@@ -208,8 +208,7 @@ public abstract record Mapping<TSelf, TKey, TValue> : TableRecord<TSelf>
                                                             {TSelf.MetaData.ColumnNames(1)}
                                                             )
                                                             VALUES
-                                                            {parameters.VariableNames(1)}
-                                                            RETURNING {nameof(IUniqueID.ID)};
+                                                            {parameters.VariableNames(1)};
                                                             """);
 
         await context.ExecuteNonQueryAsync(insertCommand, token);
@@ -331,9 +330,7 @@ public abstract record Mapping<TSelf, TKey, TValue> : TableRecord<TSelf>
                                                       {TSelf.MetaData.ColumnNames(1)}
                                                       )
                                                       VALUES
-                                                      {parameters.VariableNames(1)}
-
-                                                      RETURNING {nameof(IUniqueID.ID)};
+                                                      {parameters.VariableNames(1)};
                                                       """);
 
         await context.ExecuteNonQueryAsync(command, token);

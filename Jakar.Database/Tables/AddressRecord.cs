@@ -5,7 +5,7 @@ namespace Jakar.Database;
 
 
 [Table(TABLE_NAME)]
-public sealed partial record AddressRecord : OwnedTableRecord<AddressRecord>, IAddress<AddressRecord, Guid>, IOwnedTableRecord<AddressRecord>
+public sealed partial record AddressRecord : PairRecord<AddressRecord>, IAddress<AddressRecord, Guid>, IPairRecord<AddressRecord>
 {
     public const string TABLE_NAME = "addresses";
 
@@ -21,11 +21,12 @@ public sealed partial record AddressRecord : OwnedTableRecord<AddressRecord>, IA
     [ProtectedPersonalData] [Indexed<AddressRecord>(nameof(Line2))] [Fixed(          512)] public          string               Line2           { get;                           init; } = EMPTY;
     [ProtectedPersonalData] [Indexed<AddressRecord>(nameof(PostalCode))] [Fixed(     512)] public          string               PostalCode      { get;                           init; } = EMPTY;
     [ProtectedPersonalData] [Indexed<AddressRecord>(nameof(StateOrProvince))] [Fixed(512)] public          string               StateOrProvince { get;                           init; } = EMPTY;
-    [ForeignKey<AddressRecord, UserRecord>]                                                public override RecordID<UserRecord> UserID          { get;                           init; }
+    // Addresses are shared, unowned entities linked to users only through UserAddressRecord; user_id is an optional, nullable back-reference (default NULL, never an empty Guid).
+    [ForeignKey<AddressRecord, UserRecord>]                                                public RecordID<UserRecord>? UserID          { get;                           init; }
 
 
-    public AddressRecord( in RecordID<UserRecord> userID, in RecordID<AddressRecord> id, in DateTimeOffset dateCreated, in DateTimeOffset? lastModified = null, JObject? additionalData = null ) : base(in userID, in id, in dateCreated, in lastModified, additionalData) { }
-    public AddressRecord( Match match, RecordID<UserRecord> userID = default ) : this(userID, RecordID<AddressRecord>.New(), DateTimeOffset.UtcNow)
+    public AddressRecord( in RecordID<UserRecord>? userID, in RecordID<AddressRecord> id, in DateTimeOffset dateCreated, in DateTimeOffset? lastModified = null, JObject? additionalData = null ) : base(in id, in dateCreated, additionalData, in lastModified) => UserID = userID;
+    public AddressRecord( Match match, RecordID<UserRecord>? userID = null ) : this(userID, RecordID<AddressRecord>.New(), DateTimeOffset.UtcNow)
     {
         Line1           = match.Groups["StreetName"].Value;
         Line2           = match.Groups["Apt"].Value;
@@ -34,7 +35,7 @@ public sealed partial record AddressRecord : OwnedTableRecord<AddressRecord>, IA
         Country         = match.Groups["Country"].Value;
         PostalCode      = match.Groups["ZipCode"].Value;
     }
-    public AddressRecord( IAddress<Guid> address, RecordID<UserRecord> userID = default ) : this(userID, RecordID<AddressRecord>.Create(address.ID), DateTimeOffset.UtcNow)
+    public AddressRecord( IAddress<Guid> address, RecordID<UserRecord>? userID = null ) : this(userID, RecordID<AddressRecord>.Create(address.ID), DateTimeOffset.UtcNow)
     {
         Line1           = address.Line1;
         Line2           = address.Line2;
@@ -47,6 +48,7 @@ public sealed partial record AddressRecord : OwnedTableRecord<AddressRecord>, IA
     }
     internal AddressRecord( DbDataReader reader ) : base(reader)
     {
+        UserID          = RecordID<UserRecord>.TryCreate(reader, nameof(UserID));
         Line1           = reader.GetFieldValue<AddressRecord, string>(nameof(Line1));
         Line2           = reader.GetFieldValue<AddressRecord, string>(nameof(Line2));
         City            = reader.GetFieldValue<AddressRecord, string>(nameof(City));
@@ -77,9 +79,11 @@ public sealed partial record AddressRecord : OwnedTableRecord<AddressRecord>, IA
 
     [Pure] public static AddressRecord Create( Match          match )                                                                                                          => new(match);
     [Pure] public static AddressRecord Create( IAddress<Guid> address )                                                                                                        => new(address);
-    public static        AddressRecord Create( string         line1, string line2, string city, string stateOrProvince, string postalCode, string country, Guid id = default ) => Create(line1, line2, city, stateOrProvince, postalCode, country, id, RecordID<UserRecord>.Empty);
-    [Pure] public static AddressRecord Create( string line1, string line2, string city, string stateOrProvince, string postalCode, string country, Guid id, RecordID<UserRecord> userID ) =>
-        new(userID, RecordID<AddressRecord>.Create(id), DateTimeOffset.UtcNow)
+    public static        AddressRecord Create( string         line1, string line2, string city, string stateOrProvince, string postalCode, string country, Guid id = default ) => Create(line1, line2, city, stateOrProvince, postalCode, country, id, null);
+    [Pure] public static AddressRecord Create( string line1, string line2, string city, string stateOrProvince, string postalCode, string country, Guid id, RecordID<UserRecord>? userID ) =>
+        new(userID, id == default
+                        ? RecordID<AddressRecord>.New()
+                        : RecordID<AddressRecord>.Create(id), DateTimeOffset.UtcNow)
         {
             Line1           = line1,
             Line2           = line2,

@@ -159,18 +159,25 @@ public class DbConnectionContext : IAsyncDisposable
     public virtual async ValueTask ExecuteNonQueryAsync( SqlCommand sql, CancellationToken token )
     {
         await using DbCommand command = sql.ToCommand(this);
-        await command.ExecuteNonQueryAsync(token);
+
+        try { await command.ExecuteNonQueryAsync(token); }
+        catch ( Exception e ) { throw new DbSqlException(sql, e); }
     }
     public virtual async ValueTask<T?> ExecuteScalarAsync<T>( SqlCommand sql, CancellationToken token )
     {
         await using DbCommand command = sql.ToCommand(this);
-        object?               value   = await command.ExecuteScalarAsync(token).ConfigureAwait(false);
 
-        Debug.WriteLine($"ExecuteScalarAsync value: {value}");
+        try
+        {
+            object? value = await command.ExecuteScalarAsync(token).ConfigureAwait(false);
 
-        return value is T result
-                   ? result
-                   : default;
+            Debug.WriteLine($"ExecuteScalarAsync value: {value}");
+
+            return value is T result
+                       ? result
+                       : default;
+        }
+        catch ( Exception e ) { throw new DbSqlException(sql, e); }
     }
     public virtual async IAsyncEnumerable<TSelf> ExecuteAsync<TSelf>( SqlCommand sql, [EnumeratorCancellation] CancellationToken token )
         where TSelf : class, ITableRecord<TSelf>
