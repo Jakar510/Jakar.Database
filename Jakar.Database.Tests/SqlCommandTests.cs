@@ -2,6 +2,7 @@
 // 06/28/2026
 
 using System.Data;
+using System.Text.RegularExpressions;
 using Jakar.Extensions;
 
 namespace Jakar.Database.Tests;
@@ -11,6 +12,7 @@ namespace Jakar.Database.Tests;
 public sealed class SqlCommandTests : Assert
 {
     private static RoleRecord CreateRole() => RoleRecord.Create("Admin", Permissions<TestDatabase.TestRight>.SA(), "ADMINS");
+    private static RoleRecord CreateRole( string name ) => RoleRecord.Create(name, Permissions<TestDatabase.TestRight>.SA(), name.ToUpperInvariant());
 
 
     [Test] public void GetAll_selects_every_row()
@@ -71,6 +73,37 @@ public sealed class SqlCommandTests : Assert
                      That(command.SQL, Does.Contain("RETURNING id"));
                      That(command.Parameters.HasValue, Is.True);
                      That(command.Parameters!.Value.ParameterCount, Is.GreaterThan(0));
+                 });
+    }
+
+    [Test] public void GetInsert_multi_row_binds_every_placeholder()
+    {
+        RoleRecord[] roles = [CreateRole("Admin"), CreateRole("Editor"), CreateRole("Viewer")];
+
+        SqlCommand command = SqlCommand.GetInsert<RoleRecord>(roles);
+
+        That(command.Parameters.HasValue, Is.True);
+
+        // Collect every bound parameter name (stored without the leading '@').
+        HashSet<string> bound = [];
+        using ( ArrayBuffer<SqlParameter> buffer = command.Parameters!.Value.Parameters )
+        {
+            foreach ( ref readonly SqlParameter parameter in buffer.Span ) { bound.Add(parameter.ParameterName); }
+        }
+
+        // Extract every @placeholder actually written into the SQL text.
+        MatchCollection placeholders = Regex.Matches(command.SQL, "@(?<name>[A-Za-z_][A-Za-z0-9_]*)");
+        HashSet<string> referenced   = [.. placeholders.Select(static m => m.Groups["name"].Value)];
+
+        Multiple(() =>
+                 {
+                     That(command.SQL, Does.Contain("INSERT INTO").And.Contain("roles"));
+                     // Multi-row inserts are materialized back into full records via TSelf.Create(reader), so the whole row must be returned, not just the id.
+                     That(command.SQL, Does.Contain("RETURNING *"));
+                     // Multi-row insert must actually emit per-row @placeholders (regression guard: they used to be emitted with no bound parameter).
+                     That(referenced, Is.Not.Empty, "expected the multi-row insert to emit @parameter placeholders");
+
+                     foreach ( string name in referenced ) { That(bound, Does.Contain(name), $"placeholder @{name} has no bound parameter"); }
                  });
     }
 

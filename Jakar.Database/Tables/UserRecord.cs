@@ -4,7 +4,7 @@
 [Serializable]
 [Table(TABLE_NAME)]
 [SuppressMessage("ReSharper", "InconsistentNaming")]
-public sealed partial record UserRecord : PairRecord<UserRecord>, ITableRecord<UserRecord>, IUserModel, IUserSecurity, IUserDetails
+public sealed partial record UserRecord : PairRecord<UserRecord>, IPairRecord<UserRecord>, IUserModel, IUserSecurity, IUserDetails
 {
     public const               string  TABLE_NAME = "users";
     private static readonly    SqlName __sql_Name = TABLE_NAME;
@@ -361,7 +361,7 @@ public sealed partial record UserRecord : PairRecord<UserRecord>, ITableRecord<U
     {
         IAsyncEnumerable<RecoveryCodeRecord> old        = Codes(context, db, token);
         RecoveryCodeRecord.Codes             dictionary = RecoveryCodeRecord.Create(this, count);
-        ImmutableArray<string>               codes      = [..dictionary.Keys];
+        ImmutableArray<string>               codes      = [.. dictionary.Keys];
 
 
         await db.RecoveryCodes.Delete(context, old, token);

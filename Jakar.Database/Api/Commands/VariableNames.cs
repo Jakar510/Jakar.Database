@@ -7,9 +7,12 @@ namespace Jakar.Database;
 
 public readonly struct VariableNames
 {
-    internal readonly CommandParameters          Parameters;
-    internal readonly StringBuilder              Value;
-    public            ReadOnlySpan<SqlParameter> Values => Parameters.Values;
+    internal readonly CommandParameters            Parameters;
+    internal readonly StringBuilder                Value;
+    private readonly  ImmutableArray<SqlParameter> __all;
+
+    /// <summary> Every parameter emitted into the VALUES text, including the per-row suffixed parameters from grouped (multi-row) inserts. The interpolated-string handler binds these, so this must cover the grouped parameters and not just <see cref="CommandParameters.Values"/> (the top-level list, which is empty for a multi-row insert). </summary>
+    public ReadOnlySpan<SqlParameter> Values => __all.AsSpan();
     public VariableNames( CommandParameters parameters, int indentLevel )
     {
         Parameters = parameters;
@@ -18,15 +21,18 @@ public readonly struct VariableNames
         if ( !parameters.IsGrouped )
         {
             AppendValues(Value, parameters.Values, indentLevel);
+            __all = [..parameters.Values];
             return;
         }
 
         // Multi-row insert: emit one parenthesized tuple per row, separated by commas. Parameter names were suffixed per row in CommandParameters.AddGroup so they stay unique.
-        bool first = true;
+        ImmutableArray<SqlParameter>.Builder all = ImmutableArray.CreateBuilder<SqlParameter>(parameters.ParameterCount);
+        bool                                 first = true;
 
         if ( parameters.Count > 0 )
         {
             AppendTuple(Value, parameters.Values, indentLevel);
+            all.AddRange(parameters.Values);
             first = false;
         }
 
@@ -35,8 +41,11 @@ public readonly struct VariableNames
             if ( !first ) { Value.Append(",\n"); }
 
             AppendTuple(Value, array.AsSpan(), indentLevel);
+            all.AddRange(array);
             first = false;
         }
+
+        __all = all.ToImmutable();
     }
 
 

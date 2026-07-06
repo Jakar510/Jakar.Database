@@ -7,7 +7,7 @@ namespace Jakar.Database;
 
 [Serializable]
 [Table(TABLE_NAME)]
-public sealed partial record UserLoginProviderRecord : OwnedTableRecord<UserLoginProviderRecord>, ITableRecord<UserLoginProviderRecord>
+public sealed partial record UserLoginProviderRecord : OwnedTableRecord<UserLoginProviderRecord>, IOwnedTableRecord<UserLoginProviderRecord>
 {
     public const string TABLE_NAME = "user_login_providers";
 

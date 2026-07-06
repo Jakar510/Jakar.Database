@@ -137,7 +137,7 @@ public sealed partial record MigrationRecord : TableRecord<MigrationRecord>, ITa
 
 
     public static MigrationRecord Create<TSelf>( long migrationID, string description, SqlCommand sql, SqlCommand downSql = default )
-        where TSelf : TableRecord<TSelf>, ITableRecord<TSelf>
+        where TSelf : class, ITableRecord<TSelf>
     {
         MigrationRecord record = new()
                                  {

@@ -3,7 +3,7 @@
 
 [Serializable]
 [Table(TABLE_NAME)]
-public sealed partial record RoleRecord : OwnedTableRecord<RoleRecord>, ITableRecord<RoleRecord>, IRoleModel<Guid>
+public sealed partial record RoleRecord : OwnedTableRecord<RoleRecord>, IOwnedTableRecord<RoleRecord>, IRoleModel<Guid>
 {
     public const string TABLE_NAME = "roles";
 

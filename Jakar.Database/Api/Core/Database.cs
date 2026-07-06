@@ -158,7 +158,7 @@ public abstract partial class Database : Randoms, IConnectableDbRoot, IHealthChe
 
 
     protected virtual DbTable<TSelf> Create<TSelf>()
-        where TSelf : PairRecord<TSelf>, ITableRecord<TSelf>
+        where TSelf : class, IPairRecord<TSelf>
     {
         TableMetaData<TSelf> data  = TSelf.MetaData;
         DbTable<TSelf>       table = new(this, _cache);

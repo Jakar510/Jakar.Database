@@ -173,29 +173,29 @@ public class DbConnectionContext : IAsyncDisposable
                    : default;
     }
     public virtual async IAsyncEnumerable<TSelf> ExecuteAsync<TSelf>( SqlCommand sql, [EnumeratorCancellation] CancellationToken token )
-        where TSelf : TableRecord<TSelf>, ITableRecord<TSelf>
+        where TSelf : class, ITableRecord<TSelf>
     {
         await using DbCommand    command = sql.ToCommand(this);
         await using DbDataReader reader  = await command.ExecuteReaderAsync(token);
         while ( await reader.ReadAsync(token) ) { yield return TSelf.Create(reader); }
     }
     public virtual async ValueTask<ImmutableArray<TSelf>> ExecuteAsync<TSelf>( SqlCommand sql, int initialCapacity, [EnumeratorCancellation] CancellationToken token = default )
-        where TSelf : TableRecord<TSelf>, ITableRecord<TSelf>
+        where TSelf : class, ITableRecord<TSelf>
     {
         List<TSelf> list = new(initialCapacity);
         await foreach ( TSelf record in ExecuteAsync<TSelf>(sql, token) ) { list.Add(record); }
 
-        return [..list];
+        return [.. list];
     }
 
 
     public async ValueTask EnsureTableExistsAsync<TSelf>( CancellationToken token )
-        where TSelf : TableRecord<TSelf>, ITableRecord<TSelf>
+        where TSelf : class, ITableRecord<TSelf>
     {
         if ( !await TableExistsAsync<MigrationRecord>(token) ) { await ExecuteNonQueryAsync(TSelf.MetaData.CreateTableSql(), token); }
     }
     public async ValueTask<bool> TableExistsAsync<TSelf>( CancellationToken token )
-        where TSelf : TableRecord<TSelf>, ITableRecord<TSelf>
+        where TSelf : class, ITableRecord<TSelf>
     {
         DbConnection connection = await EnsureConnection(token);
 
@@ -243,19 +243,19 @@ public class DbConnectionContext : IAsyncDisposable
 
 
     public virtual ValueTask<TSelf> FirstAsync<TSelf>( [EnumeratorCancellation] CancellationToken token = default )
-        where TSelf : TableRecord<TSelf>, ITableRecord<TSelf> => FirstAsync<TSelf>(SqlCommand.GetFirst<TSelf>(), token);
+        where TSelf : class, ITableRecord<TSelf> => FirstAsync<TSelf>(SqlCommand.GetFirst<TSelf>(), token);
     public virtual ValueTask<TSelf?> FirstOrDefaultAsync<TSelf>( [EnumeratorCancellation] CancellationToken token = default )
-        where TSelf : TableRecord<TSelf>, ITableRecord<TSelf> => FirstOrDefaultAsync<TSelf>(SqlCommand.GetFirst<TSelf>(), token);
+        where TSelf : class, ITableRecord<TSelf> => FirstOrDefaultAsync<TSelf>(SqlCommand.GetFirst<TSelf>(), token);
 
 
     public virtual async ValueTask<TSelf> FirstAsync<TSelf>( SqlCommand command, [EnumeratorCancellation] CancellationToken token = default )
-        where TSelf : TableRecord<TSelf>, ITableRecord<TSelf>
+        where TSelf : class, ITableRecord<TSelf>
     {
         try { return await ExecuteAsync<TSelf>(command, token).FirstAsync(token); }
         catch ( Exception e ) { throw new DbSqlException(command, e); }
     }
     public virtual async ValueTask<TSelf?> FirstOrDefaultAsync<TSelf>( SqlCommand command, [EnumeratorCancellation] CancellationToken token = default )
-        where TSelf : TableRecord<TSelf>, ITableRecord<TSelf>
+        where TSelf : class, ITableRecord<TSelf>
     {
         try { return await ExecuteAsync<TSelf>(command, token).FirstOrDefaultAsync(token); }
         catch ( Exception e ) { throw new DbSqlException(command, e); }
@@ -263,13 +263,13 @@ public class DbConnectionContext : IAsyncDisposable
 
 
     public virtual async ValueTask<TSelf> SingleAsync<TSelf>( SqlCommand command, [EnumeratorCancellation] CancellationToken token = default )
-        where TSelf : TableRecord<TSelf>, ITableRecord<TSelf>
+        where TSelf : class, ITableRecord<TSelf>
     {
         try { return await ExecuteAsync<TSelf>(command, token).SingleAsync(token); }
         catch ( Exception e ) { throw new DbSqlException(command, e); }
     }
     public virtual async ValueTask<TSelf?> SingleOrDefaultAsync<TSelf>( SqlCommand command, [EnumeratorCancellation] CancellationToken token = default )
-        where TSelf : TableRecord<TSelf>, ITableRecord<TSelf>
+        where TSelf : class, ITableRecord<TSelf>
     {
         try { return await ExecuteAsync<TSelf>(command, token).SingleOrDefaultAsync(token); }
         catch ( Exception e ) { throw new DbSqlException(command, e); }
@@ -277,13 +277,13 @@ public class DbConnectionContext : IAsyncDisposable
 
 
     public virtual async ValueTask<TSelf> LastAsync<TSelf>( SqlCommand command, [EnumeratorCancellation] CancellationToken token = default )
-        where TSelf : TableRecord<TSelf>, ITableRecord<TSelf>
+        where TSelf : class, ITableRecord<TSelf>
     {
         try { return await ExecuteAsync<TSelf>(command, token).LastAsync(token); }
         catch ( Exception e ) { throw new DbSqlException(command, e); }
     }
     public virtual async ValueTask<TSelf?> LastOrDefaultAsync<TSelf>( SqlCommand command, [EnumeratorCancellation] CancellationToken token = default )
-        where TSelf : TableRecord<TSelf>, ITableRecord<TSelf>
+        where TSelf : class, ITableRecord<TSelf>
     {
         try { return await ExecuteAsync<TSelf>(command, token).LastOrDefaultAsync(token); }
         catch ( Exception e ) { throw new DbSqlException(command, e); }
@@ -343,7 +343,7 @@ public class DbConnectionContext : IAsyncDisposable
 
 
 
-    #region Copy
+#region Copy
 
     /// <summary> Begins a binary COPY FROM STDIN operation, a high-performance data import mechanism to a PostgreSQL table. </summary>
     /// <param name="copyFromCommand"> A COPY FROM STDIN SQL command </param>
@@ -427,7 +427,7 @@ public class DbConnectionContext : IAsyncDisposable
 
 
     public virtual async ValueTask<ImmutableArray<TSelf>> ImportAsync<TSelf>( [HandlesResourceDisposal] ArrayBuffer<TSelf> records, [EnumeratorCancellation] CancellationToken token = default )
-        where TSelf : PairRecord<TSelf>, ITableRecord<TSelf>
+        where TSelf : class, IPairRecord<TSelf>
     {
         using ArrayBuffer<TSelf> array      = records;
         DbConnection             connection = await EnsureConnection(token);
@@ -440,16 +440,16 @@ public class DbConnectionContext : IAsyncDisposable
                };
     }
     protected virtual async ValueTask<ImmutableArray<TSelf>> ImportAsync<TSelf>( NpgsqlConnection connection, ArrayBuffer<TSelf> records, [EnumeratorCancellation] CancellationToken token = default )
-        where TSelf : PairRecord<TSelf>, ITableRecord<TSelf>
+        where TSelf : class, IPairRecord<TSelf>
     {
         await using NpgsqlBinaryImporter import = await connection.BeginBinaryImportAsync(SqlCommand.GetCopy<TSelf>().SQL, token);
         foreach ( TSelf record in records.Array ) { await record.Import(import, token); }
 
         await import.CompleteAsync(token);
-        return [..records.Span];
+        return [.. records.Span];
     }
     protected virtual async ValueTask<ImmutableArray<TSelf>> ImportAsync<TSelf>( SqlConnection connection, ArrayBuffer<TSelf> records, CancellationToken token = default )
-        where TSelf : PairRecord<TSelf>, ITableRecord<TSelf>
+        where TSelf : class, IPairRecord<TSelf>
     {
         using SqlBulkCopy bulk = new(connection, SqlBulkCopyOptions.Default, Transaction as SqlTransaction);
 
@@ -470,14 +470,14 @@ public class DbConnectionContext : IAsyncDisposable
         data.EndLoadData();
 
         await bulk.WriteToServerAsync(data, token);
-        return [..records.Span];
+        return [.. records.Span];
     }
 
-    #endregion
+#endregion
 
 
 
-    #region Wait
+#region Wait
 
     /// <summary>
     ///     Waits asynchronously until an asynchronous PostgreSQL messages (e.g. a notification) arrives, and exits immediately. The asynchronous message is delivered via the normal events (
@@ -525,5 +525,5 @@ public class DbConnectionContext : IAsyncDisposable
     /// <param name="token"> An optional token to cancel the asynchronous operation. The default value is <see cref="CancellationToken.None"/>. </param>
     public virtual ValueTask<bool> WaitAsync( CancellationToken token = default ) => WaitAsync(0, token);
 
-    #endregion
+#endregion
 }

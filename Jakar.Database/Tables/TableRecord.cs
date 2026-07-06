@@ -30,7 +30,7 @@ public interface ITableName
 
 
 public interface ITableRecord<TSelf> : ITableName, SqlBuilder.ISqlTable<TSelf>, IJsonModel<TSelf>, IEqualComparable<TSelf>
-    where TSelf : TableRecord<TSelf>, ITableRecord<TSelf>
+    where TSelf : class, ITableRecord<TSelf>
 {
     public abstract static ref readonly ImmutableArray<PropertyInfo> ClassProperties { [Pure] get; }
     public abstract static              PasswordHasher<TSelf>        Hasher          { [Pure] get; }
@@ -53,6 +53,32 @@ public interface ITableRecord<TSelf> : ITableName, SqlBuilder.ISqlTable<TSelf>, 
 
 
 
+public interface IPairRecord<TSelf> : ITableRecord<TSelf>, IUniqueID
+    where TSelf : class, IPairRecord<TSelf>
+{
+    [Key] public new RecordID<TSelf> ID { get; }
+    Guid IUniqueID<Guid>.            ID => ID.Value;
+
+    [Pure] public RecordPair<TSelf> ToPair();
+    public        TSelf             With( RecordID<TSelf>          id );
+    public        TSelf             WithAdditionalData( IJsonModel value );
+    public        TSelf             WithAdditionalData( JObject?   additionalData );
+}
+
+
+
+public interface IUserRecordID : IDateCreated, IUserID
+{
+    public new RecordID<UserRecord> UserID { get; }
+}
+
+
+
+public interface IOwnedTableRecord<TSelf> : IUserRecordID, IPairRecord<TSelf>
+    where TSelf : class, IOwnedTableRecord<TSelf>;
+
+
+
 [Serializable]
 public abstract record TableRecord<TSelf>( in DateTimeOffset DateCreated ) : IJsonModel<TSelf>, IDateCreated
     where TSelf : TableRecord<TSelf>, ITableRecord<TSelf>
@@ -67,9 +93,9 @@ public abstract record TableRecord<TSelf>( in DateTimeOffset DateCreated ) : IJs
     public static              int                          PropertyCount   => Properties.Length;
 
     // ---- Jakar.SqlBuilder.ISqlTable<TSelf> (lean, driver-agnostic view for the validated SQL builder) ----
-    public static              string                                          SqlTableName => TSelf.TableName.Value;
-    public static              IReadOnlyList<Jakar.SqlBuilder.ISqlColumn>       SqlColumns   => TableMetaData<TSelf>.Instance.SqlColumns;
-    public static              bool TrySqlColumn( string propertyName, out Jakar.SqlBuilder.ISqlColumn? column ) => TableMetaData<TSelf>.Instance.TrySqlColumn(propertyName, out column);
+    public static string                                     SqlTableName                                                                 => TSelf.TableName.Value;
+    public static IReadOnlyList<Jakar.SqlBuilder.ISqlColumn> SqlColumns                                                                   => TableMetaData<TSelf>.Instance.SqlColumns;
+    public static bool                                       TrySqlColumn( string propertyName, out Jakar.SqlBuilder.ISqlColumn? column ) => TableMetaData<TSelf>.Instance.TrySqlColumn(propertyName, out column);
 
 
     protected internal TableRecord( DbDataReader reader ) : this(reader.DateCreated<TSelf>()) { }
@@ -210,7 +236,7 @@ public abstract record LastModifiedRecord<TSelf> : TableRecord<TSelf>, ILastModi
 
 [Serializable]
 public abstract record PairRecord<TSelf> : LastModifiedRecord<TSelf>, IUniqueID
-    where TSelf : PairRecord<TSelf>, ITableRecord<TSelf>
+    where TSelf : PairRecord<TSelf>, IPairRecord<TSelf>
 {
     protected                      JObject?        _additionalData;
     private                        RecordID<TSelf> __id;
@@ -305,16 +331,9 @@ public abstract record PairRecord<TSelf> : LastModifiedRecord<TSelf>, IUniqueID
 
 
 
-public interface IUserRecordID : IDateCreated, IUniqueID, IUserID
-{
-    public new RecordID<UserRecord> UserID { get; }
-}
-
-
-
 [Serializable]
 public abstract record OwnedTableRecord<TSelf> : PairRecord<TSelf>, IUserRecordID
-    where TSelf : OwnedTableRecord<TSelf>, ITableRecord<TSelf>
+    where TSelf : OwnedTableRecord<TSelf>, IOwnedTableRecord<TSelf>
 {
     public abstract RecordID<UserRecord> UserID { get; init; }
     Guid IUserID.                        UserID => UserID.Value;
@@ -363,7 +382,7 @@ public abstract record OwnedTableRecord<TSelf> : PairRecord<TSelf>, IUserRecordI
     public bool  DoesNotOwn( UserRecord record ) => UserID != record.ID;
 
 
-    public override bool Equals( TSelf? other ) => base.Equals(other) && other is not null && UserID.Equals(other.UserID);
+    public override bool Equals( TSelf? other ) => base.Equals(other) && UserID.Equals(other.UserID);
     public override int CompareTo( TSelf? other )
     {
         if ( other is null ) { return 1; }

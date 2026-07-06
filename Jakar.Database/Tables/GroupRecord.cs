@@ -4,7 +4,7 @@
 [Serializable]
 [Table(TABLE_NAME)]
 [SuppressMessage("ReSharper", "InconsistentNaming")]
-public sealed partial record GroupRecord : OwnedTableRecord<GroupRecord>, ITableRecord<GroupRecord>, IGroupModel<Guid>
+public sealed partial record GroupRecord : OwnedTableRecord<GroupRecord>, IOwnedTableRecord<GroupRecord>, IGroupModel<Guid>
 {
     public const int    MAX_SIZE   = 1024;
     public const string TABLE_NAME = "groups";

@@ -5,7 +5,7 @@ namespace Jakar.Database;
 
 
 [Table(TABLE_NAME)]
-public sealed partial record AddressRecord : OwnedTableRecord<AddressRecord>, IAddress<AddressRecord, Guid>, ITableRecord<AddressRecord>
+public sealed partial record AddressRecord : OwnedTableRecord<AddressRecord>, IAddress<AddressRecord, Guid>, IOwnedTableRecord<AddressRecord>
 {
     public const string TABLE_NAME = "addresses";
 

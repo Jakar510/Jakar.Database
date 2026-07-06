@@ -35,9 +35,9 @@ public static class TableExtensions
 
 
     [Pure] public static StringBuilder Ids<TSelf>( this IEnumerable<RecordID<TSelf>> values )
-        where TSelf : PairRecord<TSelf>, ITableRecord<TSelf> => values.AsValueEnumerable().Ids();
+        where TSelf : class, IPairRecord<TSelf> => values.AsValueEnumerable().Ids();
     [Pure] public static StringBuilder Ids<TEnumerable, TSelf>( this ValueEnumerable<TEnumerable, RecordID<TSelf>> values )
-        where TSelf : PairRecord<TSelf>, ITableRecord<TSelf>
+        where TSelf : class, IPairRecord<TSelf>
         where TEnumerable : struct, IValueEnumerator<RecordID<TSelf>>, allows ref struct
     {
         const string                                        SEPARATOR  = ", ";
@@ -56,7 +56,7 @@ public static class TableExtensions
         return ids;
     }
     [Pure] public static StringBuilder Ids<TSelf>( this IEnumerable<Guid> values )
-        where TSelf : PairRecord<TSelf>, ITableRecord<TSelf> => values.AsValueEnumerable().Ids();
+        where TSelf : class, IPairRecord<TSelf> => values.AsValueEnumerable().Ids();
     [Pure] public static StringBuilder Ids<TEnumerable>( this ValueEnumerable<TEnumerable, Guid> values )
         where TEnumerable : struct, IValueEnumerator<Guid>, allows ref struct
     {

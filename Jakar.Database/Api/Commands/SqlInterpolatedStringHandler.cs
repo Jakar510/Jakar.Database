@@ -35,14 +35,14 @@ public readonly record struct SqlName( string Value )
 
 [InterpolatedStringHandler]
 public ref struct SqlInterpolatedStringHandler<TSelf>( int literalLength, int formattedCount )
-    where TSelf : TableRecord<TSelf>, ITableRecord<TSelf>
+    where TSelf : class, ITableRecord<TSelf>
 {
     internal readonly StringBuilder     Sb         = new(literalLength);
     internal readonly CommandParameters Parameters = CommandParameters.Create<TSelf>(formattedCount);
     private           string?           __lastColumnName;
 
 
-    public void AppendNull()                                                                                                                         => AppendLiteral("null");
+    public void AppendNull()                                                                                                                         => AppendLiteral("NULL");
     public void AppendLiteral( ReadOnlySpan<char> value )                                                                                            => Sb.Append(value);
     public void AppendFormatted( StringBuilder?   value, string? format = null, [CallerArgumentExpression(nameof(value))] string paramName = EMPTY ) => AppendFragment(value);
 
@@ -54,8 +54,8 @@ public ref struct SqlInterpolatedStringHandler<TSelf>( int literalLength, int fo
     }
 
 
-    public void AppendFormatted<TRecord>( RecordID<TRecord> value, string? format = null, [CallerArgumentExpression(nameof(value))] string paramName = EMPTY )
-        where TRecord : PairRecord<TRecord>, ITableRecord<TRecord>
+    public void AppendFormatted<TOther>( RecordID<TOther> value, string? format = null, [CallerArgumentExpression(nameof(value))] string paramName = EMPTY )
+        where TOther : class, IPairRecord<TOther>
     {
         ReadOnlySpan<char> span  = format;
         int                index = span.IndexOf('|');
@@ -65,8 +65,8 @@ public ref struct SqlInterpolatedStringHandler<TSelf>( int literalLength, int fo
         AppendSingle(value.Value, format, true);
     }
 
-    public void AppendFormatted<TRecord>( IEnumerable<RecordID<TRecord>> value, string? format = null, [CallerArgumentExpression(nameof(value))] string paramName = EMPTY )
-        where TRecord : PairRecord<TRecord>, ITableRecord<TRecord>
+    public void AppendFormatted<TOther>( IEnumerable<RecordID<TOther>> value, string? format = null, [CallerArgumentExpression(nameof(value))] string paramName = EMPTY )
+        where TOther : class, IPairRecord<TOther>
     {
         ReadOnlySpan<char> span  = format;
         int                index = span.IndexOf('|');
@@ -76,8 +76,8 @@ public ref struct SqlInterpolatedStringHandler<TSelf>( int literalLength, int fo
         AppendMany(value, format, indentLevel, true);
     }
 
-    public void AppendFormatted<TRecord>( ReadOnlySpan<RecordID<TRecord>> value, string? format = null, [CallerArgumentExpression(nameof(value))] string paramName = EMPTY )
-        where TRecord : PairRecord<TRecord>, ITableRecord<TRecord>
+    public void AppendFormatted<TOther>( ReadOnlySpan<RecordID<TOther>> value, string? format = null, [CallerArgumentExpression(nameof(value))] string paramName = EMPTY )
+        where TOther : class, IPairRecord<TOther>
     {
         ReadOnlySpan<char> span  = format;
         int                index = span.IndexOf('|');
@@ -109,7 +109,7 @@ public ref struct SqlInterpolatedStringHandler<TSelf>( int literalLength, int fo
         else { AppendNull(); }
     }
 
-    public void AppendFormatted( char value, string? format = null, [CallerArgumentExpression(nameof(value))] in string paramName = EMPTY ) => Sb.Append(value);
+    public void AppendFormatted( char value, string? format = null, [CallerArgumentExpression(nameof(value))] in string paramName = EMPTY ) => AppendSingle(value, format, true);
     public void AppendFormatted( char? value, string? format = null, [CallerArgumentExpression(nameof(value))] in string paramName = EMPTY )
     {
         if ( value.HasValue ) { AppendFormatted(value.Value, format, paramName); }

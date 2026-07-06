@@ -12,7 +12,7 @@ public interface IUserSubscription : IUniqueID
 
 
 public abstract record UserSubscription<TSelf> : OwnedTableRecord<TSelf>, IUserSubscription
-    where TSelf : UserSubscription<TSelf>, ITableRecord<TSelf>
+    where TSelf : UserSubscription<TSelf>, IUserSubscription, IOwnedTableRecord<TSelf>
 {
     public DateTimeOffset? SubscriptionExpires { get; init; }
 

@@ -14,7 +14,7 @@ public interface IDbTable : IConnectableDb
 
 
 public interface IDbTable<TSelf> : IDbTable
-    where TSelf : PairRecord<TSelf>, ITableRecord<TSelf>
+    where TSelf : class, IPairRecord<TSelf>
 {
     RecordGenerator<TSelf> Records { get; }
 

@@ -83,11 +83,11 @@ public readonly struct CommandParameters() : IEquatable<CommandParameters>
 
 
     public static CommandParameters Create<TSelf>()
-        where TSelf : TableRecord<TSelf>, ITableRecord<TSelf> => new() { Table = TSelf.MetaData };
+        where TSelf : class, ITableRecord<TSelf> => new() { Table = TSelf.MetaData };
     public static CommandParameters Create<TSelf>( TSelf self )
-        where TSelf : TableRecord<TSelf>, ITableRecord<TSelf> => self.ToDynamicParameters().Validate<TSelf>();
+        where TSelf : class, ITableRecord<TSelf> => self.ToDynamicParameters().Validate<TSelf>();
     public static CommandParameters Create<TSelf>( IEnumerable<TSelf> records )
-        where TSelf : TableRecord<TSelf>, ITableRecord<TSelf>
+        where TSelf : class, ITableRecord<TSelf>
     {
         CommandParameters parameters = Create<TSelf>();
         foreach ( TSelf record in records ) { parameters.AddGroup(record); }
@@ -96,7 +96,7 @@ public readonly struct CommandParameters() : IEquatable<CommandParameters>
     }
     public static CommandParameters Create<TEnumerator, TSelf>( ValueEnumerable<TEnumerator, TSelf> records )
         where TEnumerator : struct, IValueEnumerator<TSelf>, allows ref struct
-        where TSelf : TableRecord<TSelf>, ITableRecord<TSelf>
+        where TSelf : class, ITableRecord<TSelf>
     {
         CommandParameters parameters = Create<TSelf>();
         foreach ( TSelf record in records ) { parameters.AddGroup(record); }
@@ -104,7 +104,7 @@ public readonly struct CommandParameters() : IEquatable<CommandParameters>
         return parameters;
     }
     public static CommandParameters Create<TSelf>( params ReadOnlySpan<TSelf> records )
-        where TSelf : TableRecord<TSelf>, ITableRecord<TSelf>
+        where TSelf : class, ITableRecord<TSelf>
     {
         CommandParameters parameters = Create<TSelf>(records.Length);
         foreach ( TSelf record in records ) { parameters.AddGroup(record); }
@@ -112,7 +112,7 @@ public readonly struct CommandParameters() : IEquatable<CommandParameters>
         return parameters;
     }
     public static CommandParameters Create<TSelf>( params ReadOnlySpan<SqlParameter> parameters )
-        where TSelf : TableRecord<TSelf>, ITableRecord<TSelf>
+        where TSelf : class, ITableRecord<TSelf>
     {
         CommandParameters result = Create<TSelf>(parameters.Length);
         foreach ( ref readonly SqlParameter record in parameters ) { result.AddInternal(in record); }
@@ -120,7 +120,7 @@ public readonly struct CommandParameters() : IEquatable<CommandParameters>
         return result;
     }
     public static CommandParameters Create<TSelf>( int capacity )
-        where TSelf : TableRecord<TSelf>, ITableRecord<TSelf>
+        where TSelf : class, ITableRecord<TSelf>
     {
         CommandParameters parameters = Create<TSelf>();
         parameters.__parameters.EnsureCapacity(capacity);
@@ -132,7 +132,7 @@ public readonly struct CommandParameters() : IEquatable<CommandParameters>
 
 
     public CommandParameters AddGroup<TSelf>( TSelf other )
-        where TSelf : TableRecord<TSelf>, ITableRecord<TSelf>
+        where TSelf : class, ITableRecord<TSelf>
     {
         CommandParameters parameters = Create(other);
         return AddGroup(in parameters);
@@ -167,14 +167,14 @@ public readonly struct CommandParameters() : IEquatable<CommandParameters>
 
 
     public CommandParameters Add<TSelf>( string propertyName, RecordID<TSelf> value, [CallerArgumentExpression(nameof(value))] string parameterName = EMPTY, ParameterDirection direction = ParameterDirection.Input, DataRowVersion sourceVersion = DataRowVersion.Default )
-        where TSelf : PairRecord<TSelf>, ITableRecord<TSelf>
+        where TSelf : class, IPairRecord<TSelf>, ITableRecord<TSelf>
     {
         SqlParameter parameter = Table[propertyName].ToParameter(value.Value, parameterName, direction, sourceVersion);
         AddInternal(in parameter);
         return this;
     }
     public CommandParameters Add<TSelf>( string propertyName, RecordID<TSelf>? value, [CallerArgumentExpression(nameof(value))] string parameterName = EMPTY, ParameterDirection direction = ParameterDirection.Input, DataRowVersion sourceVersion = DataRowVersion.Default )
-        where TSelf : PairRecord<TSelf>, ITableRecord<TSelf>
+        where TSelf : class, IPairRecord<TSelf>, ITableRecord<TSelf>
     {
         SqlParameter parameter = Table[propertyName].ToParameter(value?.Value, parameterName, direction, sourceVersion);
         AddInternal(in parameter);
@@ -215,7 +215,7 @@ public readonly struct CommandParameters() : IEquatable<CommandParameters>
 
 
     public CommandParameters Validate<TSelf>()
-        where TSelf : TableRecord<TSelf>, ITableRecord<TSelf>
+        where TSelf : class, ITableRecord<TSelf>
     {
         if ( !string.Equals(TSelf.TableName.Value, TSelf.TableName.Value.ToSnakeCase()) ) { throw new InvalidOperationException($"{typeof(TSelf).Name}: {nameof(TSelf.TableName)} is not snake_case: '{TSelf.TableName}'"); }
 

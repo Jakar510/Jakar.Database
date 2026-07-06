@@ -63,7 +63,7 @@ public static class DbServices
 
 
     extension<TSelf>( TSelf self )
-        where TSelf : PairRecord<TSelf>, ITableRecord<TSelf>
+        where TSelf : class, IPairRecord<TSelf>
     {
         public bool IsValid()    => self.ID.IsValid();
         public bool IsNotValid() => !self.IsValid();

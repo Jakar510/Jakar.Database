@@ -7,7 +7,7 @@ namespace Jakar.Database;
 
 [Serializable]
 [Table(TABLE_NAME)]
-public sealed partial record FileRecord : PairRecord<FileRecord>, ITableRecord<FileRecord>, IFileData<Guid>, IFileMetaData
+public sealed partial record FileRecord : PairRecord<FileRecord>, IPairRecord<FileRecord>, IFileData<Guid>, IFileMetaData
 {
     public const string TABLE_NAME = "files";
 
@@ -15,14 +15,14 @@ public sealed partial record FileRecord : PairRecord<FileRecord>, ITableRecord<F
     private static readonly    SqlName __tableName = TABLE_NAME;
     public static ref readonly SqlName TableName => ref __tableName;
 
-    [Fixed(1024)] public string?   FileDescription { get; set; }
-    [Fixed(256)]  public string?   FileName        { get; set; }
-    public               long      FileSize        { get; set; }
-    [Fixed(256)] [StringCompare(StringComparison.InvariantCultureIgnoreCase)] public string? FileType { get; set; }
-    [Unique]     [StringCompare(StringComparison.OrdinalIgnoreCase)]          public string? FullPath { get; init; }
-    public               string    Hash            { get; set; } = EMPTY;
-    public               MimeType? MimeType        { get; set; }
-    public               string    Payload         { get; set; } = EMPTY;
+    [Fixed(1024)] public                                                             string?   FileDescription { get; set; }
+    [Fixed(256)]  public                                                             string?   FileName        { get; set; }
+    public                                                                           long      FileSize        { get; set; }
+    [Fixed(256)] [StringCompare(StringComparison.InvariantCultureIgnoreCase)] public string?   FileType        { get; set; }
+    [Unique] [StringCompare(    StringComparison.OrdinalIgnoreCase)]          public string?   FullPath        { get; init; }
+    public                                                                           string    Hash            { get; set; } = EMPTY;
+    public                                                                           MimeType? MimeType        { get; set; }
+    public                                                                           string    Payload         { get; set; } = EMPTY;
 
 
     public FileRecord( in RecordID<FileRecord>       id,   in DateTimeOffset dateCreated, in DateTimeOffset? lastModified = null, JObject? additionalData = null ) : base(in id, in dateCreated, additionalData, in lastModified) { }
@@ -121,6 +121,4 @@ public sealed partial record FileRecord : PairRecord<FileRecord>, ITableRecord<F
         Payload         = data.Payload;
         return Modified();
     }
-
-
 }

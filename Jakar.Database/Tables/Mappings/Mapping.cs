@@ -2,13 +2,13 @@
 
 
 public interface ICreateMapping<TSelf, TKey, TValue> : ITableRecord<TSelf>
-    where TValue : PairRecord<TValue>, ITableRecord<TValue>
-    where TKey : PairRecord<TKey>, ITableRecord<TKey>
-    where TSelf : TableRecord<TSelf>, ITableRecord<TSelf>, ICreateMapping<TSelf, TKey, TValue>
+    where TValue : class, IOwnedTableRecord<TValue>, ITableRecord<TValue>
+    where TKey : class, IPairRecord<TKey>, ITableRecord<TKey>
+    where TSelf : class, ITableRecord<TSelf>, ICreateMapping<TSelf, TKey, TValue>
 {
-    [Key] [DbIgnore] public RecordID<TKey, TValue> ID      { get; }
-    public                  RecordID<TKey>         KeyID   { get; init; }
-    public                  RecordID<TValue>       ValueID { get; init; }
+    [Key] [DbIgnore] public new RecordID<TKey, TValue> ID      { get; }
+    public RecordID<TKey>                              KeyID   { get; init; }
+    public RecordID<TValue>                            ValueID { get; init; }
 
 
     [Pure]                                  public abstract static TSelf                 Create( TKey           key, TValue                                value );
@@ -23,8 +23,8 @@ public interface ICreateMapping<TSelf, TKey, TValue> : ITableRecord<TSelf>
 [Serializable]
 [TableExtras(nameof(KeyID), nameof(ValueID))]
 public abstract record Mapping<TSelf, TKey, TValue> : TableRecord<TSelf>
-    where TValue : OwnedTableRecord<TValue>, ITableRecord<TValue>
-    where TKey : PairRecord<TKey>, ITableRecord<TKey>
+    where TValue : class, IOwnedTableRecord<TValue>, ITableRecord<TValue>
+    where TKey : class, IPairRecord<TKey>, ITableRecord<TKey>
     where TSelf : Mapping<TSelf, TKey, TValue>, ICreateMapping<TSelf, TKey, TValue>, ITableRecord<TSelf>
 {
     private WeakReference<TKey>?   __owner;

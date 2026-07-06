@@ -6,7 +6,7 @@ namespace Jakar.Database;
 
 [Serializable]
 [Table(TABLE_NAME)]
-public sealed partial record RecoveryCodeRecord : OwnedTableRecord<RecoveryCodeRecord>, ITableRecord<RecoveryCodeRecord>
+public sealed partial record RecoveryCodeRecord : OwnedTableRecord<RecoveryCodeRecord>, IOwnedTableRecord<RecoveryCodeRecord>
 {
     public const string TABLE_NAME = "recovery_codes";
 

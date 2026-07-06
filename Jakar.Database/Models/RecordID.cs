@@ -7,8 +7,8 @@ namespace Jakar.Database;
 
 [DefaultMember(nameof(Empty))]
 public readonly record struct RecordID<TKey, TValue>( RecordID<TKey> Key, RecordID<TValue> Value )
-    where TKey : PairRecord<TKey>, ITableRecord<TKey>
-    where TValue : PairRecord<TValue>, ITableRecord<TValue>
+    where TKey : class, IPairRecord<TKey>, ITableRecord<TKey>
+    where TValue : class, IOwnedTableRecord<TValue>, ITableRecord<TValue>
 {
     public static readonly RecordID<TKey, TValue> Empty = new(RecordID<TKey>.Empty, RecordID<TValue>.Empty);
     public readonly        RecordID<TKey>         Key   = Key;
@@ -19,7 +19,7 @@ public readonly record struct RecordID<TKey, TValue>( RecordID<TKey> Key, Record
 
 [DefaultMember(nameof(Empty))]
 public readonly struct RecordID<TSelf>( Guid id ) : IRecordID, IEqualComparable<RecordID<TSelf>>, ISpanParsable<RecordID<TSelf>>, IRegisterDapperTypeHandlers
-    where TSelf : PairRecord<TSelf>, ITableRecord<TSelf>
+    where TSelf : class, IPairRecord<TSelf>
 {
     public static readonly RecordID<TSelf> Empty = new(Guid.Empty);
     public readonly        string          key   = $"{TSelf.TableName}:{id}";
@@ -113,6 +113,7 @@ public readonly struct RecordID<TSelf>( Guid id ) : IRecordID, IEqualComparable<
         if ( format is not "b64" ) { return Value.TryFormat(destination, out charsWritten, format); }
 
         ReadOnlySpan<char> span = Value.ToBase64();
+
         if ( span.Length > destination.Length )
         {
             charsWritten = 0;

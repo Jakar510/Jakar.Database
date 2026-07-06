@@ -7,7 +7,7 @@ namespace Jakar.Database;
 [Serializable]
 [method: JsonConstructor]
 public readonly struct RecordPair<TSelf>( RecordID<TSelf> id, DateTimeOffset dateCreated ) : IEqualComparable<RecordPair<TSelf>>
-    where TSelf : PairRecord<TSelf>, ITableRecord<TSelf>
+    where TSelf : class, IPairRecord<TSelf>
 {
     public readonly  RecordID<TSelf> ID          = id;
     public readonly  DateTimeOffset  DateCreated = dateCreated;

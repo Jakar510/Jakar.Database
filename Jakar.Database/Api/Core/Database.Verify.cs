@@ -24,30 +24,30 @@ public enum SubscriptionState
 [Flags]
 public enum SubscriptionStatus
 {
-    NotSet = 0,
+    NotSet          = 0,
     /// <summary> Indicates that the value or state is unknown or could not be determined. </summary>
     /// <remarks> Use this value when the actual state is unavailable, indeterminate, or not applicable. This can be useful as a default or error state in scenarios where a specific value cannot be provided. This should not be used to represent a valid or meaningful state, but rather to indicate the absence of information, and should override all other flags. </remarks>
-    Unknown = 1 << 1,
+    Unknown         = 1 << 1,
     /// <summary> Temporarily suspended, resumable </summary>
-    Paused = 1 << 2,
+    Paused          = 1 << 2,
     /// <summary> Disabled due to policy, billing, or abuse </summary>
-    Suspended = 1 << 3,
+    Suspended       = 1 << 3,
     /// <summary> Payment failed, grace period begins </summary>
-    PastDue = 1 << 4,
+    PastDue         = 1 << 4,
     /// <summary> No valid payment method </summary>
     PaymentRequired = 1 << 5,
     /// <summary> Payment reversed </summary>
-    Chargeback = 1 << 6,
+    Chargeback      = 1 << 6,
     /// <summary> Subscription refunded </summary>
-    Refunded = 1 << 7,
+    Refunded        = 1 << 7,
     /// <summary> Trial period is active </summary>
-    TrialActive = 1 << 8,
+    TrialActive     = 1 << 8,
     /// <summary> Trial period is expired </summary>
-    TrialExpired = 1 << 9,
+    TrialExpired    = 1 << 9,
     /// <summary> After expiration but still usable </summary>
-    GracePeriod = 1 << 10,
+    GracePeriod     = 1 << 10,
     /// <summary> Provider temporarily blocked it </summary>
-    OnHold = 1 << 11,
+    OnHold          = 1 << 11,
 
     PaymentIssueMask = PastDue | PaymentRequired | Chargeback
 }
@@ -61,7 +61,7 @@ public readonly record struct SubscriptionInfo( SubscriptionState State, Subscri
 public abstract partial class Database
 {
     public virtual ValueTask<ErrorOrResult<TSelf>> TryGetSubscription<TSelf>( DbConnectionContext context, UserRecord record, CancellationToken token = default )
-        where TSelf : UserSubscription<TSelf>, ITableRecord<TSelf> => new(Error.NoContent());
+        where TSelf : UserSubscription<TSelf>, IUserSubscription, IOwnedTableRecord<TSelf> => new(Error.NoContent());
 
 
     public virtual ValueTask<ErrorOrResult<SubscriptionInfo>> ValidateSubscription( DbConnectionContext context, UserRecord record, CancellationToken token = default ) => new(new SubscriptionInfo(SubscriptionState.NotSet, SubscriptionStatus.NotSet, record.SubscriptionExpires));

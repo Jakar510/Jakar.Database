@@ -21,7 +21,7 @@ public sealed class TableExtrasAttribute : Attribute
 
 // ReSharper disable once ClassWithVirtualMembersNeverInherited.Global
 public class TableMetaData<TSelf> : ITableMetaData
-    where TSelf : TableRecord<TSelf>, ITableRecord<TSelf>
+    where TSelf : class, ITableRecord<TSelf>
 {
     // ReSharper disable once StaticMemberInGenericType
     public static readonly TableMetaData<TSelf>                     Instance = Create();
@@ -53,8 +53,8 @@ public class TableMetaData<TSelf> : ITableMetaData
     public ref readonly string this[ string         propertyName, DatabaseType type ] => ref Properties[propertyName][type];
 
     // ---- Jakar.SqlBuilder lean view ----
-    public  IReadOnlyList<Jakar.SqlBuilder.ISqlColumn>  SqlColumns => field ??= Properties.Values.OrderBy(static x => x.Index).ToArray();
-    public  bool TrySqlColumn( string propertyName, out Jakar.SqlBuilder.ISqlColumn? column )
+    public IReadOnlyList<Jakar.SqlBuilder.ISqlColumn> SqlColumns => field ??= Properties.Values.OrderBy(static x => x.Index).ToArray();
+    public bool TrySqlColumn( string propertyName, out Jakar.SqlBuilder.ISqlColumn? column )
     {
         if ( Properties.TryGetValue(propertyName, out ColumnMetaData? found) )
         {

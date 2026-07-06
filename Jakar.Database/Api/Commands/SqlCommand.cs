@@ -125,208 +125,208 @@ public readonly struct SqlCommand : IEquatable<SqlCommand>
 
 
     public static SqlCommand Create<TSelf>( string sql, params ReadOnlySpan<SqlParameter> parameters )
-        where TSelf : TableRecord<TSelf>, ITableRecord<TSelf> => Create(sql, CommandParameters.Create<TSelf>(parameters));
+        where TSelf : class, ITableRecord<TSelf> => Create(sql, CommandParameters.Create<TSelf>(parameters));
 
 
     public static SqlCommand Parse<TSelf>( ref SqlInterpolatedStringHandler<TSelf> handler, in CommandType commandType = CommandType.Text )
-        where TSelf : TableRecord<TSelf>, ITableRecord<TSelf> => handler.ToSqlCommand(commandType);
+        where TSelf : class, ITableRecord<TSelf> => handler.ToSqlCommand(commandType);
 
 
     public static SqlCommand GetRandom<TSelf>( int count = 1 )
-        where TSelf : TableRecord<TSelf>, ITableRecord<TSelf> => Parse<TSelf>($"""
-                                                                               SELECT * FROM {TSelf.TableName}
-                                                                               ORDER BY RANDOM()
-                                                                               LIMIT {count};
-                                                                               """);
+        where TSelf : class, ITableRecord<TSelf> => Parse<TSelf>($"""
+                                                                  SELECT * FROM {TSelf.TableName}
+                                                                  ORDER BY RANDOM()
+                                                                  LIMIT {count};
+                                                                  """);
     public static SqlCommand GetRandom<TSelf>( UserRecord user, int count = 1 )
-        where TSelf : OwnedTableRecord<TSelf>, ITableRecord<TSelf> => GetRandom<TSelf>(user.ID, count);
+        where TSelf : class, IOwnedTableRecord<TSelf> => GetRandom<TSelf>(user.ID, count);
     public static SqlCommand GetRandom<TSelf>( in RecordID<UserRecord> userID, int count = 1 )
-        where TSelf : OwnedTableRecord<TSelf>, ITableRecord<TSelf> => Parse<TSelf>($"""
-                                                                                    SELECT * FROM {TSelf.TableName}
-                                                                                    WHERE 
-                                                                                         {nameof(IUserID.UserID)} = {userID.Value}
-                                                                                    ORDER BY RANDOM()
-                                                                                    LIMIT {count};
-                                                                                    """);
+        where TSelf : class, IOwnedTableRecord<TSelf> => Parse<TSelf>($"""
+                                                                       SELECT * FROM {TSelf.TableName}
+                                                                       WHERE 
+                                                                            {nameof(IUserID.UserID)} = {userID.Value}
+                                                                       ORDER BY RANDOM()
+                                                                       LIMIT {count};
+                                                                       """);
 
 
     public static SqlCommand WherePaged<TSelf>( in CommandParameters parameters, int start, int count, string separator = "AND" )
-        where TSelf : TableRecord<TSelf>, ITableRecord<TSelf> => Parse<TSelf>($"""
-                                                                                 SELECT * FROM {TSelf.TableName} 
-                                                                                 WHERE
-                                                                                 {parameters.KeyValuePairs(1, separator)}
-                                                                                 OFFSET {start}
-                                                                                 LIMIT {count}
-                                                                               """);
+        where TSelf : class, ITableRecord<TSelf> => Parse<TSelf>($"""
+                                                                    SELECT * FROM {TSelf.TableName} 
+                                                                    WHERE
+                                                                    {parameters.KeyValuePairs(1, separator)}
+                                                                    OFFSET {start}
+                                                                    LIMIT {count}
+                                                                  """);
     public static SqlCommand WherePaged<TSelf>( in RecordID<UserRecord> userID, int start, int count )
-        where TSelf : TableRecord<TSelf>, ITableRecord<TSelf> => Parse<TSelf>($"""
-                                                                               SELECT * FROM {TSelf.TableName}
-                                                                               WHERE 
-                                                                                   {nameof(IUserID.UserID)} = {userID.Value}
-                                                                               OFFSET {start}
-                                                                               LIMIT {count};
-                                                                               """);
+        where TSelf : class, ITableRecord<TSelf> => Parse<TSelf>($"""
+                                                                  SELECT * FROM {TSelf.TableName}
+                                                                  WHERE 
+                                                                      {nameof(IUserID.UserID)} = {userID.Value}
+                                                                  OFFSET {start}
+                                                                  LIMIT {count};
+                                                                  """);
     public static SqlCommand WherePaged<TSelf>( int start, int count )
-        where TSelf : TableRecord<TSelf>, ITableRecord<TSelf> => Parse<TSelf>($"""
-                                                                               SELECT * FROM {TSelf.TableName}
-                                                                               OFFSET {start}
-                                                                               LIMIT {count};
-                                                                               """);
+        where TSelf : class, ITableRecord<TSelf> => Parse<TSelf>($"""
+                                                                  SELECT * FROM {TSelf.TableName}
+                                                                  OFFSET {start}
+                                                                  LIMIT {count};
+                                                                  """);
     public static SqlCommand WherePaged<TSelf>( DateTimeOffset startTime, int start, int count )
-        where TSelf : TableRecord<TSelf>, ITableRecord<TSelf> => Parse<TSelf>($"""
-                                                                               SELECT * FROM {TSelf.TableName}
-                                                                               WHERE 
-                                                                                    {nameof(IDateCreated.DateCreated)} > {startTime}
-                                                                               OFFSET {start}
-                                                                               LIMIT {count};
-                                                                               """);
+        where TSelf : class, ITableRecord<TSelf> => Parse<TSelf>($"""
+                                                                  SELECT * FROM {TSelf.TableName}
+                                                                  WHERE 
+                                                                       {nameof(IDateCreated.DateCreated)} > {startTime}
+                                                                  OFFSET {start}
+                                                                  LIMIT {count};
+                                                                  """);
     public static SqlCommand Where<TSelf>( in CommandParameters parameters, string separator = "AND" )
-        where TSelf : TableRecord<TSelf>, ITableRecord<TSelf> => Parse<TSelf>($"""
-                                                                               SELECT * FROM {TSelf.TableName} 
-                                                                               WHERE
-                                                                               {parameters.KeyValuePairs(1, separator)}
-                                                                               """);
+        where TSelf : class, ITableRecord<TSelf> => Parse<TSelf>($"""
+                                                                  SELECT * FROM {TSelf.TableName} 
+                                                                  WHERE
+                                                                  {parameters.KeyValuePairs(1, separator)}
+                                                                  """);
 
     [OverloadResolutionPriority(3)] public static SqlCommand Get<TSelf>( in RecordID<TSelf> id )
-        where TSelf : PairRecord<TSelf>, ITableRecord<TSelf> => Parse<TSelf>($"""
-                                                                              SELECT * FROM {TSelf.TableName}
-                                                                              WHERE
-                                                                                  {nameof(IUniqueID.ID)} = {id};
-                                                                              """);
+        where TSelf : class, IPairRecord<TSelf> => Parse<TSelf>($"""
+                                                                 SELECT * FROM {TSelf.TableName}
+                                                                 WHERE
+                                                                     {nameof(IUniqueID.ID)} = {id};
+                                                                 """);
     [OverloadResolutionPriority(1)] public static SqlCommand Get<TSelf>( IEnumerable<RecordID<TSelf>> ids )
-        where TSelf : PairRecord<TSelf>, ITableRecord<TSelf> => Parse<TSelf>($"""
-                                                                              SELECT * FROM {TSelf.TableName}
-                                                                              WHERE 
-                                                                                    {nameof(IUniqueID.ID)} in (
-                                                                              {ids:2}
-                                                                                    );
-                                                                              """);
+        where TSelf : class, IPairRecord<TSelf> => Parse<TSelf>($"""
+                                                                 SELECT * FROM {TSelf.TableName}
+                                                                 WHERE 
+                                                                       {nameof(IUniqueID.ID)} in (
+                                                                 {ids:2}
+                                                                       );
+                                                                 """);
     [OverloadResolutionPriority(2)] public static SqlCommand Get<TSelf>( params ReadOnlySpan<RecordID<TSelf>> ids )
-        where TSelf : PairRecord<TSelf>, ITableRecord<TSelf> => Parse<TSelf>($"""
-                                                                              SELECT * FROM {TSelf.TableName}
-                                                                              WHERE 
-                                                                                    {nameof(IUniqueID.ID)} in (
-                                                                              {ids:2}
-                                                                                    );
-                                                                              """);
+        where TSelf : class, IPairRecord<TSelf> => Parse<TSelf>($"""
+                                                                 SELECT * FROM {TSelf.TableName}
+                                                                 WHERE 
+                                                                       {nameof(IUniqueID.ID)} in (
+                                                                 {ids:2}
+                                                                       );
+                                                                 """);
     [OverloadResolutionPriority(0)] public static SqlCommand Get<TSelf>( in CommandParameters parameters, string separator = "AND" )
-        where TSelf : TableRecord<TSelf>, ITableRecord<TSelf> => Parse<TSelf>($"""
-                                                                               SELECT * FROM {TSelf.TableName}
-                                                                               WHERE 
-                                                                               {parameters.KeyValuePairs(1, separator)};
-                                                                               """);
+        where TSelf : class, ITableRecord<TSelf> => Parse<TSelf>($"""
+                                                                  SELECT * FROM {TSelf.TableName}
+                                                                  WHERE 
+                                                                  {parameters.KeyValuePairs(1, separator)};
+                                                                  """);
     public static SqlCommand GetAll<TSelf>()
-        where TSelf : TableRecord<TSelf>, ITableRecord<TSelf> => Parse<TSelf>($"SELECT * FROM {TSelf.TableName};");
+        where TSelf : class, ITableRecord<TSelf> => Parse<TSelf>($"SELECT * FROM {TSelf.TableName};");
     public static SqlCommand GetFirst<TSelf>( int count = 1 )
-        where TSelf : TableRecord<TSelf>, ITableRecord<TSelf> => Parse<TSelf>($"""
-                                                                               SELECT * FROM {TSelf.TableName}
-                                                                               ORDER BY {nameof(IDateCreated.DateCreated)} ASC 
-                                                                               LIMIT {count};
-                                                                               """);
+        where TSelf : class, ITableRecord<TSelf> => Parse<TSelf>($"""
+                                                                  SELECT * FROM {TSelf.TableName}
+                                                                  ORDER BY {nameof(IDateCreated.DateCreated)} ASC 
+                                                                  LIMIT {count};
+                                                                  """);
     public static SqlCommand GetLast<TSelf>( int count = 1 )
-        where TSelf : TableRecord<TSelf>, ITableRecord<TSelf> => Parse<TSelf>($"""
-                                                                               SELECT * FROM {TSelf.TableName}
-                                                                               ORDER BY {nameof(IDateCreated.DateCreated)} DESC 
-                                                                               LIMIT {count}
-                                                                               """);
+        where TSelf : class, ITableRecord<TSelf> => Parse<TSelf>($"""
+                                                                  SELECT * FROM {TSelf.TableName}
+                                                                  ORDER BY {nameof(IDateCreated.DateCreated)} DESC 
+                                                                  LIMIT {count}
+                                                                  """);
 
 
     public static SqlCommand GetCount<TSelf>()
-        where TSelf : TableRecord<TSelf>, ITableRecord<TSelf> => Parse<TSelf>($"SELECT COUNT({nameof(IUniqueID.ID)}) FROM {TSelf.TableName};");
+        where TSelf : class, ITableRecord<TSelf> => Parse<TSelf>($"SELECT COUNT({nameof(IUniqueID.ID)}) FROM {TSelf.TableName};");
     public static SqlCommand GetSortedID<TSelf>()
-        where TSelf : PairRecord<TSelf>, ITableRecord<TSelf> => Parse<TSelf>($"""
-                                                                              SELECT {nameof(IUniqueID.ID)}, {nameof(IDateCreated.DateCreated)} FROM {TSelf.TableName}
-                                                                              ORDER BY {nameof(IDateCreated.DateCreated)} DESC;
-                                                                              """);
+        where TSelf : class, IPairRecord<TSelf> => Parse<TSelf>($"""
+                                                                 SELECT {nameof(IUniqueID.ID)}, {nameof(IDateCreated.DateCreated)} FROM {TSelf.TableName}
+                                                                 ORDER BY {nameof(IDateCreated.DateCreated)} DESC;
+                                                                 """);
     public static SqlCommand GetExists<TSelf>( in CommandParameters parameters )
-        where TSelf : TableRecord<TSelf>, ITableRecord<TSelf> => Parse<TSelf>($"""
-                                                                               EXISTS( 
-                                                                               SELECT * FROM {TSelf.TableName}
-                                                                               WHERE 
-                                                                               {parameters.KeyValuePairs(1)};
-                                                                               """);
+        where TSelf : class, ITableRecord<TSelf> => Parse<TSelf>($"""
+                                                                  EXISTS( 
+                                                                  SELECT * FROM {TSelf.TableName}
+                                                                  WHERE 
+                                                                  {parameters.KeyValuePairs(1)};
+                                                                  """);
 
 
     [OverloadResolutionPriority(0)] public static SqlCommand GetDelete<TSelf>( in CommandParameters parameters, string separator = "AND" )
-        where TSelf : PairRecord<TSelf>, ITableRecord<TSelf> => Parse<TSelf>($"""
-                                                                              DELETE FROM {TSelf.TableName} 
-                                                                              WHERE 
-                                                                              {nameof(IUniqueID.ID)} in (
-                                                                              {parameters.KeyValuePairs(2, separator)}
-                                                                                );
-                                                                              """);
+        where TSelf : class, IPairRecord<TSelf> => Parse<TSelf>($"""
+                                                                 DELETE FROM {TSelf.TableName} 
+                                                                 WHERE 
+                                                                 {nameof(IUniqueID.ID)} in (
+                                                                 {parameters.KeyValuePairs(2, separator)}
+                                                                   );
+                                                                 """);
     [OverloadResolutionPriority(3)] public static SqlCommand GetDelete<TSelf>( in RecordID<TSelf> id )
-        where TSelf : PairRecord<TSelf>, ITableRecord<TSelf> => Parse<TSelf>($"""
-                                                                              DELETE FROM {TSelf.TableName}
-                                                                              WHERE {nameof(IUniqueID.ID)} = {id.Value};
-                                                                              """);
+        where TSelf : class, IPairRecord<TSelf> => Parse<TSelf>($"""
+                                                                 DELETE FROM {TSelf.TableName}
+                                                                 WHERE {nameof(IUniqueID.ID)} = {id.Value};
+                                                                 """);
     [OverloadResolutionPriority(1)] public static SqlCommand GetDelete<TSelf>( IEnumerable<RecordID<TSelf>> ids )
-        where TSelf : PairRecord<TSelf>, ITableRecord<TSelf> => Parse<TSelf>($"""
-                                                                              DELETE FROM {TSelf.TableName} 
-                                                                              WHERE 
-                                                                                    {nameof(IUniqueID.ID)} in (
-                                                                              {ids:2}
-                                                                                    );
-                                                                              """);
+        where TSelf : class, IPairRecord<TSelf> => Parse<TSelf>($"""
+                                                                 DELETE FROM {TSelf.TableName} 
+                                                                 WHERE 
+                                                                       {nameof(IUniqueID.ID)} in (
+                                                                 {ids:2}
+                                                                       );
+                                                                 """);
     [OverloadResolutionPriority(2)] public static SqlCommand GetDelete<TSelf>( params ReadOnlySpan<RecordID<TSelf>> ids )
-        where TSelf : PairRecord<TSelf>, ITableRecord<TSelf> => Parse<TSelf>($"""
-                                                                              DELETE FROM {TSelf.TableName} 
-                                                                              WHERE 
-                                                                                    {nameof(IUniqueID.ID)} in (
-                                                                              {ids:2}
-                                                                                    );
-                                                                              """);
+        where TSelf : class, IPairRecord<TSelf> => Parse<TSelf>($"""
+                                                                 DELETE FROM {TSelf.TableName} 
+                                                                 WHERE 
+                                                                       {nameof(IUniqueID.ID)} in (
+                                                                 {ids:2}
+                                                                       );
+                                                                 """);
     public static SqlCommand GetDeleteAll<TSelf>()
-        where TSelf : TableRecord<TSelf>, ITableRecord<TSelf> => Parse<TSelf>($"DELETE FROM {TSelf.TableName};");
+        where TSelf : class, ITableRecord<TSelf> => Parse<TSelf>($"DELETE FROM {TSelf.TableName};");
 
 
     public static SqlCommand GetNext<TSelf>( in RecordPair<TSelf> pair )
-        where TSelf : PairRecord<TSelf>, ITableRecord<TSelf> => Parse<TSelf>($"""
-                                                                              SELECT * FROM {TSelf.TableName}
-                                                                              WHERE ( 
-                                                                                    id = IFNULL(
-                                                                                            (
-                                                                                                SELECT MIN(
-                                                                                                    {nameof(IDateCreated.DateCreated)}) FROM {TSelf.TableName} 
-                                                                                                        WHERE {nameof(IDateCreated.DateCreated)} > {pair.DateCreated}
-                                                                                                        )
-                                                                                                    LIMIT 2
-                                                                                            ),
-                                                                                            0
-                                                                                        )
-                                                                                );
-                                                                              """);
+        where TSelf : class, IPairRecord<TSelf> => Parse<TSelf>($"""
+                                                                 SELECT * FROM {TSelf.TableName}
+                                                                 WHERE ( 
+                                                                       id = IFNULL(
+                                                                               (
+                                                                                   SELECT MIN(
+                                                                                       {nameof(IDateCreated.DateCreated)}) FROM {TSelf.TableName} 
+                                                                                           WHERE {nameof(IDateCreated.DateCreated)} > {pair.DateCreated}
+                                                                                           )
+                                                                                       LIMIT 2
+                                                                               ),
+                                                                               0
+                                                                           )
+                                                                   );
+                                                                 """);
     public static SqlCommand GetNextID<TSelf>( in RecordPair<TSelf> pair )
-        where TSelf : PairRecord<TSelf>, ITableRecord<TSelf> => Parse<TSelf>($"""
-                                                                              SELECT {nameof(IUniqueID.ID)} FROM {TSelf.TableName}
-                                                                              WHERE (
-                                                                                  id = IFNULL(
-                                                                                          (
-                                                                                              SELECT MIN({nameof(IDateCreated.DateCreated)}) FROM {TSelf.TableName}
-                                                                                                  WHERE {nameof(IDateCreated.DateCreated)} > {pair.DateCreated}
-                                                                                              LIMIT 2
-                                                                                          ),
-                                                                                          0
-                                                                                      )
-                                                                                );
-                                                                              """);
+        where TSelf : class, IPairRecord<TSelf> => Parse<TSelf>($"""
+                                                                 SELECT {nameof(IUniqueID.ID)} FROM {TSelf.TableName}
+                                                                 WHERE (
+                                                                     id = IFNULL(
+                                                                             (
+                                                                                 SELECT MIN({nameof(IDateCreated.DateCreated)}) FROM {TSelf.TableName}
+                                                                                     WHERE {nameof(IDateCreated.DateCreated)} > {pair.DateCreated}
+                                                                                 LIMIT 2
+                                                                             ),
+                                                                             0
+                                                                         )
+                                                                   );
+                                                                 """);
 
 
     public static SqlCommand GetCopy<TSelf>()
-        where TSelf : PairRecord<TSelf>, ITableRecord<TSelf> => Parse<TSelf>($"""
-                                                                              CREATE TEMP TABLE temp_table (LIKE {TSelf.TableName} INCLUDING DEFAULTS);
+        where TSelf : class, IPairRecord<TSelf> => Parse<TSelf>($"""
+                                                                 CREATE TEMP TABLE temp_table (LIKE {TSelf.TableName} INCLUDING DEFAULTS);
 
-                                                                              COPY temp_table (
-                                                                              {TSelf.MetaData.ColumnNames(1)}
-                                                                              )
-                                                                              FROM STDIN;
+                                                                 COPY temp_table (
+                                                                 {TSelf.MetaData.ColumnNames(1)}
+                                                                 )
+                                                                 FROM STDIN;
 
-                                                                              INSERT INTO {TSelf.TableName}
-                                                                                  SELECT * FROM temp_table
-                                                                                  RETURNING {nameof(IUniqueID.ID)};      
-                                                                              """);
+                                                                 INSERT INTO {TSelf.TableName}
+                                                                     SELECT * FROM temp_table
+                                                                     RETURNING {nameof(IUniqueID.ID)};      
+                                                                 """);
     [OverloadResolutionPriority(3)] public static SqlCommand GetInsert<TSelf>( TSelf record )
-        where TSelf : PairRecord<TSelf>, ITableRecord<TSelf>
+        where TSelf : class, IPairRecord<TSelf>
     {
         CommandParameters parameters = CommandParameters.Create(record);
 
@@ -344,26 +344,11 @@ public readonly struct SqlCommand : IEquatable<SqlCommand>
                              """);
     }
     [OverloadResolutionPriority(1)] public static SqlCommand GetInsert<TSelf>( IEnumerable<TSelf> records )
-        where TSelf : PairRecord<TSelf>, ITableRecord<TSelf>
+        where TSelf : class, IPairRecord<TSelf>
     {
         CommandParameters parameters = CommandParameters.Create(records.AsValueEnumerable());
 
-        return Parse<TSelf>($"""
-                             INSERT INTO {TSelf.TableName} 
-                                 (
-                                {parameters.ColumnNames(1)}                 
-                                 )
-                             VALUES
-                                {parameters.VariableNames(1)}
-
-                             RETURNING {nameof(IUniqueID.ID)};
-                             """);
-    }
-    [OverloadResolutionPriority(2)] public static SqlCommand GetInsert<TSelf>( params ReadOnlySpan<TSelf> records )
-        where TSelf : PairRecord<TSelf>, ITableRecord<TSelf>
-    {
-        CommandParameters parameters = CommandParameters.Create(records);
-
+        // Multi-row inserts are materialized back into full records via TSelf.Create(reader), so every column must be returned, not just the id.
         return Parse<TSelf>($"""
                              INSERT INTO {TSelf.TableName}
                                  (
@@ -372,13 +357,30 @@ public readonly struct SqlCommand : IEquatable<SqlCommand>
                              VALUES
                                 {parameters.VariableNames(1)}
 
-                             RETURNING {nameof(IUniqueID.ID)};
+                             RETURNING *;
+                             """);
+    }
+    [OverloadResolutionPriority(2)] public static SqlCommand GetInsert<TSelf>( params ReadOnlySpan<TSelf> records )
+        where TSelf : class, IPairRecord<TSelf>
+    {
+        CommandParameters parameters = CommandParameters.Create(records);
+
+        // Multi-row inserts are materialized back into full records via TSelf.Create(reader), so every column must be returned, not just the id.
+        return Parse<TSelf>($"""
+                             INSERT INTO {TSelf.TableName}
+                                 (
+                                {parameters.ColumnNames(1)}
+                                 )
+                             VALUES
+                                {parameters.VariableNames(1)}
+
+                             RETURNING *;
                              """);
     }
 
 
     public static SqlCommand GetTryInsert<TSelf>( TSelf record, in CommandParameters parameters, string separator = "AND" )
-        where TSelf : PairRecord<TSelf>, ITableRecord<TSelf>
+        where TSelf : class, IPairRecord<TSelf>
     {
         CommandParameters recordParameters = CommandParameters.Create(record);
 
@@ -414,7 +416,7 @@ public readonly struct SqlCommand : IEquatable<SqlCommand>
 
 
     public static SqlCommand GetUpdate<TSelf>( TSelf record )
-        where TSelf : PairRecord<TSelf>, ITableRecord<TSelf>
+        where TSelf : class, IPairRecord<TSelf>
     {
         CommandParameters parameters = record.ToDynamicParameters();
 
@@ -427,7 +429,7 @@ public readonly struct SqlCommand : IEquatable<SqlCommand>
                              """);
     }
     public static SqlCommand InsertOrUpdate<TSelf>( TSelf record, in CommandParameters parameters, string separator = "AND" )
-        where TSelf : PairRecord<TSelf>, ITableRecord<TSelf>
+        where TSelf : class, IPairRecord<TSelf>
     {
         CommandParameters recordParameters = CommandParameters.Create(record);
 
