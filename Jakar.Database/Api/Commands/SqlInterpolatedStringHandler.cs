@@ -438,7 +438,7 @@ public ref struct SqlInterpolatedStringHandler<TSelf>( int literalLength, int fo
 
 
     public void AppendFormatted<TEnumerator, TValue>( ValueEnumerable<TEnumerator, TValue> value, string? format = null )
-        where TEnumerator : struct, IValueEnumerator<TValue>
+        where TEnumerator : struct, IValueEnumerator<TValue>, allows ref struct
         where TValue : ISpanFormattable
     {
         Span<char> destination = stackalloc char[256];

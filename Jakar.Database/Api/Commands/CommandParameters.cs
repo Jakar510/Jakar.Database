@@ -50,6 +50,7 @@ public readonly struct CommandParameters() : IEquatable<CommandParameters>
         [Pure] [MustDisposeResource] get
         {
             ArrayBuffer<SqlParameter> buffer = new(ParameterCount);
+
             foreach ( ref readonly SqlParameter parameter in Values ) { buffer.Add(in parameter); }
 
             foreach ( ref readonly ImmutableArray<SqlParameter> array in Groups )
@@ -81,7 +82,8 @@ public readonly struct CommandParameters() : IEquatable<CommandParameters>
     public   VariableNames VariableNames( int      indentLevel )                                      => new(this, indentLevel);
     public   KeyValuePairs KeyValuePairs( int      indentLevel, params ReadOnlySpan<char> separator ) => new(this, indentLevel, separator);
 
-
+    public ValueEnumerable<Union<FromSpan<SqlParameter>, SelectMany<FromSpan<ImmutableArray<SqlParameter>>, ImmutableArray<SqlParameter>, SqlParameter>, SqlParameter>, SqlParameter> AllValues() => Values.AsValueEnumerable().Union(Groups.AsValueEnumerable().SelectMany(x => x));
+    
     public static CommandParameters Create<TSelf>()
         where TSelf : class, ITableRecord<TSelf> => new() { Table = TSelf.MetaData };
     public static CommandParameters Create<TSelf>( TSelf self )
