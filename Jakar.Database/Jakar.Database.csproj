@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
 	<PropertyGroup>
 		<TargetFramework>net10.0</TargetFramework>
@@ -20,7 +20,7 @@
 		<PackageTags>Api Extension Linq Http Files Files Strings Types Languages Collections Ini</PackageTags>
 		<RepositoryType>git</RepositoryType>
 		<RepositoryUrl>https://github.com/Jakar510/Jakar.Database</RepositoryUrl>
-		<PackageReleaseNotes>Bug Fixes</PackageReleaseNotes>
+		<PackageReleaseNotes>10.1.0: serializes with Jakar.Json only (built on Jakar.Extensions 10.11.0); Newtonsoft.Json, System.Text.Json and Npgsql.Json.NET are gone. Records are [JsonModel] types: ITableRecord&lt;TSelf&gt; requires IJsonSerializable&lt;TSelf&gt; (the generated ToJson/FromJson/TryFromJson replace TableRecord.FromJson/TryFromJson, and ToString() is the record as JSON). PairRecord.AdditionalData (and ResxRowRecord.AdditionalData) is a JObjectNode? marked [JsonOverflow]: unknown JSON members collect there and are written back. IPairRecord&lt;TSelf&gt; implements IJsonModel; WithAdditionalData takes JObjectNode?. JNode values bind to SQL parameters, batch commands and binary COPY as JSON text, and JNode-typed properties map to json columns. JsonSqlHandler and DbDataReader.GetData need IJsonSerializable&lt;TValue&gt;. JsonResult&lt;TValue&gt; writes the value's runtime [JsonModel] type (JsonCodecRegistry) and throws NotSupportedException for other types. JwtParser reads the payload with Jakar.Json: every claim is returned, and array roles become one claim each. EmailSettings is a [JsonModel].</PackageReleaseNotes>
 		<EnableNETAnalyzers>true</EnableNETAnalyzers>
 		<NeutralLanguage>en</NeutralLanguage>
 		<GeneratePackageOnBuild>True</GeneratePackageOnBuild>
@@ -38,6 +38,8 @@
 		<TreatWarningsAsErrors>False</TreatWarningsAsErrors>
 		<IsAotCompatible>False</IsAotCompatible>
 		<IsTrimmable>False</IsTrimmable>
+		<!-- Jakar.Json's attributes are [Conditional]: keep them in this assembly's metadata, so [JsonModel] records in other assemblies see them on the members they inherit (PairRecord.AdditionalData's [JsonOverflow]). -->
+		<DefineConstants>$(DefineConstants);JAKAR_JSON_KEEP_ATTRIBUTES</DefineConstants>
 	</PropertyGroup>
 
 
@@ -104,7 +106,6 @@
 		<PackageReference Include="Microsoft.IdentityModel.Tokens" />
 		<PackageReference Include="MySqlConnector" />
 		<PackageReference Include="Npgsql" />
-		<PackageReference Include="Npgsql.Json.NET" />
 		<PackageReference Include="Npgsql.OpenTelemetry" />
 		<PackageReference Include="OpenTelemetry" />
 		<PackageReference Include="OpenTelemetry.Api" />
@@ -132,13 +133,11 @@
 		<PackageReference Include="ZiggyCreatures.FusionCache.Backplane.Memory" />
 		<PackageReference Include="ZiggyCreatures.FusionCache.Backplane.StackExchangeRedis" />
 		<PackageReference Include="ZiggyCreatures.FusionCache.OpenTelemetry" />
-		<PackageReference Include="ZiggyCreatures.FusionCache.Serialization.SystemTextJson" />
 		<PackageReference Include="ZXing.Net" />
 		<PackageReference Include="Hardware.Info" />
 		<PackageReference Include="System.Security.Cryptography.Xml" />
 		<PackageReference Include="Swashbuckle.AspNetCore" />
 		<PackageReference Include="Swashbuckle.AspNetCore.Annotations" />
-		<PackageReference Include="Swashbuckle.AspNetCore.Newtonsoft" />
 		<PackageReference Include="Microsoft.Extensions.Hosting" />
 		<PackageReference Include="Microsoft.NETCore.Platforms" />
 		<PackageReference Include="Microsoft.Extensions.Options.DataAnnotations" />

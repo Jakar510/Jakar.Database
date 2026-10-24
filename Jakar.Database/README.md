@@ -37,6 +37,7 @@ Example:
 
 ```csharp
 [Table(TABLE_NAME)]
+[JsonModel]
 public sealed partial record ExampleRecord : PairRecord<ExampleRecord>, ITableRecord<ExampleRecord>
 {
     public const string TABLE_NAME = "examples";
@@ -45,6 +46,9 @@ public sealed partial record ExampleRecord : PairRecord<ExampleRecord>, ITableRe
     public static ref readonly SqlName TableName => ref __tableName;
 
     public string Name { get; init; } = string.Empty;
+
+    [JsonCreator]
+    public ExampleRecord(RecordID<ExampleRecord> id, DateTimeOffset dateCreated) : base(in id, in dateCreated) { }
 
     internal ExampleRecord(DbDataReader reader) : base(reader)
     {
@@ -62,6 +66,8 @@ In that shape, the generator supplies:
 - `protected override ValueTask Import(NpgsqlBinaryImporter importer, string propertyName, NpgsqlDbType postgresDbType, CancellationToken token)`
 
 Keep a manual implementation when a record needs special handling.
+
+Records serialize with [Jakar.Json](https://www.nuget.org/packages/Jakar.Json/) only: `ITableRecord<TSelf>` requires `IJsonSerializable<TSelf>`, so each concrete record needs `[JsonModel]` (and `[JsonCreator]` on one constructor when it has several). `AdditionalData` is a `JObjectNode?` marked `[JsonOverflow]`.
 
 ## Authentication
 

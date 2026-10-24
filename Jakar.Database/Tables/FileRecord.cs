@@ -1,4 +1,4 @@
-﻿// Jakar.Extensions :: Jakar.Database
+// Jakar.Extensions :: Jakar.Database
 // 4/2/2024  17:43
 
 
@@ -7,6 +7,7 @@ namespace Jakar.Database;
 
 [Serializable]
 [Table(TABLE_NAME)]
+[JsonModel]
 public sealed partial record FileRecord : PairRecord<FileRecord>, IPairRecord<FileRecord>, IFileData<Guid>, IFileMetaData
 {
     public const string TABLE_NAME = "files";
@@ -25,7 +26,7 @@ public sealed partial record FileRecord : PairRecord<FileRecord>, IPairRecord<Fi
     public                                                                           string    Payload         { get; set; } = EMPTY;
 
 
-    public FileRecord( in RecordID<FileRecord>       id,   in DateTimeOffset dateCreated, in DateTimeOffset? lastModified = null, JObject? additionalData = null ) : base(in id, in dateCreated, additionalData, in lastModified) { }
+    [JsonCreator] public FileRecord( in RecordID<FileRecord> id,   in DateTimeOffset dateCreated, in DateTimeOffset? lastModified = null, JObjectNode? additionalData = null ) : base(in id, in dateCreated, additionalData, in lastModified) { }
     public FileRecord( IFileData<Guid, FileMetaData> data, LocalFile?        file = null ) : this(data, data.MetaData, file) { }
     private FileRecord( IFileData<Guid> data, IFileMetaData metaData, LocalFile? file = null ) : base(RecordID<FileRecord>.New(), DateTimeOffset.UtcNow)
     {

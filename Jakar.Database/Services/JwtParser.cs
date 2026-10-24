@@ -25,30 +25,28 @@ public static class JwtParser
 
         string json = ParseBase64WithoutPadding(payload).ConvertToString(Encoding.Default);
 
-        JObject keyValuePairs = json.GetAdditionalData() ?? new JObject();
+        JObjectNode keyValuePairs = JsonAdditionalData.Parse(json) ?? [];
 
         ExtractRolesFromJwt(claims, keyValuePairs);
 
-        if ( keyValuePairs.HasValues ) { claims.AddRange(keyValuePairs.Values<KeyValuePair<string, object?>>().Select(static kvp => new Claim(kvp.Key, kvp.Value?.ToString() ?? EMPTY))); }
+        foreach ( ( string key, JNode? value ) in keyValuePairs ) { claims.Add(new Claim(key, GetClaimValue(value))); }
 
         return claims;
     }
-    private static void ExtractRolesFromJwt( List<Claim> claims, JObject keyValuePairs )
+    private static void ExtractRolesFromJwt( List<Claim> claims, JObjectNode keyValuePairs )
     {
-        JToken? roles = keyValuePairs[ClaimTypes.Role];
-        if ( roles is null ) { return; }
+        if ( !keyValuePairs.Remove(ClaimTypes.Role, out JNode? roles) || roles is null ) { return; }
 
-        ReadOnlySpan<string> parsedRoles = roles.ToString().Trim().TrimStart('[').TrimEnd(']').Split(',');
-
-        if ( !parsedRoles.IsEmpty )
+        if ( roles is JArrayNode array )
         {
-            if ( parsedRoles.Length > 1 )
-            {
-                foreach ( string parsedRole in parsedRoles ) { claims.Add(new Claim(ClaimTypes.Role, parsedRole.Trim('"'))); }
-            }
-            else { claims.Add(new Claim(ClaimTypes.Role, parsedRoles[0])); }
+            foreach ( JNode? role in array ) { claims.Add(new Claim(ClaimTypes.Role, GetClaimValue(role))); }
         }
-
-        keyValuePairs.Remove(ClaimTypes.Role);
+        else { claims.Add(new Claim(ClaimTypes.Role, GetClaimValue(roles))); }
     }
+    private static string GetClaimValue( JNode? value ) => value switch
+                                                           {
+                                                               null                                       => EMPTY,
+                                                               JValueNode { Kind: JNodeKind.String } text => text.GetString(),
+                                                               _                                          => value.ToJson()
+                                                           };
 }

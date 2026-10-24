@@ -1,4 +1,4 @@
-﻿// Jakar.Database :: Jakar.Database
+// Jakar.Database :: Jakar.Database
 // 02/09/2026  11:10
 
 namespace Jakar.Database;
@@ -88,13 +88,13 @@ public readonly struct AutoRecordID<TSelf>( long id ) : IEquatable<AutoRecordID<
 
     public override string ToString() => Value.ToString();
     public string ToString( string? format, IFormatProvider? formatProvider ) => string.Equals(format, "b64", StringComparison.InvariantCultureIgnoreCase)
-                                                                                     ? Value.ToBase64()
+                                                                                     ? Value.ToString(CultureInfo.InvariantCulture).ToBase64()
                                                                                      : Value.ToString(format, formatProvider);
     public bool TryFormat( Span<char> destination, out int charsWritten, ReadOnlySpan<char> format, IFormatProvider? provider )
     {
         if ( format is not "b64" ) { return Value.TryFormat(destination, out charsWritten, format); }
 
-        ReadOnlySpan<char> span = Value.ToBase64();
+        ReadOnlySpan<char> span = Value.ToString(CultureInfo.InvariantCulture).ToBase64();
         span.CopyTo(destination);
         charsWritten = span.Length;
         return span.Length > 0;

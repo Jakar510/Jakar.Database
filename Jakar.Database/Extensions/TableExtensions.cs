@@ -114,14 +114,14 @@ public static class TableExtensions
             where TRecord : LastModifiedRecord<TRecord>, ITableRecord<TRecord>, ILastModified => self.GetFieldValue<TRecord, DateTimeOffset?>(nameof(ILastModified.LastModified));
 
 
-        public JObject? GetAdditionalData<TRecord>()
+        public JObjectNode? GetAdditionalData<TRecord>()
             where TRecord : TableRecord<TRecord>, ITableRecord<TRecord>
         {
             int ordinal = TRecord.MetaData[nameof(IJsonModel.AdditionalData)].Index;
 
             return self.IsDBNull(ordinal)
                        ? null
-                       : self.GetValue<string>(ordinal)?.GetAdditionalData();
+                       : JsonAdditionalData.Parse(self.GetValue<string>(ordinal));
         }
         public TValue GetFieldValue<TRecord, TValue>( string propertyName )
             where TRecord : TableRecord<TRecord>, ITableRecord<TRecord>
@@ -156,12 +156,14 @@ public static class TableExtensions
         }
 
 
-        public TValue? GetData<TValue>( string propertyName ) => self.GetFieldValue<object?>(propertyName) is string s
-                                                                     ? s.FromJson<TValue>()
-                                                                     : default;
-        public TValue? GetData<TValue>( int ordinal ) => self.GetFieldValue<object?>(ordinal) is string s
-                                                             ? s.FromJson<TValue>()
-                                                             : default;
+        public TValue? GetData<TValue>( string propertyName )
+            where TValue : IJsonSerializable<TValue> => self.GetFieldValue<object?>(propertyName) is string s
+                                                            ? s.FromJson<TValue>()
+                                                            : default;
+        public TValue? GetData<TValue>( int ordinal )
+            where TValue : IJsonSerializable<TValue> => self.GetFieldValue<object?>(ordinal) is string s
+                                                            ? s.FromJson<TValue>()
+                                                            : default;
         public TValue? GetValue<TValue>( string propertyName ) => self.GetFieldValue<object?>(propertyName) is TValue value
                                                                       ? value
                                                                       : default;

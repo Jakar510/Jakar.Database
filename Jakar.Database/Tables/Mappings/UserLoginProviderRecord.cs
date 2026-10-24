@@ -1,4 +1,4 @@
-﻿// Jakar.Extensions :: Jakar.Database
+// Jakar.Extensions :: Jakar.Database
 // 01/30/2023  2:41 PM
 
 
@@ -7,6 +7,7 @@ namespace Jakar.Database;
 
 [Serializable]
 [Table(TABLE_NAME)]
+[JsonModel]
 public sealed partial record UserLoginProviderRecord : OwnedTableRecord<UserLoginProviderRecord>, IOwnedTableRecord<UserLoginProviderRecord>
 {
     public const string TABLE_NAME = "user_login_providers";
@@ -24,7 +25,7 @@ public sealed partial record UserLoginProviderRecord : OwnedTableRecord<UserLogi
 
     public UserLoginProviderRecord( UserRecord user, UserLoginInfo info ) : this(user, info.LoginProvider, info.ProviderKey, info.ProviderDisplayName) { }
     public UserLoginProviderRecord( UserRecord user, string        loginProvider, string providerKey, string? providerDisplayName ) : this(loginProvider, providerDisplayName, providerKey, EMPTY, RecordID<UserLoginProviderRecord>.New(), user.ID, DateTimeOffset.UtcNow) { }
-    public UserLoginProviderRecord( string LoginProvider, string? ProviderDisplayName, string ProviderKey, string? Value, RecordID<UserLoginProviderRecord> ID, RecordID<UserRecord> UserID, DateTimeOffset DateCreated, DateTimeOffset? LastModified = null ) : base(in UserID, in ID, in DateCreated, in LastModified)
+    [JsonCreator] public UserLoginProviderRecord( string LoginProvider, string? ProviderDisplayName, string ProviderKey, string? Value, RecordID<UserLoginProviderRecord> ID, RecordID<UserRecord> UserID, DateTimeOffset DateCreated, DateTimeOffset? LastModified = null ) : base(in UserID, in ID, in DateCreated, in LastModified)
     {
         this.LoginProvider       = LoginProvider;
         this.ProviderDisplayName = ProviderDisplayName;

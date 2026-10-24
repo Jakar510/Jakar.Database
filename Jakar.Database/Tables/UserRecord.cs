@@ -1,9 +1,10 @@
-﻿namespace Jakar.Database;
+namespace Jakar.Database;
 
 
 [Serializable]
 [Table(TABLE_NAME)]
 [SuppressMessage("ReSharper", "InconsistentNaming")]
+[JsonModel]
 public sealed partial record UserRecord : PairRecord<UserRecord>, IPairRecord<UserRecord>, IUserModel, IUserSecurity, IUserDetails
 {
     public const               string  TABLE_NAME = "users";
@@ -27,7 +28,7 @@ public sealed partial record UserRecord : PairRecord<UserRecord>, IPairRecord<Us
     [DbIgnore] public bool HasPassword { [MemberNotNullWhen(true, nameof(PasswordHash))] get => !string.IsNullOrWhiteSpace(PasswordHash); }
 
 
-    public UserRecord( in RecordID<UserRecord> ID ) : this(in ID, null, DateTimeOffset.UtcNow) { }
+    [JsonCreator] public UserRecord( in RecordID<UserRecord> ID ) : this(in ID, null, DateTimeOffset.UtcNow) { }
     public UserRecord( in RecordID<UserRecord> ID, UserRecord?             user,   in DateTimeOffset DateCreated, in DateTimeOffset? LastModified = null ) : this(in ID, user?.ID ?? RecordID<UserRecord>.Empty, in DateCreated, in LastModified) { }
     public UserRecord( in RecordID<UserRecord> ID, in RecordID<UserRecord> userID, in DateTimeOffset DateCreated, in DateTimeOffset? LastModified = null ) : base(in ID, in DateCreated, null, in LastModified) => EscalateTo = userID;
     internal UserRecord( DbDataReader reader ) : base(reader)
@@ -312,7 +313,7 @@ public sealed partial record UserRecord : PairRecord<UserRecord>, IPairRecord<Us
 
     public UserModel ToUserModel() => ToUserModel<UserModel>();
     public TSelf ToUserModel<TSelf>()
-        where TSelf : UserModel<TSelf, Guid, UserAddress, GroupModel, RoleModel>, ICreateUserModel<TSelf, Guid, UserAddress, GroupModel, RoleModel>, IJsonModel<TSelf>, new() => ToUserModel<TSelf, UserAddress, GroupModel, RoleModel>();
+        where TSelf : UserModel<TSelf, Guid, UserAddress, GroupModel, RoleModel>, ICreateUserModel<TSelf, Guid, UserAddress, GroupModel, RoleModel>, IJsonSerializable<TSelf>, new() => ToUserModel<TSelf, UserAddress, GroupModel, RoleModel>();
     public TSelf ToUserModel<TSelf, TAddress, TGroupModel, TRoleModel>()
         where TSelf : class, IUserData<Guid, TAddress, TGroupModel, TRoleModel>, ICreateUserModel<TSelf, Guid, TAddress, TGroupModel, TRoleModel>, new()
         where TGroupModel : class, IGroupModel<TGroupModel, Guid>, IEquatable<TGroupModel>
@@ -322,7 +323,7 @@ public sealed partial record UserRecord : PairRecord<UserRecord>, IPairRecord<Us
 
     public ValueTask<UserModel> ToUserModel( DbConnectionContext context, Database db, CancellationToken token ) => ToUserModel<UserModel>(context, db, token);
     public ValueTask<TSelf> ToUserModel<TSelf>( DbConnectionContext context, Database db, CancellationToken token )
-        where TSelf : UserModel<TSelf, Guid, UserAddress, GroupModel, RoleModel>, ICreateUserModel<TSelf, Guid, UserAddress, GroupModel, RoleModel>, IJsonModel<TSelf>, new() => ToUserModel<TSelf, UserAddress, GroupModel, RoleModel>(context, db, token);
+        where TSelf : UserModel<TSelf, Guid, UserAddress, GroupModel, RoleModel>, ICreateUserModel<TSelf, Guid, UserAddress, GroupModel, RoleModel>, IJsonSerializable<TSelf>, new() => ToUserModel<TSelf, UserAddress, GroupModel, RoleModel>(context, db, token);
     public async ValueTask<TSelf> ToUserModel<TSelf, TAddress, TGroupModel, TRoleModel>( DbConnectionContext context, Database db, CancellationToken token )
         where TSelf : class, IUserData<Guid, TAddress, TGroupModel, TRoleModel>, ICreateUserModel<TSelf, Guid, TAddress, TGroupModel, TRoleModel>, new()
         where TGroupModel : class, IGroupModel<TGroupModel, Guid>, IEquatable<TGroupModel>

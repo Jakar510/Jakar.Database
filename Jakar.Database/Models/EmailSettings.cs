@@ -1,4 +1,4 @@
-﻿// ToothFairyDispatch :: ToothFairyDispatch.Cloud
+// ToothFairyDispatch :: ToothFairyDispatch.Cloud
 // 10/10/2022  1:47 PM
 
 using MailKit.Security;
@@ -9,7 +9,8 @@ namespace Jakar.Database;
 
 
 [Serializable]
-public sealed class EmailSettings : BaseClass<EmailSettings>, ILoginRequest, IJsonModel<EmailSettings>
+[JsonModel]
+public sealed partial class EmailSettings : BaseClass<EmailSettings>, ILoginRequest
 {
     public bool                IsValid      => !string.IsNullOrWhiteSpace(UserLogin) && !string.IsNullOrWhiteSpace(UserPassword) && !string.IsNullOrWhiteSpace(Site) && Port.IsValidPort();
     public SecureSocketOptions Options      { get; init; } = SecureSocketOptions.Auto;

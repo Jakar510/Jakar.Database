@@ -1,4 +1,4 @@
-﻿namespace Jakar.Database;
+namespace Jakar.Database;
 
 
 [SuppressMessage("ReSharper", "InconsistentNaming")]
@@ -20,13 +20,13 @@ public sealed class ColumnMetaData : IEquatable<ColumnMetaData>, IComparable<Col
     public readonly              string                                 KeyValuePair;
     public readonly              string                                 PropertyName;
     public readonly              string                                 VariableName;
-    [JsonIgnore] public readonly Type                                   PropertyType;
+    [JsonSkip] public readonly Type                                   PropertyType;
     private                      NpgsqlDbType?                          __postgresDbType;
     private                      SqlDbType?                             __sqlDbType;
     public readonly              FrozenDictionary<DatabaseType, string> DataTypes;
     private                      Type?                                  _propertyType;
 
-    [JsonIgnore] public DataColumn DataColumn
+    [JsonSkip] public DataColumn DataColumn
     {
         get
         {

@@ -257,7 +257,7 @@ public sealed class TableRecordGenerator : IIncrementalGenerator
     private const int TYPE_ORDER_BINARY           = 19;
     private const int TYPE_ORDER_SERIAL           = 20;
 
-    // Fully-qualified display that also carries nullable-reference annotations (string?, JObject?), so generated parameter/local types match the property's declared nullability.
+    // Fully-qualified display that also carries nullable-reference annotations (string?, JObjectNode?), so generated parameter/local types match the property's declared nullability.
     private static readonly SymbolDisplayFormat FULLY_QUALIFIED_NULLABLE = SymbolDisplayFormat.FullyQualifiedFormat.AddMiscellaneousOptions(SymbolDisplayMiscellaneousOptions.IncludeNullableReferenceTypeModifier);
 
 
@@ -399,15 +399,7 @@ public sealed class TableRecordGenerator : IIncrementalGenerator
         {
             switch ( current.Name )
             {
-                case "JToken":
-                case "JObject":
-                case "JArray":
-                case "JValue":
-                case "JsonNode":
-                case "JsonObject":
-                case "JsonArray":
-                case "JsonDocument":
-                case "JsonElement": { return true; }
+                case "JNode" when current.ContainingNamespace.ToDisplayString() == "Jakar.Json": { return true; }
             }
         }
 
@@ -508,7 +500,7 @@ public sealed class TableRecordGenerator : IIncrementalGenerator
 
         string underlying = type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
 
-        if ( type is INamedTypeSymbol jsonType && IsJsonType(jsonType) ) { return new ExportColumn(property.Name, localName, typeDisplay, ReadKind.AdditionalData, "string", role, settable); }
+        if ( type is INamedTypeSymbol jsonType && IsJsonType(jsonType) ) { return new ExportColumn(property.Name, localName, typeDisplay, ReadKind.AdditionalData, underlying, role, settable); }
 
         if ( type is INamedTypeSymbol { Name: "RecordID" } recordId && recordId.TypeArguments.Length == 1 ) { return new ExportColumn(property.Name, localName, typeDisplay, nullable ? ReadKind.NullableRecordId : ReadKind.RecordIdValue, underlying, role, settable); }
 
@@ -665,7 +657,7 @@ public sealed class TableRecordGenerator : IIncrementalGenerator
                 return;
 
             case ReadKind.AdditionalData:
-                AppendNullableRead(sb, column, "(await exporter.ReadAsync<string>(token))?.GetAdditionalData()");
+                AppendNullableRead(sb, column, $"(await exporter.ReadAsync<string>(token)).TryFromJson() as {column.ReadType}");
                 return;
         }
     }
@@ -709,6 +701,9 @@ public sealed class TableRecordGenerator : IIncrementalGenerator
     private static string GetWriteExpression( IPropertySymbol property )
     {
         if ( IsRecordId(property.Type) || IsUserRights(property.Type) ) { return $"{property.Name}.Value"; }
+
+        // Jakar.Json's DOM is written as its JSON text; Npgsql doesn't know the type.
+        if ( property.Type is INamedTypeSymbol jsonType && IsJsonType(jsonType) ) { return $"{property.Name}?.ToJson()"; }
 
         return property.Name;
     }

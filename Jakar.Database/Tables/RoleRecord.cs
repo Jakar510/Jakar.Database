@@ -1,8 +1,9 @@
-﻿namespace Jakar.Database;
+namespace Jakar.Database;
 
 
 [Serializable]
 [Table(TABLE_NAME)]
+[JsonModel]
 public sealed partial record RoleRecord : OwnedTableRecord<RoleRecord>, IOwnedTableRecord<RoleRecord>, IRoleModel<Guid>
 {
     public const string TABLE_NAME = "roles";
@@ -24,7 +25,7 @@ public sealed partial record RoleRecord : OwnedTableRecord<RoleRecord>, IOwnedTa
     public RoleRecord( string       name, string               normalizedName, RecordID<UserRecord> userID                                                                     = default ) : this(name, normalizedName, name.GetHash(), EMPTY, RecordID<RoleRecord>.New(), userID, DateTimeOffset.UtcNow) { }
     public RoleRecord( string       name, string               normalizedName, string               concurrencyStamp, RecordID<UserRecord> userID                              = default ) : this(name, normalizedName, concurrencyStamp, EMPTY, RecordID<RoleRecord>.New(), userID, DateTimeOffset.UtcNow) { }
     public RoleRecord( string       name, string               normalizedName, string               concurrencyStamp, string               rights, RecordID<UserRecord> userID = default ) : this(name, normalizedName, concurrencyStamp, rights, RecordID<RoleRecord>.New(), userID, DateTimeOffset.UtcNow) { }
-    public RoleRecord( string NameOfRole, string NormalizedName, string ConcurrencyStamp, UserRights Rights, RecordID<RoleRecord> ID, RecordID<UserRecord> UserID, DateTimeOffset DateCreated, DateTimeOffset? LastModified = null ) : base(in UserID, in ID, in DateCreated, in LastModified)
+    [JsonCreator] public RoleRecord( string NameOfRole, string NormalizedName, string ConcurrencyStamp, UserRights Rights, RecordID<RoleRecord> ID, RecordID<UserRecord> UserID, DateTimeOffset DateCreated, DateTimeOffset? LastModified = null ) : base(in UserID, in ID, in DateCreated, in LastModified)
     {
         this.Rights           = Rights;
         this.NameOfRole       = NameOfRole;

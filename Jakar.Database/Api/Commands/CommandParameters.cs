@@ -1,4 +1,4 @@
-﻿// Jakar.Database :: Jakar.Database
+// Jakar.Database :: Jakar.Database
 // 01/28/2026  18:42
 
 using ZLinq.Linq;
@@ -229,7 +229,7 @@ public readonly struct CommandParameters() : IEquatable<CommandParameters>
 
         string message = $"""
                           '{typeof(TSelf).FullName}': ToDynamicParameters.Length ({Count}) != {nameof(TSelf.ClassProperties)}.Length ({TSelf.PropertyCount})
-                          {missing.ToJson()}
+                          {Jakar.Extensions.Json.Serialize([.. missing])}
                           """;
 
         throw new InvalidOperationException(message);
@@ -251,7 +251,7 @@ public readonly struct CommandParameters() : IEquatable<CommandParameters>
     }
 
 
-    public override string ToString()                                                             => ( __parameters, __groups ).ToJson();
+    public override string ToString()                                                             => $"{nameof(CommandParameters)} {{ Parameters: [{string.Join(", ", __parameters.Select(static x => x.ParameterName))}], Groups: {__groups.Count} }}";
     public          bool   Equals( CommandParameters              other )                         => Equals(in other);
     public          bool   Equals( ref readonly CommandParameters other )                         => __id.Equals(other.__id);
     public override bool   Equals( object?                        obj )                           => obj is CommandParameters other && Equals(other);

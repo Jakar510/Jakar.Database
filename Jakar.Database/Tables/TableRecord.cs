@@ -1,4 +1,4 @@
-﻿// Jakar.Extensions :: Jakar.Database
+// Jakar.Extensions :: Jakar.Database
 // 08/14/2022  8:38 PM
 
 namespace Jakar.Database;
@@ -29,7 +29,7 @@ public interface ITableName
 
 
 
-public interface ITableRecord<TSelf> : ITableName, SqlBuilder.ISqlTable<TSelf>, IJsonModel<TSelf>, IEqualComparable<TSelf>
+public interface ITableRecord<TSelf> : ITableName, SqlBuilder.ISqlTable<TSelf>, IJsonSerializable<TSelf>, IEqualComparable<TSelf>
     where TSelf : class, ITableRecord<TSelf>
 {
     public abstract static ref readonly ImmutableArray<PropertyInfo> ClassProperties { [Pure] get; }
@@ -53,7 +53,7 @@ public interface ITableRecord<TSelf> : ITableName, SqlBuilder.ISqlTable<TSelf>, 
 
 
 
-public interface IPairRecord<TSelf> : ITableRecord<TSelf>, IUniqueID
+public interface IPairRecord<TSelf> : ITableRecord<TSelf>, IJsonModel, IUniqueID
     where TSelf : class, IPairRecord<TSelf>
 {
     [Key] public new RecordID<TSelf> ID { get; }
@@ -62,7 +62,7 @@ public interface IPairRecord<TSelf> : ITableRecord<TSelf>, IUniqueID
     [Pure] public RecordPair<TSelf> ToPair();
     public        TSelf             With( RecordID<TSelf>          id );
     public        TSelf             WithAdditionalData( IJsonModel value );
-    public        TSelf             WithAdditionalData( JObject?   additionalData );
+    public        TSelf             WithAdditionalData( JObjectNode? additionalData );
 }
 
 
@@ -80,7 +80,7 @@ public interface IOwnedTableRecord<TSelf> : IUserRecordID, IPairRecord<TSelf>
 
 
 [Serializable]
-public abstract record TableRecord<TSelf>( in DateTimeOffset DateCreated ) : IJsonModel<TSelf>, IDateCreated
+public abstract record TableRecord<TSelf>( in DateTimeOffset DateCreated ) : IDateCreated
     where TSelf : TableRecord<TSelf>, ITableRecord<TSelf>
 {
     protected internal static readonly ImmutableArray<PropertyInfo> Properties = typeof(TSelf).GetProperties(ITableMetaData.ATTRIBUTES).AsValueEnumerable().Where(static x => !x.HasAttribute<DbIgnoreAttribute>()).ToImmutableArray();
@@ -142,27 +142,6 @@ public abstract record TableRecord<TSelf>( in DateTimeOffset DateCreated ) : IJs
                    : throw new ExpectedValueTypeException(nameof(other), other, typeof(TSelf));
     }
     public override int GetHashCode() => DateCreated.GetHashCode();
-
-
-    public static bool TryFromJson( string? json, [NotNullWhen(true)] out TSelf? result )
-    {
-        try
-        {
-            if ( string.IsNullOrWhiteSpace(json) )
-            {
-                result = null;
-                return false;
-            }
-
-            result = FromJson(json);
-            return true;
-        }
-        catch ( Exception e ) { SelfLogger.WriteLine("{Exception}", e.ToString()); }
-
-        result = null;
-        return false;
-    }
-    public static TSelf FromJson( string json ) => json.FromJson<TSelf>();
 
 
     // IDataReader. The batch and binary-importer overloads are emitted by the generator on every end record (the binary overload
@@ -238,16 +217,16 @@ public abstract record LastModifiedRecord<TSelf> : TableRecord<TSelf>, ILastModi
 public abstract record PairRecord<TSelf> : LastModifiedRecord<TSelf>, IUniqueID
     where TSelf : PairRecord<TSelf>, IPairRecord<TSelf>
 {
-    protected                      JObject?        _additionalData;
+    protected                      JObjectNode?    _additionalData;
     private                        RecordID<TSelf> __id;
-    [ProtectedPersonalData] public JObject?        AdditionalData { get => _additionalData; set => _additionalData = value; }
+    [ProtectedPersonalData] [JsonOverflow] public JObjectNode? AdditionalData { get => _additionalData; set => _additionalData = value; }
 
 
     Guid IUniqueID<Guid>.        ID => ID.Value;
     [Key] public RecordID<TSelf> ID { get => __id; init => __id = value; }
 
 
-    protected PairRecord( in RecordID<TSelf> id, in DateTimeOffset dateCreated, JObject? additionalData = null, in DateTimeOffset? lastModified = null ) : base(in dateCreated, in lastModified)
+    protected PairRecord( in RecordID<TSelf> id, in DateTimeOffset dateCreated, JObjectNode? additionalData = null, in DateTimeOffset? lastModified = null ) : base(in dateCreated, in lastModified)
     {
         ID             = id;
         AdditionalData = additionalData;
@@ -286,13 +265,11 @@ public abstract record PairRecord<TSelf> : LastModifiedRecord<TSelf>, IUniqueID
 
 
     public TSelf WithAdditionalData( IJsonModel value ) => WithAdditionalData(value.AdditionalData);
-    public virtual TSelf WithAdditionalData( JObject? additionalData )
+    public virtual TSelf WithAdditionalData( JObjectNode? additionalData )
     {
         if ( additionalData is null || additionalData.Count <= 0 ) { return (TSelf)this; }
 
-        JObject json = _additionalData ??= new JObject();
-        foreach ( ( string key, JToken? jToken ) in additionalData ) { json[key] = jToken; }
-
+        _additionalData = _additionalData.Merge(additionalData);
         return Modified();
     }
 
@@ -339,7 +316,7 @@ public abstract record OwnedTableRecord<TSelf> : PairRecord<TSelf>, IUserRecordI
     Guid IUserID.                        UserID => UserID.Value;
 
 
-    protected OwnedTableRecord( in RecordID<UserRecord> userID, in RecordID<TSelf> id, in DateTimeOffset dateCreated, in DateTimeOffset? lastModified, JObject? additionalData = null ) : base(in id, in dateCreated, additionalData, in lastModified) => UserID = userID;
+    protected OwnedTableRecord( in RecordID<UserRecord> userID, in RecordID<TSelf> id, in DateTimeOffset dateCreated, in DateTimeOffset? lastModified, JObjectNode? additionalData = null ) : base(in id, in dateCreated, additionalData, in lastModified) => UserID = userID;
     protected internal OwnedTableRecord( DbDataReader   reader ) : base(reader) => UserID = RecordID<UserRecord>.UserID(reader);
 
 

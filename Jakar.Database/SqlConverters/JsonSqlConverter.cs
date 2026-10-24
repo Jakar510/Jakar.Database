@@ -3,6 +3,7 @@
 
 public abstract class JsonSqlHandler<TSelf, TValue> : SqlConverter<TSelf, TValue>
     where TSelf : JsonSqlHandler<TSelf, TValue>, new()
+    where TValue : IJsonSerializable<TValue>
 {
     public override TValue Parse( object? value )
     {
@@ -16,7 +17,7 @@ public abstract class JsonSqlHandler<TSelf, TValue> : SqlConverter<TSelf, TValue
     {
         parameter.Value = value is null
                               ? null
-                              : value.ToJson();
+                              : JsonCodec.ToJson(in value);
 
         parameter.DbType = DbType.String;
     }
@@ -25,22 +26,4 @@ public abstract class JsonSqlHandler<TSelf, TValue> : SqlConverter<TSelf, TValue
 
 
 public sealed class JsonSqlHandler<TValue> : JsonSqlHandler<JsonSqlHandler<TValue>, TValue>
-    where TValue : IJsonModel<TValue>
-{
-    public override TValue Parse( object? value )
-    {
-        string? s = value?.ToString();
-
-        return s is not null
-                   ? s.FromJson<TValue>()
-                   : default!;
-    }
-    public override void SetValue( IDbDataParameter parameter, TValue? value )
-    {
-        parameter.Value = value is null
-                              ? null
-                              : value.ToJson();
-
-        parameter.DbType = DbType.String;
-    }
-}
+    where TValue : IJsonSerializable<TValue>;

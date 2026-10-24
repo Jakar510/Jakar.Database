@@ -1,4 +1,4 @@
-﻿// Jakar.Database :: Jakar.Database
+// Jakar.Database :: Jakar.Database
 // 02/15/2026  23:08
 
 namespace Jakar.Database;
@@ -6,7 +6,8 @@ namespace Jakar.Database;
 
 /*
 [Table(TABLE_NAME)]
-public sealed record UserDetailsRecord : LastModifiedRecord<UserDetailsRecord>, ITableRecord<UserDetailsRecord>, IUserModel
+[JsonModel]
+public sealed partial record UserDetailsRecord : LastModifiedRecord<UserDetailsRecord>, ITableRecord<UserDetailsRecord>, IUserModel
 {
     public const                                                                                                  string               TABLE_NAME = "user_details";
     public static                                                                                                 string               TableName   => TABLE_NAME;

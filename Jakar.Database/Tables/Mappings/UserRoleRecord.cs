@@ -1,4 +1,4 @@
-﻿// Jakar.Database ::  Jakar.Database 
+// Jakar.Database ::  Jakar.Database 
 // 02/17/2023  2:40 PM
 
 namespace Jakar.Database;
@@ -6,6 +6,7 @@ namespace Jakar.Database;
 
 [Serializable]
 [Table(TABLE_NAME)]
+[JsonModel]
 public sealed partial record UserRoleRecord : Mapping<UserRoleRecord, UserRecord, RoleRecord>, ICreateMapping<UserRoleRecord, UserRecord, RoleRecord>
 {
     public const  string TABLE_NAME = "user_roles";
@@ -20,6 +21,7 @@ public sealed partial record UserRoleRecord : Mapping<UserRoleRecord, UserRecord
 
     public UserRoleRecord( RecordID<UserRecord>  key, RecordID<RoleRecord> value ) : base(key, value) { }
     internal UserRoleRecord( DbDataReader        reader ) : base(reader) { }
+    [JsonCreator] private UserRoleRecord( DateTimeOffset dateCreated, RecordID<UserRecord> keyID, RecordID<RoleRecord> valueID ) : base(keyID, valueID, dateCreated) { } // the generated reader constructor takes (keyID, valueID, dateCreated)
 
 
     [Pure] public static UserRoleRecord Create( UserRecord           key, RoleRecord           value ) => new(key, value);

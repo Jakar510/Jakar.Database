@@ -1,4 +1,4 @@
-﻿// Jakar.Extensions :: Jakar.Database
+// Jakar.Extensions :: Jakar.Database
 // 10/22/2025  23:12
 
 namespace Jakar.Database;
@@ -6,6 +6,7 @@ namespace Jakar.Database;
 
 [Serializable]
 [Table(TABLE_NAME)]
+[JsonModel]
 public sealed partial record UserRecoveryCodeRecord : Mapping<UserRecoveryCodeRecord, UserRecord, RecoveryCodeRecord>, ICreateMapping<UserRecoveryCodeRecord, UserRecord, RecoveryCodeRecord>
 {
     public const string TABLE_NAME = "user_recovery_codes";
@@ -20,6 +21,7 @@ public sealed partial record UserRecoveryCodeRecord : Mapping<UserRecoveryCodeRe
 
     public UserRecoveryCodeRecord( RecordID<UserRecord> key, RecordID<RecoveryCodeRecord> value ) : base(key, value) { }
     internal UserRecoveryCodeRecord( DbDataReader       reader ) : base(reader) { }
+    [JsonCreator] private UserRecoveryCodeRecord( DateTimeOffset dateCreated, RecordID<UserRecord> keyID, RecordID<RecoveryCodeRecord> valueID ) : base(keyID, valueID, dateCreated) { } // the generated reader constructor takes (keyID, valueID, dateCreated)
 
 
     public static UserRecoveryCodeRecord Create( UserRecord           key, RecoveryCodeRecord           value ) => new(key.ID, value);

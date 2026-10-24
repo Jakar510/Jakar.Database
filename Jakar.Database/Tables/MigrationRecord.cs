@@ -1,4 +1,4 @@
-﻿// Jakar.Extensions :: Jakar.Database
+// Jakar.Extensions :: Jakar.Database
 // 09/30/2025  20:32
 
 using ZLinq.Linq;
@@ -9,6 +9,7 @@ namespace Jakar.Database;
 
 
 [Serializable]
+[JsonModel]
 public sealed partial record MigrationRecord : TableRecord<MigrationRecord>, ITableRecord<MigrationRecord>
 {
     public const           string     TABLE_NAME          = "migrations"; 
@@ -24,8 +25,8 @@ public sealed partial record MigrationRecord : TableRecord<MigrationRecord>, ITa
     public required       string          Description { get; init; }
     [Key] public required long            MigrationID { get; init; }
     public                string?         ReferenceID { get; init; }
-    [DbIgnore] public     SqlCommand      UpSQL       { get; internal init; }
-    [DbIgnore] public     SqlCommand      DownSQL     { get; internal init; }
+    [DbIgnore] [JsonSkip] public SqlCommand UpSQL       { get; internal init; }
+    [DbIgnore] [JsonSkip] public SqlCommand DownSQL     { get; internal init; }
 
 
     public MigrationRecord() : base(DateTimeOffset.UtcNow) { }

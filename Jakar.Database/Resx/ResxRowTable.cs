@@ -1,16 +1,17 @@
-﻿namespace Jakar.Database;
+namespace Jakar.Database;
 
 
 /// <see cref="ResxString"/>
 [Serializable]
 [Table(TABLE_NAME)]
+[JsonModel]
 public sealed partial record ResxRowRecord : TableRecord<ResxRowRecord>, ITableRecord<ResxRowRecord>, IResxString
 {
     public const               string  TABLE_NAME = "resx";
     private static readonly    SqlName __sql_Name = TABLE_NAME;
     public static ref readonly SqlName TableName => ref __sql_Name;
 
-    public JObject?                                   AdditionalData { get; set; }
+    [JsonOverflow] public JObjectNode?                AdditionalData { get; set; }
     public string                                     Arabic         { get; init; } = EMPTY;
     public string                                     Chinese        { get; init; } = EMPTY;
     public string                                     Czech          { get; init; } = EMPTY;
@@ -32,7 +33,7 @@ public sealed partial record ResxRowRecord : TableRecord<ResxRowRecord>, ITableR
     public                string                      Thai           { get; init; } = EMPTY;
 
 
-    public ResxRowRecord( in DateTimeOffset dateCreated ) : base(in dateCreated) { }
+    [JsonCreator] public ResxRowRecord( in DateTimeOffset dateCreated ) : base(in dateCreated) { }
     [SetsRequiredMembers] public ResxRowRecord( string key, string neutral = EMPTY ) : this(DateTimeOffset.UtcNow)
     {
         Key     = key;

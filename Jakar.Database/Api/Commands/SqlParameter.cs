@@ -16,10 +16,15 @@ public readonly struct SqlParameter : IEqualComparable<SqlParameter>
     public SqlParameter( object? value, string parameterName, ColumnMetaData column, ParameterDirection direction, DataRowVersion sourceVersion ) : this(value, parameterName, column, direction, sourceVersion, true) { }
     private SqlParameter( object? value, string parameterName, ColumnMetaData column, ParameterDirection direction, DataRowVersion sourceVersion, bool normalize )
     {
-        Value         = value;
+        // JSON columns are bound as their text: the ADO.NET providers don't know Jakar.Json's DOM.
+        Value = value is JNode node
+                    ? node.ToJson()
+                    : value;
+
         ParameterName = normalize
                             ? parameterName.SqlName()
                             : parameterName;
+
         Column        = column;
         Direction     = direction;
         SourceVersion = sourceVersion;
@@ -35,12 +40,12 @@ public readonly struct SqlParameter : IEqualComparable<SqlParameter>
     /// </summary>
     public bool IsLiteral => Value switch
                              {
-                                 null or DBNull                                                                                                     => true,
-                                 bool or char                                                                                                       => true,
+                                 null or DBNull                                                                                                      => true,
+                                 bool or char                                                                                                        => true,
                                  byte or sbyte or short or ushort or int or uint or long or ulong or Int128 or UInt128 or float or double or decimal => true,
                                  Guid or DateTime or DateTimeOffset or DateOnly or TimeOnly or TimeSpan                                              => true,
-                                 Enum or IRecordID                                                                                                  => true,
-                                 _                                                                                                                  => false
+                                 Enum or IRecordID                                                                                                   => true,
+                                 _                                                                                                                   => false
                              };
 
 

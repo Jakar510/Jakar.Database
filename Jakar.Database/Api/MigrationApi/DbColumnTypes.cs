@@ -1,4 +1,4 @@
-﻿// Jakar.Extensions :: Jakar.Database
+// Jakar.Extensions :: Jakar.Database
 // 10/13/2025  22:56
 
 using System.Xml;
@@ -321,7 +321,7 @@ public static class DbColumnTypes
                 return DbColumnType.Binary;
             }
 
-            if ( typeof(JToken).IsAssignableFrom(self) || typeof(JsonNode).IsAssignableFrom(self) || self == typeof(JsonDocument) || self == typeof(JsonElement) ) { return DbColumnType.Json; }
+            if ( typeof(JNode).IsAssignableFrom(self) ) { return DbColumnType.Json; }
 
             if ( typeof(XmlNode).IsAssignableFrom(self) ) { return DbColumnType.Xml; }
 

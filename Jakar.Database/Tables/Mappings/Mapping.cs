@@ -1,4 +1,4 @@
-﻿namespace Jakar.Database;
+namespace Jakar.Database;
 
 
 public interface ICreateMapping<TSelf, TKey, TValue> : ITableRecord<TSelf>
@@ -31,7 +31,7 @@ public abstract record Mapping<TSelf, TKey, TValue> : TableRecord<TSelf>
     private WeakReference<TValue>? __value;
 
 
-    [Key] public    RecordID<TKey, TValue> ID      => new(KeyID, ValueID);
+    [Key] [JsonSkip] public RecordID<TKey, TValue> ID => new(KeyID, ValueID);
     public abstract RecordID<TKey>         KeyID   { get; init; }
     public abstract RecordID<TValue>       ValueID { get; init; }
 

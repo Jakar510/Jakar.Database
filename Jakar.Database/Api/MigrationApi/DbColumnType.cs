@@ -1,4 +1,4 @@
-﻿// Jakar.Database :: Jakar.Database
+// Jakar.Database :: Jakar.Database
 // 04/12/2026  16:41
 
 using System.Xml;
@@ -461,16 +461,16 @@ public enum DbColumnType
     /// <summary>
     ///     Corresponds to the PostgreSQL "json" type.
     ///     <para>
-    ///         <see cref="JsonNode"/>
+    ///         <see cref="JNode"/>
     ///     </para>
     ///     <para>
-    ///         <see cref="JObject"/>
+    ///         <see cref="JObjectNode"/>
     ///     </para>
     ///     <para>
-    ///         <see cref="JsonArray"/>
+    ///         <see cref="JArrayNode"/>
     ///     </para>
     ///     <para>
-    ///         <see cref="JsonValue"/>
+    ///         <see cref="JValueNode"/>
     ///     </para>
     /// </summary>
     /// <remarks> For more information, see the PostgreSQL documentation at <see href="https://www.postgresql.org/docs/current/static/datatype-json.html"/> </remarks>
@@ -479,16 +479,16 @@ public enum DbColumnType
     /// <summary>
     ///     Corresponds to the PostgreSQL "jsonb" type.
     ///     <para>
-    ///         <see cref="JsonNode"/>
+    ///         <see cref="JNode"/>
     ///     </para>
     ///     <para>
-    ///         <see cref="JObject"/>
+    ///         <see cref="JObjectNode"/>
     ///     </para>
     ///     <para>
-    ///         <see cref="JsonArray"/>
+    ///         <see cref="JArrayNode"/>
     ///     </para>
     ///     <para>
-    ///         <see cref="JsonValue"/>
+    ///         <see cref="JValueNode"/>
     ///     </para>
     /// </summary>
     /// <remarks> For more information, see the PostgreSQL documentation at <see href="https://www.postgresql.org/docs/current/static/datatype-json.html"/> </remarks>
@@ -497,16 +497,16 @@ public enum DbColumnType
     /// <summary>
     ///     Corresponds to the PostgreSQL "jsonpath" type.
     ///     <para>
-    ///         <see cref="JsonNode"/>
+    ///         <see cref="JNode"/>
     ///     </para>
     ///     <para>
-    ///         <see cref="JObject"/>
+    ///         <see cref="JObjectNode"/>
     ///     </para>
     ///     <para>
-    ///         <see cref="JsonArray"/>
+    ///         <see cref="JArrayNode"/>
     ///     </para>
     ///     <para>
-    ///         <see cref="JsonValue"/>
+    ///         <see cref="JValueNode"/>
     ///     </para>
     /// </summary>
     /// <remarks> For more information, see the PostgreSQL documentation at <see href="https://www.postgresql.org/docs/current/static/datatype-json.html#DATATYPE-JSONPATH"/> </remarks>

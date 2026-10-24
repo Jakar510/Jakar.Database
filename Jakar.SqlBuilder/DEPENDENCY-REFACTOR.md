@@ -21,7 +21,7 @@ Auditing the interface member by member against the assemblies each pulls in:
 | Member | Type referenced | Assembly pulled into SqlBuilder | Verdict |
 |---|---|---|---|
 | `ITableName.TableName` | `SqlName` | Jakar.Database (lightweight value) | **Move** (lean) |
-| `IJsonModel<TSelf>` | Jakar.Extensions | Jakar.Extensions *(already referenced)* | OK / drop from contract |
+| `IJsonSerializable<TSelf>` | Jakar.Json | Jakar.Json *(via Jakar.Extensions)* | OK / drop from contract |
 | `IEqualComparable<TSelf>` | Jakar.Extensions | Jakar.Extensions *(already referenced)* | OK / drop from contract |
 | `ClassProperties` | `ImmutableArray<PropertyInfo>` | System.Collections.Immutable + reflection | Replace with lean column list |
 | `Hasher` | `PasswordHasher<TSelf>` | **Microsoft.AspNetCore.Identity** | **Keep in Jakar.Database** |
@@ -87,7 +87,7 @@ public interface ISqlTable<TSelf> : ISqlTableName
 namespace Jakar.Database;
 
 public interface ITableRecord<TSelf> : ISqlTable<TSelf>,           // ← new base from SqlBuilder
-                                       IJsonModel<TSelf>, IEqualComparable<TSelf>
+                                       IJsonSerializable<TSelf>, IEqualComparable<TSelf>
     where TSelf : TableRecord<TSelf>, ITableRecord<TSelf>
 {
     static abstract ref readonly ImmutableArray<PropertyInfo> ClassProperties { get; }

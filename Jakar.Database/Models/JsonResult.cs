@@ -83,8 +83,26 @@ public sealed class JsonResult<TValue> : ActionResult, IResult, IEndpointMetadat
     {
         ArgumentNullException.ThrowIfNull(httpContext);
         httpContext.Response.StatusCode = StatusCode;
-        string json = Value.ToJson();
-        await httpContext.Response.WriteAsync(json, Encoding.Default, CancellationToken.None);
+        ReadOnlyMemory<byte> json = ToJsonUtf8(Value);
+        await httpContext.Response.Body.WriteAsync(json, CancellationToken.None);
+    }
+    /// <summary> Serializes <paramref name="value"/> as its runtime type, which must be a <c> [JsonModel] </c> type (or a collection of one) registered with <see cref="JsonCodecRegistry"/>. </summary>
+    /// <exception cref="NotSupportedException"> The runtime type isn't a registered <c> [JsonModel] </c> type. </exception>
+    private static ReadOnlyMemory<byte> ToJsonUtf8( TValue value )
+    {
+        if ( value is null ) { return "null"u8.ToArray(); }
+
+        Type type = value.GetType();
+        if ( !JsonCodecRegistry.TryGet(type, out JsonTypeCodec? codec) ) { throw new NotSupportedException($"'{type.Name}' isn't a [JsonModel] type, so it can't be written as JSON."); }
+
+        JsonUtf8Writer writer = new(256, codec.DefaultWriterOptions with { Indented = false });
+
+        try
+        {
+            codec.WriteValue(value, ref writer);
+            return writer.ToArray();
+        }
+        finally { writer.Dispose(); }
     }
     static void IEndpointMetadataProvider.PopulateMetadata( MethodInfo method, EndpointBuilder builder )
     {

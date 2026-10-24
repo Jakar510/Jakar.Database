@@ -1,9 +1,10 @@
-﻿namespace Jakar.Database;
+namespace Jakar.Database;
 
 
 [Serializable]
 [Table(TABLE_NAME)]
 [SuppressMessage("ReSharper", "InconsistentNaming")]
+[JsonModel]
 public sealed partial record GroupRecord : OwnedTableRecord<GroupRecord>, IOwnedTableRecord<GroupRecord>, IGroupModel<Guid>
 {
     public const int    MAX_SIZE   = 1024;
@@ -22,7 +23,7 @@ public sealed partial record GroupRecord : OwnedTableRecord<GroupRecord>, IOwned
 
 
     public GroupRecord( string nameOfGroup, UserRights rights, RecordID<UserRecord> userID = default, string? normalizedName = null ) : this(nameOfGroup, normalizedName, EMPTY, RecordID<GroupRecord>.New(), userID, DateTimeOffset.UtcNow) { }
-    public GroupRecord( string NameOfGroup, string? NormalizedName, UserRights Rights, RecordID<GroupRecord> ID, RecordID<UserRecord> userID, DateTimeOffset DateCreated, DateTimeOffset? LastModified = null ) : base(in userID, in ID, in DateCreated, in LastModified)
+    [JsonCreator] public GroupRecord( string NameOfGroup, string? NormalizedName, UserRights Rights, RecordID<GroupRecord> ID, RecordID<UserRecord> userID, DateTimeOffset DateCreated, DateTimeOffset? LastModified = null ) : base(in userID, in ID, in DateCreated, in LastModified)
     {
         this.NormalizedName = NormalizedName;
         this.Rights         = Rights;

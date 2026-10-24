@@ -1,4 +1,4 @@
-﻿// Jakar.Extensions :: Jakar.Database
+// Jakar.Extensions :: Jakar.Database
 // 01/29/2023  1:26 PM
 
 namespace Jakar.Database;
@@ -6,6 +6,7 @@ namespace Jakar.Database;
 
 [Serializable]
 [Table(TABLE_NAME)]
+[JsonModel]
 public sealed partial record RecoveryCodeRecord : OwnedTableRecord<RecoveryCodeRecord>, IOwnedTableRecord<RecoveryCodeRecord>
 {
     public const string TABLE_NAME = "recovery_codes";
@@ -20,6 +21,8 @@ public sealed partial record RecoveryCodeRecord : OwnedTableRecord<RecoveryCodeR
 
     public RecoveryCodeRecord( string code, UserRecord                   user ) : this(code, RecordID<RecoveryCodeRecord>.New(), user.ID, DateTimeOffset.UtcNow) { }
     public RecoveryCodeRecord( string code, RecordID<RecoveryCodeRecord> ID, RecordID<UserRecord> UserID, DateTimeOffset DateCreated, DateTimeOffset? LastModified = null ) : base(in UserID, in ID, in DateCreated, in LastModified) => Code = Hasher.HashPassword(this, code);
+    // JSON carries the hash already, so reading must not hash it again.
+    [JsonCreator] private RecoveryCodeRecord( RecordID<RecoveryCodeRecord> ID, RecordID<UserRecord> UserID, DateTimeOffset DateCreated, DateTimeOffset? LastModified = null ) : base(in UserID, in ID, in DateCreated, in LastModified) => Code = EMPTY;
 
     [Pure] public override CommandParameters ToDynamicParameters()
     {

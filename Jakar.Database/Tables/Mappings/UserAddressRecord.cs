@@ -1,4 +1,4 @@
-﻿// Jakar.Extensions :: Jakar.Database
+// Jakar.Extensions :: Jakar.Database
 // 4/4/2024  10:22
 
 namespace Jakar.Database;
@@ -7,6 +7,7 @@ namespace Jakar.Database;
 [Serializable]
 [Table(TABLE_NAME)]
 [SuppressMessage("ReSharper", "LoopCanBeConvertedToQuery")]
+[JsonModel]
 public sealed partial record UserAddressRecord : Mapping<UserAddressRecord, UserRecord, AddressRecord>, ICreateMapping<UserAddressRecord, UserRecord, AddressRecord>
 {
     public const string TABLE_NAME = "user_adreesses";
@@ -22,6 +23,7 @@ public sealed partial record UserAddressRecord : Mapping<UserAddressRecord, User
     public UserAddressRecord( UserRecord           key, AddressRecord           value ) : base(key, value) { }
     public UserAddressRecord( RecordID<UserRecord> key, RecordID<AddressRecord> value ) : base(key, value) { }
     internal UserAddressRecord( DbDataReader       reader ) : base(reader) { }
+    [JsonCreator] private UserAddressRecord( DateTimeOffset dateCreated, RecordID<UserRecord> keyID, RecordID<AddressRecord> valueID ) : base(keyID, valueID, dateCreated) { } // the generated reader constructor takes (keyID, valueID, dateCreated)
 
 
     [Pure] public static UserAddressRecord Create( UserRecord           key, AddressRecord           value ) => new(key, value);

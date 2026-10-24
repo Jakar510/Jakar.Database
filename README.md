@@ -108,7 +108,7 @@ await app.RunWithMigrationsAsync(["localhost:8181", "0.0.0.0:8181"]);
 Table records are explicit .NET records. The inheritance stack captures the common columns:
 
 - `TableRecord<TSelf>`
-  Base JSON model and shared metadata access.
+  Shared metadata access. Concrete records are Jakar.Json `[JsonModel]` types (`ITableRecord<TSelf>` requires `IJsonSerializable<TSelf>`).
 - `LastModifiedRecord<TSelf>`
   Adds `LastModified`.
 - `PairRecord<TSelf>`
@@ -127,6 +127,7 @@ using System.Data.Common;
 using Jakar.Database;
 
 [Table(TABLE_NAME)]
+[JsonModel]
 public sealed partial record ExampleRecord : PairRecord<ExampleRecord>, ITableRecord<ExampleRecord>
 {
     public const string TABLE_NAME = "examples";
@@ -136,12 +137,17 @@ public sealed partial record ExampleRecord : PairRecord<ExampleRecord>, ITableRe
 
     public string Name { get; init; } = string.Empty;
 
+    [JsonCreator]
+    public ExampleRecord(RecordID<ExampleRecord> id, DateTimeOffset dateCreated) : base(in id, in dateCreated) { }
+
     internal ExampleRecord(DbDataReader reader) : base(reader)
     {
         Name = reader.GetFieldValue<ExampleRecord, string>(nameof(Name));
     }
 }
 ```
+
+JSON goes through [Jakar.Json](https://github.com/Jakar510/Jakar.Json) only: put `[JsonModel]` on each concrete record, and mark the constructor it reads through `[JsonCreator]` when the record has several. `PairRecord<TSelf>.AdditionalData` is a `JObjectNode?` marked `[JsonOverflow]`, so JSON members a record doesn't declare survive a round trip; `JNode` properties are stored in `json` columns as text. Use `[JsonSkip]` for computed members that shouldn't be in the JSON.
 
 The generated metadata ignores properties marked with `[DbIgnore]`. Public get-only properties that are not persisted should be marked with `[DbIgnore]` so the table shape remains intentional.
 
@@ -288,3 +294,15 @@ Core `Jakar.SqlBuilder` takes **no** dependency on Jakar.Database (no Npgsql / S
 ## Provider Status
 
 The target remains PostgreSQL plus Microsoft SQL Server, 
+
+## Versioning
+
+Versions are **`<.NET major>.<package major>.<package minor>`**, the scheme every `Jakar.*` library uses:
+
+| Part | Meaning | Example |
+|---|---|---|
+| .NET major | The .NET version the package targets. Moving to a new .NET release changes it. | **10**.1.0 targets .NET 10 |
+| Package major | Breaking changes: removed or changed public API, or a different wire format. The minor resets. | 10.**2**.0 → 10.**3**.0 |
+| Package minor | New features and fixes that don't break existing code. | 10.2.**0** → 10.2.**1** |
+
+A new package starts at `<.NET major>.1.0`. Pre-releases add a suffix: `10.1.0-beta.1`.

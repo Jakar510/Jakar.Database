@@ -1,10 +1,11 @@
-﻿// Jakar.Extensions :: Jakar.Database
+// Jakar.Extensions :: Jakar.Database
 // 09/29/2023  9:25 PM
 
 namespace Jakar.Database;
 
 
 [Table(TABLE_NAME)]
+[JsonModel]
 public sealed partial record AddressRecord : PairRecord<AddressRecord>, IAddress<AddressRecord, Guid>, IPairRecord<AddressRecord>
 {
     public const string TABLE_NAME = "addresses";
@@ -25,7 +26,7 @@ public sealed partial record AddressRecord : PairRecord<AddressRecord>, IAddress
     [ForeignKey<AddressRecord, UserRecord>]                                                public RecordID<UserRecord>? UserID          { get;                           init; }
 
 
-    public AddressRecord( in RecordID<UserRecord>? userID, in RecordID<AddressRecord> id, in DateTimeOffset dateCreated, in DateTimeOffset? lastModified = null, JObject? additionalData = null ) : base(in id, in dateCreated, additionalData, in lastModified) => UserID = userID;
+    [JsonCreator] public AddressRecord( in RecordID<UserRecord>? userID, in RecordID<AddressRecord> id, in DateTimeOffset dateCreated, in DateTimeOffset? lastModified = null, JObjectNode? additionalData = null ) : base(in id, in dateCreated, additionalData, in lastModified) => UserID = userID;
     public AddressRecord( Match match, RecordID<UserRecord>? userID = null ) : this(userID, RecordID<AddressRecord>.New(), DateTimeOffset.UtcNow)
     {
         Line1           = match.Groups["StreetName"].Value;

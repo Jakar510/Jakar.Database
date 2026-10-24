@@ -1,12 +1,13 @@
-﻿// Jakar.Extensions :: Jakar.Database
+// Jakar.Extensions :: Jakar.Database
 // 03/11/2023  11:20 PM
 
 namespace Jakar.Database;
 
 
 [Serializable]
-[method: JsonConstructor]
-public readonly struct RecordPair<TSelf>( RecordID<TSelf> id, DateTimeOffset dateCreated ) : IEqualComparable<RecordPair<TSelf>>
+[JsonModel]
+[method: JsonCreator]
+public readonly partial struct RecordPair<TSelf>( RecordID<TSelf> id, DateTimeOffset dateCreated ) : IEqualComparable<RecordPair<TSelf>>
     where TSelf : class, IPairRecord<TSelf>
 {
     public readonly  RecordID<TSelf> ID          = id;

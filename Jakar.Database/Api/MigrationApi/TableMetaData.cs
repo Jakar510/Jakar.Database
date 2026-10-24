@@ -1,4 +1,4 @@
-﻿using ZLinq.Linq;
+using ZLinq.Linq;
 
 
 
@@ -354,7 +354,7 @@ public class TableMetaData<TSelf> : ITableMetaData
         if ( properties.Length <= 0 ) { throw new InvalidOperationException($"Type '{typeof(TSelf)}' does not have any public instance properties that are not marked with the '{nameof(DbIgnoreAttribute)}' attribute."); }
 
         using PooledArray<string> keys = properties.AsValueEnumerable().Where(ColumnMetaData.IsDbKey).Select(static x => x.Name).ToArrayPool();
-        if ( keys.Size != 1 ) { throw new InvalidOperationException($"Type '{typeof(TSelf)}' should only have one property with the '{typeof(System.ComponentModel.DataAnnotations.KeyAttribute).FullName}' or '{typeof(KeyAttribute).FullName}' attribute. \n\n{keys.Array.ToJson()}"); }
+        if ( keys.Size != 1 ) { throw new InvalidOperationException($"Type '{typeof(TSelf)}' should only have one property with the '{typeof(System.ComponentModel.DataAnnotations.KeyAttribute).FullName}' or '{typeof(KeyAttribute).FullName}' attribute. \n\n{Jakar.Extensions.Json.Serialize(keys.Array.AsSpan(0, keys.Size))}"); }
 
 
         SortedDictionary<string, ColumnMetaData> dictionary = new(StringComparer.InvariantCultureIgnoreCase);

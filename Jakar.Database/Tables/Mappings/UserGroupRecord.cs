@@ -1,4 +1,4 @@
-﻿// Jakar.Database ::  Jakar.Database 
+// Jakar.Database ::  Jakar.Database 
 // 02/17/2023  2:39 PM
 
 namespace Jakar.Database;
@@ -6,6 +6,7 @@ namespace Jakar.Database;
 
 [Serializable]
 [Table(TABLE_NAME)]
+[JsonModel]
 public sealed partial record UserGroupRecord : Mapping<UserGroupRecord, UserRecord, GroupRecord>, ICreateMapping<UserGroupRecord, UserRecord, GroupRecord>
 {
     public const string TABLE_NAME = "user_groups";
@@ -20,6 +21,7 @@ public sealed partial record UserGroupRecord : Mapping<UserGroupRecord, UserReco
 
     public UserGroupRecord( RecordID<UserRecord>  key, RecordID<GroupRecord> value ) : base(key, value) { }
     internal UserGroupRecord( DbDataReader        reader ) : base(reader) { }
+    [JsonCreator] private UserGroupRecord( DateTimeOffset dateCreated, RecordID<UserRecord> keyID, RecordID<GroupRecord> valueID ) : base(keyID, valueID, dateCreated) { } // the generated reader constructor takes (keyID, valueID, dateCreated)
 
 
     [Pure] public static UserGroupRecord Create( UserRecord           key, GroupRecord           value ) => new(key, value);
