@@ -8,10 +8,23 @@
 		<PackageRequireLicenseAcceptance>true</PackageRequireLicenseAcceptance>
 		<GeneratePackageOnBuild>false</GeneratePackageOnBuild>
 		<Description>Easy Sql Building</Description>
-		<RepositoryType>Github</RepositoryType>
+		<PackageId>Jakar.SqlBuilder</PackageId>
+		<Authors>Tyler Stegmaier</Authors>
+		<PackageProjectUrl>https://github.com/Jakar510/Jakar.Database</PackageProjectUrl>
+		<RepositoryType>git</RepositoryType>
+		<RepositoryUrl>https://github.com/Jakar510/Jakar.Database</RepositoryUrl>
+		<PackageLicenseFile>LICENSE.txt</PackageLicenseFile>
+		<PackageIcon>icon.png</PackageIcon>
+		<PackageReadmeFile>README.md</PackageReadmeFile>
 		<Nullable>enable</Nullable>
 		<LangVersion>latest</LangVersion>
 	</PropertyGroup>
+
+	<ItemGroup>
+		<None Include="..\icon.png" Pack="True" PackagePath="\" />
+		<None Include="..\LICENSE.txt" Pack="True" PackagePath="\" />
+		<None Include="README.md" Pack="True" PackagePath="\" />
+	</ItemGroup>
 
 	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
 		<DefineConstants>DEBUG;TRACE</DefineConstants>
