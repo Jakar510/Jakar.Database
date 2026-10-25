@@ -16,7 +16,10 @@ namespace Jakar.Database.Tests.Integration;
 [NonParallelizable]
 public sealed class SqlServerDatabaseTests : DatabaseDialectTestsBase
 {
+    // Started from the base [OneTimeSetUp] and disposed in [OneTimeTearDown]; NUnit1032 can't follow that and asks for a per-test [TearDown].
+#pragma warning disable NUnit1032
     private MsSqlContainer? __container;
+#pragma warning restore NUnit1032
 
 
     protected override async Task<DbHarness?> TryCreateHarnessAsync()
@@ -45,7 +48,7 @@ public sealed class SqlServerDatabaseTests : DatabaseDialectTestsBase
     }
 
 
-    [TearDown] public override async ValueTask DisposeContainer()
+    [OneTimeTearDown] public override async ValueTask DisposeContainer()
     {
         if ( __container is not null )
         {

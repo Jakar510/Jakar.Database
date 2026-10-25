@@ -42,7 +42,8 @@ public abstract class DatabaseDialectTestsBase : Assert
         if ( __harness is not null ) { await __harness.DisposeAsync(); }
     }
 
-    [TearDown] public abstract ValueTask DisposeContainer();
+    /// <summary> Disposes the fixture's Testcontainer, if it started one. Overrides mark it [OneTimeTearDown] (not [TearDown]), so every test shares one container. </summary>
+    public abstract ValueTask DisposeContainer();
 
     private async Task<UserRecord> NewUser( string prefix = "user" )
     {

@@ -13,7 +13,10 @@ namespace Jakar.Database.Tests.Integration;
 [NonParallelizable]
 public sealed class PostgresDatabaseTests : DatabaseDialectTestsBase
 {
+    // Started from the base [OneTimeSetUp] and disposed in [OneTimeTearDown]; NUnit1032 can't follow that and asks for a per-test [TearDown].
+#pragma warning disable NUnit1032
     private PostgreSqlContainer? __container;
+#pragma warning restore NUnit1032
 
 
     protected override async Task<DbHarness?> TryCreateHarnessAsync()
@@ -22,32 +25,28 @@ public sealed class PostgresDatabaseTests : DatabaseDialectTestsBase
 
         if ( !string.IsNullOrWhiteSpace(environment) )
         {
-            try { return await DbHarnessFactory.CreateAsync(nameof(PostgresDatabaseTests), environment, static ( builder, options ) => builder.AddDatabase<TestDatabase>(options), _ct); }
-            catch ( Exception ) { return null; }
+            // A failure here is the skip reason: the base fixture ignores the fixture with the exception's message.
+            return await DbHarnessFactory.CreateAsync(nameof(PostgresDatabaseTests), environment, static ( builder, options ) => builder.AddDatabase<TestDatabase>(options), _ct);
         }
 
         try
         {
-            PostgreSqlBuilder containerBuilder = new("postgres:18.1");
-            containerBuilder.WithUsername("dev");
-            containerBuilder.WithPassword("dev");
-            containerBuilder.WithDatabase(TestDatabase.AppName);
-
-            __container = containerBuilder.Build();
+            // Testcontainers builders are immutable: each With* returns a new builder.
+            __container = new PostgreSqlBuilder("postgres:18.1").WithDatabase(TestDatabase.AppName).Build();
             await __container.StartAsync();
 
-            string connectionString = $"User ID=dev;Password=dev;Host={__container.IpAddress};Port={__container.GetMappedPublicPort()};Database={TestDatabase.AppName}";
+            string connectionString = __container.GetConnectionString();
             return await DbHarnessFactory.CreateAsync(nameof(PostgresDatabaseTests), connectionString, static ( builder, options ) => builder.AddDatabase<TestDatabase>(options), _ct);
         }
         catch ( Exception )
         {
             await DisposeContainer();
-            return null;
+            throw;
         }
     }
 
 
-    [TearDown] public override async ValueTask DisposeContainer()
+    [OneTimeTearDown] public override async ValueTask DisposeContainer()
     {
         if ( __container is not null )
         {

@@ -34,8 +34,20 @@ public sealed class DatabaseTests : Assert
         PostgreSqlBuilder containerBuilder = new("postgres:18.1");
         containerBuilder.WithDatabase(TestDatabase.AppName).WithAutoRemove(true).WithCleanUp(true);
 
-        __postgreSqlContainer = containerBuilder.Build();
-        await __postgreSqlContainer.StartAsync();
+        // No Docker, or one that can't run Linux images (the windows-latest runner): skip, like the Integration fixtures.
+        try
+        {
+            __postgreSqlContainer = containerBuilder.Build();
+            await __postgreSqlContainer.StartAsync();
+        }
+        catch ( Exception e )
+        {
+            if ( __postgreSqlContainer is not null ) { await __postgreSqlContainer.DisposeAsync(); }
+
+            __postgreSqlContainer = null;
+            Ignore($"{nameof(DatabaseTests)}: PostgreSQL container unavailable; skipped. {e.Message}");
+        }
+
         WebApplicationBuilder builder = WebApplication.CreateBuilder();
         string                cs      = __postgreSqlContainer.GetConnectionString();
 
