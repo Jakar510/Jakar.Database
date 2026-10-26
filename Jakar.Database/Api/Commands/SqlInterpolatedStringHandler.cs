@@ -41,6 +41,7 @@ public ref struct SqlInterpolatedStringHandler<TSelf>( int literalLength, int fo
     internal          ValueStringBuilder Sb         = new(Math.Max(literalLength * 2, 256));
     internal readonly CommandParameters  Parameters = CommandParameters.Create<TSelf>(formattedCount);
     private           string?            __lastColumnName;
+    private           string?            __sql; // set once the handler is finished; ToString / ToSqlCommand replay it
 
 
     public void AppendNull()                                                                                                                         => AppendLiteral("NULL");
@@ -61,21 +62,13 @@ public ref struct SqlInterpolatedStringHandler<TSelf>( int literalLength, int fo
     public void AppendFormatted<TOther>( RecordID<TOther> value, string? format = null, [CallerArgumentExpression(nameof(value))] string paramName = EMPTY )
         where TOther : class, IPairRecord<TOther>
     {
-        ReadOnlySpan<char> span  = format;
-        int                index = span.IndexOf('|');
-        if ( index >= 0 ) { span = span[..index]; }
-
         ParseFormat(ref format, out ushort indentLevel);
-        AppendSingle(value.Value, format, true);
+        if ( !TryBindParameter(value, paramName) ) { AppendSingle(value.Value, format, true); }
     }
 
     public void AppendFormatted<TOther>( IEnumerable<RecordID<TOther>> value, string? format = null, [CallerArgumentExpression(nameof(value))] string paramName = EMPTY )
         where TOther : class, IPairRecord<TOther>
     {
-        ReadOnlySpan<char> span  = format;
-        int                index = span.IndexOf('|');
-        if ( index >= 0 ) { span = span[..index]; }
-
         ParseFormat(ref format, out ushort indentLevel);
         AppendMany(value, format, indentLevel, true);
     }
@@ -83,157 +76,220 @@ public ref struct SqlInterpolatedStringHandler<TSelf>( int literalLength, int fo
     public void AppendFormatted<TOther>( ReadOnlySpan<RecordID<TOther>> value, string? format = null, [CallerArgumentExpression(nameof(value))] string paramName = EMPTY )
         where TOther : class, IPairRecord<TOther>
     {
-        ReadOnlySpan<char> span  = format;
-        int                index = span.IndexOf('|');
-        if ( index >= 0 ) { span = span[..index]; }
-
         ParseFormat(ref format, out ushort indentLevel);
         AppendMany(value, format, indentLevel, true);
     }
 
 
-    public void AppendFormatted( bool value, string? format = null, [CallerArgumentExpression(nameof(value))] in string paramName = EMPTY ) => Sb.Append(value ? bool.TrueString : bool.FalseString);
+    public void AppendFormatted( bool value, string? format = null, [CallerArgumentExpression(nameof(value))] in string paramName = EMPTY )
+    {
+        if ( !TryBindParameter(value, paramName) ) { Sb.Append(value ? bool.TrueString : bool.FalseString); }
+    }
     public void AppendFormatted( bool? value, string? format = null, [CallerArgumentExpression(nameof(value))] in string paramName = EMPTY )
     {
         if ( value.HasValue ) { AppendFormatted(value.Value, format, paramName); }
-        else { AppendNull(); }
+        else if ( !TryBindParameter<object?>(null, paramName) ) { AppendNull(); }
     }
 
-    public void AppendFormatted( byte value, string? format = null, [CallerArgumentExpression(nameof(value))] in string paramName = EMPTY ) => Sb.AppendSpanFormattable(value, default, CultureInfo.InvariantCulture);
+    public void AppendFormatted( byte value, string? format = null, [CallerArgumentExpression(nameof(value))] in string paramName = EMPTY )
+    {
+        if ( !TryBindParameter(value, paramName) ) { Sb.AppendSpanFormattable(value, default, CultureInfo.InvariantCulture); }
+    }
     public void AppendFormatted( byte? value, string? format = null, [CallerArgumentExpression(nameof(value))] in string paramName = EMPTY )
     {
         if ( value.HasValue ) { AppendFormatted(value.Value, format, paramName); }
-        else { AppendNull(); }
+        else if ( !TryBindParameter<object?>(null, paramName) ) { AppendNull(); }
     }
 
-    public void AppendFormatted( sbyte value, string? format = null, [CallerArgumentExpression(nameof(value))] in string paramName = EMPTY ) => Sb.AppendSpanFormattable(value, default, CultureInfo.InvariantCulture);
+    public void AppendFormatted( sbyte value, string? format = null, [CallerArgumentExpression(nameof(value))] in string paramName = EMPTY )
+    {
+        if ( !TryBindParameter(value, paramName) ) { Sb.AppendSpanFormattable(value, default, CultureInfo.InvariantCulture); }
+    }
     public void AppendFormatted( sbyte? value, string? format = null, [CallerArgumentExpression(nameof(value))] in string paramName = EMPTY )
     {
         if ( value.HasValue ) { AppendFormatted(value.Value, format, paramName); }
-        else { AppendNull(); }
+        else if ( !TryBindParameter<object?>(null, paramName) ) { AppendNull(); }
     }
 
-    public void AppendFormatted( char value, string? format = null, [CallerArgumentExpression(nameof(value))] in string paramName = EMPTY ) => AppendSingle(value, format, true);
+    public void AppendFormatted( char value, string? format = null, [CallerArgumentExpression(nameof(value))] in string paramName = EMPTY )
+    {
+        if ( !TryBindParameter(value, paramName) ) { AppendSingle(value, format, true); }
+    }
     public void AppendFormatted( char? value, string? format = null, [CallerArgumentExpression(nameof(value))] in string paramName = EMPTY )
     {
         if ( value.HasValue ) { AppendFormatted(value.Value, format, paramName); }
-        else { AppendNull(); }
+        else if ( !TryBindParameter<object?>(null, paramName) ) { AppendNull(); }
     }
 
-    public void AppendFormatted( short value, string? format = null, [CallerArgumentExpression(nameof(value))] in string paramName = EMPTY ) => Sb.AppendSpanFormattable(value, default, CultureInfo.InvariantCulture);
+    public void AppendFormatted( short value, string? format = null, [CallerArgumentExpression(nameof(value))] in string paramName = EMPTY )
+    {
+        if ( !TryBindParameter(value, paramName) ) { Sb.AppendSpanFormattable(value, default, CultureInfo.InvariantCulture); }
+    }
     public void AppendFormatted( short? value, string? format = null, [CallerArgumentExpression(nameof(value))] in string paramName = EMPTY )
     {
         if ( value.HasValue ) { AppendFormatted(value.Value, format, paramName); }
-        else { AppendNull(); }
+        else if ( !TryBindParameter<object?>(null, paramName) ) { AppendNull(); }
     }
 
-    public void AppendFormatted( ushort value, string? format = null, [CallerArgumentExpression(nameof(value))] in string paramName = EMPTY ) => Sb.AppendSpanFormattable(value, default, CultureInfo.InvariantCulture);
+    public void AppendFormatted( ushort value, string? format = null, [CallerArgumentExpression(nameof(value))] in string paramName = EMPTY )
+    {
+        if ( !TryBindParameter(value, paramName) ) { Sb.AppendSpanFormattable(value, default, CultureInfo.InvariantCulture); }
+    }
     public void AppendFormatted( ushort? value, string? format = null, [CallerArgumentExpression(nameof(value))] in string paramName = EMPTY )
     {
         if ( value.HasValue ) { AppendFormatted(value.Value, format, paramName); }
-        else { AppendNull(); }
+        else if ( !TryBindParameter<object?>(null, paramName) ) { AppendNull(); }
     }
 
-    public void AppendFormatted( int value, string? format = null, [CallerArgumentExpression(nameof(value))] in string paramName = EMPTY ) => Sb.AppendSpanFormattable(value, default, CultureInfo.InvariantCulture);
+    public void AppendFormatted( int value, string? format = null, [CallerArgumentExpression(nameof(value))] in string paramName = EMPTY )
+    {
+        if ( !TryBindParameter(value, paramName) ) { Sb.AppendSpanFormattable(value, default, CultureInfo.InvariantCulture); }
+    }
     public void AppendFormatted( int? value, string? format = null, [CallerArgumentExpression(nameof(value))] in string paramName = EMPTY )
     {
         if ( value.HasValue ) { AppendFormatted(value.Value, format, paramName); }
-        else { AppendNull(); }
+        else if ( !TryBindParameter<object?>(null, paramName) ) { AppendNull(); }
     }
 
-    public void AppendFormatted( uint value, string? format = null, [CallerArgumentExpression(nameof(value))] in string paramName = EMPTY ) => Sb.AppendSpanFormattable(value, default, CultureInfo.InvariantCulture);
+    public void AppendFormatted( uint value, string? format = null, [CallerArgumentExpression(nameof(value))] in string paramName = EMPTY )
+    {
+        if ( !TryBindParameter(value, paramName) ) { Sb.AppendSpanFormattable(value, default, CultureInfo.InvariantCulture); }
+    }
     public void AppendFormatted( uint? value, string? format = null, [CallerArgumentExpression(nameof(value))] in string paramName = EMPTY )
     {
         if ( value.HasValue ) { AppendFormatted(value.Value, format, paramName); }
-        else { AppendNull(); }
+        else if ( !TryBindParameter<object?>(null, paramName) ) { AppendNull(); }
     }
 
-    public void AppendFormatted( long value, string? format = null, [CallerArgumentExpression(nameof(value))] in string paramName = EMPTY ) => Sb.AppendSpanFormattable(value, default, CultureInfo.InvariantCulture);
+    public void AppendFormatted( long value, string? format = null, [CallerArgumentExpression(nameof(value))] in string paramName = EMPTY )
+    {
+        if ( !TryBindParameter(value, paramName) ) { Sb.AppendSpanFormattable(value, default, CultureInfo.InvariantCulture); }
+    }
     public void AppendFormatted( long? value, string? format = null, [CallerArgumentExpression(nameof(value))] in string paramName = EMPTY )
     {
         if ( value.HasValue ) { AppendFormatted(value.Value, format, paramName); }
-        else { AppendNull(); }
+        else if ( !TryBindParameter<object?>(null, paramName) ) { AppendNull(); }
     }
 
-    public void AppendFormatted( ulong value, string? format = null, [CallerArgumentExpression(nameof(value))] in string paramName = EMPTY ) => Sb.AppendSpanFormattable(value, default, CultureInfo.InvariantCulture);
+    public void AppendFormatted( ulong value, string? format = null, [CallerArgumentExpression(nameof(value))] in string paramName = EMPTY )
+    {
+        if ( !TryBindParameter(value, paramName) ) { Sb.AppendSpanFormattable(value, default, CultureInfo.InvariantCulture); }
+    }
     public void AppendFormatted( ulong? value, string? format = null, [CallerArgumentExpression(nameof(value))] in string paramName = EMPTY )
     {
         if ( value.HasValue ) { AppendFormatted(value.Value, format, paramName); }
-        else { AppendNull(); }
+        else if ( !TryBindParameter<object?>(null, paramName) ) { AppendNull(); }
     }
 
-    public void AppendFormatted( float value, string? format = null, [CallerArgumentExpression(nameof(value))] in string paramName = EMPTY ) => Sb.AppendSpanFormattable(value, default, CultureInfo.InvariantCulture);
+    public void AppendFormatted( float value, string? format = null, [CallerArgumentExpression(nameof(value))] in string paramName = EMPTY )
+    {
+        if ( !TryBindParameter(value, paramName) ) { Sb.AppendSpanFormattable(value, default, CultureInfo.InvariantCulture); }
+    }
     public void AppendFormatted( float? value, string? format = null, [CallerArgumentExpression(nameof(value))] in string paramName = EMPTY )
     {
         if ( value.HasValue ) { AppendFormatted(value.Value, format, paramName); }
-        else { AppendNull(); }
+        else if ( !TryBindParameter<object?>(null, paramName) ) { AppendNull(); }
     }
 
-    public void AppendFormatted( double value, string? format = null, [CallerArgumentExpression(nameof(value))] in string paramName = EMPTY ) => Sb.AppendSpanFormattable(value, default, CultureInfo.InvariantCulture);
+    public void AppendFormatted( double value, string? format = null, [CallerArgumentExpression(nameof(value))] in string paramName = EMPTY )
+    {
+        if ( !TryBindParameter(value, paramName) ) { Sb.AppendSpanFormattable(value, default, CultureInfo.InvariantCulture); }
+    }
     public void AppendFormatted( double? value, string? format = null, [CallerArgumentExpression(nameof(value))] in string paramName = EMPTY )
     {
         if ( value.HasValue ) { AppendFormatted(value.Value, format, paramName); }
-        else { AppendNull(); }
+        else if ( !TryBindParameter<object?>(null, paramName) ) { AppendNull(); }
     }
 
-    public void AppendFormatted( decimal value, string? format = null, [CallerArgumentExpression(nameof(value))] in string paramName = EMPTY ) => Sb.AppendSpanFormattable(value, default, CultureInfo.InvariantCulture);
+    public void AppendFormatted( decimal value, string? format = null, [CallerArgumentExpression(nameof(value))] in string paramName = EMPTY )
+    {
+        if ( !TryBindParameter(value, paramName) ) { Sb.AppendSpanFormattable(value, default, CultureInfo.InvariantCulture); }
+    }
     public void AppendFormatted( decimal? value, string? format = null, [CallerArgumentExpression(nameof(value))] in string paramName = EMPTY )
     {
         if ( value.HasValue ) { AppendFormatted(value.Value, format, paramName); }
-        else { AppendNull(); }
+        else if ( !TryBindParameter<object?>(null, paramName) ) { AppendNull(); }
     }
 
 
-    public void AppendFormatted( Guid value, string? format = null, [CallerArgumentExpression(nameof(value))] in string paramName = EMPTY ) => AppendSingle(value, format, true);
+    public void AppendFormatted( Guid value, string? format = null, [CallerArgumentExpression(nameof(value))] in string paramName = EMPTY )
+    {
+        if ( !TryBindParameter(value, paramName) ) { AppendSingle(value, format, true); }
+    }
     public void AppendFormatted( Guid? value, string? format = null, [CallerArgumentExpression(nameof(value))] in string paramName = EMPTY )
     {
         if ( value.HasValue ) { AppendFormatted(value.Value, format, paramName); }
-        else { AppendNull(); }
+        else if ( !TryBindParameter<object?>(null, paramName) ) { AppendNull(); }
     }
 
-    public void AppendFormatted( DateOnly value, string? format = null, [CallerArgumentExpression(nameof(value))] in string paramName = EMPTY ) => AppendSingle(value, format, true);
+    public void AppendFormatted( DateOnly value, string? format = null, [CallerArgumentExpression(nameof(value))] in string paramName = EMPTY )
+    {
+        if ( !TryBindParameter(value, paramName) ) { AppendSingle(value, format, true); }
+    }
     public void AppendFormatted( DateOnly? value, string? format = null, [CallerArgumentExpression(nameof(value))] in string paramName = EMPTY )
     {
         if ( value.HasValue ) { AppendFormatted(value.Value, format, paramName); }
-        else { AppendNull(); }
+        else if ( !TryBindParameter<object?>(null, paramName) ) { AppendNull(); }
     }
 
-    public void AppendFormatted( DateTime value, string? format = null, [CallerArgumentExpression(nameof(value))] in string paramName = EMPTY ) => AppendSingle(value, format, true);
+    public void AppendFormatted( DateTime value, string? format = null, [CallerArgumentExpression(nameof(value))] in string paramName = EMPTY )
+    {
+        if ( !TryBindParameter(value, paramName) ) { AppendSingle(value, format, true); }
+    }
     public void AppendFormatted( DateTime? value, string? format = null, [CallerArgumentExpression(nameof(value))] in string paramName = EMPTY )
     {
         if ( value.HasValue ) { AppendFormatted(value.Value, format, paramName); }
-        else { AppendNull(); }
+        else if ( !TryBindParameter<object?>(null, paramName) ) { AppendNull(); }
     }
 
-    public void AppendFormatted( DateTimeOffset value, string? format = null, [CallerArgumentExpression(nameof(value))] in string paramName = EMPTY ) => AppendSingle(value, format, true);
+    public void AppendFormatted( DateTimeOffset value, string? format = null, [CallerArgumentExpression(nameof(value))] in string paramName = EMPTY )
+    {
+        if ( !TryBindParameter(value, paramName) ) { AppendSingle(value, format, true); }
+    }
     public void AppendFormatted( DateTimeOffset? value, string? format = null, [CallerArgumentExpression(nameof(value))] in string paramName = EMPTY )
     {
         if ( value.HasValue ) { AppendFormatted(value.Value, format, paramName); }
-        else { AppendNull(); }
+        else if ( !TryBindParameter<object?>(null, paramName) ) { AppendNull(); }
     }
 
-    public void AppendFormatted( TimeOnly value, string? format = null, [CallerArgumentExpression(nameof(value))] in string paramName = EMPTY ) => AppendSingle(value, format, true);
+    public void AppendFormatted( TimeOnly value, string? format = null, [CallerArgumentExpression(nameof(value))] in string paramName = EMPTY )
+    {
+        if ( !TryBindParameter(value, paramName) ) { AppendSingle(value, format, true); }
+    }
     public void AppendFormatted( TimeOnly? value, string? format = null, [CallerArgumentExpression(nameof(value))] in string paramName = EMPTY )
     {
         if ( value.HasValue ) { AppendFormatted(value.Value, format, paramName); }
-        else { AppendNull(); }
+        else if ( !TryBindParameter<object?>(null, paramName) ) { AppendNull(); }
     }
 
-    public void AppendFormatted( TimeSpan value, string? format = null, [CallerArgumentExpression(nameof(value))] in string paramName = EMPTY ) => AppendSingle(value, format, true);
+    public void AppendFormatted( TimeSpan value, string? format = null, [CallerArgumentExpression(nameof(value))] in string paramName = EMPTY )
+    {
+        if ( !TryBindParameter(value, paramName) ) { AppendSingle(value, format, true); }
+    }
     public void AppendFormatted( TimeSpan? value, string? format = null, [CallerArgumentExpression(nameof(value))] in string paramName = EMPTY )
     {
         if ( value.HasValue ) { AppendFormatted(value.Value, format, paramName); }
-        else { AppendNull(); }
+        else if ( !TryBindParameter<object?>(null, paramName) ) { AppendNull(); }
     }
 
 
     public void AppendFormatted<TValue>( TValue value, string? format = null, [CallerArgumentExpression(nameof(value))] in string paramName = EMPTY )
     {
+        // A value type with its own overload takes it, so a generic caller (e.g. DbTable.Where<TValue>) writes the same SQL as a typed one: quoted, round-trip, bound after '@'.
+        if ( typeof(TValue).IsValueType && TryAppendTyped(value, format, paramName) ) { return; }
+
         char lastChar = Sb.Length > 0
                             ? Sb[^1]
                             : '\0';
 
         bool isParameter = lastChar == '@';
+
+        // Any value after '@' binds as a parameter of the last named column; strings decide below (a nameof(...) after '@' names the column), and SQL fragments are written as they are.
+        if ( isParameter && value is not (string or SqlRaw or SqlName or ColumnNames or VariableNames or KeyValuePairs or CommandParameters or StringBuilder) )
+        {
+            BindParameter(value, paramName, lastChar);
+            return;
+        }
 
         ParseFormat(ref format, out ushort indentLevel);
 
@@ -262,14 +318,7 @@ public ref struct SqlInterpolatedStringHandler<TSelf>( int literalLength, int fo
                         return;
 
                     case > 0 when isParameter:
-                        string parameterName = paramName.Parameterize();
-                        Sb.Append(parameterName);
-
-                        if ( __lastColumnName is null ) { ThrowFormatException($"Missing parameter (column_name) for '{paramName}' with a value of '{value}'", isColumName, isParameter, lastChar, parameterName); }
-
-                        Parameters.Add(__lastColumnName, value, parameterName);
-                        Debug.Assert(Parameters.Count > 0);
-                        __lastColumnName = null;
+                        BindParameter(n, paramName, lastChar);
                         return;
 
                     case > 0:
@@ -314,7 +363,7 @@ public ref struct SqlInterpolatedStringHandler<TSelf>( int literalLength, int fo
 
             case Enum n:
                 // ReSharper disable once RedundantToStringCall
-                if ( string.Equals(format, "str", StringComparison.OrdinalIgnoreCase) || string.Equals(format, "string", StringComparison.OrdinalIgnoreCase) ) { Sb.Append("'").Append(n.ToString()).Append("'"); }
+                if ( string.Equals(format, "str", StringComparison.OrdinalIgnoreCase) || string.Equals(format, "string", StringComparison.OrdinalIgnoreCase) ) { AppendQuoted(n.ToString()); }
                 else { Sb.AppendSpanFormattable(Convert.ToInt64(n), default, CultureInfo.InvariantCulture); }
 
                 return;
@@ -417,7 +466,7 @@ public ref struct SqlInterpolatedStringHandler<TSelf>( int literalLength, int fo
 
 
             case ISpanFormattable x:
-                AppendSingle(x, format);
+                Sb.AppendSpanFormattable(x, format, CultureInfo.InvariantCulture);
                 return;
 
             case IFormattable x:
@@ -429,6 +478,54 @@ public ref struct SqlInterpolatedStringHandler<TSelf>( int literalLength, int fo
                 Sb.Append(value.ToString());
                 return;
         }
+    }
+
+
+    /// <summary> Binds <paramref name="value"/> as a parameter when the text so far ends with <c>@</c>; returns whether it did. </summary>
+    private bool TryBindParameter<TValue>( TValue value, string paramName )
+    {
+        if ( Sb.Length is 0 || Sb[^1] != '@' ) { return false; }
+
+        BindParameter(value, paramName, '@');
+        return true;
+    }
+
+    /// <summary> <c>@name</c> for the value, bound to the column named just before it (<c>{nameof(Record.Column)} = @{value}</c>). </summary>
+    private void BindParameter<TValue>( TValue value, string paramName, char lastChar )
+    {
+        string parameterName = paramName.Parameterize();
+        Sb.Append(parameterName);
+
+        if ( __lastColumnName is null ) { ThrowFormatException($"Missing parameter (column_name) for '{paramName}' with a value of '{value}'", false, true, lastChar, parameterName); }
+
+        Parameters.Add(__lastColumnName, value, parameterName);
+        __lastColumnName = null;
+    }
+
+    /// <summary> Routes a value type that has its own overload there. Each <see langword="typeof"/> test is a JIT-time constant, so for a value type this compiles to one call or nothing. </summary>
+    private bool TryAppendTyped<TValue>( TValue value, string? format, string paramName )
+    {
+        if ( typeof(TValue) == typeof(bool) ) { AppendFormatted(Unsafe.As<TValue, bool>(ref value), format, paramName); return true; }
+        if ( typeof(TValue) == typeof(byte) ) { AppendFormatted(Unsafe.As<TValue, byte>(ref value), format, paramName); return true; }
+        if ( typeof(TValue) == typeof(sbyte) ) { AppendFormatted(Unsafe.As<TValue, sbyte>(ref value), format, paramName); return true; }
+        if ( typeof(TValue) == typeof(char) ) { AppendFormatted(Unsafe.As<TValue, char>(ref value), format, paramName); return true; }
+        if ( typeof(TValue) == typeof(short) ) { AppendFormatted(Unsafe.As<TValue, short>(ref value), format, paramName); return true; }
+        if ( typeof(TValue) == typeof(ushort) ) { AppendFormatted(Unsafe.As<TValue, ushort>(ref value), format, paramName); return true; }
+        if ( typeof(TValue) == typeof(int) ) { AppendFormatted(Unsafe.As<TValue, int>(ref value), format, paramName); return true; }
+        if ( typeof(TValue) == typeof(uint) ) { AppendFormatted(Unsafe.As<TValue, uint>(ref value), format, paramName); return true; }
+        if ( typeof(TValue) == typeof(long) ) { AppendFormatted(Unsafe.As<TValue, long>(ref value), format, paramName); return true; }
+        if ( typeof(TValue) == typeof(ulong) ) { AppendFormatted(Unsafe.As<TValue, ulong>(ref value), format, paramName); return true; }
+        if ( typeof(TValue) == typeof(float) ) { AppendFormatted(Unsafe.As<TValue, float>(ref value), format, paramName); return true; }
+        if ( typeof(TValue) == typeof(double) ) { AppendFormatted(Unsafe.As<TValue, double>(ref value), format, paramName); return true; }
+        if ( typeof(TValue) == typeof(decimal) ) { AppendFormatted(Unsafe.As<TValue, decimal>(ref value), format, paramName); return true; }
+        if ( typeof(TValue) == typeof(Guid) ) { AppendFormatted(Unsafe.As<TValue, Guid>(ref value), format, paramName); return true; }
+        if ( typeof(TValue) == typeof(DateOnly) ) { AppendFormatted(Unsafe.As<TValue, DateOnly>(ref value), format, paramName); return true; }
+        if ( typeof(TValue) == typeof(DateTime) ) { AppendFormatted(Unsafe.As<TValue, DateTime>(ref value), format, paramName); return true; }
+        if ( typeof(TValue) == typeof(DateTimeOffset) ) { AppendFormatted(Unsafe.As<TValue, DateTimeOffset>(ref value), format, paramName); return true; }
+        if ( typeof(TValue) == typeof(TimeOnly) ) { AppendFormatted(Unsafe.As<TValue, TimeOnly>(ref value), format, paramName); return true; }
+        if ( typeof(TValue) == typeof(TimeSpan) ) { AppendFormatted(Unsafe.As<TValue, TimeSpan>(ref value), format, paramName); return true; }
+
+        return false;
     }
 
 
@@ -445,8 +542,7 @@ public ref struct SqlInterpolatedStringHandler<TSelf>( int literalLength, int fo
         where TEnumerator : struct, IValueEnumerator<TValue>, allows ref struct
         where TValue : ISpanFormattable
     {
-        Span<char> destination = stackalloc char[256];
-        bool       needsQuotes = NeedsQuotes<TValue>();
+        bool needsQuotes = NeedsQuotes<TValue>();
         ParseFormat(ref format, out ushort indentLevel);
 
         using ValueEnumerator<TEnumerator, TValue> enumerator = value.GetEnumerator();
@@ -459,45 +555,28 @@ public ref struct SqlInterpolatedStringHandler<TSelf>( int literalLength, int fo
 
             first = false;
             Sb.Spacer(indentLevel);
-            AppendSingle(destination, enumerator.Current, format, in needsQuotes);
+            AppendSingle(enumerator.Current, format, needsQuotes);
         }
     }
 
 
-    private void AppendSingle<TValue>( TValue value, string? format, in bool needsQuotes = false )
+    /// <summary> Formats <paramref name="value"/> straight into the buffer (culture-invariant), quoted when <paramref name="needsQuotes"/>; dates and times default to the round-trip form. </summary>
+    private void AppendSingle<TValue>( TValue value, string? format, bool needsQuotes = false )
         where TValue : ISpanFormattable
     {
-        Span<char> destination = stackalloc char[256];
-        AppendSingle(destination, value, format, in needsQuotes);
-    }
-    private void AppendSingle<TValue>( scoped Span<char> destination, TValue value, string? format, in bool needsQuotes = false )
-        where TValue : ISpanFormattable
-    {
-        // Round-trip form: culture-invariant, and TimeOnly keeps its seconds and fractions (the invariant default is HH:mm).
-        if ( typeof(TValue).IsOneOf(typeof(DateTime), typeof(DateTimeOffset), typeof(DateOnly), typeof(TimeOnly)) ) { format ??= "o"; }
+        // Round-trip form: culture-invariant, and TimeOnly keeps its seconds and fractions (the invariant default is HH:mm). JIT-time constants for a value type.
+        if ( typeof(TValue) == typeof(DateTime) || typeof(TValue) == typeof(DateTimeOffset) || typeof(TValue) == typeof(DateOnly) || typeof(TValue) == typeof(TimeOnly) ) { format ??= "o"; }
 
-        if ( value.TryFormat(destination, out int charsWritten, format, CultureInfo.InvariantCulture) )
-        {
-            if ( needsQuotes ) { Sb.Append('\''); }
+        if ( needsQuotes ) { Sb.Append('\''); }
 
-            Sb.Append(destination[..charsWritten]);
-            if ( needsQuotes ) { Sb.Append('\''); }
-        }
-        else
-        {
-            if ( needsQuotes ) { Sb.Append('\''); }
-
-            Sb.Append(value.ToString(null, CultureInfo.InvariantCulture));
-            if ( needsQuotes ) { Sb.Append('\''); }
-        }
+        Sb.AppendSpanFormattable(value, format, CultureInfo.InvariantCulture);
+        if ( needsQuotes ) { Sb.Append('\''); }
     }
 
 
     private void AppendMany<TValue>( IEnumerable<TValue> enumerable, string? format, ushort indentLevel, in bool needsQuotes = false )
         where TValue : ISpanFormattable
     {
-        Span<char> destination = stackalloc char[256];
-
         switch ( enumerable )
         {
             case IReadOnlyList<TValue> list:
@@ -505,7 +584,7 @@ public ref struct SqlInterpolatedStringHandler<TSelf>( int literalLength, int fo
                 for ( int i = 0; i < list.Count; i++ )
                 {
                     Sb.Spacer(indentLevel);
-                    AppendSingle(destination, list[i], format, in needsQuotes);
+                    AppendSingle(list[i], format, needsQuotes);
                     if ( i < list.Count - 1 ) { Sb.Append(",\n"); }
                 }
 
@@ -517,7 +596,7 @@ public ref struct SqlInterpolatedStringHandler<TSelf>( int literalLength, int fo
                 for ( int i = 0; i < list.Count; i++ )
                 {
                     Sb.Spacer(indentLevel);
-                    AppendSingle(destination, list[i], format, in needsQuotes);
+                    AppendSingle(list[i], format, needsQuotes);
                     if ( i < list.Count - 1 ) { Sb.Append(",\n"); }
                 }
 
@@ -536,7 +615,7 @@ public ref struct SqlInterpolatedStringHandler<TSelf>( int literalLength, int fo
 
                     first = false;
                     Sb.Spacer(indentLevel);
-                    AppendSingle(destination, enumerator.Current, format, in needsQuotes);
+                    AppendSingle(enumerator.Current, format, needsQuotes);
                 }
 
                 return;
@@ -546,12 +625,10 @@ public ref struct SqlInterpolatedStringHandler<TSelf>( int literalLength, int fo
     private void AppendMany<TValue>( ReadOnlySpan<TValue> array, string? format, ushort indentLevel, in bool needsQuotes = false )
         where TValue : ISpanFormattable
     {
-        Span<char> destination = stackalloc char[256];
-
         for ( int i = 0; i < array.Length; i++ )
         {
             Sb.Spacer(indentLevel);
-            AppendSingle(destination, array[i], format, in needsQuotes);
+            AppendSingle(array[i], format, needsQuotes);
             if ( i < array.Length - 1 ) { Sb.Append(",\n"); }
         }
     }
@@ -582,24 +659,39 @@ public ref struct SqlInterpolatedStringHandler<TSelf>( int literalLength, int fo
             return;
         }
 
-        foreach ( char c in fragment )
+        // Each line in one copy, then the hang indent after its newline.
+        int index;
+        while ( ( index = fragment.IndexOf('\n') ) >= 0 )
         {
-            Sb.Append(c);
-            if ( c == '\n' ) { Sb.Append(' ', hang); }
+            Sb.Append(fragment[..( index + 1 )]).Append(' ', hang);
+            fragment = fragment[( index + 1 )..];
         }
+
+        Sb.Append(fragment);
     }
     /// <summary> Number of characters written on the current line since the last newline (the column at which the next character would be appended). </summary>
-    private int CurrentLineIndent()
+    private readonly int CurrentLineIndent() => Sb.Length - 1 - Sb.Values.LastIndexOf('\n');
+
+
+    /// <summary> <c>'value'</c>, with each <c>'</c> inside doubled, so inline text can't end the literal early. </summary>
+    private void AppendQuoted( scoped ReadOnlySpan<char> value )
     {
-        int index = Sb.Length - 1;
-        while ( index >= 0 && Sb[index] != '\n' ) { index--; }
+        Sb.Append('\'');
 
-        return Sb.Length - 1 - index;
+        int index;
+        while ( ( index = value.IndexOf('\'') ) >= 0 )
+        {
+            Sb.Append(value[..( index + 1 )]).Append('\'');
+            value = value[( index + 1 )..];
+        }
+
+        Sb.Append(value).Append('\'');
     }
-
-
-    private void AppendQuoted( ReadOnlySpan<char> value )                     => Sb.Append("'").Append(value).Append("'");
-    private void AppendQuoted( ReadOnlySpan<char> value, ushort indentLevel ) => Sb.Spacer(indentLevel).Append("'").Append(value).Append("'");
+    private void AppendQuoted( scoped ReadOnlySpan<char> value, ushort indentLevel )
+    {
+        Sb.Spacer(indentLevel);
+        AppendQuoted(value);
+    }
 
 
     private void AppendQuoted( IEnumerable<string> enumerable, ushort indentLevel )
@@ -656,7 +748,7 @@ public ref struct SqlInterpolatedStringHandler<TSelf>( int literalLength, int fo
     }
 
 
-    public override string ToString() => Clean(Sb.Values);
+    public override string ToString() => __sql ?? Clean(Sb.Values);
 
 
     /// <summary>
@@ -672,27 +764,28 @@ public ref struct SqlInterpolatedStringHandler<TSelf>( int literalLength, int fo
     {
         if ( sql.IsEmpty ) { return string.Empty; }
 
-        ValueStringBuilder builder = new(sql.Length);
-        ReadOnlySpan<char> span    = sql;
-        bool               hasBody = false;
-        bool               pending = false;
+        // Two passes over the lines: measure, then write straight into the result, so nothing is copied twice.
+        int length = Clean(sql, Span<char>.Empty);
+        // Cleaning only drops characters, keeping the rest in order, so an unchanged length means unchanged text.
+        if ( length == sql.Length ) { return sql.ToString(); }
 
-        while ( !span.IsEmpty || hasBody )
+        return length is 0
+                   ? string.Empty
+                   : string.Create(length, sql, static ( span, source ) => Clean(source, span));
+    }
+
+    /// <summary> Writes the cleaned form of <paramref name="sql"/> into <paramref name="destination"/> (when it isn't empty) and returns its length. </summary>
+    private static int Clean( ReadOnlySpan<char> sql, Span<char> destination )
+    {
+        bool write   = !destination.IsEmpty;
+        int  written = 0;
+        bool hasBody = false;
+        bool pending = false;
+
+        while ( true )
         {
-            int                newLine = span.IndexOf('\n');
-            ReadOnlySpan<char> line;
-
-            if ( newLine < 0 )
-            {
-                line = span;
-                span = ReadOnlySpan<char>.Empty;
-            }
-            else
-            {
-                line = span[..newLine];
-                span = span[( newLine + 1 )..];
-            }
-
+            int                newLine = sql.IndexOf('\n');
+            ReadOnlySpan<char> line    = newLine < 0 ? sql : sql[..newLine];
             ReadOnlySpan<char> trimmed = line.TrimEnd();
 
             if ( trimmed.IsEmpty )
@@ -701,22 +794,33 @@ public ref struct SqlInterpolatedStringHandler<TSelf>( int literalLength, int fo
             }
             else
             {
-                if ( hasBody ) { builder.Append('\n'); }
+                if ( hasBody ) { written = Put(destination, written, '\n', write); }
 
                 if ( pending )
                 {
-                    builder.Append('\n');
+                    written = Put(destination, written, '\n', write);
                     pending = false;
                 }
 
-                builder.Append(trimmed);
-                hasBody = true;
+                if ( write ) { trimmed.CopyTo(destination[written..]); }
+
+                written += trimmed.Length;
+                hasBody =  true;
             }
 
             if ( newLine < 0 ) { break; }
+
+            sql = sql[( newLine + 1 )..];
         }
 
-        return builder.ToString();
+        return written;
+
+        static int Put( Span<char> destination, int index, char c, bool write )
+        {
+            if ( write ) { destination[index] = c; }
+
+            return index + 1;
+        }
     }
     [DoesNotReturn] [MethodImpl(MethodImplOptions.AggressiveInlining)] private void ThrowFormatException( string message, bool isColumName, bool isParameter, char lastChar, string? parameterName = null )
     {
@@ -736,11 +840,16 @@ public ref struct SqlInterpolatedStringHandler<TSelf>( int literalLength, int fo
     public (string SQL, ImmutableArray<CommandParameter> Parameters) Build() => new(ToString(), [..Parameters.Values]);
 
 
+    /// <summary> The finished command. The first call returns the pooled buffer; later calls (and <see cref="ToString"/>) replay the same SQL. </summary>
     public SqlCommand ToSqlCommand( in CommandType commandType = CommandType.Text )
     {
-        string sql = ToString();
-        Sb.Dispose(); // the handler is done: return its pooled buffer
-        return SqlCommand.Create(sql, Parameters, in commandType);
+        if ( __sql is null )
+        {
+            __sql = Clean(Sb.Values);
+            Sb.Dispose();
+        }
+
+        return SqlCommand.Create(__sql, Parameters, in commandType);
     }
 
 
@@ -774,32 +883,27 @@ public ref struct SqlInterpolatedStringHandler<TSelf>( int literalLength, int fo
 
         if ( ushort.TryParse(span, out indentLevel) )
         {
-            format = index >= 0
-                         ? format?[index..]
+            // "2|D3": indent level 2, format "D3"; "2": indent only.
+            format = index >= 0 && index + 1 < format!.Length
+                         ? format[( index + 1 )..]
                          : null;
         }
     }
-    public static bool NeedsQuotes<TValue>()
+    public static bool NeedsQuotes<TValue>() => QuotesFor<TValue>.VALUE;
+
+
+
+    /// <summary> Whether a <typeparamref name="TValue"/> is written quoted, computed once per type (the check uses reflection). </summary>
+    private static class QuotesFor<TValue>
     {
-        if ( typeof(TValue).HasInterface<IRecordID>() ) { return true; }
-
-        ReadOnlySpan<Type> span =
-        [
-            typeof(string),
-            typeof(char),
-            typeof(Guid),
-            typeof(DateTime),
-            typeof(DateTimeOffset),
-            typeof(DateOnly),
-            typeof(TimeSpan),
-            typeof(TimeOnly)
-        ];
-
-        foreach ( Type type in span )
-        {
-            if ( typeof(TValue) == type ) { return true; }
-        }
-
-        return false;
+        public static readonly bool VALUE = typeof(TValue).HasInterface<IRecordID>()  ||
+                                            typeof(TValue) == typeof(string)          ||
+                                            typeof(TValue) == typeof(char)            ||
+                                            typeof(TValue) == typeof(Guid)            ||
+                                            typeof(TValue) == typeof(DateTime)        ||
+                                            typeof(TValue) == typeof(DateTimeOffset)  ||
+                                            typeof(TValue) == typeof(DateOnly)        ||
+                                            typeof(TValue) == typeof(TimeSpan)        ||
+                                            typeof(TValue) == typeof(TimeOnly);
     }
 }

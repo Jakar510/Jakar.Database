@@ -455,6 +455,8 @@ internal static class Mutations
     /// <summary> Ends an UPDATE's assignments: marks where SQL Server's <c>OUTPUT</c> goes and writes its deferred <c>FROM table alias</c>. </summary>
     public static void EndTarget( scoped ref SqlWriter writer, string? source )
     {
+        if ( writer.IsBuilt ) { return; } // a repeated terminal replays the built result
+
         writer.MarkOutputPosition();
         if ( source is null || writer.Has(ClauseFlags.From) ) { return; }
 

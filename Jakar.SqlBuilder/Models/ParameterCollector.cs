@@ -45,10 +45,20 @@ internal struct ParameterCollector()
         return new SqlParameterSet(result, dialect);
     }
 
-    public void Release()
+    /// <summary> Forgets the values (clearing their references) but keeps the array for the next statement; a large one goes back to the shared pool. </summary>
+    public void Reset()
     {
-        if ( __values is not null ) { ArrayPool<object?>.Shared.Return(__values, true); }
+        if ( __values is not null )
+        {
+            if ( __values.Length > 256 )
+            {
+                ArrayPool<object?>.Shared.Return(__values, true);
+                __values = null;
+            }
+            else { Array.Clear(__values, 0, __count); }
+        }
 
-        __values = null;
+        __count = 0;
+        __next  = 0;
     }
 }

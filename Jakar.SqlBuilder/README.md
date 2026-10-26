@@ -18,6 +18,8 @@ The terminals:
 - `BuildSql()` returns only the SQL.
 - `WriteTo(IBufferWriter<char>)` copies the SQL into your buffer without making a string and returns the parameters.
 
+`Build()` and `BuildSql()` can be called again on the same stage and return the same result. `WriteTo` on a stage that wasn't built is final: a later terminal on it throws. Stages are single-use: once you continue a stage (`from.Where(...)`), the earlier stage (`from`) throws if you use it again, because both share one pooled buffer.
+
 ## Dialects
 
 `SqlBuilder.PostgreSQL`, `SqlServer`, `Sqlite`, `MySql`, `Oracle`, `Firebird` (or `SqlBuilder.For(kind)`). Each `Supports...` flag in `SqlDialects` documents the version it assumes: PostgreSQL 15, SQL Server 2022, SQLite 3.39, MySQL 8.0.31, Oracle 23ai, Firebird 5.

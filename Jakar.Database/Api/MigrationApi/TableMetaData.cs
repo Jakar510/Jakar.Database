@@ -219,14 +219,16 @@ public class TableMetaData<TSelf> : ITableMetaData
     public ColumnNames ColumnNames( int indentLevel ) => new(this, indentLevel);
     public void ColumnNames( ref ValueStringBuilder builder, ref int indentLevel )
     {
-        int index = 0;
+        string[] names = SortedColumnNames;
 
-        foreach ( string columnName in SortedColumns.Select(static x => x.ColumnName) )
+        for ( int i = 0; i < names.Length; i++ )
         {
-            builder.Append(' ', indentLevel * 4).Append(columnName);
-            if ( index++ < ColumnCount - 1 ) { builder.Append(",\n"); }
+            builder.Append(' ', indentLevel * 4).Append(names[i]);
+            if ( i < names.Length - 1 ) { builder.Append(",\n"); }
         }
     }
+    /// <summary> The column names in <see cref="SortedColumns"/> order, sorted once (the metadata never changes). </summary>
+    private string[] SortedColumnNames => field ??= SortedColumns.Select(static x => x.ColumnName).ToArray();
 
 
     public string IndexName( string propertyName ) => Properties[propertyName].IndexColumnName_Padded(this);

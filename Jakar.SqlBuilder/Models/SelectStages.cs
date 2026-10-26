@@ -221,26 +221,42 @@ public ref struct SelectStage : ISqlQueryEnd
         if ( !__has ) { throw __w.Error(SqlBuildError.MissingRequiredClause, "SELECT needs at least one column or aggregate before FROM."); }
     }
 
-    private SqlWriter Sourceless()
+    private void Sourceless()
     {
+        if ( __w.IsBuilt ) { return; }
+
         RequireProjection();
         if ( __w.Dialect.SourcelessFromTable() is { } table )
         {
             __w.Word("FROM");
             __w.Word(table);
         }
-
-        return __w;
     }
 
     /// <summary> A <c>SELECT</c> without a <c>FROM</c>; Oracle and Firebird read it from their one-row table (<c>DUAL</c> / <c>RDB$DATABASE</c>). </summary>
-    public SqlResult Build() => Sourceless().Build();
+    public SqlResult Build()
+    {
+        Sourceless();
+        return __w.Build();
+    }
 
-    public string BuildSql() => Sourceless().BuildSql();
+    public string BuildSql()
+    {
+        Sourceless();
+        return __w.BuildSql();
+    }
 
-    public SqlParameterSet WriteTo( IBufferWriter<char> destination ) => Sourceless().WriteTo(destination);
+    public SqlParameterSet WriteTo( IBufferWriter<char> destination )
+    {
+        Sourceless();
+        return __w.WriteTo(destination);
+    }
 
-    SqlWriter ISqlQueryEnd.EndQuery() => Sourceless();
+    SqlWriter ISqlQueryEnd.EndQuery()
+    {
+        Sourceless();
+        return __w;
+    }
 
     /// <summary> A source-less operand of a set operation (e.g. the anchor of a recursive CTE: <c>SELECT 1 UNION ALL ...</c>). </summary>
     public SqlRoot Union()        => SetOperation("UNION",     false);
@@ -250,7 +266,7 @@ public ref struct SelectStage : ISqlQueryEnd
 
     private SqlRoot SetOperation( string keyword, bool all )
     {
-        __w = Sourceless();
+        Sourceless();
         return Clauses.SetOperation(ref __w, keyword, all);
     }
 }
@@ -480,10 +496,22 @@ public ref struct FromStage : ISqlQueryEnd
 
     // ---- WHERE ----
 
-    public SqlComparison<SelectWhereStage> Where( string column ) => Mark(Predicates.Column<SelectWhereStage>(ref __w, "WHERE", column));
+    public SqlComparison<SelectWhereStage> Where( string column )
+    {
+        __w.MarkClause(ClauseFlags.Where);
+        return Predicates.Column<SelectWhereStage>(ref __w, "WHERE", column);
+    }
     public SqlComparison<SelectWhereStage> Where<T>( string propertyName )
-        where T : ISqlTable<T> => Mark(Predicates.Typed<SelectWhereStage, T>(ref __w, "WHERE", propertyName));
-    public SqlComparison<SelectWhereStage> Where( SqlExprFn expression ) => Mark(Predicates.Expr<SelectWhereStage>(ref __w, "WHERE", expression));
+        where T : ISqlTable<T>
+    {
+        __w.MarkClause(ClauseFlags.Where);
+        return Predicates.Typed<SelectWhereStage, T>(ref __w, "WHERE", propertyName);
+    }
+    public SqlComparison<SelectWhereStage> Where( SqlExprFn expression )
+    {
+        __w.MarkClause(ClauseFlags.Where);
+        return Predicates.Expr<SelectWhereStage>(ref __w, "WHERE", expression);
+    }
 
     /// <summary> <c>WHERE ( ... )</c>: a predicate group, e.g. <c>.Where(g =&gt; g.Column("age").GreaterThan(18).And("country").EqualTo(param: "US"))</c>. </summary>
     public SelectWhereStage Where( SqlPredicateFn predicate )
@@ -509,11 +537,6 @@ public ref struct FromStage : ISqlQueryEnd
         return Predicates.Exists<SelectWhereStage, TEnd>(ref __w, "WHERE", query, true);
     }
 
-    private SqlComparison<SelectWhereStage> Mark( SqlComparison<SelectWhereStage> comparison )
-    {
-        __w.MarkClause(ClauseFlags.Where);
-        return comparison;
-    }
 
 
     // ---- GROUP BY / WINDOW / ORDER BY ----

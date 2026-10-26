@@ -312,16 +312,29 @@ public ref struct CreateTableStage
         if ( !__has ) { throw __w.Error(SqlBuildError.MissingRequiredClause, "CREATE TABLE needs a column before its constraints."); }
     }
 
-    private SqlWriter Close()
+    private void Close()
     {
+        if ( __w.IsBuilt ) { return; }
+
         RequireColumns();
         __w.CloseParen();
-        return __w;
     }
 
-    public SqlResult       Build()                                  => Close().Build();
-    public string          BuildSql()                               => Close().BuildSql();
-    public SqlParameterSet WriteTo( IBufferWriter<char> destination ) => Close().WriteTo(destination);
+    public SqlResult Build()
+    {
+        Close();
+        return __w.Build();
+    }
+    public string BuildSql()
+    {
+        Close();
+        return __w.BuildSql();
+    }
+    public SqlParameterSet WriteTo( IBufferWriter<char> destination )
+    {
+        Close();
+        return __w.WriteTo(destination);
+    }
 }
 
 

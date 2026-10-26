@@ -28,9 +28,11 @@ public partial class DbTable<TSelf>
     public virtual IAsyncEnumerable<TSelf> Where( SqlCommand command, [EnumeratorCancellation] CancellationToken token = default ) => this.TryCall(Where, command, token);
     public virtual IAsyncEnumerable<TSelf> Where<TValue>( DbConnectionContext context, string columnName, TValue? value, [EnumeratorCancellation] CancellationToken token = default )
     {
-        SqlCommand sql = SqlCommand.Parse<TSelf>($"SELECT * FROM {TSelf.TableName} WHERE @{columnName} = @{value};");
+        SqlCommand sql = WhereSql(columnName, value);
         return Where(context, sql, token);
     }
+    /// <summary> <c>SELECT * ... WHERE column_name = @value</c>, with <paramref name="value"/> bound to the column <paramref name="columnName"/> (a property name). </summary>
+    internal static SqlCommand WhereSql<TValue>( string columnName, TValue? value ) => SqlCommand.Parse<TSelf>($"SELECT * FROM {TSelf.TableName} WHERE {columnName} = @{value};");
 
 
     public IAsyncEnumerable<RecordID<TSelf>> WhereID( CommandParameters parameters, [EnumeratorCancellation] CancellationToken token                                                        = default ) => this.TryCall(WhereID, parameters,                         token);
@@ -53,7 +55,9 @@ public partial class DbTable<TSelf>
     public virtual IAsyncEnumerable<RecordID<TSelf>> WhereID( SqlCommand command, [EnumeratorCancellation] CancellationToken token = default ) => this.TryCall(WhereID, command, token);
     public virtual IAsyncEnumerable<RecordID<TSelf>> WhereID<TValue>( DbConnectionContext context, string columnName, TValue? value, [EnumeratorCancellation] CancellationToken token = default )
     {
-        SqlCommand sql = SqlCommand.Parse<TSelf>($"SELECT {nameof(IUniqueID.ID)} FROM {TSelf.TableName} WHERE @{columnName} = @{value};");
+        SqlCommand sql = WhereIDSql(columnName, value);
         return WhereID(context, sql, token);
     }
+    /// <inheritdoc cref="WhereSql{TValue}"/>
+    internal static SqlCommand WhereIDSql<TValue>( string columnName, TValue? value ) => SqlCommand.Parse<TSelf>($"SELECT {nameof(IUniqueID.ID)} FROM {TSelf.TableName} WHERE {columnName} = @{value};");
 }
