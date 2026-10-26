@@ -25,7 +25,7 @@
     <PackageVersion Include="Hashids.net" Version="1.7.0" />
     <PackageVersion Include="InterpolatedSql.Dapper" Version="2.5.1" />
     <PackageVersion Include="Jakar.Database" Version="9.0.0.3-beta" />
-    <PackageVersion Include="Jakar.Extensions" Version="10.11.0" />
+    <PackageVersion Include="Jakar.Extensions" Version="10.11.1" />
     <PackageVersion Include="Jakar.Shapes" Version="10.2.0" />
     <PackageVersion Include="JetBrains.Annotations" Version="2025.2.2" />
     <PackageVersion Include="JetBrains.DotMemoryUnit" Version="3.2.20220510" />
@@ -159,6 +159,9 @@
     <PackageVersion Include="System.Threading.ThreadPool" Version="4.3.0" />
     <PackageVersion Include="Testcontainers.PostgreSql" Version="4.16.0" />
     <PackageVersion Include="Testcontainers.MsSql" Version="4.16.0" />
+    <PackageVersion Include="Testcontainers.MySql" Version="4.16.0" />
+    <PackageVersion Include="Testcontainers.Oracle" Version="4.16.0" />
+    <PackageVersion Include="Testcontainers.FirebirdSql" Version="4.16.0" />
     <PackageVersion Include="ValueOf" Version="2.0.31" />
     <PackageVersion Include="WifiManager.Maui" Version="9.0.5" />
     <PackageVersion Include="Xam.Plugin.Media" Version="6.0.2" />

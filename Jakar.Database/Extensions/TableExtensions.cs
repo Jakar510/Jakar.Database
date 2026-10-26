@@ -31,49 +31,45 @@ public static class TableExtensions
     }
 
 
-    public static StringBuilder Spacer( this StringBuilder sb, int indentLevel ) => sb.Append(' ', indentLevel * 4);
+    public static ref ValueStringBuilder Spacer( this ref ValueStringBuilder builder, int indentLevel ) => ref builder.Append(' ', indentLevel * 4);
 
 
-    [Pure] public static StringBuilder Ids<TSelf>( this IEnumerable<RecordID<TSelf>> values )
+    [Pure] public static string Ids<TSelf>( this IEnumerable<RecordID<TSelf>> values )
         where TSelf : class, IPairRecord<TSelf> => values.AsValueEnumerable().Ids();
-    [Pure] public static StringBuilder Ids<TEnumerable, TSelf>( this ValueEnumerable<TEnumerable, RecordID<TSelf>> values )
+    [Pure] public static string Ids<TEnumerable, TSelf>( this ValueEnumerable<TEnumerable, RecordID<TSelf>> values )
         where TSelf : class, IPairRecord<TSelf>
         where TEnumerable : struct, IValueEnumerator<RecordID<TSelf>>, allows ref struct
     {
         const string                                        SEPARATOR  = ", ";
-        StringBuilder                                       ids        = new();
+        ValueStringBuilder                                  ids        = new();
         using ValueEnumerator<TEnumerable, RecordID<TSelf>> enumerator = values.GetEnumerator();
 
         for ( int i = 0; enumerator.MoveNext(); i++ )
         {
             if ( i > 0 ) { ids.Append(SEPARATOR); }
 
-            ids.Append('\'');
-            ids.Append(enumerator.Current.Value);
-            ids.Append('\'');
+            ids.Append('\'').AppendSpanFormattable(enumerator.Current.Value, default, CultureInfo.InvariantCulture).Append('\'');
         }
 
-        return ids;
+        return ids.ToString();
     }
-    [Pure] public static StringBuilder Ids<TSelf>( this IEnumerable<Guid> values )
+    [Pure] public static string Ids<TSelf>( this IEnumerable<Guid> values )
         where TSelf : class, IPairRecord<TSelf> => values.AsValueEnumerable().Ids();
-    [Pure] public static StringBuilder Ids<TEnumerable>( this ValueEnumerable<TEnumerable, Guid> values )
+    [Pure] public static string Ids<TEnumerable>( this ValueEnumerable<TEnumerable, Guid> values )
         where TEnumerable : struct, IValueEnumerator<Guid>, allows ref struct
     {
         const string                             SEPARATOR  = ", ";
-        StringBuilder                            ids        = new();
+        ValueStringBuilder                       ids        = new();
         using ValueEnumerator<TEnumerable, Guid> enumerator = values.GetEnumerator();
 
         for ( int i = 0; enumerator.MoveNext(); i++ )
         {
             if ( i > 0 ) { ids.Append(SEPARATOR); }
 
-            ids.Append('\'');
-            ids.Append(enumerator.Current);
-            ids.Append('\'');
+            ids.Append('\'').AppendSpanFormattable(enumerator.Current, default, CultureInfo.InvariantCulture).Append('\'');
         }
 
-        return ids;
+        return ids.ToString();
     }
 
 

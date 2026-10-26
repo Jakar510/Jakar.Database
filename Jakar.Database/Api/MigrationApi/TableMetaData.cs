@@ -52,9 +52,24 @@ public class TableMetaData<TSelf> : ITableMetaData
     public ref readonly ColumnMetaData this[ string propertyName ] => ref Properties[propertyName];
     public ref readonly string this[ string         propertyName, DatabaseType type ] => ref Properties[propertyName][type];
 
+    // ---- Jakar.SqlBuilder.ISqlCommandTable (what CommandParameters binds against) ----
+    public int                 KeyValuePairsLength                                 { get; }
+    ISqlCommandColumn ISqlCommandTable.GetColumn( string        propertyName )  => Properties[propertyName];
+    public string              GetParameterName( string         parameterName ) => parameterName.Parameterize();
+
     // ---- Jakar.SqlBuilder lean view ----
-    public IReadOnlyList<Jakar.SqlBuilder.ISqlColumn> SqlColumns => field ??= Properties.Values.OrderBy(static x => x.Index).ToArray();
-    public bool TrySqlColumn( string propertyName, out Jakar.SqlBuilder.ISqlColumn? column )
+    public IReadOnlyList<ISqlColumn> SqlColumns => field ??= Properties.Values.OrderBy(static x => x.Index).ToArray();
+
+    /// <summary> The <see cref="TableExtrasAttribute"/> composite primary key, as column names (empty when the columns carry their own keys). </summary>
+    public IReadOnlyList<string> SqlPrimaryKey => field ??= Extras?.PrimaryKeyPropertiesOverride is ( string first, string second )
+                                                                 ? [first.SqlName(), second.SqlName()]
+                                                                 : [];
+
+    /// <summary> The <see cref="TableExtrasAttribute"/> unique column pairs, as column names. </summary>
+    public IReadOnlyList<IReadOnlyList<string>> SqlUniqueKeys => field ??= Extras?.UniquePropertyPairs is { Length: > 0 } pairs
+                                                                               ? Array.ConvertAll(pairs, static pair => (IReadOnlyList<string>)[pair.Left.SqlName(), pair.Right.SqlName()])
+                                                                               : [];
+    public bool TrySqlColumn( string propertyName, out ISqlColumn? column )
     {
         if ( Properties.TryGetValue(propertyName, out ColumnMetaData? found) )
         {
@@ -74,7 +89,7 @@ public class TableMetaData<TSelf> : ITableMetaData
             return new PropertyColumn(propertyName, Properties[propertyName]);
         }
     }
-    public int                                                                                                                                         MaxLength_ColumnName        { get; }
+    public int                                                                                                                                         MaxLengthColumnName        { get; }
     public int                                                                                                                                         MaxLength_DataType          { get; }
     public int                                                                                                                                         MaxLength_IndexColumnName   { get; }
     public int                                                                                                                                         MaxLength_KeyValuePair      { get; }
@@ -94,8 +109,9 @@ public class TableMetaData<TSelf> : ITableMetaData
         ForeignKeyCount           = properties.Values.Count(static x => x.ForeignKey?.IsValid is true);
         MaxLength_IndexColumnName = properties.Values.Max(static x => Math.Max(x.Indexed?.Name.Length ?? 0, x.ForeignKey?.Index(x.ColumnName).Length ?? 0));
         MaxLength_KeyValuePair    = properties.Values.Max(static x => x.KeyValuePair.Length);
+        KeyValuePairsLength       = properties.Values.Sum(static x => x.KeyValuePair.Length);
         MaxLength_Variables       = properties.Values.Max(static x => x.VariableName.Length);
-        MaxLength_ColumnName      = properties.Values.Max(static x => x.ColumnName.Length);
+        MaxLengthColumnName      = properties.Values.Max(static x => x.ColumnName.Length);
         MaxLength_DataType        = properties.Values.SelectMany(static x => x.DataTypes.Values).Max(static x => x.Length);
         Sorter                    = new ParameterSorter(this);
     }
@@ -199,23 +215,16 @@ public class TableMetaData<TSelf> : ITableMetaData
     }
 
 
-    public StringBuilder ColumnNames( int indentLevel )
+    /// <summary> The column list, one per line, at <paramref name="indentLevel"/>: a raw SQL fragment for interpolated commands. </summary>
+    public ColumnNames ColumnNames( int indentLevel ) => new(this, indentLevel);
+    public void ColumnNames( ref ValueStringBuilder builder, ref int indentLevel )
     {
-        StringBuilder sb = new();
-        ColumnNames(sb, ref indentLevel);
-        return sb;
-    }
-    public void ColumnNames( StringBuilder sb, ref int indentLevel )
-    {
-        int length = ColumnCount * ( MaxLength_ColumnName + 2 ) + ColumnCount * 4 * indentLevel;
-        sb.EnsureCapacity(length);
-
         int index = 0;
 
         foreach ( string columnName in SortedColumns.Select(static x => x.ColumnName) )
         {
-            sb.Append(' ', indentLevel * 4).Append(columnName);
-            if ( index++ < ColumnCount - 1 ) { sb.Append(",\n"); }
+            builder.Append(' ', indentLevel * 4).Append(columnName);
+            if ( index++ < ColumnCount - 1 ) { builder.Append(",\n"); }
         }
     }
 
@@ -237,92 +246,16 @@ public class TableMetaData<TSelf> : ITableMetaData
 
 
     [Pure] public SqlCommand CreateTableSql() => SqlCommand.Create<TSelf>(CreateTableSql(Validate.ThrowIfNull(Database.Current).DatabaseType));
-    [Pure] public string CreateTableSql( in DatabaseType type )
+    /// <summary> <c>CREATE TABLE</c> for <paramref name="type"/>, written by Jakar.SqlBuilder from this table's metadata (<c>SqlBuilder.CreateTable&lt;TSelf&gt;()</c>). </summary>
+    [Pure] public string CreateTableSql( in DatabaseType type ) => Jakar.SqlBuilder.SqlBuilder.For(type.ToSqlDialectKind()).CreateTable<TSelf>().BuildSql();
+
+    [Pure] public SqlCommand DropTableSql() => SqlCommand.Create<TSelf>(DropTableSql(Validate.ThrowIfNull(Database.Current).DatabaseType));
+
+    /// <summary> <c>DROP TABLE [IF EXISTS] ... [CASCADE]</c>, with each clause only where <paramref name="type"/> supports it. </summary>
+    [Pure] public string DropTableSql( in DatabaseType type )
     {
-        StringBuilder query = new(10240);
-
-        query.Append("CREATE TABLE ");
-        query.Append(TSelf.TableName);
-        query.Append(" (\n");
-
-        for ( int index = 0; index < Instance.ColumnCount; index++ )
-        {
-            Instance[index].Column.AddData(query, this, in type);
-
-            query.Append(',');
-            query.Append('\n');
-        }
-
-        query.Length -= 2; // Remove the last \n and comma
-
-        tryAddForeignKeys(query);
-
-        tryAddExtras(query);
-
-        query.Append('\n');
-        query.Append(')');
-        query.Append(';');
-
-        return query.ToString();
-
-        static void tryAddExtras( StringBuilder query )
-        {
-            TableExtrasAttribute? extras = Instance.Extras;
-            if ( extras is null ) { return; }
-
-            if ( extras.PrimaryKeyPropertiesOverride.HasValue )
-            {
-                ( string first, string second ) = extras.PrimaryKeyPropertiesOverride.Value;
-                query.Append($",\n    PRIMARY KEY ({first.SqlName()}, {second.SqlName()})");
-            }
-
-            if ( extras.UniquePropertyPairs?.Length is not > 0 ) { query.Append('\n'); }
-            else
-            {
-                query.Append(',');
-                query.Append('\n');
-
-                for ( int index = 0; index < extras.UniquePropertyPairs.Length; index++ )
-                {
-                    ( string left, string right ) = extras.UniquePropertyPairs[index];
-                    query.Append($"UNIQUE ({left.SqlName()}, {right.SqlName()})");
-                    if ( index < extras.UniquePropertyPairs.Length - 1 ) { query.Append(','); }
-
-                    query.Append('\n');
-                }
-            }
-        }
-
-        static void tryAddForeignKeys( StringBuilder query )
-        {
-            if ( Instance.ForeignKeyCount <= 0 ) { return; }
-
-            query.Append(',');
-            query.Append('\n');
-            using ArrayBuffer<ColumnMetaData> foreignKeys                   = Instance.ForeignKeys.ToArrayBuffer();
-            int                               maxForeignKeyColumnNameLength = foreignKeys.Values.AsValueEnumerable().Max(static x => x.ColumnName.Length);
-
-            foreach ( ColumnMetaData column in foreignKeys.Values )
-            {
-                query.Append('\n');
-                ForeignKeyAttribute foreignKey = Validate.ThrowIfNull(column.ForeignKey);
-                StringBuilder       padding    = new(maxForeignKeyColumnNameLength);
-                padding.Append(' ', maxForeignKeyColumnNameLength - column.ColumnName.Length);
-                query.Append($"    FOREIGN KEY ({column.ColumnName}){padding} REFERENCES {foreignKey.TableName}({nameof(IUniqueID.ID).SqlName()})");
-
-                if ( !foreignKey.HasModifier )
-                {
-                    query.Append(',');
-                    continue;
-                }
-
-                query.Append(' ');
-                query.Append(foreignKey.Modifier);
-                query.Append(',');
-            }
-
-            query.Length--; // Remove the last comma
-        }
+        SqlDialectKind dialect = type.ToSqlDialectKind();
+        return Jakar.SqlBuilder.SqlBuilder.For(dialect).DropTable(TSelf.SqlTableName, dialect.SupportsDropIfExists(), dialect.SupportsDropCascade()).BuildSql();
     }
     public MigrationRecord CreateTable( long migrationID ) => _createTableSql ??= new MigrationRecord
                                                                                   {
@@ -330,18 +263,40 @@ public class TableMetaData<TSelf> : ITableMetaData
                                                                                       Description = $"Create {TableName} table",
                                                                                       ReferenceID = TableName,
                                                                                       UpSQL       = CreateTableSql(),
-                                                                                      DownSQL     = $"DROP TABLE IF EXISTS {TableName} CASCADE;"
+                                                                                      DownSQL     = DropTableSql()
                                                                                   };
 
 
-    public MigrationRecord SetLastModifiedFunction( long migrationID ) => MigrationRecord.Create<TSelf>(migrationID,
-                                                                                                        "Create SetLastModifiedFunctionName function",
-                                                                                                        $"""
-                                                                                                         CREATE TRIGGER IF NOT EXISTS {SetLastModifiedFunctionName}
-                                                                                                         BEFORE INSERT OR UPDATE ON {TSelf.TableName}
-                                                                                                         FOR EACH ROW
-                                                                                                         EXECUTE FUNCTION {MigrationRecord.SetLastModifiedName}();
-                                                                                                         """);
+    public MigrationRecord SetLastModifiedFunction( long migrationID ) => SetLastModifiedFunction(migrationID, Validate.ThrowIfNull(Database.Current).DatabaseType);
+
+    /// <summary> The trigger that keeps <c>last_modified</c> current on insert and update, in <paramref name="type"/>'s form (<see cref="LastModifiedTrigger"/>), and its rollback. </summary>
+    /// <exception cref="InvalidOperationException"> The table has no <c>LastModified</c> column. </exception>
+    public MigrationRecord SetLastModifiedFunction( long migrationID, DatabaseType type ) => MigrationRecord.Create<TSelf>(migrationID,
+                                                                                                                          $"Create {SetLastModifiedFunctionName} trigger",
+                                                                                                                          SetLastModifiedSql(type),
+                                                                                                                          LastModifiedTrigger.Drop(type, SetLastModifiedFunctionName, TSelf.SqlTableName));
+
+    /// <exception cref="InvalidOperationException"> The table has no <c>LastModified</c> column. </exception>
+    [Pure] public string SetLastModifiedSql( DatabaseType type )
+    {
+        if ( !Properties.TryGetValue(nameof(ILastModified.LastModified), out ColumnMetaData? column) ) { throw new InvalidOperationException($"{TSelf.SqlTableName} has no {nameof(ILastModified.LastModified)} column to maintain."); }
+
+        return LastModifiedTrigger.Create(type, SetLastModifiedFunctionName, TSelf.SqlTableName, column.ColumnName, KeyColumns());
+    }
+
+    /// <summary> The key's column names: the <see cref="TableExtrasAttribute"/> composite key, or the primary-key column. </summary>
+    private IReadOnlyList<string> KeyColumns()
+    {
+        if ( SqlPrimaryKey.Count > 0 ) { return SqlPrimaryKey; }
+
+        List<string> keys = [];
+        foreach ( ColumnMetaData column in Properties.Values )
+        {
+            if ( column.IsPrimaryKey ) { keys.Add(column.ColumnName); }
+        }
+
+        return keys;
+    }
 
 
     public bool ContainsKey( string propertyName )                                                  => Properties.ContainsKey(propertyName);

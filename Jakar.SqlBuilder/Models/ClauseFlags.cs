@@ -27,5 +27,11 @@ public enum ClauseFlags : uint
     Delete    = 1 << 15,
     Returning = 1 << 16,
     Output    = 1 << 17,
-    Predicate = 1 << 18
+    Predicate = 1 << 18,
+    Top       = 1 << 19,
+    With      = 1 << 20,
+    Merge     = 1 << 21,
+    Window    = 1 << 22,
+    SetOp     = 1 << 23,
+    Ddl       = 1 << 24
 }

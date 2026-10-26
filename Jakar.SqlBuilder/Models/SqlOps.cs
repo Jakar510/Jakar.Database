@@ -4,7 +4,7 @@
 namespace Jakar.SqlBuilder;
 
 
-/// <summary> Shared predicate/operator emission, used by the WHERE, JOIN ON and HAVING comparison stages. </summary>
+/// <summary> Shared predicate/operator emission, used by the comparison stages. </summary>
 internal static class SqlOps
 {
     public const string EQUAL         = "=";
@@ -14,11 +14,20 @@ internal static class SqlOps
     public const string LESS          = "<";
     public const string LESS_EQUAL    = "<=";
 
-    public static void TypedColumn<T>( scoped ref SqlWriter writer, string propertyName )
+    /// <summary>
+    ///     A typed column reference: qualified now when its table is already part of the current query, otherwise (a projection, written before <c>FROM</c>) qualified when the query
+    ///     ends, with whatever alias the table was given.
+    /// </summary>
+    public static ISqlColumn TypedColumn<T>( scoped ref SqlWriter writer, string propertyName )
         where T : ISqlTable<T>
     {
         ISqlColumn column = TypedColumns.Resolve<T>(propertyName, in writer);
-        writer.QualifiedColumn(null, column.GetColumnName(writer.Dialect), true);
+        string     name   = column.GetColumnName(writer.Dialect);
+
+        if ( writer.IsRegistered(T.SqlTableName) ) { writer.QualifiedColumn(writer.QualifierFor(T.SqlTableName), name, true); }
+        else { writer.DeferredColumn(T.SqlTableName, name); }
+
+        return column;
     }
 
     public static void Op( scoped ref SqlWriter writer, string op, long value )
@@ -55,14 +64,15 @@ internal static class SqlOps
 
     public static void Null( scoped ref SqlWriter writer, bool negated ) => writer.Word(negated ? "IS NOT NULL" : "IS NULL");
 
-    public static void Like( scoped ref SqlWriter writer, SqlValue pattern )
+    /// <exception cref="SqlBuildException"> No values: <c>IN ()</c> is invalid in every dialect (<see cref="SqlBuildError.EmptyPredicate"/>). </exception>
+    private static void RequireValues( scoped in SqlWriter writer, int count )
     {
-        writer.Word("LIKE");
-        pattern.Write(ref writer);
+        if ( count <= 0 ) { throw writer.Error(SqlBuildError.EmptyPredicate, "IN needs at least one value."); }
     }
 
     public static void In( scoped ref SqlWriter writer, scoped ReadOnlySpan<long> values )
     {
+        RequireValues(in writer, values.Length);
         writer.Word("IN ");
         writer.OpenCall();
         bool has = false;
@@ -78,6 +88,7 @@ internal static class SqlOps
     }
     public static void InParams( scoped ref SqlWriter writer, scoped ReadOnlySpan<object?> values )
     {
+        RequireValues(in writer, values.Length);
         writer.Word("IN ");
         writer.OpenCall();
         bool has = false;
@@ -91,6 +102,20 @@ internal static class SqlOps
 
         writer.CloseParen();
     }
+    public static void InValues( scoped ref SqlWriter writer, string keyword, scoped ReadOnlySpan<SqlValue> values )
+    {
+        RequireValues(in writer, values.Length);
+        writer.Word(keyword);
+        writer.OpenParen();
+        for ( int i = 0; i < values.Length; i++ )
+        {
+            if ( i > 0 ) { writer.Comma(); }
+
+            values[i].Write(ref writer);
+        }
+
+        writer.CloseParen();
+    }
 
     public static void Between( scoped ref SqlWriter writer, long low, long high )
     {
@@ -98,5 +123,12 @@ internal static class SqlOps
         writer.InlineNumber(low);
         writer.Word("AND");
         writer.InlineNumber(high);
+    }
+    public static void Between( scoped ref SqlWriter writer, string keyword, SqlValue low, SqlValue high )
+    {
+        writer.Word(keyword);
+        low.Write(ref writer);
+        writer.Word("AND");
+        high.Write(ref writer);
     }
 }

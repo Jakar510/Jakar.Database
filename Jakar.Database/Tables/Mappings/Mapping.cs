@@ -215,25 +215,34 @@ public abstract record Mapping<TSelf, TKey, TValue> : TableRecord<TSelf>
     }
     public static async ValueTask TryAdd( DbConnectionContext context, ImmutableArray<TSelf> records, CancellationToken token )
     {
-        StringBuilder sb = new(10240);
+        SqlCommand command = TryAddCommand(records);
+        await context.ExecuteNonQueryAsync(command, token);
+    }
+
+    // Synchronous, so the pooled builder never lives across an await.
+    private static SqlCommand TryAddCommand( ImmutableArray<TSelf> records )
+    {
+        ValueStringBuilder values = new(records.Length * 96);
 
         for ( int index = 0; index < records.Length; index++ )
         {
             TSelf self = records[index];
-            sb.Append($"('{self.KeyID.Value}'::uuid, '{self.ValueID.Value}'::uuid)");
-            if ( index < records.Length - 1 ) { sb.Append(", "); }
+            values.Append("('").AppendSpanFormattable(self.KeyID.Value, default, CultureInfo.InvariantCulture).Append("'::uuid, '").AppendSpanFormattable(self.ValueID.Value, default, CultureInfo.InvariantCulture).Append("'::uuid)");
+            if ( index < records.Length - 1 ) { values.Append(", "); }
 
-            sb.Append('\n');
+            values.Append('\n');
         }
 
-        SqlCommand command = SqlCommand.Parse<TSelf>($"""
-                                                      INSERT INTO {TSelf.TableName} ({nameof(KeyID)}, {nameof(ValueID)}, {nameof(DateCreated)})
-                                                      SELECT v.KeyID, v.ValueID, NOW()
-                                                      FROM (VALUES
-                                                      {sb}) AS v(KeyID, ValueID) ON CONFLICT DO NOTHING;
-                                                      """);
-
-        await context.ExecuteNonQueryAsync(command, token);
+        try
+        {
+            return SqlCommand.Parse<TSelf>($"""
+                                            INSERT INTO {TSelf.TableName} ({nameof(KeyID)}, {nameof(ValueID)}, {nameof(DateCreated)})
+                                            SELECT v.KeyID, v.ValueID, NOW()
+                                            FROM (VALUES
+                                            {values}) AS v(KeyID, ValueID) ON CONFLICT DO NOTHING;
+                                            """);
+        }
+        finally { values.Dispose(); }
     }
 
 

@@ -113,11 +113,14 @@ public sealed class MetadataAndIdentifierTests
 
         Assert.Multiple(() =>
                         {
-                            Assert.That(postgresCreate, Does.Contain($"CREATE INDEX IF NOT EXISTS {column.IndexName} ON {AddressRecord.TableName}({column.ColumnName});"));
-                            Assert.That(sqlServerCreate, Does.Contain($"CREATE INDEX {column.IndexName} ON {AddressRecord.TableName}({column.ColumnName});"));
-                            Assert.That(sqlServerCreate, Does.Contain("sys.indexes"));
-                            Assert.That(postgresDrop, Does.Contain($"DROP INDEX IF EXISTS {column.IndexName};"));
-                            Assert.That(sqlServerDrop, Does.Contain($"DROP INDEX {column.IndexName} ON {AddressRecord.TableName};"));
+                            Assert.That(postgresCreate,  Is.EqualTo($"CREATE INDEX IF NOT EXISTS {column.IndexName} ON {AddressRecord.TableName} ({column.ColumnName});"));
+                            Assert.That(sqlServerCreate, Is.EqualTo($"IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = '{column.IndexName}' AND object_id = OBJECT_ID('{AddressRecord.TableName}')) CREATE INDEX [{column.IndexName}] ON [{AddressRecord.TableName}] ([{column.ColumnName}]);"));
+                            Assert.That(postgresDrop,    Is.EqualTo($"DROP INDEX IF EXISTS {column.IndexName};"));
+                            Assert.That(sqlServerDrop,   Is.EqualTo($"DROP INDEX IF EXISTS [{column.IndexName}] ON [{AddressRecord.TableName}];"));
+                            // MySQL and Firebird have no IF [NOT] EXISTS for indexes; MySQL drops an index ON its table.
+                            Assert.That(column.CreateIndex(AddressRecord.MetaData, DatabaseType.MySQL).SQL, Is.EqualTo($"CREATE INDEX `{column.IndexName}` ON `{AddressRecord.TableName}` (`{column.ColumnName}`);"));
+                            Assert.That(column.DropIndex(AddressRecord.MetaData, DatabaseType.MySQL).SQL,   Is.EqualTo($"DROP INDEX `{column.IndexName}` ON `{AddressRecord.TableName}`;"));
+                            Assert.That(column.DropIndex(AddressRecord.MetaData, DatabaseType.Firebird).SQL, Is.EqualTo($"DROP INDEX \"{column.IndexName}\";"));
                         });
     }
 }

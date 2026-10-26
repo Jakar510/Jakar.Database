@@ -2,7 +2,7 @@ namespace Jakar.Database;
 
 
 [SuppressMessage("ReSharper", "InconsistentNaming")]
-public sealed class ColumnMetaData : IEquatable<ColumnMetaData>, IComparable<ColumnMetaData>, IComparable, Jakar.SqlBuilder.ISqlColumn
+public sealed class ColumnMetaData : IEquatable<ColumnMetaData>, IComparable<ColumnMetaData>, IComparable, ISqlCommandColumn
 {
     public readonly              bool                                   IsAlwaysIdentity;
     public readonly              bool                                   IsDefaultIdentity;
@@ -23,7 +23,13 @@ public sealed class ColumnMetaData : IEquatable<ColumnMetaData>, IComparable<Col
     [JsonSkip] public readonly Type                                   PropertyType;
     private                      NpgsqlDbType?                          __postgresDbType;
     private                      SqlDbType?                             __sqlDbType;
+    private                      DbType?                                __adoDbType;
+    private                      Microsoft.Data.Sqlite.SqliteType?      __sqliteType;
+    private                      MySqlConnector.MySqlDbType?            __mySqlDbType;
     public readonly              FrozenDictionary<DatabaseType, string> DataTypes;
+
+    /// <summary> The portable type, which names the column in the dialects without an explicit type map (SQLite, MySQL, Oracle, Firebird). </summary>
+    public readonly SqlType PortableType;
     private                      Type?                                  _propertyType;
 
     [JsonSkip] public DataColumn DataColumn
@@ -59,18 +65,65 @@ public sealed class ColumnMetaData : IEquatable<ColumnMetaData>, IComparable<Col
     public bool         IsColumnIndexed         { [MemberNotNullWhen(true, nameof(Indexed))] get => Indexed?.IsValid is true || HasForeignKeyConstraint; }
     public NpgsqlDbType PostgresDbType          => __postgresDbType ??= DbType.ToNpgsqlDbType();
     public SqlDbType    SqlDbType               => __sqlDbType ??= DbType.ToSqlDbType();
+    /// <summary> The provider-neutral <see cref="System.Data.DbType"/> (named so it doesn't collide with <see cref="DbType"/>, the <see cref="DbColumnType"/>). </summary>
+    public DbType                           AdoDbType   => __adoDbType ??= DbType.ToDbType();
+    public Microsoft.Data.Sqlite.SqliteType SqliteType  => __sqliteType ??= DbType.ToSqliteType();
+    public MySqlConnector.MySqlDbType       MySqlDbType => __mySqlDbType ??= DbType.ToMySqlDbType();
     public ref readonly string this[ DatabaseType type ] => ref DataTypes[type];
 
 
     // ---- Jakar.SqlBuilder.ISqlColumn (lean, driver-agnostic view) ----
-    string Jakar.SqlBuilder.ISqlColumn.PropertyName                                             => PropertyName;
-    string Jakar.SqlBuilder.ISqlColumn.ColumnName                                               => ColumnName;
-    Type Jakar.SqlBuilder.ISqlColumn.  ClrType                                                  => PropertyType;
-    bool Jakar.SqlBuilder.ISqlColumn.  IsNullable                                               => IsNullable;
-    bool Jakar.SqlBuilder.ISqlColumn.  IsPrimaryKey                                             => IsPrimaryKey;
-    bool Jakar.SqlBuilder.ISqlColumn.  IsIdentity                                               => IsAlwaysIdentity || IsDefaultIdentity || DbType is DbColumnType.BigSerial or DbColumnType.Serial or DbColumnType.SmallSerial;
-    string Jakar.SqlBuilder.ISqlColumn.GetTypeName( Jakar.SqlBuilder.SqlDialectKind   dialect ) => this[DatabaseTypeMap.ToDatabaseType(dialect)];
-    string Jakar.SqlBuilder.ISqlColumn.GetColumnName( Jakar.SqlBuilder.SqlDialectKind dialect ) => ColumnName;
+    string ISqlColumn.PropertyName                                             => PropertyName;
+    string ISqlColumn.ColumnName                                               => ColumnName;
+    Type ISqlColumn.  ClrType                                                  => PropertyType;
+    bool ISqlColumn.  IsNullable                                               => IsNullable;
+    bool ISqlColumn.  IsPrimaryKey                                             => IsPrimaryKey;
+    bool ISqlColumn.  IsIdentity                                               => IsAlwaysIdentity || IsDefaultIdentity || DbType is DbColumnType.BigSerial or DbColumnType.Serial or DbColumnType.SmallSerial;
+    string ISqlColumn.GetTypeName( SqlDialectKind   dialect ) => DataTypes.GetValueOrDefault(DatabaseTypeMap.ToDatabaseType(dialect)) ?? EMPTY;
+    string ISqlColumn.GetColumnName( SqlDialectKind dialect ) => ColumnName;
+    bool ISqlColumn.  IsUnique                                                 => IsUnique;
+    bool ISqlColumn.  IsAlwaysIdentity                                         => IsAlwaysIdentity;
+    string? ISqlColumn.GetCheckSql( SqlDialectKind dialect ) => HasCheckConstraint
+                                                                                              ? string.Join(Checks.And ? AND : OR, Checks.Constraints)
+                                                                                              : null;
+    string? ISqlColumn.ForeignTable => HasForeignKeyConstraint
+                                                             ? ForeignKey.TableName.Value
+                                                             : null;
+    string? ISqlColumn.ForeignColumn => HasForeignKeyConstraint
+                                                              ? nameof(IUniqueID.ID).SqlName()
+                                                              : null;
+    SqlReferentialAction ISqlColumn.OnDelete => ForeignKey?.Action switch
+                                                                                   {
+                                                                                       OnAction.DeleteCascade    => SqlReferentialAction.Cascade,
+                                                                                       OnAction.DeleteSetNull    => SqlReferentialAction.SetNull,
+                                                                                       OnAction.DeleteSetDefault => SqlReferentialAction.SetDefault,
+                                                                                       _                         => SqlReferentialAction.NoAction
+                                                                                   };
+    SqlReferentialAction ISqlColumn.OnUpdate => ForeignKey?.Action switch
+                                                                                   {
+                                                                                       OnAction.UpdateCascade    => SqlReferentialAction.Cascade,
+                                                                                       OnAction.UpdateSetNull    => SqlReferentialAction.SetNull,
+                                                                                       OnAction.UpdateSetDefault => SqlReferentialAction.SetDefault,
+                                                                                       _                         => SqlReferentialAction.NoAction
+                                                                                   };
+    string? ISqlColumn.GetDefaultSql( SqlDialectKind dialect )
+    {
+        if ( HasDefaultConstraint ) { return Defaults.Value; }
+
+        // The migration pipeline gives Guid keys a server-side default.
+        if ( !IsPrimaryKey || DbType is not DbColumnType.Guid ) { return null; }
+
+        return dialect switch
+               {
+                   SqlDialectKind.PostgreSql => "gen_random_uuid()",
+                   SqlDialectKind.SqlServer  => "NEWID()",
+                   SqlDialectKind.MySql      => "(UUID())", // MySQL takes expression defaults in parentheses
+                   SqlDialectKind.Oracle     => "SYS_GUID()",
+                   // SQLite has no UUID function, and Firebird's DEFAULT takes only literals and context variables: the application supplies the id.
+                   _                                          => null
+               };
+    }
+    string ISqlCommandColumn.          KeyValuePair                                             => KeyValuePair;
 
 
     public ColumnMetaData( in PropertyInfo property )
@@ -97,7 +150,7 @@ public sealed class ColumnMetaData : IEquatable<ColumnMetaData>, IComparable<Col
             ColumnName        = columnName;
             KeyValuePair      = $"{columnName} = @{columnName}";
             VariableName      = $"@{columnName}";
-            DataTypes         = property.GetDataTypes(out DbType, out IsNullable);
+            DataTypes         = property.GetDataTypes(out DbType, out IsNullable, out PortableType);
 
             if ( IsPrimaryKey && ForeignKey?.IsValid is true ) { throw new ArgumentException($"Column '{PropertyName}' has a PrimaryKey flag but {nameof(ForeignKey)} is invalid.", nameof(ForeignKey)); }
         }
@@ -106,88 +159,23 @@ public sealed class ColumnMetaData : IEquatable<ColumnMetaData>, IComparable<Col
     public static ColumnMetaData Create( in PropertyInfo property ) => new(in property);
 
 
-    internal void AddData<TMetaData>( StringBuilder query, TMetaData Instance, ref readonly DatabaseType type )
-        where TMetaData : ITableMetaData
-    {
-        string columnName = ColumnName.GetPadded(Instance.MaxLength_ColumnName);
-        string dataType   = DataTypes[type].GetPadded(Instance.MaxLength_DataType);
-        query.Append($"    {columnName} {dataType}");
-
-
-        if ( IsPrimaryKey )
-        {
-            // ReSharper disable once SwitchStatementHandlesSomeKnownEnumValuesWithDefault
-            query.Append(DbType switch
-                         {
-                             // DbColumnType.Long or DbColumnType.Int or DbColumnType.Short => " PRIMARY KEY",
-                             DbColumnType.Guid => " DEFAULT gen_random_uuid() PRIMARY KEY",
-                             _                 => " PRIMARY KEY"
-                         });
-
-            return;
-        }
-
-
-        query.Append(IsNullable
-                         ? " NULL"
-                         : " NOT NULL");
-
-        if ( IsUnique ) { query.Append(" UNIQUE"); }
-
-        if ( IsAlwaysIdentity ) { query.Append(" GENERATED ALWAYS AS IDENTITY"); }
-        else if ( IsDefaultIdentity ) { query.Append(" GENERATED BY DEFAULT AS IDENTITY"); }
-
-        if ( Checks?.IsValid is true )
-        {
-            query.Append(" CHECK ( ");
-
-            query.AppendJoin(Checks.And
-                                 ? AND
-                                 : OR,
-                             Checks.Constraints);
-
-            query.Append(" )");
-        }
-
-        if ( Defaults?.IsValid is not true ) { return; }
-
-        query.Append(" DEFAULTS ");
-        query.Append(Defaults.Value);
-    }
-
-
     internal string KeyValuePair_Padded( ITableMetaData table ) => KeyValuePair.GetPadded(table.MaxLength_KeyValuePair);
     internal string VariableName_Padded( ITableMetaData table ) => VariableName.GetPadded(table.MaxLength_Variables);
-    public SqlCommand CreateIndex( ITableMetaData table, in DatabaseType type ) => type switch
-                                                                                   {
-                                                                                       DatabaseType.MicrosoftSqlServer => $"""
-                                                                                                                           IF NOT EXISTS (
-                                                                                                                               SELECT 1
-                                                                                                                               FROM sys.indexes
-                                                                                                                               WHERE name = N'{IndexName}'
-                                                                                                                                 AND object_id = OBJECT_ID(N'{table.TableName.Value}')
-                                                                                                                           )
-                                                                                                                           BEGIN
-                                                                                                                               CREATE INDEX {IndexName} ON {table.TableName}({ColumnName});
-                                                                                                                           END;
-                                                                                                                           """,
-                                                                                       _ => $"CREATE INDEX IF NOT EXISTS {IndexName} ON {table.TableName}({ColumnName});"
-                                                                                   };
-    public SqlCommand DropIndex( ITableMetaData table, in DatabaseType type ) => type switch
-                                                                                 {
-                                                                                     DatabaseType.MicrosoftSqlServer => $"""
-                                                                                                                         IF EXISTS (
-                                                                                                                             SELECT 1
-                                                                                                                             FROM sys.indexes
-                                                                                                                             WHERE name = N'{IndexName}'
-                                                                                                                               AND object_id = OBJECT_ID(N'{table.TableName.Value}')
-                                                                                                                         )
-                                                                                                                         BEGIN
-                                                                                                                             DROP INDEX {IndexName} ON {table.TableName};
-                                                                                                                         END;
-                                                                                                                         """,
-                                                                                     _ => $"DROP INDEX IF EXISTS {IndexName};"
-                                                                                 };
+    /// <summary> <c>CREATE INDEX [IF NOT EXISTS]</c> on this column (SQL Server's guard where it has no <c>IF NOT EXISTS</c>; MySQL and Firebird have neither). </summary>
+    public SqlCommand CreateIndex( ITableMetaData table, in DatabaseType type )
+    {
+        SqlDialectKind dialect     = type.ToSqlDialectKind();
+        bool                            ifNotExists = dialect.SupportsIndexIfNotExists() || dialect is SqlDialectKind.SqlServer;
+        return Jakar.SqlBuilder.SqlBuilder.For(dialect).CreateIndex(IndexName, table.TableName.Value, ifNotExists: ifNotExists).Columns(ColumnName).BuildSql();
+    }
+
+    /// <summary> <c>DROP INDEX [IF EXISTS]</c> for this column's index (<c>... ON table</c> where the dialect needs it). </summary>
+    public SqlCommand DropIndex( ITableMetaData table, in DatabaseType type )
+    {
+        SqlDialectKind dialect  = type.ToSqlDialectKind();
+        bool                            ifExists = dialect.SupportsDropIfExists() && dialect is not SqlDialectKind.MySql;
+        return Jakar.SqlBuilder.SqlBuilder.For(dialect).DropIndex(IndexName, table.TableName.Value, ifExists).BuildSql();
+    }
     public        string IndexColumnName_Padded( ITableMetaData table )    => IndexName.GetPadded(table.MaxLength_IndexColumnName);
     public static string GetColumnName( ColumnMetaData          column )   => column.ColumnName;
     public static string GetVariableName( ColumnMetaData        column )   => column.VariableName;
@@ -219,10 +207,10 @@ public sealed class ColumnMetaData : IEquatable<ColumnMetaData>, IComparable<Col
 
         return parameter;
     }
-    public SqlParameter ToParameter<T>( T? value, [CallerArgumentExpression(nameof(value))] string parameterName = EMPTY, ParameterDirection direction = ParameterDirection.Input, DataRowVersion sourceVersion = DataRowVersion.Default )
+    public CommandParameter ToParameter<T>( T? value, [CallerArgumentExpression(nameof(value))] string parameterName = EMPTY, ParameterDirection direction = ParameterDirection.Input, DataRowVersion sourceVersion = DataRowVersion.Default )
     {
         Debug.Assert(Index >= 0);
-        SqlParameter parameter = new(value, parameterName.Parameterize(), this, direction, sourceVersion);
+        CommandParameter parameter = new(value, parameterName.Parameterize(), this, direction, sourceVersion);
         return parameter;
     }
 

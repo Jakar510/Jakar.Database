@@ -1,11 +1,11 @@
  # Jakar.SqlBuilder — Developer Specification
 
-> **Status:** Draft v1.0 — design specification for a fresh ref-struct redesign.
+> **Status:** v1.0 — implemented (see the *as built* notes; the compliance summary is in `SPECIFICATION-COMPLIANCE.md`).
 > **Target framework:** `net10.0` (C# 14 language features).
 > **Owner:** Jakar.Database project.
 > **Goal:** Generate provably valid, dialect-correct SQL from a fluent chain of method calls, using `ref struct` builders and zero intermediate heap allocations on the hot path.
 
-> **Implementation status (as built).** Phase 1 is implemented and compiles against `net10.0`/C# 14: the lean contracts (`ISqlColumn`, `ISqlTable<T>`, `SqlDialectKind`), the dialect-aware `SqlWriter`, results (`SqlResult`/`SqlParameterSet`/`SqlBuildException`/`SqlBuilderOptions`), `SqlValue`, and the fluent SELECT/INSERT/UPDATE/DELETE stage graph with typed `<T>` overloads, `UNION`/`UNION ALL`, and dialect-correct identifiers/parameters/paging/RETURNING-vs-OUTPUT. Two deviations from this design were made for pragmatism and are documented in `README.md`: the dialect is dispatched at runtime on `SqlDialectKind` (a `switch` in `SqlDialects`) rather than via static-abstract generic strategy types, and `HAVING` is chain-style rather than the lambda form. The **dependency split was implemented as contracts-in-core, not the separate "bridge assembly" of §9.8** — `ISqlTable`/`ISqlColumn`/`SqlDialectKind` live in core `Jakar.SqlBuilder`, and Jakar.Database's `ITableRecord<TSelf>` simply extends `ISqlTable<TSelf>` (see `DEPENDENCY-REFACTOR.md`). The former `EasySqlBuilder` prototype has been **removed**, not retained as a reference.
+> **Implementation status (as built).** Every section is implemented against `net10.0`/C# 14, for **six** dialects rather than three: PostgreSQL, SQL Server, SQLite, MySQL, Oracle and Firebird (`SqlDialectKind`). That covers the lean contracts (`ISqlColumn`, `ISqlTable<T>`), the dialect-aware `SqlWriter`, results (`SqlResult` / `SqlParameterSet` / `SqlBuildException` / `SqlBuilderOptions`), `SqlValue` and `SqlType`, and the full §7 grammar: SELECT with every source, join, grouping, window, set-operation, CTE and locking form; INSERT / UPDATE / DELETE with their extensions; MERGE; and DDL. It also covers the typed `<T>` overloads of §9, including `CreateTable<T>()`, and both terminals (`Build()` / `BuildSql()` and the zero-copy `WriteTo(IBufferWriter<char>)`). Three deviations from the design remain, each noted where it applies: the dialect is a runtime `SqlDialectKind` switch rather than a static-abstract `TDialect` (§4); the writer is carried by value rather than by `ref` (§3.2); and the dependency split is contracts-in-core rather than a bridge assembly (§9.8, `DEPENDENCY-REFACTOR.md`). The former `EasySqlBuilder` prototype has been removed.
 
 ---
 
@@ -50,7 +50,7 @@ The library does not execute SQL, manage connections, or map results — it prod
 
 ### 3.1 Component map
 
-> **As built.** The diagram below is the *design* shape (generic `Root<TDialect>`, static-abstract `ISqlDialect`, a `Span<char>`/`IBufferWriter` sink). The implementation is the non-generic equivalent: `SqlRoot` (carrying a `SqlDialectKind`), a `char[]`-backed `SqlWriter` with no `IBufferWriter` sink yet, and a `SqlDialects` switch in place of `ISqlDialect`. See the §3.2/§3.4/§4 notes.
+> **As built.** The diagram below is the *design* shape (generic `Root<TDialect>`, static-abstract `ISqlDialect`). The implementation is the non-generic equivalent: `SqlRoot` (carrying a `SqlDialectKind`), a `char[]`-backed `SqlWriter` with the `WriteTo(IBufferWriter<char>)` sink, and a `SqlDialects` switch in place of `ISqlDialect`. `Root.With()` is `SqlRoot.With` / `WithRecursive`; MERGE, TRUNCATE and the DDL verbs are further `SqlRoot` entry points (§7.5).
 
 ```
 SqlBuilder (static root)
@@ -111,7 +111,7 @@ A `record struct` (the old `EasySqlBuilder`) is copyable to the heap, can be box
 
 `SqlWriter` rents an initial `char[]` from `ArrayPool<char>.Shared` (`SqlBuilderOptions.InitialBufferSize`, default 1 KiB). Writes append at `length`; when capacity is exceeded the writer rents a larger buffer (at least double), copies, and returns the old one. `Build()` materializes the `string`, builds the `SqlParameterSet`, and returns the buffer to the pool in a `finally`. Because the writer is a `ref struct`, it cannot be retained past the build expression, so there is no use-after-return hazard.
 
-> **As built.** Only the `Build()` terminal exists today (it allocates the final `string`). The zero-copy `WriteTo(IBufferWriter<char>)` terminal — streaming straight into a `PipeWriter`/`ArrayBufferWriter<char>` with no final string allocation — is **planned, not yet implemented**.
+> **As built.** Both terminals exist. `Build()` / `BuildSql()` allocate only the final `string`, plus the `SqlParameterSet` when there are parameters. `WriteTo(IBufferWriter<char>)` copies the SQL straight into the caller's buffer and allocates nothing for a parameter-free query (`SqlParameterSet.Empty`). The buffer, the table-alias registry and the pending-qualifier list are all rented from `ArrayPool` and returned in the terminal's `finally`. Measured in §11.
 
 ---
 
@@ -183,6 +183,8 @@ public interface ISqlDialect
 
 ### 4.3 Per-dialect divergence table
 
+> **As built.** The six dialects and their divergences are documented flag by flag in `SqlDialects` (each `Supports...` member names the versions it assumes: PostgreSQL 15, SQL Server 2022, SQLite 3.39, MySQL 8.0.31, Oracle 23ai, Firebird 5). Beyond the table below, MySQL quotes with backticks and writes `ON DUPLICATE KEY UPDATE` for `ON CONFLICT`, `ROW(...)` table values and multi-table `UPDATE t, o` / `DELETE t FROM t, o`. Oracle binds `:p0`, writes no `;`, reads source-less selects `FROM DUAL`, and pages with `OFFSET ... FETCH`. Firebird reads `FROM RDB$DATABASE`, writes `FOR UPDATE WITH LOCK`, and has no `INTERSECT` / `EXCEPT`. Where a dialect lacks a construct with an exact equivalent, the builder emulates it: `NULLS FIRST/LAST` as an extra `CASE` sort key, `ILIKE` as `LOWER() LIKE LOWER()`, `FILTER (WHERE ...)` as a `CASE` argument, `IS DISTINCT FROM` as `<=>` / `DECODE`, `VALUES` tables as `UNION ALL` selects, `TRUNCATE` as `DELETE`, and `CREATE ... IF NOT EXISTS` as an `IF OBJECT_ID(...)` guard on SQL Server. Otherwise it throws `UnsupportedFeature` naming the dialect.
+
 | Concern                | SQLite                        | SQL Server (T-SQL)                  | PostgreSQL                         |
 |------------------------|-------------------------------|-------------------------------------|------------------------------------|
 | Identifier quote       | `"id"` (also `` `id` ``,`[id]`) | `[id]` (also `"id"` w/ QUOTED_IDENTIFIER) | `"id"`                       |
@@ -197,6 +199,8 @@ public interface ISqlDialect
 | Auto-increment DDL     | `INTEGER PRIMARY KEY AUTOINCREMENT` | `IDENTITY(1,1)`                | `GENERATED ... AS IDENTITY` / `SERIAL` |
 
 ### 4.4 Compile-time vs runtime feature gating
+
+> **As built.** Because the dialect is a runtime value (§4), gating is by **shape at compile time and by dialect at runtime**. The type-state still decides which clauses can follow which (§6.1, enforced by `CompileTimeTests`). A clause the chosen dialect can't express throws `SqlBuildException(UnsupportedFeature)` as soon as it is called, so `.Returning(...)` on SQL Server fails at the call and the message points to `.Output(...)`. There are no marker-interface extension methods.
 
 Where a feature changes the *shape* of the chain (e.g. `RETURNING` exists), the stage type exposes the method only when the dialect advertises support, using a constrained extension method:
 
@@ -222,6 +226,8 @@ Every value-accepting method comes in two forms so the caller chooses, per value
 
 ### 5.1 The two paths
 
+> **As built.** The path is chosen by overload rather than by named argument. A `long` / `bool` argument is inlined. An `object?` argument is bound. A `SqlValue` says which explicitly: `SqlValue.Param` binds; `Inline` / `Of` / `Null` / `Default` / `Raw` are literal. Typed inline literals (`Guid`, `DateTime`, `DateTimeOffset`, `DateOnly`, `TimeOnly`, `byte[]`, `decimal`, `double`, `char`) are written in each dialect's literal syntax.
+
 ```csharp
 .Where("status").EqualTo(param: "active")   // → ... = $1   ; param set gets $1 = "active"
 .Where("age").GreaterThan(18)               // → ... > 18   ; inline literal, no parameter
@@ -231,6 +237,8 @@ Every value-accepting method comes in two forms so the caller chooses, per value
 The convention: a method taking a CLR value as a **`param:`-named** argument (or via the `.Param(value)` value-wrapper) binds a parameter; a method taking the value positionally, or via `.Inline(value)`, emits an escaped literal. Numeric and boolean inline literals are emitted directly (after a type check); string, `char`, `DateTime`, `Guid`, `byte[]`, and `decimal` inline literals are emitted through the dialect's `QuoteStringLiteral` / type-specific formatter so they are correctly escaped and culture-invariant.
 
 ### 5.2 `SqlValue` — the value wrapper
+
+> **As built.** `SqlValue` is a `readonly struct`, not a `ref struct`, so that a row can be passed as `params ReadOnlySpan<SqlValue>`. It holds a string, a number, a bool, or a reference to the bound object, so it never boxes a number.
 
 To keep the surface allocation-free and uniform, both forms funnel through a non-boxing `readonly ref struct SqlValue` that holds either a literal span to inline or a reference to the CLR value to bind:
 
@@ -301,6 +309,8 @@ Because `HavingStage` is only reachable from `GroupByStage`, `.Having()` before 
 
 ### 6.2 Layer 2 — runtime structural verification
 
+> **As built.** `SqlWriter.Verify()` checks every item below. It also rejects a nested query left open, `WITH` without a statement, and bound parameters inside DDL (`InvalidLiteral`). Each dialect gate throws where the clause is written, and `ORDER BY` requirements (`OFFSET` on SQL Server, `WITH TIES`) are checked when the paging is written. An empty column or value list is argument misuse: `ArgumentException` at the call (§10). An empty `IN ()` is `EmptyPredicate`.
+
 Some invariants are impractical to encode in types (the cost is type explosion). These are checked in `SqlWriter.Verify()` invoked by every terminal:
 
 - **Balanced parentheses.** `parenDepth` must be `0`. A non-zero depth throws `SqlBuildException("Unbalanced parentheses", partialSql)`.
@@ -317,6 +327,15 @@ Type-state gives instant editor feedback and makes whole classes of bugs unrepre
 ---
 
 ## 7. Grammar coverage
+
+> **As built.** Every construct in §7.1–§7.6 is implemented for all six dialects, or rejected with `UnsupportedFeature` where the engine has no equivalent. Each one has a pattern in `Jakar.SqlBuilder.Tests/Execution/SqlPatterns.cs` / `SpecPatterns.cs` (about 330 patterns). Every pattern runs on a real engine per dialect (SQLite in-process; the others in Testcontainers), and every engine must return the same answer or reject the pattern at build time. The surface, briefly:
+>
+> - **SELECT:** `Select` / `SelectDistinct` / `SelectDistinctOn` / `Select<T>`, `Top(n, percent, withTies)`, `Column(expr, as)`, scalar subqueries, `Case`. Sources: `From(table | <T> | subquery)`, `FromValues`, `FromFunction`, `CrossApply` / `OuterApply` (LATERAL), `AndFrom`. Joins: every kind, plus `NaturalJoin`, `.Using(...)`, joins to derived tables, and the typed `JoinStage<T>.On`. Grouping: `GroupBy*`, `GroupByRollup` / `Cube` / `GroupingSets`, `Having()` chain or `Having(h => ...)` lambda. Windows: `Window(name, ...)`, `Over(...)` with `Rows` / `Range` / `Groups` frames, and the ranking and value window functions. Also aggregate `filter:`, `StringAgg` / `ArrayAgg`, set operations (`Union`, `UnionAll`, `Intersect[All]`, `Except[All]`), `OrderBy...` / `ThenBy...` with `NullsFirst` / `NullsLast`, `Limit` / `Offset` / `FetchNext`, CTEs (`With`, `WithRecursive`, `AsMaterialized`, `AsNotMaterialized`), and locking (`ForUpdate` / `ForShare`, `NoWait` / `SkipLocked`, `WithHints`).
+> - **INSERT:** `Values` / `ValuesParams` (multi-row), `Select(q => ...)`, `DefaultValues()`, `OverridingSystemValue()`, `OnConflict(...).DoNothing()` / `.DoUpdateSet(...)` (+ `Where`), `Returning` / `Output`, a `WITH` prefix, and `Insert<T>()` (mapped, non-identity columns).
+> - **UPDATE / DELETE:** `Set` (values, expressions, `SqlValue.Default`), `SetRow` (row and subquery forms), `UPDATE ... From(...)`, `DELETE ... Using(...)`, `Where` (chain, lambda, `Exists`), `Returning` / `Output`, a `WITH` prefix, and `Truncate` / `Truncate<T>`.
+> - **MERGE:** `MergeInto(...).Using(table | subquery, alias).On(...)` then `WhenMatchedThenUpdate` / `WhenMatchedThenDelete` / `WhenNotMatchedThenInsert` (each with an optional condition; Oracle's `WHERE` form is written for it), `WhenNotMatchedBySourceThenDelete` and `Output` (SQL Server).
+> - **DDL:** `CreateTable` (`Column(name, SqlType | raw type, c => c.NotNull().Identity().Default(...).Check(...).References(...))`, `PrimaryKey`, `Unique`, `ForeignKey`, `Check`, `Constraint(name)`, `ifNotExists`), and `CreateTable<T>()` from metadata. Also `AlterTable` (`AddColumn`, `DropColumn`, `AlterColumnType`, `RenameColumn`, `RenameTo`, `AddPrimaryKey` / `AddUnique` / `AddForeignKey` / `AddCheck`, `DropConstraint`), `DropTable` / `DropView` / `DropIndex` (`ifExists`, `cascade`), `CreateIndex` (`unique`, `ifNotExists`, `Using(method)`, `Columns` with directions, `Include`, partial `Where`), and `CreateView` / `CreateOrReplaceView`. Column types go through the portable `SqlType`.
+> - **Predicates and expressions (§7.6):** every comparison, `Is[Not]DistinctFrom`, `[Not]Between`, `[Not]In` (values, parameters, subquery), `Any` (PG), `[Not]Like` / `[Not]ILike` with `ESCAPE`, `Glob`, `[Not]SimilarTo`, `[Not]Exists`, `Not`, auto-balanced lambda groups and `JsonContains`. Expressions cover arithmetic and `Modulo` / `Negate`, `Concat`, `Coalesce`, `NullIf`, `Cast`, string and number functions, `JsonText` / `JsonObject`, `CurrentDate` / `CurrentTimestamp` / `AddInterval`, and the aggregates.
 
 The builder must express all reachable SQL for the three target dialects. Coverage is organized by statement family. Each construct lists its fluent entry and the stage it transitions to. Constructs unsupported by a dialect are gated per §4.4.
 
@@ -525,6 +544,8 @@ Optional **strict mode** (`SqlBuilderOptions.StrictTypes`) adds a fourth step on
 
 ### 9.5 Aliases and qualification (single-pass nuance)
 
+> **As built.** The back-patch is always on (`SqlBuilderOptions.AliasProjections` stays only for configuration compatibility). A typed projection is written unqualified with a recorded position. When its scope ends, it is qualified with its table's alias. With no alias, it gets the table name once the query joins tables. With a single source and no alias, it stays bare. The output therefore matches §9.3 exactly (`SELECT [u].[name] ...`), which `SpecificationTests.Spec_9_3_Typed` pins.
+
 `From<TRecord>("u")` and `Join<TRecord>("o")` register a binding from the record type to its alias in a small stack-resident alias table inside `SqlWriter` (a span of `(typeHandle, aliasSpan)` entries — bounded, no heap). A later typed reference whose `TRecord` has a registered alias emits `alias.column`; with no alias it emits `TableName.column`; with a single unambiguous source it may emit the bare column.
 
 The one wrinkle is the projection list, which is written *before* `FROM` in a single forward pass. When `.Select<User>(nameof(User.Name))` runs, the `"u"` alias is not yet known. Two supported behaviors:
@@ -535,6 +556,8 @@ The one wrinkle is the projection list, which is written *before* `FROM` in a si
 This is called out explicitly because it is the only place the typed feature interacts with the zero-copy forward-writer design; everywhere else (WHERE, JOIN ON, GROUP BY, HAVING, ORDER BY) the typed reference occurs after the source is declared, so the alias is already known and qualification is immediate.
 
 ### 9.6 DDL and DML generated from metadata
+
+> **As built.** `CreateTable<T>()` walks `T.SqlColumns`. It writes each column's metadata type, identity in the dialect's form, `DEFAULT`, `NOT NULL`, `PRIMARY KEY` (or a table-level key, including `ISqlTable<T>.SqlPrimaryKey` for `[TableExtras]` composite keys), `UNIQUE`, `CHECK` and `REFERENCES` with its actions. For those, `ISqlColumn` gained default members (`IsUnique`, `IsAlwaysIdentity`, `GetDefaultSql`, `GetCheckSql`, `ForeignTable`, `ForeignColumn`, `OnDelete`, `OnUpdate`) that Jakar.Database's `ColumnMetaData` implements. Jakar.Database's migrations are generated by `CreateTable<T>()` (and the builder's `DropTable` / `CreateIndex` / `DropIndex`), so builder and migrations agree by construction. `CreateTableAgreementTests` (in Jakar.Database.Tests) checks them against the hand-written DDL they replaced, frozen in `Integration/LegacyDdl/`: it creates all eleven tables both ways on PostgreSQL and on SQL Server, and requires identical catalogs (columns, types, nullability, identity, defaults, keys, foreign keys, checks). PostgreSQL and SQL Server take their type names from Jakar.Database's explicit maps; SQLite, MySQL, Oracle and Firebird from one portable map onto `SqlType`, so `CreateTable<T>()` works on all six (every table is created on every engine by `Record_Tables_Create_From_Metadata`). `Insert<T>()` defaults to the mapped, non-identity columns.
 
 Because the metadata is complete, whole statements can be generated from a record type. `CreateTable<TRecord>()` walks `TRecord.MetaData.SortedColumns`, emitting each column's dialect type via `ColumnMetaData[dialect.MetadataType]`, plus `NOT NULL`, `PRIMARY KEY`, `UNIQUE`, `FOREIGN KEY`, identity/auto-increment (`IDENTITY(1,1)` / `GENERATED … AS IDENTITY` / `INTEGER PRIMARY KEY AUTOINCREMENT`), and `DEFAULT` from the corresponding attributes — the table writes itself, correctly per dialect. Likewise `Insert<TRecord>()` can default its column list to the mapped, non-identity columns, and `Update<TRecord>()` can target the table by `TableName`. These reuse the same `TableMetaData` already used by Jakar.Database's migration pipeline, so the builder and the migrations agree on schema by construction.
 
@@ -560,6 +583,8 @@ The **chosen** resolution: core `Jakar.SqlBuilder` owns minimal contracts (`ISql
 
 ## 10. Error handling
 
+> **As built.** The `Reason` enum is `SqlBuildError`: everything listed here, plus `DialectNotSet`. An empty column or value list throws `ArgumentException` at the call, as this section prescribes.
+
 All build-time failures throw `SqlBuildException : InvalidOperationException`, carrying the partially built SQL (`PartialSql`), the failing invariant (`Reason` enum: `UnbalancedParentheses`, `MissingRequiredClause`, `UnsupportedFeature`, `ParameterGap`, `EmptyPredicate`, `UnclosedIdentifier`, `InvalidLiteral`), and, for dialect-gating failures, the offending `SqlDialectKind`. Messages are specific and actionable (e.g. `"SQL Server OFFSET/FETCH requires an ORDER BY clause; none was emitted."`). Argument-level misuse caught before any SQL is written (null identifier, empty column list) throws `ArgumentException`/`ArgumentNullException` at the call site. The library never silently emits questionable SQL — §2 "fail closed."
 
 Because stages are `ref struct`s, exceptions cannot leak a half-built writer to the heap; the rented buffer is returned in the terminal's `finally` even on the throwing path.
@@ -571,6 +596,8 @@ The `Reason` enum gains `UnknownColumn` and `TypeMismatch` for the typed-overloa
 ## 11. Performance
 
 ### 11.1 Targets
+
+> **As built — measured.** These are gated by `AllocationTests` (all six dialects) and the BenchmarkDotNet suite `Jakar.SqlBuilder.Benchmarks` (`dotnet run -c Release --project Jakar.SqlBuilder.Benchmarks -- --filter *`). For a parameter-free join, filter and order query, `BuildSql()` allocates exactly the result string and `WriteTo` allocates **0 B**. With the Short job on the development machine, `SELECT *` takes ~0.2 µs. The representative 5–8 clause query takes ~0.9–1.2 µs, slightly above the "well under a microsecond" target. A 100-row inline insert takes ~8 µs and allocates only its ~3 KB string. To reach zero allocations, PostgreSQL identifier folding is cached and looked up by span, qualified names are written part by part from spans, parameter tokens are cached, and the StrictTypes hook boxes nothing unless it is on.
 
 The hot path (compose → `BuildSql`) must perform zero managed heap allocations except the single final `string`, and zero allocations at all on the `WriteTo(IBufferWriter<char>)` path for parameter-free queries. A typical 5–8 clause `SELECT` should build in well under a microsecond and stay within the initially rented 1 KiB buffer (no resize). Parameter capture for a query with N bound values allocates at most one `SqlParameter[]` (pooled) plus the `SqlParameterSet` wrapper.
 
@@ -586,6 +613,16 @@ A BenchmarkDotNet suite (`Jakar.SqlBuilder.Benchmarks`) measures allocations (`[
 
 ## 12. Testing strategy
 
+> **As built.** Every layer exists, for all six dialects:
+>
+> - **Golden SQL:** `DialectMatrixTests`, `SelectTests`, `WriteStatementTests`, `SpecificationTests` (the spec's own examples), and others.
+> - **Round-trip execution:** `Execution/` runs about 330 patterns per engine.
+> - **Negative:** `ValidationTests`, plus a `RejectedBy` expectation on each pattern.
+> - **Compile-fail:** `CompileTimeTests`, which runs Roslyn `CSharpCompilation` over 22 illegal orderings and 3 escape attempts, with legal controls.
+> - **Fuzz:** `FuzzChains`. 4,000 seeded chains per dialect are checked for balance, terminator and parameter contiguity, and 400 per engine must return the same row count as the SQLite reference.
+> - **Typed overloads:** `TypedOverloadTests` and `TableRecordOverloadTests`, against the real `TableRecord` types.
+> - **Allocation gate:** `AllocationTests`.
+
 Correctness rests on four test layers, in the `Jakar.SqlBuilder.Tests` project:
 
 The **golden-SQL** layer asserts exact emitted strings for each construct across all three dialects — a large parameterized table of (chain → expected SQL, expected parameters). This is the primary regression net and the executable form of §7. The **round-trip execution** layer runs generated SQL against real engines — SQLite in-memory (in-proc), SQL Server and PostgreSQL via Testcontainers — confirming the SQL not only matches a string but actually parses and runs, catching gaps the golden strings might enshrine. The **validation/negative** layer asserts that illegal chains throw the right `SqlBuildException.Reason` (and, via a small set of compile-fail snippets checked by a source-level test, that type-state genuinely blocks illegal orderings). The **property/fuzz** layer generates random valid chains and asserts every output is balanced, terminates with `;`, has contiguous parameters, and re-parses on the target engine.
@@ -598,4 +635,22 @@ A **compile-time guarantee** test compiles known-bad snippets (e.g. `.Having()` 
 
 ## 13. Project structure
 
-**As built.** Files currently live flat at the project root (a workspace sync drop
+**As built.**
+
+```
+Jakar.SqlBuilder/
+  Commands/        CommandParameters and supporting types (moved from Jakar.Database)
+  Models/
+    SqlBuilder.cs, SqlRoot.cs                  entry points
+    SqlWriter.cs, ParameterCollector.cs        the single writer
+    SqlDialects.cs, SqlType.cs, SqlValue.cs     dialect switch, portable types, values
+    SqlPredicates.cs, SqlExpressions.cs         shared predicate / expression grammar (§7.6)
+    SelectStages.cs, WhereGroupOrderStages.cs   SELECT stage graph
+    SqlClauses.cs, SqlOps.cs                    shared clause emission
+    InsertStages.cs, UpdateDeleteStages.cs      DML
+    CteMergeStages.cs, DdlStages.cs             WITH, MERGE, DDL
+    ISqlColumn.cs, ISqlTable.cs, TypedColumns.cs typed-overload contracts (§9)
+    SqlResult.cs, SqlParameter*.cs, SqlBuild*.cs results, options, errors
+Jakar.SqlBuilder.Tests/      golden, negative, compile-fail, fuzz, allocation; Execution/ = six real engines
+Jakar.SqlBuilder.Benchmarks/ BenchmarkDotNet suite (§11.3)
+```

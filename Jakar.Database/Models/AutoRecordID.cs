@@ -5,12 +5,13 @@ namespace Jakar.Database;
 
 
 [DefaultMember(nameof(Empty))]
-public readonly struct AutoRecordID<TSelf>( long id ) : IEquatable<AutoRecordID<TSelf>>, IComparable<AutoRecordID<TSelf>>, ISpanFormattable, ISpanParsable<AutoRecordID<TSelf>>, IRegisterDapperTypeHandlers
+public readonly struct AutoRecordID<TSelf>( long id ) : IEquatable<AutoRecordID<TSelf>>, IComparable<AutoRecordID<TSelf>>, ISpanFormattable, ISpanParsable<AutoRecordID<TSelf>>, ISqlParameterValue, IRegisterDapperTypeHandlers
     where TSelf : TableRecord<TSelf>, ITableRecord<TSelf>
 {
     public static readonly AutoRecordID<TSelf> Empty = new(0);
     public readonly        string              key   = $"{TSelf.TableName}:{id}";
     public readonly        long                Value = id;
+    object ISqlParameterValue.             ParameterValue => Value;
 
 
     [Pure] public static AutoRecordID<TSelf>  Parse( string                    value )                       => Create(long.Parse(value));

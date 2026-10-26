@@ -54,7 +54,7 @@ public class OtpAuthenticatorTokenProvider : AuthenticatorTokenProvider<UserReco
     public OtpAuthenticatorTokenProvider( TelemetrySource source )
     {
         AppInformation app = source.Info;
-        SecretKey = OtpNet.Base32Encoding.ToString(app.AppID.ToByteArray());
+        SecretKey = Base32Encoding.ToString(app.AppID.ToByteArray());
         OTP       = OneTimePassword.Create(SecretKey, app.AppName);
     }
 

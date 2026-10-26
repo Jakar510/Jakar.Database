@@ -43,12 +43,58 @@ public sealed class VirtualDatabaseTests : Assert
                  });
     }
 
+    /// <summary> Every table with a <c>LastModified</c> column gets its trigger migration, numbered after the table and index migrations and in the database's dialect. </summary>
+    [Test] public void Migrations_include_the_last_modified_triggers()
+    {
+        ITableMetaData[] tables =
+        [
+            ResxRowRecord.MetaData, FileRecord.MetaData, UserRecord.MetaData, RecoveryCodeRecord.MetaData, UserRecoveryCodeRecord.MetaData, RoleRecord.MetaData,
+            UserRoleRecord.MetaData, GroupRecord.MetaData, UserGroupRecord.MetaData, AddressRecord.MetaData, UserAddressRecord.MetaData, UserLoginProviderRecord.MetaData
+        ];
+
+        List<string> expected = [];
+        foreach ( ITableMetaData table in tables )
+        {
+            if ( table.ContainsKey(nameof(ILastModified.LastModified)) ) { expected.Add(table.TableName.Value); }
+        }
+
+        List<MigrationRecord> records = [..__db.MigrationManager.Records];
+        records.Sort(static ( x, y ) => x.MigrationID.CompareTo(y.MigrationID));
+
+        List<MigrationRecord> triggers  = [];
+        long                  lastOther = long.MinValue;
+        HashSet<long>         ids       = [];
+        foreach ( MigrationRecord record in records )
+        {
+            ids.Add(record.MigrationID);
+            if ( record.Description.EndsWith("_set_last_modified trigger", StringComparison.Ordinal) ) { triggers.Add(record); }
+            else if ( record.Description.StartsWith("Create ", StringComparison.Ordinal) ) { lastOther = Math.Max(lastOther, record.MigrationID); } // tables and indexes
+        }
+
+        List<string?> triggerTables = triggers.ConvertAll(static x => x.ReferenceID);
+
+        Multiple(() =>
+                 {
+                     That(expected,      Is.Not.Empty);
+                     That(triggerTables, Is.EqualTo(expected), "one trigger per LastModified table, in registration order");
+                     That(triggers[0].MigrationID, Is.GreaterThan(lastOther), "after the table and index migrations");
+                     That(ids,           Has.Count.EqualTo(records.Count), "migration ids are unique");
+                     That(records[0].UpSQL.SQL, Does.Contain("CREATE OR REPLACE FUNCTION set_last_modified()"), "the function the PostgreSQL triggers call comes first");
+
+                     foreach ( MigrationRecord trigger in triggers )
+                     {
+                         That(trigger.UpSQL.SQL,   Does.StartWith("CREATE OR REPLACE TRIGGER"), "a PostgreSQL trigger for a PostgreSQL database");
+                         That(trigger.CanRollback, Is.True);
+                     }
+                 });
+    }
+
     [Test] public void Dialect_is_derived_from_database_type()
     {
         Multiple(() =>
                  {
                      That(__db.DatabaseType, Is.EqualTo(DatabaseType.PostgreSQL));
-                     That(__db.Dialect,      Is.EqualTo(Jakar.SqlBuilder.SqlDialectKind.PostgreSql));
+                     That(__db.Dialect,      Is.EqualTo(SqlDialectKind.PostgreSql));
                  });
     }
 

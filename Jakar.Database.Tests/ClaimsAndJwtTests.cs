@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Tokens;
+using ZLinq;
 
 namespace Jakar.Database.Tests;
 
@@ -26,9 +27,9 @@ public sealed class ClaimsAndJwtTests
 
         ClaimsPrincipal principal = new(new ClaimsIdentity(claims, "test"));
 
-        bool parsed = principal.TryParse(out RecordID<UserRecord> userId, out string userName, out Claim[] roles, out Claim[] groups);
-        string[] roleValues  = System.Linq.Enumerable.ToArray(System.Linq.Enumerable.Select(roles,  static x => x.Value));
-        string[] groupValues = System.Linq.Enumerable.ToArray(System.Linq.Enumerable.Select(groups, static x => x.Value));
+        bool     parsed      = principal.TryParse(out RecordID<UserRecord> userId, out string userName, out Claim[] roles, out Claim[] groups);
+        string[] roleValues  = roles.Select(static x => x.Value).ToArray();
+        string[] groupValues = groups.Select(static x => x.Value).ToArray();
 
         Assert.Multiple(() =>
                         {

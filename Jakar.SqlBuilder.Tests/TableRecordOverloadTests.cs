@@ -7,7 +7,7 @@ using System.Text;
 using NUnit.Framework;
 using Jakar.Database;
 using Jakar.SqlBuilder;
-using SqlBuilder = global::Jakar.SqlBuilder.SqlBuilder;
+using SqlBuilder = Jakar.SqlBuilder.SqlBuilder;
 
 
 
@@ -39,11 +39,11 @@ public sealed class TableRecordOverloadTests
     /// <summary> Mirrors <c>SqlWriter.WriteIdentifier</c>: fold for the dialect, then apply quote chars (doubling any close-quote). </summary>
     private static string Ident( string raw, SqlDialectKind dialect )
     {
-        string folded = SqlDialects.Fold(dialect, raw);
-        ( char open, char close ) = SqlDialects.QuoteChars(dialect);
+        string folded = dialect.Fold(raw);
+        ( char open, char close ) = dialect.QuoteChars();
         if ( open is '\0' ) { return folded; }
 
-        StringBuilder builder = new(folded.Length + 2);
+        Extensions.ValueStringBuilder builder = new(folded.Length + 2);
         builder.Append(open);
 
         foreach ( char c in folded )
@@ -113,8 +113,8 @@ public sealed class TableRecordOverloadTests
     private static string ExpectedSelectAll<T>( SqlDialectKind dialect )
         where T : ISqlTable<T>
     {
-        IReadOnlyList<ISqlColumn> columns = T.SqlColumns;
-        StringBuilder             builder = new("SELECT ");
+        IReadOnlyList<ISqlColumn>           columns = T.SqlColumns;
+        Extensions.ValueStringBuilder builder = new("SELECT ");
 
         for ( int i = 0; i < columns.Count; i++ )
         {
@@ -201,7 +201,7 @@ public sealed class TableRecordOverloadTests
     {
         SqlResult result = SqlBuilder.SqlServer.Insert().Into<UserRecord>(nameof(UserRecord.UserName)).ValuesParams("ada").Output("id").Build();
 
-        Assert.That(result.Sql, Is.EqualTo($"INSERT INTO {Tbl<UserRecord>(MS)} ({Col<UserRecord>(nameof(UserRecord.UserName), MS)}) VALUES (@p0) OUTPUT INSERTED.[id];"));
+        Assert.That(result.Sql, Is.EqualTo($"INSERT INTO {Tbl<UserRecord>(MS)} ({Col<UserRecord>(nameof(UserRecord.UserName), MS)}) OUTPUT INSERTED.[id] VALUES (@p0);"));
     }
 
     [Test] public void Mapping_Insert_uses_both_key_and_value_columns()
@@ -302,7 +302,7 @@ public sealed class TableRecordOverloadTests
     {
         string sql = SqlBuilder.SqlServer.Select<UserRecord>(nameof(UserRecord.IsActive)).Count<UserRecord>(nameof(UserRecord.ID), "cnt").From<UserRecord>("u").GroupBy<UserRecord>(nameof(UserRecord.IsActive)).OrderByDesc<UserRecord>(nameof(UserRecord.IsActive)).Build().Sql;
 
-        Assert.That(sql, Is.EqualTo($"SELECT {Col<UserRecord>(nameof(UserRecord.IsActive), MS)}, COUNT({Col<UserRecord>(nameof(UserRecord.ID), MS)}) AS [cnt] FROM {Tbl<UserRecord>(MS)} [u] GROUP BY {Col<UserRecord>(nameof(UserRecord.IsActive), MS)} ORDER BY {Col<UserRecord>(nameof(UserRecord.IsActive), MS)} DESC;"));
+        Assert.That(sql, Is.EqualTo($"SELECT [u].{Col<UserRecord>(nameof(UserRecord.IsActive), MS)}, COUNT([u].{Col<UserRecord>(nameof(UserRecord.ID), MS)}) AS [cnt] FROM {Tbl<UserRecord>(MS)} [u] GROUP BY [u].{Col<UserRecord>(nameof(UserRecord.IsActive), MS)} ORDER BY [u].{Col<UserRecord>(nameof(UserRecord.IsActive), MS)} DESC;"));
     }
 
     [Test] public void Typed_groupby_having_count_postgres()
@@ -322,14 +322,14 @@ public sealed class TableRecordOverloadTests
     {
         string sql = SqlBuilder.PostgreSQL.Select("*").From<UserRoleRecord>("ur").InnerJoin<UserRecord>("u").On<UserRoleRecord>(nameof(UserRoleRecord.KeyID)).EqualToColumn<UserRecord>(nameof(UserRecord.ID)).InnerJoin<RoleRecord>("r").On<UserRoleRecord>(nameof(UserRoleRecord.ValueID)).EqualToColumn<RoleRecord>(nameof(RoleRecord.ID)).Build().Sql;
 
-        Assert.That(sql, Is.EqualTo($"SELECT * FROM {Tbl<UserRoleRecord>(PG)} ur INNER JOIN {Tbl<UserRecord>(PG)} u ON {Col<UserRoleRecord>(nameof(UserRoleRecord.KeyID), PG)} = {Col<UserRecord>(nameof(UserRecord.ID), PG)} INNER JOIN {Tbl<RoleRecord>(PG)} r ON {Col<UserRoleRecord>(nameof(UserRoleRecord.ValueID), PG)} = {Col<RoleRecord>(nameof(RoleRecord.ID), PG)};"));
+        Assert.That(sql, Is.EqualTo($"SELECT * FROM {Tbl<UserRoleRecord>(PG)} ur INNER JOIN {Tbl<UserRecord>(PG)} u ON ur.{Col<UserRoleRecord>(nameof(UserRoleRecord.KeyID), PG)} = u.{Col<UserRecord>(nameof(UserRecord.ID), PG)} INNER JOIN {Tbl<RoleRecord>(PG)} r ON ur.{Col<UserRoleRecord>(nameof(UserRoleRecord.ValueID), PG)} = r.{Col<RoleRecord>(nameof(RoleRecord.ID), PG)};"));
     }
 
     [Test] public void LeftJoin_owned_record_to_user_sqlserver()
     {
         string sql = SqlBuilder.SqlServer.Select("*").From<UserRecord>("u").LeftJoin<AddressRecord>("a").On<AddressRecord>(nameof(AddressRecord.UserID)).EqualToColumn<UserRecord>(nameof(UserRecord.ID)).Build().Sql;
 
-        Assert.That(sql, Is.EqualTo($"SELECT * FROM {Tbl<UserRecord>(MS)} [u] LEFT JOIN {Tbl<AddressRecord>(MS)} [a] ON {Col<AddressRecord>(nameof(AddressRecord.UserID), MS)} = {Col<UserRecord>(nameof(UserRecord.ID), MS)};"));
+        Assert.That(sql, Is.EqualTo($"SELECT * FROM {Tbl<UserRecord>(MS)} [u] LEFT JOIN {Tbl<AddressRecord>(MS)} [a] ON [a].{Col<AddressRecord>(nameof(AddressRecord.UserID), MS)} = [u].{Col<UserRecord>(nameof(UserRecord.ID), MS)};"));
     }
 
 #endregion

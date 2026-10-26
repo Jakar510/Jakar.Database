@@ -38,11 +38,29 @@ public sealed partial record MigrationRecord : TableRecord<MigrationRecord>, ITa
         MigrationID = reader.GetFieldValue<MigrationRecord, long>(nameof(MigrationID));
     }
 
-    public static MigrationRecord SetLastModified( long migrationID ) => new()
-                                                                         {
-                                                                             MigrationID = migrationID,
-                                                                             Description = $"create {SetLastModifiedName} function",
-                                                                             UpSQL = $"""
+    public static MigrationRecord SetLastModified( long migrationID ) => SetLastModified(migrationID, Database.Current?.DatabaseType ?? DatabaseType.PostgreSQL);
+
+    /// <summary>
+    ///     The function PostgreSQL's <c>last_modified</c> triggers call (<see cref="LastModifiedTrigger"/>). The other dialects' triggers set the column themselves, so there it's a no-op
+    ///     <c>SELECT 1</c> that keeps the migration ids the same on every engine.
+    /// </summary>
+    public static MigrationRecord SetLastModified( long migrationID, DatabaseType type ) => type is DatabaseType.PostgreSQL
+                                                                                               ? PostgresSetLastModified(migrationID)
+                                                                                               : new MigrationRecord
+                                                                                                 {
+                                                                                                     MigrationID = migrationID,
+                                                                                                     Description = $"create {SetLastModifiedName} function (not needed on {type})",
+                                                                                                     UpSQL       = Nothing(type),
+                                                                                                     DownSQL     = Nothing(type)
+                                                                                                 };
+
+    private static string Nothing( DatabaseType type ) => Jakar.SqlBuilder.SqlBuilder.For(type.ToSqlDialectKind()).Select().Column(static e => e.Number(1)).BuildSql();
+
+    private static MigrationRecord PostgresSetLastModified( long migrationID ) => new()
+                                                                                {
+                                                                                    MigrationID = migrationID,
+                                                                                    Description = $"create {SetLastModifiedName} function",
+                                                                                    UpSQL = $"""
                                                                                       CREATE OR REPLACE FUNCTION {SetLastModifiedName}()
                                                                                       RETURNS TRIGGER AS $$
                                                                                       BEGIN
@@ -128,11 +146,19 @@ public sealed partial record MigrationRecord : TableRecord<MigrationRecord>, ITa
 
         return record.Validate();
 
-        static StringBuilder getValues()
+        static string getValues()
         {
-            StringBuilder values = new();
-            values.AppendJoin(",\n", Enum.GetNames(typeof(TEnum)).Select(x => $"'{x}'"));
-            return values;
+            string[]           names  = Enum.GetNames(typeof(TEnum));
+            ValueStringBuilder values = new();
+
+            for ( int i = 0; i < names.Length; i++ )
+            {
+                if ( i > 0 ) { values.Append(",\n"); }
+
+                values.Append('\'').Append(names[i]).Append('\'');
+            }
+
+            return values.ToString();
         }
     }
 

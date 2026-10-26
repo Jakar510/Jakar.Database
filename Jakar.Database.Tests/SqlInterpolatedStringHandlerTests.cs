@@ -106,21 +106,21 @@ public sealed class SqlInterpolatedStringHandlerTests : Assert
 
     [Test] public void AppendLiteral_inlines_non_injectable_values()
     {
-        Guid                       guid        = Guid.Parse("019f1ef9-49ca-7a30-b254-eab2321f9e51");
-        System.Text.StringBuilder  guidBuilder = new();
-        System.Text.StringBuilder  intBuilder  = new();
-        System.Text.StringBuilder  nullBuilder = new();
-
-        SqlParameter.AppendLiteral(guidBuilder, guid);
-        SqlParameter.AppendLiteral(intBuilder,  42);
-        SqlParameter.AppendLiteral(nullBuilder, null);
+        Guid guid = Guid.Parse("019f1ef9-49ca-7a30-b254-eab2321f9e51");
 
         Multiple(() =>
                  {
-                     That(guidBuilder.ToString(), Is.EqualTo($"'{guid}'"));
-                     That(intBuilder.ToString(),  Is.EqualTo("42"));
-                     That(nullBuilder.ToString(), Is.EqualTo("NULL"));
+                     That(Literal(guid), Is.EqualTo($"'{guid}'"));
+                     That(Literal(42),   Is.EqualTo("42"));
+                     That(Literal(null), Is.EqualTo("NULL"));
                  });
+
+        static string Literal( object? value )
+        {
+            ValueStringBuilder builder = new();
+            CommandParameter.AppendLiteral(ref builder, value);
+            return builder.ToString();
+        }
     }
 
     [Test] public void ParseFormat_extracts_indent_level()
@@ -173,6 +173,24 @@ public sealed class SqlInterpolatedStringHandlerTests : Assert
                  {
                      That(SqlCommand.Parse<RoleRecord>($"SELECT {'A'}").SQL,  Does.Contain("'A'"));
                      That(SqlCommand.Parse<RoleRecord>($"SELECT {guid}").SQL, Does.Contain($"'{guid}'"));
+                 });
+    }
+
+    /// <summary> Dates and times are written in round-trip form by default: culture-invariant, and a <see cref="TimeOnly"/> keeps its seconds and fractions. An explicit format still wins. </summary>
+    [Test] public void Date_and_time_values_round_trip()
+    {
+        TimeOnly       time     = new(3, 4, 5, 6);
+        TimeOnly?      nullable = time;
+        DateOnly       date     = new(2026, 1, 2);
+        DateTimeOffset moment   = new(2026, 1, 2, 3, 4, 5, TimeSpan.Zero);
+
+        Multiple(() =>
+                 {
+                     That(SqlCommand.Parse<RoleRecord>($"SELECT {time}").SQL,       Is.EqualTo("SELECT '03:04:05.0060000'"));
+                     That(SqlCommand.Parse<RoleRecord>($"SELECT {nullable}").SQL,   Is.EqualTo("SELECT '03:04:05.0060000'"));
+                     That(SqlCommand.Parse<RoleRecord>($"SELECT {time:HH:mm}").SQL, Is.EqualTo("SELECT '03:04'"));
+                     That(SqlCommand.Parse<RoleRecord>($"SELECT {date}").SQL,       Is.EqualTo("SELECT '2026-01-02'"));
+                     That(SqlCommand.Parse<RoleRecord>($"SELECT {moment}").SQL,     Is.EqualTo("SELECT '2026-01-02T03:04:05.0000000+00:00'"));
                  });
     }
 

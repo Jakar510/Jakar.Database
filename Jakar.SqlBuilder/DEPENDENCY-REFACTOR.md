@@ -28,7 +28,7 @@ Auditing the interface member by member against the assemblies each pulls in:
 | `MetaData` | `TableMetaData<TSelf>` | drags `ColumnMetaData` → **Npgsql + Microsoft.Data.SqlClient** | **Keep**, expose lean view |
 | `PropertyCount` | `int` | — | Move (lean) |
 | `Create(DbDataReader)` | `System.Data.Common` | System.Data | **Keep in Jakar.Database** |
-| `ToDynamicParameters()` | `CommandParameters` | Jakar.Database (Dapper wrapper) | **Keep** |
+| `ToDynamicParameters()` | `CommandParameters` | Jakar.SqlBuilder *(moved: driver-agnostic, bound to `ISqlCommandTable`)* | **Keep** |
 | `GetHash()` | `UInt128` | — | Keep (not builder concern) |
 | `Modified()` | `TSelf` | — | Keep |
 | `Import(NpgsqlBatchCommand, …)` | `NpgsqlBatchCommand` | **Npgsql** | **Keep in Jakar.Database** |
@@ -147,7 +147,7 @@ Jakar.Database currently builds SQL through `SqlCommand` helpers + `SqlInterpola
 
 ### 5.3 What does *not* change
 
-`ColumnMetaData`'s driver members, the migration pipeline, Dapper mapping, `CommandParameters`, and the record hydration (`Create(DbDataReader)`, `Import`) are untouched — they stay in Jakar.Database. The builder consumes the lean view and never sees a driver type.
+`ColumnMetaData`'s driver members, the migration pipeline, Dapper mapping, and the record hydration (`Create(DbDataReader)`, `Import`) are untouched — they stay in Jakar.Database. The builder consumes the lean view and never sees a driver type.
 
 ---
 
@@ -221,3 +221,9 @@ Each step compiles and passes tests independently; the builder and legacy SQL co
 ## 8. Risks & notes
 
 The single behavioral risk is the casing move (step 3): if `SqlName`'s eager snake_case is removed without the PG dialect folding in place, Postgres identifiers regress to PascalCase — do them together and gate on golden tests. Keeping Jakar.SqlBuilder dependency-light also keeps it AOT/trim-friendly even though Jakar.Database is not (`IsAotCompatible=False`), which is worth preserving as a property of the core. Finally, resist the temptation to expose `TableMetaData`/`ColumnMetaData` directly through the contract for convenience — that is precisely what reintroduces the driver dependencies; always go through the lean `ISqlColumn` view.
+
+---
+
+## 9. Update: `CommandParameters` moved to Jakar.SqlBuilder
+
+`CommandParameters`, `CommandParameter` (formerly Jakar.Database's `SqlParameter`) and their renderers (`ColumnNames`, `VariableNames`, `KeyValuePairs`, `ParameterNames`, `IndexedEnumerator`) now live here, bound to two lean contracts: `ISqlCommandColumn : ISqlColumn` (adds `Index` and `KeyValuePair`) and `ISqlCommandTable` (column lookup, parameter naming, fragment sizes). `ISqlParameterValue` lets a value bind as something else (record ids as their `Guid`). Jakar.Database implements the contracts on `TableMetaData` / `ColumnMetaData` and keeps the record factories (`CommandParameters.Create<TSelf>()`, `AddGroup<TSelf>`, `Validate<TSelf>`) and the driver conversions (`ToPostgresParameter` / `ToSqlParameter`) as C# 14 extension members, so the builder still sees no driver types.

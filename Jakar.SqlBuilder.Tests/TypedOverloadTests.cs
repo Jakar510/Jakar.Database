@@ -3,7 +3,7 @@
 
 using NUnit.Framework;
 using Jakar.SqlBuilder;
-using SqlBuilder = global::Jakar.SqlBuilder.SqlBuilder;
+using SqlBuilder = Jakar.SqlBuilder.SqlBuilder;
 
 
 
@@ -32,7 +32,7 @@ public sealed class TypedOverloadTests
     [Test] public void Typed_Join_OnEqualToColumn()
         => Assert.That(SqlBuilder.PostgreSQL.Select("*").From<User>("u").LeftJoin<Order>("o")
                                  .On<Order>(nameof(Order.UserID)).EqualToColumn<User>(nameof(User.ID)).Build().Sql,
-                       Is.EqualTo("SELECT * FROM users u LEFT JOIN orders o ON user_id = id;"));
+                       Is.EqualTo("SELECT * FROM users u LEFT JOIN orders o ON o.user_id = u.id;"));
 
     [Test] public void Typed_GroupBy_OrderBy()
         => Assert.That(SqlBuilder.PostgreSQL.Select<User>(nameof(User.Name)).From<User>()
@@ -41,7 +41,7 @@ public sealed class TypedOverloadTests
 
     [Test] public void Typed_Aggregate_WithAlias()
         => Assert.That(SqlBuilder.SqlServer.Select<User>(nameof(User.Name)).Count<Order>(nameof(Order.ID), "orders").From<User>("u").Build().Sql,
-                       Is.EqualTo("SELECT [name], COUNT([id]) AS [orders] FROM [users] [u];"));
+                       Is.EqualTo("SELECT [u].[name], COUNT([id]) AS [orders] FROM [users] [u];")); // [orders] isn't a source, so its column stays bare
 
     [Test] public void Typed_Update()
         => Assert.That(SqlBuilder.PostgreSQL.Update<User>().Set<User>(nameof(User.Name), SqlValue.Param("Ada")).Where<User>(nameof(User.ID)).EqualTo(42).Build().Sql,
@@ -55,7 +55,7 @@ public sealed class TypedOverloadTests
         => Assert.That(SqlBuilder.PostgreSQL.Insert().Into<User>(nameof(User.Name), nameof(User.Email)).ValuesParams("Ada", "a@x").Returning("id").Build().Sql,
                        Is.EqualTo("INSERT INTO users (name, email) VALUES ($1, $2) RETURNING id;"));
 
-    // ---- full integration chain (matches README example shape; typed columns are emitted unqualified) ----
+    // ---- full integration chain (spec §8.3 / §9.3: projections are back-patched with the aliases FROM / JOIN declare) ----
     [Test] public void Typed_FullChain_Structural()
     {
         string sql = SqlBuilder.SqlServer
@@ -69,9 +69,9 @@ public sealed class TypedOverloadTests
                                .Offset(0).FetchNext(20)
                                .Build().Sql;
 
-        Assert.That(sql, Does.StartWith("SELECT [name], COUNT([id]) AS [orders] FROM [users] [u] LEFT JOIN [orders] [o]"));
-        Assert.That(sql, Does.Contain("WHERE [active] = 1"));
-        Assert.That(sql, Does.Contain("GROUP BY [name] HAVING COUNT([name]) > 5"));
+        Assert.That(sql, Does.StartWith("SELECT [u].[name], COUNT([o].[id]) AS [orders] FROM [users] [u] LEFT JOIN [orders] [o]"));
+        Assert.That(sql, Does.Contain("ON [o].[user_id] = [u].[id] WHERE [u].[active] = 1 GROUP BY [u].[name] HAVING COUNT([o].[name]) > 5"));
+        Assert.That(sql, Does.Contain("GROUP BY [u].[name] HAVING COUNT([o].[name]) > 5"));
         Assert.That(sql, Does.EndWith("OFFSET 0 ROWS FETCH NEXT 20 ROWS ONLY;"));
     }
 }

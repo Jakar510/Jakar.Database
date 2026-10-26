@@ -1,7 +1,12 @@
-﻿// Jakar.Database :: Jakar.Database
+// Jakar.SqlBuilder :: Jakar.SqlBuilder
 // 03/09/2026  21:55
 
-namespace Jakar.Database;
+using System.Collections.Immutable;
+using ZLinq;
+
+
+
+namespace Jakar.SqlBuilder;
 
 
 public interface IValueEnumerator<out TSelf, T> : IValueEnumerator<T>

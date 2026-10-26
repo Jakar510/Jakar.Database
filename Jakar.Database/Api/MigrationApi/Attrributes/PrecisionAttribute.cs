@@ -75,10 +75,5 @@ public sealed class PrecisionAttribute : DatabaseAttribute
         Precision = precision;
         Scope     = scope;
     }
-    public override StringBuilder ToStringBuilder()
-    {
-        StringBuilder sb = new();
-        sb.Append($"{Scope}, {Precision}");
-        return sb;
-    }
+    public override void Append( ref ValueStringBuilder builder ) => builder.AppendSpanFormattable(Scope, default, CultureInfo.InvariantCulture).Append(", ").AppendSpanFormattable(Precision, default, CultureInfo.InvariantCulture);
 }

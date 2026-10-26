@@ -21,4 +21,10 @@ public interface ISqlTable<TSelf> : ISqlTableName
 {
     static abstract IReadOnlyList<ISqlColumn> SqlColumns { get; }
     static abstract bool TrySqlColumn( string propertyName, out ISqlColumn? column );
+
+    /// <summary> A table-level (composite) primary key, as column names; empty when the columns' own <see cref="ISqlColumn.IsPrimaryKey"/> flags are the key. </summary>
+    static virtual IReadOnlyList<string> SqlPrimaryKey => [];
+
+    /// <summary> Table-level unique keys, as column names. </summary>
+    static virtual IReadOnlyList<IReadOnlyList<string>> SqlUniqueKeys => [];
 }

@@ -14,7 +14,8 @@ public enum SqlBuildError
     UnknownColumn,
     TypeMismatch,
     InvalidLiteral,
-    DialectNotSet
+    DialectNotSet,
+    UnclosedIdentifier
 }
 
 

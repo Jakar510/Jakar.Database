@@ -192,7 +192,7 @@ public static class DbServices
 
             // ---- Jakar.SqlBuilder wiring: bind the dialect + options, and preserve the curated PostgreSQL snake_case naming ----
             self.Services.AddSingleton(options.SqlBuilder);
-            SqlBuilder.SqlDialects.PostgresIdentifierFolder = static name => name.SqlName();
+            SqlDialects.PostgresIdentifierFolder = static name => name.SqlName();
 
             self.Services.AddSingleton<IOptions<DbOptions>>(static provider => provider.GetRequiredService<DbOptions>());
 
@@ -318,7 +318,7 @@ public static class DbServices
         public IServiceCollection AddOptions<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)] TValue>( Action<TValue> options, string? name = null )
             where TValue : class
         {
-            OptionsServiceCollectionExtensions.AddOptions<TValue>(self, name ?? Options.DefaultName).Configure(options);
+            self.AddOptions<TValue>(name ?? Options.DefaultName).Configure(options);
             self.TryAddTransient(static provider => provider.GetRequiredService<IOptions<TValue>>().Value);
             return self;
         }

@@ -2,6 +2,8 @@
 // 10/13/2025  22:56
 
 using System.Xml;
+using Microsoft.Data.Sqlite;
+using MySqlConnector;
 
 
 
@@ -10,6 +12,16 @@ namespace Jakar.Database;
 
 public static class DbColumnTypes
 {
+    /// <summary> The length of an unconstrained string that is a key, unique or indexed: 450 characters stay within every engine's index-key limit (SQL Server's 900 bytes as UTF-16). </summary>
+    public const int KEY_STRING_LENGTH = 450;
+
+    /// <summary> <see cref="decimal"/> columns without a <see cref="PrecisionAttribute"/>: 29 integer digits (every <see cref="decimal"/> integer part) and 9 decimal places. </summary>
+    public const int DECIMAL_PRECISION = 38;
+
+    public const int DECIMAL_SCALE = 9;
+
+    private const string DECIMAL_TYPE = "numeric(38, 9)";
+
     public static bool TryGetUnderlyingType( Type type, [NotNullWhen(true)] out Type? result )
     {
         if ( type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Nullable<>) )
@@ -32,14 +44,20 @@ public static class DbColumnTypes
         public int TryGetLength() => self.GetCustomAttribute<StringLengthAttribute>()?.MaximumLength ?? self.GetCustomAttribute<LengthAttribute>()?.MaximumLength ?? self.GetCustomAttribute<MaxLengthAttribute>()?.Length ?? self.GetCustomAttribute<MinLengthAttribute>()?.Length ?? 0;
 
 
-        public FrozenDictionary<DatabaseType, string> GetDataTypes( out DbColumnType dbType, out bool isNullable )
+        /// <param name="portable"> The column's portable type, which names it in the dialects without an explicit map (SQLite, MySQL, Oracle, Firebird). </param>
+        public FrozenDictionary<DatabaseType, string> GetDataTypes( out DbColumnType dbType, out bool isNullable, out SqlType portable )
         {
-            dbType = self.PropertyType.GetPostgresType(in self, out isNullable, out int length);
+            dbType   = self.PropertyType.GetPostgresType(in self, out isNullable, out int length);
+            portable = self.GetPortableType(in dbType, in length);
 
             Dictionary<DatabaseType, string> dataTypes = new()
                                                          {
                                                              [DatabaseType.PostgreSQL]         = self.GetDataType(DatabaseType.PostgreSQL,         in dbType, in length),
-                                                             [DatabaseType.MicrosoftSqlServer] = self.GetDataType(DatabaseType.MicrosoftSqlServer, in dbType, in length)
+                                                             [DatabaseType.MicrosoftSqlServer] = self.GetDataType(DatabaseType.MicrosoftSqlServer, in dbType, in length),
+                                                             [DatabaseType.MySQL]              = self.GetDataType(DatabaseType.MySQL,              in dbType, in length),
+                                                             [DatabaseType.Oracle]             = self.GetDataType(DatabaseType.Oracle,             in dbType, in length),
+                                                             [DatabaseType.Firebird]           = self.GetDataType(DatabaseType.Firebird,           in dbType, in length),
+                                                             [DatabaseType.SQLite]             = self.GetDataType(DatabaseType.SQLite,             in dbType, in length)
                                                          };
 
             return dataTypes.ToFrozenDictionary();
@@ -50,117 +68,151 @@ public static class DbColumnTypes
                    {
                        DatabaseType.PostgreSQL         => self.GetPostgresDataType(in dbType, in length),
                        DatabaseType.MicrosoftSqlServer => self.GetMicrosoftSqlServerDataType(in dbType, in length),
-                       DatabaseType.Oracle             => EMPTY,
-                       DatabaseType.MySQL              => EMPTY,
-                       DatabaseType.Firebird           => EMPTY,
+                       DatabaseType.Oracle             => self.GetPortableType(in dbType, in length).ColumnName(SqlDialectKind.Oracle),
+                       DatabaseType.MySQL              => self.GetPortableType(in dbType, in length).ColumnName(SqlDialectKind.MySql),
+                       DatabaseType.Firebird           => self.GetPortableType(in dbType, in length).ColumnName(SqlDialectKind.Firebird),
+                       DatabaseType.SQLite             => self.GetPortableType(in dbType, in length).ColumnName(SqlDialectKind.Sqlite),
                        DatabaseType.NotSet             => throw new InvalidOperationException("Database type is not set"),
                        _                               => throw new OutOfRangeException(type)
                    };
         }
 
 
+        /// <summary>
+        ///     The column's portable <see cref="Jakar.SqlBuilder.SqlType"/>: one map for every dialect without its own (SQLite, MySQL, Oracle, Firebird), rendered by
+        ///     <see cref="Jakar.SqlBuilder.SqlType.ColumnName"/>. Types with no portable equivalent (ranges, arrays, network, full-text, ...) are stored as text, JSON as JSON.
+        /// </summary>
+        public SqlType GetPortableType( ref readonly DbColumnType dbType, ref readonly int length )
+        {
+            return dbType switch
+                   {
+                       DbColumnType.String or DbColumnType.CiText => self.GetCustomAttribute<MaxLengthAttribute>() is { Length: > 0 } attribute
+                                                                        ? SqlType.VarChar(attribute.Length)
+                                                                        : self.IsKeyColumn()
+                                                                            ? SqlType.VarChar(KEY_STRING_LENGTH) // text / CLOB / BLOB columns can't be keys or indexed
+                                                                            : SqlType.Text,
+                       DbColumnType.Binary => self.GetCustomAttribute<MaxLengthAttribute>() is { Length: > 0 } attribute
+                                                  ? SqlType.VarBinary(attribute.Length)
+                                                  : SqlType.Blob,
+                       DbColumnType.Bit => self.GetCustomAttribute<FixedAttribute>() is { } attribute && attribute.Length > 1
+                                               ? SqlType.Binary(( attribute.Length + 7 ) / 8)
+                                               : SqlType.Boolean,
+                       DbColumnType.Enum                                                                                                    => SqlType.VarChar(Math.Max(length, 1)),
+                       DbColumnType.Char                                                                                                    => SqlType.Char(1),
+                       DbColumnType.Boolean                                                                                                 => SqlType.Boolean,
+                       DbColumnType.Byte or DbColumnType.SByte or DbColumnType.Short or DbColumnType.SmallSerial                           => SqlType.SmallInt,
+                       DbColumnType.UShort or DbColumnType.Int or DbColumnType.Serial                                                       => SqlType.Int,
+                       DbColumnType.UInt or DbColumnType.Long or DbColumnType.BigSerial or DbColumnType.Oid or DbColumnType.Xid or DbColumnType.Cid => SqlType.BigInt,
+                       DbColumnType.ULong or DbColumnType.Xid8 or DbColumnType.PgLsn                                                        => SqlType.Decimal(20),
+                       DbColumnType.Int128 or DbColumnType.UInt128                                                                          => SqlType.Decimal(38),
+                       DbColumnType.Single                                                                                                  => SqlType.Real,
+                       DbColumnType.Double                                                                                                  => SqlType.Double,
+                       DbColumnType.Money                                                                                                   => SqlType.Decimal(19, 4),
+                       DbColumnType.Decimal or DbColumnType.Numeric => self.GetCustomAttribute<PrecisionAttribute>() is { } attribute
+                                                                           ? SqlType.Decimal(attribute.Scope, attribute.Precision)
+                                                                           : SqlType.Decimal(DECIMAL_PRECISION, DECIMAL_SCALE),
+                       DbColumnType.Date                                                => SqlType.Date,
+                       DbColumnType.Time or DbColumnType.TimeSpan or DbColumnType.TimeTz => SqlType.Time,
+                       DbColumnType.DateTime                                            => SqlType.Timestamp,
+                       DbColumnType.DateTimeOffset                                      => SqlType.TimestampTz,
+                       DbColumnType.Guid                                                => SqlType.Guid,
+                       DbColumnType.Json or DbColumnType.Jsonb or DbColumnType.JsonPath => SqlType.Json,
+                       DbColumnType.NotSet                                              => SqlType.Text,
+                       _                                                                => SqlType.Text
+                   };
+        }
+
+        /// <summary> Whether the column is a key, unique, indexed or a foreign key: most engines can't index unbounded text. </summary>
+        private bool IsKeyColumn() => ColumnMetaData.IsDbKey(self) || self.HasAttribute<UniqueAttribute>() || self.GetCustomAttribute<IndexedAttribute>() is not null || self.GetCustomAttribute<ForeignKeyAttribute>() is not null;
+
+
+        /// <summary>
+        ///     The T-SQL (SQL Server 2022) type for <paramref name="dbType"/>. PostgreSQL-only types with no T-SQL equivalent (ranges, arrays, full-text, network, ltree, ...) are stored as text
+        ///     (<c>nvarchar(max)</c>, JSON for arrays), and PostgreSQL's internal ids as <c>bigint</c>, so a record using them still has a SQL Server schema.
+        /// </summary>
         public string GetMicrosoftSqlServerDataType( ref readonly DbColumnType dbType, ref readonly int length )
         {
             return dbType switch
                    {
-                       DbColumnType.Binary => self.GetCustomAttribute<MaxLengthAttribute>() is { } attribute
-                                                  ? @$"varbit({attribute.Length})"
-                                                  : "bytea",
-                       DbColumnType.String => self.GetCustomAttribute<MaxLengthAttribute>() is { } attribute
-                                                  ? $"varchar({attribute.Length})"
-                                                  : "text",
-                       DbColumnType.Byte => self.GetCustomAttribute<FixedAttribute>() is { } attribute
-                                                ? $"bit({attribute.Length})"
-                                                : "bit(8)",
-                       DbColumnType.SByte => self.GetCustomAttribute<FixedAttribute>() is { } attribute
-                                                 ? $"bit({attribute.Length})"
-                                                 : "bit(8)",
-                       DbColumnType.Bit => self.GetCustomAttribute<FixedAttribute>() is { } attribute
-                                               ? $"bit({attribute.Length})"
-                                               : "bit(8)",
+                       DbColumnType.Binary => self.GetCustomAttribute<MaxLengthAttribute>() is { Length: > 0 and <= 8000 } attribute
+                                                  ? $"varbinary({attribute.Length})"
+                                                  : "varbinary(max)",
+                       DbColumnType.String => self.GetCustomAttribute<MaxLengthAttribute>() is { Length: > 0 and <= 4000 } attribute
+                                                  ? $"nvarchar({attribute.Length})"
+                                                  : self.IsKeyColumn()
+                                                      ? $"nvarchar({KEY_STRING_LENGTH})" // nvarchar(max) can't be a key or indexed
+                                                      : "nvarchar(max)",
+                       DbColumnType.Bit => self.GetCustomAttribute<FixedAttribute>() is { } attribute && attribute.Length > 1
+                                               ? $"binary({( attribute.Length + 7 ) / 8})"
+                                               : "bit",
                        DbColumnType.VarBit => self.GetCustomAttribute<FixedAttribute>() is { } attribute
-                                                  ? $"bit varying({attribute.Length})"
-                                                  : "bit varying(8)",
+                                                  ? $"varbinary({( attribute.Length + 7 ) / 8})"
+                                                  : "varbinary(max)",
                        DbColumnType.Numeric => self.GetCustomAttribute<PrecisionAttribute>() is { } attribute
                                                    ? $"numeric({attribute.Scope}, {attribute.Precision})"
-                                                   : "numeric",
-                       DbColumnType.Enum                     => $"varchar({length})", // enum
-                       DbColumnType.Serial                   => "serial",
-                       DbColumnType.BigSerial                => @"bigserial",
-                       DbColumnType.SmallSerial              => @"smallserial",
+                                                   : "numeric(18, 0)",
+                       DbColumnType.Enum                     => $"nvarchar({length})",
+                       DbColumnType.Serial                   => "int", // auto-numbered with IDENTITY(1,1)
+                       DbColumnType.BigSerial                => "bigint",
+                       DbColumnType.SmallSerial              => "smallint",
+                       DbColumnType.Byte                     => "tinyint",
+                       DbColumnType.SByte                    => "smallint",
                        DbColumnType.Short                    => "smallint",
-                       DbColumnType.UShort                   => "integer",
-                       DbColumnType.Int                      => "integer",
+                       DbColumnType.UShort                   => "int",
+                       DbColumnType.Int                      => "int",
                        DbColumnType.UInt                     => "bigint",
                        DbColumnType.Long                     => "bigint",
-                       DbColumnType.ULong                    => "numeric(20,0)",
-                       DbColumnType.Single                   => "float4",
-                       DbColumnType.Double                   => "double precision",
-                       DbColumnType.Decimal                  => "numeric(28, 28)",
-                       DbColumnType.Boolean                  => "bool",
+                       DbColumnType.ULong                    => "numeric(20, 0)",
+                       DbColumnType.Int128                   => "numeric(38, 0)", // T-SQL's widest exact integer
+                       DbColumnType.UInt128                  => "numeric(38, 0)",
+                       DbColumnType.Single                   => "real",
+                       DbColumnType.Double                   => "float",
+                       DbColumnType.Decimal                  => self.GetCustomAttribute<PrecisionAttribute>() is { } attribute ? $"numeric({attribute.Scope}, {attribute.Precision})" : DECIMAL_TYPE,
+                       DbColumnType.Money                    => "money",
+                       DbColumnType.Boolean                  => "bit",
                        DbColumnType.Date                     => "date",
                        DbColumnType.Time                     => "time",
-                       DbColumnType.DateTime                 => "timestamp",
-                       DbColumnType.DateTimeOffset           => @"timestamptz",
-                       DbColumnType.Money                    => "money",
-                       DbColumnType.Guid                     => "uuid",
-                       DbColumnType.Json                     => "json",
+                       DbColumnType.TimeSpan                 => "time",
+                       DbColumnType.TimeTz                   => "datetimeoffset",
+                       DbColumnType.DateTime                 => "datetime2",
+                       DbColumnType.DateTimeOffset           => "datetimeoffset",
+                       DbColumnType.Guid                     => "uniqueidentifier",
+                       DbColumnType.Char                     => "nchar(1)",
+                       DbColumnType.CiText                   => self.IsKeyColumn() ? $"nvarchar({KEY_STRING_LENGTH})" : "nvarchar(max)", // the default collation is case-insensitive
                        DbColumnType.Xml                      => "xml",
-                       DbColumnType.Polygon                  => "polygon",
-                       DbColumnType.LineSegment              => @"lseg",
-                       DbColumnType.Point                    => "point",
-                       DbColumnType.Int128                   => "int16",  // numeric(39,0)
-                       DbColumnType.UInt128                  => "uint16", // numeric(39,0)
-                       DbColumnType.Box                      => "box",
-                       DbColumnType.Circle                   => "circle",
-                       DbColumnType.Line                     => "line",
-                       DbColumnType.Path                     => "path",
-                       DbColumnType.Char                     => "char",
-                       DbColumnType.CiText                   => @"citext",
-                       DbColumnType.TimeSpan                 => "interval",
-                       DbColumnType.TimeTz                   => "time with time zone",
-                       DbColumnType.Inet                     => "inet",
-                       DbColumnType.Cidr                     => "cidr",
-                       DbColumnType.MacAddr                  => @"macaddr",
-                       DbColumnType.MacAddr8                 => "macaddr8",
-                       DbColumnType.TsVector                 => @"tsvector",
-                       DbColumnType.TsQuery                  => @"tsquery",
-                       DbColumnType.RegConfig                => @"regconfig",
-                       DbColumnType.Jsonb                    => "jsonb",
-                       DbColumnType.JsonPath                 => "jsonpath",
-                       DbColumnType.Hstore                   => "hstore",
-                       DbColumnType.RefCursor                => @"refcursor",
-                       DbColumnType.OidVector                => @"oidvector",
-                       DbColumnType.Oid                      => "oid",
-                       DbColumnType.Xid                      => "xid",
-                       DbColumnType.Xid8                     => "xid8",
-                       DbColumnType.Cid                      => "cit",
-                       DbColumnType.RegType                  => @"regtype",
-                       DbColumnType.Tid                      => "tid",
-                       DbColumnType.PgLsn                    => @"pglsn",
+                       DbColumnType.Json                     => "nvarchar(max)",
+                       DbColumnType.Jsonb                    => "nvarchar(max)",
+                       DbColumnType.JsonPath                 => "nvarchar(max)",
+                       DbColumnType.Hstore                   => "nvarchar(max)",
                        DbColumnType.Geometry                 => "geometry",
-                       DbColumnType.Geography                => "geodetic",
-                       DbColumnType.LTree                    => @"ltree",
-                       DbColumnType.LQuery                   => @"lquery",
-                       DbColumnType.LTxtQuery                => @"ltxtquery",
-                       DbColumnType.IntVector                => "integer[]",
-                       DbColumnType.LongVector               => "bigint[]",
-                       DbColumnType.FloatVector              => "float[]",
-                       DbColumnType.DoubleVector             => "double[]",
-                       DbColumnType.IntegerRange             => "int4range",
-                       DbColumnType.BigIntRange              => "int8range",
-                       DbColumnType.NumericRange             => @"numrange",
-                       DbColumnType.TimestampRange           => @"tsrange",
-                       DbColumnType.DateTimeOffsetRange      => @"tstzrange",
-                       DbColumnType.DateRange                => @"daterange",
-                       DbColumnType.IntMultirange            => "int4multirange",
-                       DbColumnType.LongMultirange           => "int8multirange",
-                       DbColumnType.NumericMultirange        => @"nummultirange",
-                       DbColumnType.TimestampMultirange      => @"tsmultirange",
-                       DbColumnType.DateTimeOffsetMultirange => @"tstzmultirange",
-                       DbColumnType.DateMultirange           => @"datemultirange",
-                       DbColumnType.NotSet                   => EMPTY,
-                       _                                     => throw new OutOfRangeException(self)
+                       DbColumnType.Geography                => "geography",
+                       DbColumnType.Point                    => "geometry",
+                       DbColumnType.Polygon                  => "geometry",
+                       DbColumnType.LineSegment              => "geometry",
+                       DbColumnType.Line                     => "geometry",
+                       DbColumnType.Box                      => "geometry",
+                       DbColumnType.Circle                   => "geometry",
+                       DbColumnType.Path                     => "geometry",
+                       DbColumnType.Inet                     => "varchar(43)",
+                       DbColumnType.Cidr                     => "varchar(43)",
+                       DbColumnType.MacAddr                  => "varchar(17)",
+                       DbColumnType.MacAddr8                 => "varchar(23)",
+                       DbColumnType.Oid                      => "bigint",
+                       DbColumnType.Xid                      => "bigint",
+                       DbColumnType.Xid8                     => "numeric(20, 0)",
+                       DbColumnType.Cid                      => "bigint",
+                       DbColumnType.PgLsn                    => "numeric(20, 0)",
+                       DbColumnType.IntVector                => "nvarchar(max)", // JSON array
+                       DbColumnType.LongVector               => "nvarchar(max)",
+                       DbColumnType.FloatVector              => "nvarchar(max)",
+                       DbColumnType.DoubleVector             => "nvarchar(max)",
+                       DbColumnType.TsVector or DbColumnType.TsQuery or DbColumnType.RegConfig or DbColumnType.RefCursor or DbColumnType.OidVector or DbColumnType.RegType or DbColumnType.Tid
+                           or DbColumnType.LTree or DbColumnType.LQuery or DbColumnType.LTxtQuery => "nvarchar(max)",
+                       DbColumnType.IntegerRange or DbColumnType.BigIntRange or DbColumnType.NumericRange or DbColumnType.TimestampRange or DbColumnType.DateTimeOffsetRange or DbColumnType.DateRange
+                           or DbColumnType.IntMultirange or DbColumnType.LongMultirange or DbColumnType.NumericMultirange or DbColumnType.TimestampMultirange or DbColumnType.DateTimeOffsetMultirange
+                           or DbColumnType.DateMultirange => "nvarchar(max)",
+                       DbColumnType.NotSet => EMPTY,
+                       _                   => throw new OutOfRangeException(self)
                    };
         }
         public string GetPostgresDataType( ref readonly DbColumnType dbType, ref readonly int length )
@@ -200,7 +252,7 @@ public static class DbColumnTypes
                        DbColumnType.ULong                    => "numeric(20,0)",
                        DbColumnType.Single                   => "float4",
                        DbColumnType.Double                   => "double precision",
-                       DbColumnType.Decimal                  => "numeric(28, 28)",
+                       DbColumnType.Decimal                  => self.GetCustomAttribute<PrecisionAttribute>() is { } attribute ? $"numeric({attribute.Scope}, {attribute.Precision})" : DECIMAL_TYPE,
                        DbColumnType.Boolean                  => "bool",
                        DbColumnType.Date                     => "date",
                        DbColumnType.Time                     => "time",
@@ -583,6 +635,146 @@ public static class DbColumnTypes
                        DbColumnType.Xml            => SqlDbType.Xml,
                        DbColumnType.Json           => SqlDbType.Json,
                        DbColumnType.NotSet         => 0,
+                       _                           => throw new OutOfRangeException(self)
+                   };
+        }
+
+
+        /// <summary> The provider-neutral <see cref="System.Data.DbType"/>, for drivers without a dedicated mapping. Types with no ADO.NET equivalent (PostgreSQL ranges, geometric and system types) are <see cref="System.Data.DbType.Object"/>. </summary>
+        public DbType ToDbType()
+        {
+            return self switch
+                   {
+                       DbColumnType.Enum           => DbType.Int64,
+                       DbColumnType.Serial         => DbType.Int32,
+                       DbColumnType.BigSerial      => DbType.Int64,
+                       DbColumnType.SmallSerial    => DbType.Int16,
+                       DbColumnType.Boolean        => DbType.Boolean,
+                       DbColumnType.Short          => DbType.Int16,
+                       DbColumnType.UShort         => DbType.UInt16,
+                       DbColumnType.Int            => DbType.Int32,
+                       DbColumnType.UInt           => DbType.UInt32,
+                       DbColumnType.Long           => DbType.Int64,
+                       DbColumnType.ULong          => DbType.UInt64,
+                       DbColumnType.Int128         => DbType.Decimal,
+                       DbColumnType.UInt128        => DbType.Decimal,
+                       DbColumnType.Single         => DbType.Single,
+                       DbColumnType.Double         => DbType.Double,
+                       DbColumnType.Numeric        => DbType.Decimal,
+                       DbColumnType.Decimal        => DbType.Decimal,
+                       DbColumnType.Money          => DbType.Currency,
+                       DbColumnType.Char           => DbType.StringFixedLength,
+                       DbColumnType.String         => DbType.String,
+                       DbColumnType.CiText         => DbType.String,
+                       DbColumnType.Binary         => DbType.Binary,
+                       DbColumnType.Date           => DbType.Date,
+                       DbColumnType.Time           => DbType.Time,
+                       DbColumnType.DateTime       => DbType.DateTime2,
+                       DbColumnType.DateTimeOffset => DbType.DateTimeOffset,
+                       DbColumnType.TimeSpan       => DbType.Time,
+                       DbColumnType.TimeTz         => DbType.Time,
+                       DbColumnType.Bit            => DbType.Boolean,
+                       DbColumnType.Byte           => DbType.Byte,
+                       DbColumnType.SByte          => DbType.SByte,
+                       DbColumnType.VarBit         => DbType.String,
+                       DbColumnType.Guid           => DbType.Guid,
+                       DbColumnType.Xml            => DbType.Xml,
+                       DbColumnType.Json           => DbType.String,
+                       DbColumnType.Jsonb          => DbType.String,
+                       DbColumnType.JsonPath       => DbType.String,
+                       DbColumnType.Inet           => DbType.String,
+                       DbColumnType.Cidr           => DbType.String,
+                       DbColumnType.MacAddr        => DbType.String,
+                       DbColumnType.MacAddr8       => DbType.String,
+                       _                           => DbType.Object
+                   };
+        }
+
+
+        /// <summary> SQLite has four storage classes. Types it can't store natively (decimals, 128-bit integers, dates, GUIDs, JSON, ...) are stored as text; binary and spatial data as blobs. </summary>
+        public SqliteType ToSqliteType()
+        {
+            return self switch
+                   {
+                       DbColumnType.Enum        => SqliteType.Integer,
+                       DbColumnType.Serial      => SqliteType.Integer,
+                       DbColumnType.BigSerial   => SqliteType.Integer,
+                       DbColumnType.SmallSerial => SqliteType.Integer,
+                       DbColumnType.Boolean     => SqliteType.Integer,
+                       DbColumnType.Short       => SqliteType.Integer,
+                       DbColumnType.UShort      => SqliteType.Integer,
+                       DbColumnType.Int         => SqliteType.Integer,
+                       DbColumnType.UInt        => SqliteType.Integer,
+                       DbColumnType.Long        => SqliteType.Integer,
+                       DbColumnType.ULong       => SqliteType.Integer,
+                       DbColumnType.Bit         => SqliteType.Integer,
+                       DbColumnType.Byte        => SqliteType.Integer,
+                       DbColumnType.SByte       => SqliteType.Integer,
+                       DbColumnType.Single      => SqliteType.Real,
+                       DbColumnType.Double      => SqliteType.Real,
+                       DbColumnType.Binary      => SqliteType.Blob,
+                       DbColumnType.Geometry    => SqliteType.Blob,
+                       DbColumnType.Geography   => SqliteType.Blob,
+                       _                        => SqliteType.Text
+                   };
+        }
+
+
+        /// <summary> MySQL / MariaDB (MySqlConnector). PostgreSQL-only types (ranges, text search, system and network types other than addresses) have no equivalent and throw. </summary>
+        public MySqlDbType ToMySqlDbType()
+        {
+            return self switch
+                   {
+                       DbColumnType.Enum           => MySqlDbType.Int64,
+                       DbColumnType.Serial         => MySqlDbType.Int32,
+                       DbColumnType.BigSerial      => MySqlDbType.Int64,
+                       DbColumnType.SmallSerial    => MySqlDbType.Int16,
+                       DbColumnType.Boolean        => MySqlDbType.Bool,
+                       DbColumnType.Short          => MySqlDbType.Int16,
+                       DbColumnType.UShort         => MySqlDbType.UInt16,
+                       DbColumnType.Int            => MySqlDbType.Int32,
+                       DbColumnType.UInt           => MySqlDbType.UInt32,
+                       DbColumnType.Long           => MySqlDbType.Int64,
+                       DbColumnType.ULong          => MySqlDbType.UInt64,
+                       DbColumnType.Int128         => MySqlDbType.NewDecimal,
+                       DbColumnType.UInt128        => MySqlDbType.NewDecimal,
+                       DbColumnType.Single         => MySqlDbType.Float,
+                       DbColumnType.Double         => MySqlDbType.Double,
+                       DbColumnType.Numeric        => MySqlDbType.NewDecimal,
+                       DbColumnType.Decimal        => MySqlDbType.NewDecimal,
+                       DbColumnType.Money          => MySqlDbType.NewDecimal,
+                       DbColumnType.Char           => MySqlDbType.String,
+                       DbColumnType.String         => MySqlDbType.VarChar,
+                       DbColumnType.CiText         => MySqlDbType.VarChar,
+                       DbColumnType.Binary         => MySqlDbType.Blob,
+                       DbColumnType.Date           => MySqlDbType.Date,
+                       DbColumnType.Time           => MySqlDbType.Time,
+                       DbColumnType.DateTime       => MySqlDbType.DateTime,
+                       DbColumnType.DateTimeOffset => MySqlDbType.DateTime, // MySQL has no offset type; MySqlConnector writes the UTC value
+                       DbColumnType.TimeSpan       => MySqlDbType.Time,
+                       DbColumnType.TimeTz         => MySqlDbType.Time,
+                       DbColumnType.Bit            => MySqlDbType.Bit,
+                       DbColumnType.VarBit         => MySqlDbType.Bit,
+                       DbColumnType.Byte           => MySqlDbType.UByte,
+                       DbColumnType.SByte          => MySqlDbType.Byte,
+                       DbColumnType.Guid           => MySqlDbType.Guid,
+                       DbColumnType.Xml            => MySqlDbType.Text,
+                       DbColumnType.Json           => MySqlDbType.JSON,
+                       DbColumnType.Jsonb          => MySqlDbType.JSON,
+                       DbColumnType.Inet           => MySqlDbType.VarChar,
+                       DbColumnType.Cidr           => MySqlDbType.VarChar,
+                       DbColumnType.MacAddr        => MySqlDbType.VarChar,
+                       DbColumnType.MacAddr8       => MySqlDbType.VarChar,
+                       DbColumnType.Point          => MySqlDbType.Geometry,
+                       DbColumnType.Line           => MySqlDbType.Geometry,
+                       DbColumnType.LineSegment    => MySqlDbType.Geometry,
+                       DbColumnType.Path           => MySqlDbType.Geometry,
+                       DbColumnType.Polygon        => MySqlDbType.Geometry,
+                       DbColumnType.Box            => MySqlDbType.Geometry,
+                       DbColumnType.Circle         => MySqlDbType.Geometry,
+                       DbColumnType.Geometry       => MySqlDbType.Geometry,
+                       DbColumnType.Geography      => MySqlDbType.Geometry,
+                       DbColumnType.NotSet         => MySqlDbType.Null,
                        _                           => throw new OutOfRangeException(self)
                    };
         }

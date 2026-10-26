@@ -1,4 +1,9 @@
-﻿namespace Jakar.Database;
+using System.Collections.Immutable;
+using System.Threading;
+
+
+
+namespace Jakar.SqlBuilder;
 
 
 public ref struct IndexedEnumerator( CommandParameters self )
@@ -45,11 +50,11 @@ public ref struct IndexedEnumerator( CommandParameters self )
 
 
 
-    public readonly ref struct Set( int index, ReadOnlySpan<SqlParameter> span )
+    public readonly ref struct Set( int index, ReadOnlySpan<CommandParameter> span )
     {
         public readonly int                        Index = index;
-        public readonly ReadOnlySpan<SqlParameter> Span  = span;
-        public void Deconstruct( out int index, out ReadOnlySpan<SqlParameter> span )
+        public readonly ReadOnlySpan<CommandParameter> Span  = span;
+        public void Deconstruct( out int index, out ReadOnlySpan<CommandParameter> span )
         {
             index = Index;
             span  = Span;

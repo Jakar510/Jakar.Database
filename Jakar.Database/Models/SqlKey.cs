@@ -15,7 +15,11 @@ public readonly struct SqlKey( ImmutableArray<string> parameters ) : IEquatable<
     public readonly  string                 key        = GetKey(parameters.AsSpan());
 
 
-    private static string GetKey( params ReadOnlySpan<string> parameters ) => new StringBuilder(parameters.Sum(static x => x.Length + 1)).AppendJoin(',', parameters!).ToString();
+    private static string GetKey( params ReadOnlySpan<string> parameters )
+    {
+        ValueStringBuilder builder = new(parameters.Sum(static x => x.Length + 1));
+        return builder.AppendJoin(',', parameters).ToString();
+    }
     public static SqlKey Create<TSelf>( CommandParameters parameters )
         where TSelf : TableRecord<TSelf>, ITableRecord<TSelf>
     {

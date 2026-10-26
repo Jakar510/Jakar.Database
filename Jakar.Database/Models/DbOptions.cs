@@ -14,7 +14,7 @@ namespace Jakar.Database;
 public sealed class DbOptions : IOptions<DbOptions>
 {
     /// <summary> Tunables for the validated Jakar.SqlBuilder (strict types, alias projections, buffer size). </summary>
-    public Jakar.SqlBuilder.SqlBuilderOptions SqlBuilder { get; set; } = Jakar.SqlBuilder.SqlBuilderOptions.Default;
+    public SqlBuilderOptions SqlBuilder { get; set; } = SqlBuilderOptions.Default;
 
     public const           string AUTHENTICATION_SCHEME                 = "Hybrid";
     public const           string AUTHENTICATION_SCHEME_DISPLAY_NAME    = "Hybrid Authentication";

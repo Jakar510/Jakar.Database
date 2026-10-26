@@ -40,7 +40,7 @@ public abstract partial class Database : Randoms, IConnectableDbRoot, IHealthChe
     public abstract    DatabaseType                     DatabaseType              { get; }
 
     /// <summary> The Jakar.SqlBuilder dialect this database renders SQL for, derived from <see cref="DatabaseType"/>. </summary>
-    public             Jakar.SqlBuilder.SqlDialectKind  Dialect                   => this.DatabaseType.ToSqlDialectKind();
+    public             SqlDialectKind  Dialect                   => DatabaseType.ToSqlDialectKind();
 
 
     static Database()

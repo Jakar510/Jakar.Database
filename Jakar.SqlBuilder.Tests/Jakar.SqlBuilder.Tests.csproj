@@ -9,6 +9,8 @@
 
     <ItemGroup>
         <PackageReference Include="Dapper.Contrib" />
+        <!-- Compile-time guarantee tests: known-bad chains must fail to compile. -->
+        <PackageReference Include="Microsoft.CodeAnalysis.CSharp" />
         <PackageReference Include="Microsoft.NET.Test.Sdk" />
         <PackageReference Include="NUnit" />
         <PackageReference Include="NUnit.Analyzers">
@@ -16,6 +18,12 @@
             <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
         </PackageReference>
         <PackageReference Include="NUnit3TestAdapter" />
+        <!-- Execution tests: every builder pattern runs on the real engines (skipped when Docker is unavailable). The ADO.NET drivers come with Jakar.Database. -->
+        <PackageReference Include="Testcontainers.PostgreSql" />
+        <PackageReference Include="Testcontainers.MsSql" />
+        <PackageReference Include="Testcontainers.MySql" />
+        <PackageReference Include="Testcontainers.Oracle" />
+        <PackageReference Include="Testcontainers.FirebirdSql" />
         <PackageReference Include="coverlet.collector">
             <PrivateAssets>all</PrivateAssets>
             <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>

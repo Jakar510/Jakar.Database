@@ -36,7 +36,7 @@ public class MigrationManager
     public MigrationManager( Database db )
     {
         _db                     = db;
-        __migrationFactories[0] = MigrationRecord.SetLastModified;
+        __migrationFactories[0] = migrationID => MigrationRecord.SetLastModified(migrationID, _db.DatabaseType);
         __migrationFactories[1] = MigrationRecord.FromEnum<MimeType>;
         __migrationFactories[2] = MigrationRecord.FromEnum<SupportedLanguage>;
         __migrationFactories[3] = MigrationRecord.FromEnum<SubscriptionStatus>;
@@ -73,6 +73,48 @@ public class MigrationManager
                          .Union(AddressRecord.MetaData.IndexedColumns)
                          .Union(UserAddressRecord.MetaData.IndexedColumns)
                          .Union(UserLoginProviderRecord.MetaData.IndexedColumns));
+
+
+        // Last, so every table (and index) exists before its trigger.
+        AddLastModifiedTriggers(ResxRowRecord.MetaData,
+                                FileRecord.MetaData,
+                                UserRecord.MetaData,
+                                RecoveryCodeRecord.MetaData,
+                                UserRecoveryCodeRecord.MetaData,
+                                RoleRecord.MetaData,
+                                UserRoleRecord.MetaData,
+                                GroupRecord.MetaData,
+                                UserGroupRecord.MetaData,
+                                AddressRecord.MetaData,
+                                UserAddressRecord.MetaData,
+                                UserLoginProviderRecord.MetaData);
+    }
+
+
+    /// <summary>
+    ///     Adds the <c>last_modified</c> trigger migration (<see cref="ITableMetaData.SetLastModifiedFunction(long, DatabaseType)"/>) of each table that has a
+    ///     <see cref="ILastModified.LastModified"/> column, numbered after every migration registered so far. Tables without the column are skipped.
+    /// </summary>
+    public MigrationManager AddLastModifiedTriggers( params ITableMetaData[] tables )
+    {
+        ArgumentNullException.ThrowIfNull(tables);
+        Interlocked.Exchange(ref _records, null);
+
+        lock ( __migrationFactoriesLock )
+        {
+            long nextMigrationID = __migrationFactories.Count <= 0
+                                       ? 0
+                                       : LastMigrationID + 1;
+
+            foreach ( ITableMetaData table in tables )
+            {
+                if ( !table.ContainsKey(nameof(ILastModified.LastModified)) ) { continue; }
+
+                AddInternal(nextMigrationID++, migrationID => table.SetLastModifiedFunction(migrationID, _db.DatabaseType));
+            }
+        }
+
+        return this;
     }
 
 

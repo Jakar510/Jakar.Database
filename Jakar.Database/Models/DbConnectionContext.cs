@@ -1,4 +1,4 @@
-﻿// Jakar.Extensions :: Jakar.Database
+// Jakar.Extensions :: Jakar.Database
 // 05/31/2024  23:05
 
 
@@ -38,7 +38,12 @@ public class DbConnectionContext : IAsyncDisposable
                                             null             => DatabaseType.NotSet,
                                             NpgsqlConnection => DatabaseType.PostgreSQL,
                                             SqlConnection    => DatabaseType.MicrosoftSqlServer,
-                                            _                => throw new ExpectedValueTypeException(_connection, typeof(NpgsqlConnection), typeof(SqlConnection))
+                                            SqliteConnection                   => DatabaseType.SQLite,
+                                            MySqlConnector.MySqlConnection                           => DatabaseType.MySQL,
+                                            Oracle.ManagedDataAccess.Client.OracleConnection         => DatabaseType.Oracle,
+                                            FirebirdSql.Data.FirebirdClient.FbConnection             => DatabaseType.Firebird,
+                                            _ => throw new ExpectedValueTypeException(_connection, typeof(NpgsqlConnection), typeof(SqlConnection), typeof(SqliteConnection), typeof(MySqlConnector.MySqlConnection),
+                                                                                      typeof(Oracle.ManagedDataAccess.Client.OracleConnection), typeof(FirebirdSql.Data.FirebirdClient.FbConnection))
                                         };
 
 
@@ -81,6 +86,25 @@ public class DbConnectionContext : IAsyncDisposable
                          : null;
 
         transaction = Transaction as SqlTransaction;
+        return connection is not null;
+    }
+    public virtual bool TryAs( [NotNullWhen(true)] out SqliteConnection? connection, out SqliteTransaction? transaction )
+    {
+        connection = _connection as SqliteConnection;
+        transaction = Transaction as SqliteTransaction;
+        return connection is not null;
+    }
+    public virtual bool TryAs( [NotNullWhen(true)] out MySqlConnector.MySqlConnection? connection, out MySqlConnector.MySqlTransaction? transaction )
+    {
+        connection = _connection as MySqlConnector.MySqlConnection;
+        transaction = Transaction as MySqlConnector.MySqlTransaction;
+        return connection is not null;
+    }
+    /// <summary> Any open connection, for providers without a dedicated overload. </summary>
+    public virtual bool TryAs( [NotNullWhen(true)] out DbConnection? connection, out DbTransaction? transaction )
+    {
+        connection = _connection;
+        transaction = Transaction;
         return connection is not null;
     }
 

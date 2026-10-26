@@ -71,7 +71,7 @@ public sealed class JsonSerializationTests : Assert
     [Test] public void JNode_Parameters_Are_Bound_As_Json_Text()
     {
         JObjectNode  data      = new() { ["a"] = 1 };
-        SqlParameter parameter = UserRecord.MetaData[nameof(UserRecord.AdditionalData)].ToParameter(data);
+        CommandParameter parameter = UserRecord.MetaData[nameof(UserRecord.AdditionalData)].ToParameter(data);
 
         That(parameter.Value, Is.InstanceOf<string>());
         That(JNode.DeepEquals(JNode.Parse((string)parameter.Value!), data), Is.True);

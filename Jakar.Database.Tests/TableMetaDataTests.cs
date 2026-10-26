@@ -89,7 +89,7 @@ public sealed class TableMetaDataTests : Assert
 
         Multiple(() =>
                  {
-                     That(meta.MaxLength_ColumnName,      Is.GreaterThan(0));
+                     That(meta.MaxLengthColumnName,      Is.GreaterThan(0));
                      That(meta.MaxLength_DataType,        Is.GreaterThan(0));
                      That(meta.MaxLength_KeyValuePair,    Is.GreaterThan(0));
                      That(meta.MaxLength_Variables,       Is.GreaterThan(0));
@@ -118,7 +118,132 @@ public sealed class TableMetaDataTests : Assert
                  {
                      That(ddl, Does.Contain("CREATE TABLE").And.Contain("roles"));
                      That(ddl, Does.Contain("PRIMARY KEY"));
-                     That(ddl, Does.Contain("FOREIGN KEY")); // RoleRecord.UserID references users
+                     That(ddl, Does.Contain("REFERENCES users (id)")); // RoleRecord.UserID references users
+                 });
+    }
+
+    /// <summary> SQL Server DDL uses T-SQL types and syntax, never PostgreSQL's (<c>Integration/CreateTableAgreementTests</c> runs it on a real SQL Server). </summary>
+    [Test] public void CreateTableSql_for_SqlServer_uses_TSql_types()
+    {
+        string ddl = UserRecord.MetaData.CreateTableSql(DatabaseType.MicrosoftSqlServer);
+
+        Multiple(() =>
+                 {
+                     That(ddl, Does.Contain("[id] uniqueidentifier DEFAULT NEWID() NOT NULL PRIMARY KEY"));
+                     That(ddl, Does.Contain("datetimeoffset").And.Contain("nvarchar("));
+                     foreach ( string postgres in new[] { "uuid", "bytea", "timestamptz", " bool", " text", "gen_random_uuid", "GENERATED" } ) { That(ddl, Does.Not.Contain(postgres), postgres); }
+                 });
+    }
+
+    /// <summary> The migrations' DDL is Jakar.SqlBuilder's, so every dialect gets its own syntax. </summary>
+    [TestCase(DatabaseType.PostgreSQL,         "CREATE TABLE user_roles (",   "PRIMARY KEY (key_id, value_id));")]
+    [TestCase(DatabaseType.MicrosoftSqlServer, "CREATE TABLE [user_roles] (", "PRIMARY KEY ([key_id], [value_id]));")]
+    [TestCase(DatabaseType.SQLite,             "CREATE TABLE \"user_roles\" (", "PRIMARY KEY (\"key_id\", \"value_id\"));")]
+    [TestCase(DatabaseType.MySQL,              "CREATE TABLE `user_roles` (", "PRIMARY KEY (`key_id`, `value_id`));")]
+    [TestCase(DatabaseType.Oracle,             "CREATE TABLE \"user_roles\" (", "PRIMARY KEY (\"key_id\", \"value_id\"))")]
+    [TestCase(DatabaseType.Firebird,           "CREATE TABLE \"user_roles\" (", "PRIMARY KEY (\"key_id\", \"value_id\"));")]
+    public void CreateTableSql_in_every_dialect( DatabaseType type, string start, string end )
+    {
+        string ddl = UserRoleRecord.MetaData.CreateTableSql(type);
+        Multiple(() =>
+                 {
+                     That(ddl, Does.StartWith(start));
+                     That(ddl, Does.EndWith(end));
+                 });
+    }
+
+    [TestCase(DatabaseType.PostgreSQL,         "DROP TABLE IF EXISTS roles CASCADE;")]
+    [TestCase(DatabaseType.MicrosoftSqlServer, "DROP TABLE IF EXISTS [roles];")]
+    [TestCase(DatabaseType.Oracle,             "DROP TABLE IF EXISTS \"roles\" CASCADE CONSTRAINTS")]
+    [TestCase(DatabaseType.Firebird,           "DROP TABLE \"roles\";")]
+    public void DropTableSql_in_every_dialect( DatabaseType type, string expected ) => That(RoleRecord.MetaData.DropTableSql(type), Is.EqualTo(expected));
+
+    /// <summary> The last_modified trigger in each dialect's form (the engines run it in Jakar.SqlBuilder.Tests' <c>Last_Modified_Trigger_Sets_The_Column</c>). </summary>
+    [TestCase(DatabaseType.PostgreSQL,         "CREATE OR REPLACE TRIGGER roles_set_last_modified BEFORE INSERT OR UPDATE ON roles FOR EACH ROW EXECUTE FUNCTION set_last_modified();")]
+    [TestCase(DatabaseType.MicrosoftSqlServer, "UPDATE target SET [last_modified] = SYSDATETIMEOFFSET() FROM [roles] target JOIN inserted ON target.[id] = inserted.[id];")]
+    [TestCase(DatabaseType.SQLite,             "AFTER UPDATE ON \"roles\" FOR EACH ROW")]
+    [TestCase(DatabaseType.MySQL,              "BEFORE UPDATE ON `roles` FOR EACH ROW SET NEW.`last_modified` = UTC_TIMESTAMP(6);")]
+    [TestCase(DatabaseType.Oracle,             "CREATE OR REPLACE TRIGGER \"roles_set_last_modified\" BEFORE INSERT OR UPDATE ON \"roles\" FOR EACH ROW BEGIN :NEW.\"last_modified\" := SYSTIMESTAMP; END;")]
+    [TestCase(DatabaseType.Firebird,           "CREATE OR ALTER TRIGGER \"roles_set_last_modified\" FOR \"roles\" ACTIVE BEFORE INSERT OR UPDATE POSITION 0 AS BEGIN NEW.\"last_modified\" = CURRENT_TIMESTAMP; END")]
+    public void SetLastModified_trigger_per_dialect( DatabaseType type, string expected )
+    {
+        MigrationRecord migration = RoleRecord.MetaData.SetLastModifiedFunction(1, type);
+
+        Multiple(() =>
+                 {
+                     That(migration.UpSQL.SQL,     Does.Contain(expected));
+                     That(migration.DownSQL.SQL,   Does.StartWith("DROP TRIGGER"));
+                     That(migration.CanRollback, Is.True);
+                 });
+    }
+
+    [Test] public void SetLastModified_trigger_keys_on_the_composite_key()
+        => That(UserLoginProviderRecord.MetaData.SetLastModifiedSql(DatabaseType.MicrosoftSqlServer), Does.Contain("JOIN inserted ON target.[id] = inserted.[id]"));
+
+    [Test] public void SetLastModified_trigger_needs_the_column()
+        => That(() => UserRoleRecord.MetaData.SetLastModifiedSql(DatabaseType.PostgreSQL), NUnit.Framework.Throws.InvalidOperationException);
+
+    [Test] public void SetLastModified_function_only_exists_on_PostgreSQL()
+        => Multiple(() =>
+                    {
+                        That(MigrationRecord.SetLastModified(0, DatabaseType.PostgreSQL).UpSQL.SQL, Does.Contain("CREATE OR REPLACE FUNCTION set_last_modified()"));
+                        That(MigrationRecord.SetLastModified(0, DatabaseType.Oracle).UpSQL.SQL,     Is.EqualTo("SELECT 1 FROM DUAL"));
+                        That(MigrationRecord.SetLastModified(0, DatabaseType.MySQL).UpSQL.SQL,      Is.EqualTo("SELECT 1;"));
+                    });
+
+    [Test] public void Every_column_type_has_a_name_in_every_dialect()
+    {
+        foreach ( ColumnMetaData column in UserRecord.MetaData.Properties.Values )
+        {
+            foreach ( SqlDialectKind dialect in Enum.GetValues<SqlDialectKind>() )
+            {
+                if ( dialect is SqlDialectKind.NotSet ) { continue; }
+
+                That(( (ISqlColumn)column ).GetTypeName(dialect), Is.Not.Empty, $"{column.PropertyName} on {dialect}");
+            }
+        }
+    }
+
+    private sealed class Amounts
+    {
+        public decimal                                   Plain   { get; init; }
+        [Precision(10, 2)] public decimal                Price   { get; init; }
+        [System.ComponentModel.DataAnnotations.MaxLength(40)] public string Code    { get; init; } = string.Empty;
+        public string                                    Note    { get; init; } = string.Empty;
+        [Unique] public string                           Email   { get; init; } = string.Empty;
+    }
+
+    private static string TypeOf( string property, DatabaseType type )
+    {
+        System.Reflection.PropertyInfo info = typeof(Amounts).GetProperty(property)!;
+        return info.GetDataTypes(out _, out _, out _)[type];
+    }
+
+    private static string SqliteTypeOf( string property )
+    {
+        System.Reflection.PropertyInfo info = typeof(Amounts).GetProperty(property)!;
+        info.GetDataTypes(out _, out _, out SqlType portable);
+        return portable.ColumnName(SqlDialectKind.Sqlite);
+    }
+
+    /// <summary> <see cref="decimal"/> is (38, 9) everywhere unless <see cref="PrecisionAttribute"/> says otherwise; strings get a key-sized length when they're unique. </summary>
+    [Test] public void Portable_types_per_dialect()
+    {
+        Multiple(() =>
+                 {
+                     That(TypeOf(nameof(Amounts.Plain), DatabaseType.PostgreSQL),         Is.EqualTo("numeric(38, 9)"));
+                     That(TypeOf(nameof(Amounts.Plain), DatabaseType.MicrosoftSqlServer), Is.EqualTo("numeric(38, 9)"));
+                     That(TypeOf(nameof(Amounts.Plain), DatabaseType.MySQL),              Is.EqualTo("DECIMAL(38, 9)"));
+                     That(TypeOf(nameof(Amounts.Plain), DatabaseType.Oracle),             Is.EqualTo("NUMBER(38, 9)"));
+                     That(TypeOf(nameof(Amounts.Plain), DatabaseType.Firebird),           Is.EqualTo("DECIMAL(38, 9)"));
+                     That(SqliteTypeOf(nameof(Amounts.Plain)),                            Is.EqualTo("NUMERIC"));
+                     That(TypeOf(nameof(Amounts.Price), DatabaseType.PostgreSQL),         Is.EqualTo("numeric(10, 2)"));
+                     That(TypeOf(nameof(Amounts.Price), DatabaseType.MySQL),              Is.EqualTo("DECIMAL(10, 2)"));
+                     That(TypeOf(nameof(Amounts.Code),  DatabaseType.Oracle),             Is.EqualTo("VARCHAR2(40)"));
+                     That(TypeOf(nameof(Amounts.Note),  DatabaseType.MySQL),              Is.EqualTo("LONGTEXT"));
+                     That(TypeOf(nameof(Amounts.Email), DatabaseType.MySQL),              Is.EqualTo("VARCHAR(450)"));
+                     That(TypeOf(nameof(Amounts.Email), DatabaseType.Firebird),           Is.EqualTo("VARCHAR(450)"));
+                     That(TypeOf(nameof(Amounts.Email), DatabaseType.MicrosoftSqlServer), Is.EqualTo("nvarchar(450)"));
                  });
     }
 
@@ -150,8 +275,8 @@ public sealed class TableMetaDataTests : Assert
         TableMetaData<RoleRecord> meta   = RoleRecord.MetaData;
         ParameterSorter           sorter = meta.Sorter;
 
-        SqlParameter first  = meta[nameof(RoleRecord.NameOfRole)].ToParameter("a", "first");
-        SqlParameter second = meta[nameof(RoleRecord.NormalizedName)].ToParameter("b", "second");
+        CommandParameter first  = meta[nameof(RoleRecord.NameOfRole)].ToParameter("a", "first");
+        CommandParameter second = meta[nameof(RoleRecord.NormalizedName)].ToParameter("b", "second");
 
         int firstIndex  = meta[nameof(RoleRecord.NameOfRole)].Index;
         int secondIndex = meta[nameof(RoleRecord.NormalizedName)].Index;

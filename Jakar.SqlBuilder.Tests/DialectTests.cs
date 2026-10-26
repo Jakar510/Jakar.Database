@@ -3,7 +3,7 @@
 
 using NUnit.Framework;
 using Jakar.SqlBuilder;
-using SqlBuilder = global::Jakar.SqlBuilder.SqlBuilder;
+using SqlBuilder = Jakar.SqlBuilder.SqlBuilder;
 
 
 
@@ -76,6 +76,6 @@ public sealed class DialectTests
     [Test] public void Top_SqlServer_Emits()
         => Assert.That(SqlBuilder.SqlServer.Select().Top(10).Column("id").From("t").Build().Sql, Is.EqualTo("SELECT TOP (10) [id] FROM [t];"));
 
-    [Test] public void Top_Postgres_NoOp()
-        => Assert.That(SqlBuilder.PostgreSQL.Select().Top(10).Column("id").From("t").Build().Sql, Is.EqualTo("SELECT id FROM t;"));
+    [Test] public void Top_Postgres_BecomesLimit()
+        => Assert.That(SqlBuilder.PostgreSQL.Select().Top(10).Column("id").From("t").Build().Sql, Is.EqualTo("SELECT id FROM t LIMIT 10;"));
 }

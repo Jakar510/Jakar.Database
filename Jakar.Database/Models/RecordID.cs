@@ -1,4 +1,4 @@
-﻿// Jakar.Extensions :: Jakar.Database
+// Jakar.Extensions :: Jakar.Database
 // 08/20/2023  9:16 PM
 
 
@@ -25,6 +25,7 @@ public readonly struct RecordID<TSelf>( Guid id ) : IRecordID, IEqualComparable<
     public readonly        string          key   = $"{TSelf.TableName}:{id}";
     public readonly        Guid            Value = id;
     Guid IUniqueID<Guid>.                  ID => Value;
+    object ISqlParameterValue.             ParameterValue => Value;
 
 
     [Pure] public static RecordID<TSelf>  New()                                                          => New(DateTimeOffset.UtcNow);

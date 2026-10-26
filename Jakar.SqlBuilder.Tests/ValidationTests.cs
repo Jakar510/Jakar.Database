@@ -3,7 +3,7 @@
 
 using NUnit.Framework;
 using Jakar.SqlBuilder;
-using SqlBuilder = global::Jakar.SqlBuilder.SqlBuilder;
+using SqlBuilder = Jakar.SqlBuilder.SqlBuilder;
 
 
 

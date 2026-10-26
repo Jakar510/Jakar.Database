@@ -102,7 +102,7 @@ public sealed class TestDatabase( IConfiguration configuration, IOptions<DbOptio
         RecordID<UserRecord>   userID     = RecordID<UserRecord>.New();
         RecordID<RoleRecord>   id         = RecordID<RoleRecord>.New();
         RecordPair<RoleRecord> pair       = new(id, date);
-        RoleRecord             record     = new(ADMIN, ADMIN, Randoms.RandomString(10), new UserRights(""), id, userID, date);
+        RoleRecord             record     = new(ADMIN, ADMIN, RandomString(10), new UserRights(""), id, userID, date);
         CommandParameters      parameters = CommandParameters.Create<RoleRecord>();
         parameters.Add(nameof(RoleRecord.NameOfRole),     ADMIN);
         parameters.Add(nameof(RoleRecord.NormalizedName), "Administrator");

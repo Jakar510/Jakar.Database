@@ -114,9 +114,9 @@ public sealed class SqlCommandTests : Assert
 
         // Collect every bound parameter name (stored without the leading '@').
         HashSet<string> bound = [];
-        using ( ArrayBuffer<SqlParameter> buffer = command.Parameters!.Value.Parameters )
+        using ( ArrayBuffer<CommandParameter> buffer = command.Parameters!.Value.Parameters )
         {
-            foreach ( ref readonly SqlParameter parameter in buffer.Span ) { bound.Add(parameter.ParameterName); }
+            foreach ( ref readonly CommandParameter parameter in buffer.Span ) { bound.Add(parameter.ParameterName); }
         }
 
         // Extract every @placeholder actually written into the SQL text.

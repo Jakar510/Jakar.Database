@@ -9,10 +9,20 @@ public sealed record SqlBuilderOptions
 {
     public const int DEFAULT_BUFFER_SIZE = 1024;
 
-    public bool StrictTypes               { get; init; }
-    public bool AliasProjections          { get; init; }
+    /// <summary> Typed comparisons (<c>Where&lt;T&gt;(...)</c>) check the value against the column's CLR type, and <c>IS NULL</c> against its nullability (<see cref="SqlBuildError.TypeMismatch"/>). </summary>
+    public bool StrictTypes { get; init; }
+
+    /// <summary>
+    ///     Typed projections (<c>Select&lt;T&gt;</c>, <c>Column&lt;T&gt;</c>, typed aggregates) are written before <c>FROM</c>; they're qualified with the alias (or table name, once the
+    ///     query joins tables) declared later, by patching the buffer. This is always on; the property is kept for configuration compatibility.
+    /// </summary>
+    public bool AliasProjections { get; init; } = true;
+
     public int  InitialBufferSize         { get; init; } = DEFAULT_BUFFER_SIZE;
     public bool AppendStatementTerminator { get; init; } = true;
+
+    /// <summary> PostgreSQL parameters as <c>@p0</c> (Npgsql named binding, Dapper) instead of the positional <c>$1</c>. </summary>
+    public bool NamedPostgresParameters { get; init; }
 
     public static SqlBuilderOptions Default { get; } = new();
 }

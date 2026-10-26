@@ -29,5 +29,5 @@ public sealed class DefaultsAttribute( string defaults ) : DatabaseAttribute
                                                                }) { }
 
 
-    public override StringBuilder ToStringBuilder() => new(Value);
+    public override void Append( ref ValueStringBuilder builder ) => builder.Append(Value);
 }

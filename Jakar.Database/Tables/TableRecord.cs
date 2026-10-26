@@ -18,7 +18,7 @@ public interface ILastModified : IDateCreated
 
 
 
-public interface IRecordID : IUniqueID, ISpanFormattable;
+public interface IRecordID : IUniqueID, ISpanFormattable, ISqlParameterValue;
 
 
 
@@ -29,7 +29,7 @@ public interface ITableName
 
 
 
-public interface ITableRecord<TSelf> : ITableName, SqlBuilder.ISqlTable<TSelf>, IJsonSerializable<TSelf>, IEqualComparable<TSelf>
+public interface ITableRecord<TSelf> : ITableName, ISqlTable<TSelf>, IJsonSerializable<TSelf>, IEqualComparable<TSelf>
     where TSelf : class, ITableRecord<TSelf>
 {
     public abstract static ref readonly ImmutableArray<PropertyInfo> ClassProperties { [Pure] get; }
@@ -94,8 +94,10 @@ public abstract record TableRecord<TSelf>( in DateTimeOffset DateCreated ) : IDa
 
     // ---- Jakar.SqlBuilder.ISqlTable<TSelf> (lean, driver-agnostic view for the validated SQL builder) ----
     public static string                                     SqlTableName                                                                 => TSelf.TableName.Value;
-    public static IReadOnlyList<Jakar.SqlBuilder.ISqlColumn> SqlColumns                                                                   => TableMetaData<TSelf>.Instance.SqlColumns;
-    public static bool                                       TrySqlColumn( string propertyName, out Jakar.SqlBuilder.ISqlColumn? column ) => TableMetaData<TSelf>.Instance.TrySqlColumn(propertyName, out column);
+    public static IReadOnlyList<ISqlColumn> SqlColumns                                                                   => TableMetaData<TSelf>.Instance.SqlColumns;
+    public static bool                                       TrySqlColumn( string propertyName, out ISqlColumn? column ) => TableMetaData<TSelf>.Instance.TrySqlColumn(propertyName, out column);
+    public static IReadOnlyList<string>                      SqlPrimaryKey                                                                => TableMetaData<TSelf>.Instance.SqlPrimaryKey;
+    public static IReadOnlyList<IReadOnlyList<string>>       SqlUniqueKeys                                                                => TableMetaData<TSelf>.Instance.SqlUniqueKeys;
 
 
     protected internal TableRecord( DbDataReader reader ) : this(reader.DateCreated<TSelf>()) { }

@@ -38,4 +38,9 @@
     <Using Include="NUnit.Framework" />
   </ItemGroup>
 
+    <ItemGroup>
+        <!-- The hand-written CREATE TABLE DDL the migrations replaced, frozen as the reference schema for CreateTableAgreementTests. -->
+        <None Include="Integration\LegacyDdl\*.sql" CopyToOutputDirectory="PreserveNewest" />
+    </ItemGroup>
+
 </Project>

@@ -11,18 +11,6 @@ public enum DatabaseType
     /// <summary> The default Value: either has no connection or is not yet configured </summary>
     NotSet,
 
-    /*
-    /// <summary>
-    /// Represents the SQLite database type used for identifying and configuring connections to SQLite databases. <see cref="Microsoft.Data.Sqlite.SqliteConnection"/>
-    /// </summary>
-    /// <remarks>
-    /// Use this value when specifying a database type for operations that require interaction with an SQLite database.
-    /// This type is commonly used in scenarios where lightweight, file-based storage is needed.
-    /// Ensure that the database file exists and is accessible before attempting to connect.
-    /// </remarks>
-    SQLite,
-    */
-
     /// <summary> Specifies the PostgreSQL database type.<see cref="Npgsql.NpgsqlConnection"/> </summary>
     /// <remarks> Use this value to indicate that a database connection or operation targets a PostgreSQL database. This type may affect connection string formatting, supported features, and compatibility with database commands. </remarks>
     PostgreSQL,
@@ -41,5 +29,16 @@ public enum DatabaseType
 
     /// <summary> Represents the Firebird database type used for identifying Firebird database connections. <see cref="FirebirdSql.Data.FirebirdClient.FbConnection"/> </summary>
     /// <remarks> Use this value to specify Firebird as the target database when configuring database operations or connections. This type is typically used in scenarios where multiple database types are supported and selection is required. </remarks>
-    Firebird
+    Firebird,
+
+    /// <summary>
+    /// Represents the SQLite database type used for identifying and configuring connections to SQLite databases. <see cref="Microsoft.Data.Sqlite.SqliteConnection"/>
+    /// </summary>
+    /// <remarks>
+    /// Use this value when specifying a database type for operations that require interaction with an SQLite database.
+    /// This type is commonly used in scenarios where lightweight, file-based storage is needed.
+    /// Ensure that the database file exists and is accessible before attempting to connect.
+    /// <para> Appended last so the existing values keep their numbers. </para>
+    /// </remarks>
+    SQLite
 }

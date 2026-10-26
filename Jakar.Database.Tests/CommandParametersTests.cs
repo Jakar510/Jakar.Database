@@ -86,7 +86,7 @@ public sealed class CommandParametersTests : Assert
     {
         CommandParameters parameters = CommandParameters.Create(CreateRole());
 
-        using ArrayBuffer<SqlParameter> buffer = parameters.Parameters;
+        using ArrayBuffer<CommandParameter> buffer = parameters.Parameters;
         That(buffer.Span.Length, Is.EqualTo(parameters.ParameterCount));
     }
 

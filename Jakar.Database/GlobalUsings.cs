@@ -57,6 +57,7 @@ global using Sigil;
 global using Jakar.Extensions;
 global using Jakar.Extensions.UserGuid;
 global using Jakar.Json;
+global using Jakar.SqlBuilder;
 global using JetBrains.Annotations;
 global using Microsoft.AspNetCore.Authentication;
 global using Microsoft.AspNetCore.Authentication.Cookies;

@@ -15,22 +15,18 @@ public sealed class ChecksAttribute( bool and, params string[] checks ) : Databa
     public ChecksAttribute( string          columnName, IntRange range ) : this(true, $"length({columnName}) BETWEEN {range.Min} AND {range.Max}") { }
 
 
-    public override StringBuilder ToStringBuilder()
+    public override void Append( ref ValueStringBuilder builder )
     {
-        StringBuilder sb = new(5 + Constraints.AsValueEnumerable().Sum(static x => x.Length));
-
         for ( int i = 0; i < Constraints.Length; i++ )
         {
-            sb.Append(Constraints[i]);
+            builder.Append(Constraints[i]);
 
             if ( i < Constraints.Length - 1 )
             {
-                sb.Append(And
-                              ? " AND "
-                              : " OR ");
+                builder.Append(And
+                                   ? " AND "
+                                   : " OR ");
             }
         }
-
-        return sb;
     }
 }

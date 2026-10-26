@@ -1,4 +1,4 @@
-﻿// Jakar.Database :: Jakar.Database
+// Jakar.Database :: Jakar.Database
 // 02/20/2026  13:31
 
 using ZLinq.Linq;
@@ -9,12 +9,11 @@ namespace Jakar.Database;
 
 
 [SuppressMessage("ReSharper", "InconsistentNaming")]
-public interface ITableMetaData : IDisposable
+public interface ITableMetaData : ISqlCommandTable, IDisposable
 {
     public const BindingFlags ATTRIBUTES = BindingFlags.Instance | BindingFlags.Public | BindingFlags.SetProperty | BindingFlags.GetProperty;
 
     public abstract static ITableMetaData                                                                                                                                                          Default                { get; }
-    public                 int                                                                                                                                                                     ColumnCount            { get; }
     public                 ValueEnumerable<Select<TableMetaDataEnumerator, PropertyColumn, ColumnMetaData>, ColumnMetaData>                                                                        Columns                { [Pure] get; }
     public                 DataTable                                                                                                                                                               DataTable              { get; }
     public                 int                                                                                                                                                                     ForeignKeyCount        { get; }
@@ -25,7 +24,6 @@ public interface ITableMetaData : IDisposable
     public ref readonly ColumnMetaData this[ string propertyName ] { get; }
     public ref readonly string this[ string         propertyName, DatabaseType type ] { get; }
     public PropertyColumn this[ int                 index ] { get; }
-    public              int                                                                                                                            MaxLength_ColumnName        { get; }
     public              int                                                                                                                            MaxLength_DataType          { get; }
     public              int                                                                                                                            MaxLength_IndexColumnName   { get; }
     public              int                                                                                                                            MaxLength_KeyValuePair      { get; }
@@ -43,16 +41,16 @@ public interface ITableMetaData : IDisposable
 
 
     public MigrationRecord SetLastModifiedFunction( long migrationID );
+    public MigrationRecord SetLastModifiedFunction( long migrationID, DatabaseType type );
     public MigrationRecord CreateTable( long             migrationID );
 
 
     public TableMetaDataEnumerator GetEnumerator();
-    public void                    ColumnNames( StringBuilder sb, ref int indentLevel );
 }
 
 
 
-public sealed class ParameterSorter( ITableMetaData metaData ) : Comparer<SqlParameter>
+public sealed class ParameterSorter( ITableMetaData metaData ) : Comparer<CommandParameter>
 {
-    public override int Compare( SqlParameter x, SqlParameter y ) => metaData[x.Column.PropertyName].CompareTo(metaData[y.Column.PropertyName]);
+    public override int Compare( CommandParameter x, CommandParameter y ) => metaData[x.Column.PropertyName].CompareTo(metaData[y.Column.PropertyName]);
 }

@@ -1,7 +1,9 @@
-﻿// Jakar.Extensions :: Jakar.Database
+// Jakar.Extensions :: Jakar.Database
 // 10/19/2025  10:38
 
 using Microsoft.Data.SqlClient;
+using Microsoft.Data.Sqlite;
+using MySqlConnector;
 
 
 
@@ -34,7 +36,13 @@ public readonly struct SqlCommand : IEquatable<SqlCommand>
 
         if ( context.TryAs(out SqlConnection? sqlConnection, out SqlTransaction? sqlTransaction) ) { return ToCommand(sqlConnection, sqlTransaction); }
 
-        throw new InvalidOperationException("Unsupported connection type");
+        if ( context.TryAs(out SqliteConnection? sqliteConnection, out SqliteTransaction? sqliteTransaction) ) { return ToCommand(sqliteConnection, sqliteTransaction); }
+
+        if ( context.TryAs(out MySqlConnection? mySqlConnection, out MySqlTransaction? mySqlTransaction) ) { return ToCommand(mySqlConnection, mySqlTransaction); }
+
+        if ( context.TryAs(out DbConnection? connection, out DbTransaction? transaction) ) { return ToCommand(connection, transaction); }
+
+        throw new InvalidOperationException("The context has no open connection.");
     }
     [Pure] [MustDisposeResource] public Microsoft.Data.SqlClient.SqlCommand ToCommand( SqlConnection connection, SqlTransaction? transaction = null )
     {
@@ -51,7 +59,7 @@ public readonly struct SqlCommand : IEquatable<SqlCommand>
 
         if ( Parameters is null ) { return command; }
 
-        foreach ( ref readonly SqlParameter parameter in Parameters.Value.Parameters )
+        foreach ( ref readonly CommandParameter parameter in Parameters.Value.Parameters )
         {
             if ( !IsParameterReferenced(SQL, parameter.ParameterName) ) { continue; }
 
@@ -76,11 +84,81 @@ public readonly struct SqlCommand : IEquatable<SqlCommand>
 
         if ( Parameters is null ) { return command; }
 
-        foreach ( ref readonly SqlParameter parameter in Parameters.Value.Parameters )
+        foreach ( ref readonly CommandParameter parameter in Parameters.Value.Parameters )
         {
             if ( !IsParameterReferenced(SQL, parameter.ParameterName) ) { continue; }
 
             command.Parameters.Add(parameter.ToPostgresParameter());
+        }
+
+        return command;
+    }
+    [Pure] [MustDisposeResource] public DbCommand ToCommand( SqliteConnection connection, SqliteTransaction? transaction = null )
+    {
+        ArgumentNullException.ThrowIfNull(connection);
+
+        SqliteCommand command = new()
+                                {
+                                    Connection     = connection,
+                                    CommandText    = SQL,
+                                    CommandType    = CommandType,
+                                    Transaction    = transaction,
+                                    CommandTimeout = 30
+                                };
+
+        if ( Parameters is null ) { return command; }
+
+        foreach ( ref readonly CommandParameter parameter in Parameters.Value.Parameters )
+        {
+            if ( !IsParameterReferenced(SQL, parameter.ParameterName) ) { continue; }
+
+            command.Parameters.Add(parameter.ToSqliteParameter());
+        }
+
+        return command;
+    }
+    [Pure] [MustDisposeResource] public DbCommand ToCommand( MySqlConnection connection, MySqlTransaction? transaction = null )
+    {
+        ArgumentNullException.ThrowIfNull(connection);
+
+        MySqlCommand command = new()
+                               {
+                                   Connection     = connection,
+                                   CommandText    = SQL,
+                                   CommandType    = CommandType,
+                                   Transaction    = transaction,
+                                   CommandTimeout = 30
+                               };
+
+        if ( Parameters is null ) { return command; }
+
+        foreach ( ref readonly CommandParameter parameter in Parameters.Value.Parameters )
+        {
+            if ( !IsParameterReferenced(SQL, parameter.ParameterName) ) { continue; }
+
+            command.Parameters.Add(parameter.ToMySqlParameter());
+        }
+
+        return command;
+    }
+    /// <summary> For providers without a dedicated overload: the connection creates the command and its parameters, typed with <see cref="ColumnMetaData.AdoDbType"/>. </summary>
+    [Pure] [MustDisposeResource] public DbCommand ToCommand( DbConnection connection, DbTransaction? transaction = null )
+    {
+        ArgumentNullException.ThrowIfNull(connection);
+
+        DbCommand command = connection.CreateCommand();
+        command.CommandText    = SQL;
+        command.CommandType    = CommandType;
+        command.Transaction    = transaction;
+        command.CommandTimeout = 30;
+
+        if ( Parameters is null ) { return command; }
+
+        foreach ( ref readonly CommandParameter parameter in Parameters.Value.Parameters )
+        {
+            if ( !IsParameterReferenced(SQL, parameter.ParameterName) ) { continue; }
+
+            command.Parameters.Add(parameter.ToDbParameter(command));
         }
 
         return command;
@@ -124,7 +202,7 @@ public readonly struct SqlCommand : IEquatable<SqlCommand>
     public static SqlCommand Create( string sql, in CommandParameters? parameters = null, in CommandType commandType = CommandType.Text ) => new(in sql, in parameters, in commandType);
 
 
-    public static SqlCommand Create<TSelf>( string sql, params ReadOnlySpan<SqlParameter> parameters )
+    public static SqlCommand Create<TSelf>( string sql, params ReadOnlySpan<CommandParameter> parameters )
         where TSelf : class, ITableRecord<TSelf> => Create(sql, CommandParameters.Create<TSelf>(parameters));
 
 

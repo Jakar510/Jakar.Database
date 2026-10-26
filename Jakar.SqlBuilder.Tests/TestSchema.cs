@@ -29,7 +29,7 @@ public static class TestSchema
     {
         if ( string.IsNullOrEmpty(name) ) { return name; }
 
-        System.Text.StringBuilder builder = new(name.Length + 8);
+        Extensions.ValueStringBuilder builder = new(name.Length + 8);
         for ( int i = 0; i < name.Length; i++ )
         {
             char c = name[i];
