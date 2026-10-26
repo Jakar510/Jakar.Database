@@ -1,10 +1,6 @@
 // Jakar.SqlBuilder :: Jakar.SqlBuilder
 // 06/27/2026
 
-using System.Buffers;
-
-
-
 namespace Jakar.SqlBuilder;
 
 

@@ -11,15 +11,15 @@ namespace Jakar.SqlBuilder;
 
 
 /// <summary> The ordered set of bound parameters produced alongside a built statement. </summary>
-public sealed class SqlParameterSet : IReadOnlyList<SqlParameter>
+public sealed partial class SqlParameterSet : IReadOnlyList<SqlParameter>
 {
     private readonly SqlParameter[] __parameters;
 
     public static SqlParameterSet Empty { get; } = new([], SqlDialectKind.NotSet);
 
-    public          SqlDialectKind Dialect { get; }
-    public          int            Count   => __parameters.Length;
-    public          bool           IsEmpty => __parameters.Length is 0;
+    public SqlDialectKind Dialect { get; }
+    public int            Count   => __parameters.Length;
+    public bool           IsEmpty => __parameters.Length is 0;
     public ref readonly SqlParameter this[ int         index ] => ref __parameters[index];
     SqlParameter IReadOnlyList<SqlParameter>.this[ int index ] => this[index];
 
@@ -47,11 +47,11 @@ public sealed class SqlParameterSet : IReadOnlyList<SqlParameter>
 
     /// <summary> The name a driver binds <paramref name="token"/> by: <c>$1</c> is positional (empty name), <c>:p0</c> binds as <c>p0</c>, <c>@p0</c> as itself. </summary>
     public static string BindName( string token ) => token switch
-                                                    {
-                                                        ['$', ..] => string.Empty,
-                                                        [':', ..] => token[1..],
-                                                        _         => token
-                                                    };
+                                                     {
+                                                         ['$', ..] => string.Empty,
+                                                         [':', ..] => token[1..],
+                                                         _         => token
+                                                     };
 
     /// <summary>
     ///     Adds every parameter to <paramref name="command"/> (ADO.NET), in order. PostgreSQL's positional <c>$1</c> parameters are added unnamed; Oracle's <c>:p0</c> are named <c>p0</c> and

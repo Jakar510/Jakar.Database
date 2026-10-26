@@ -1,10 +1,6 @@
 // Jakar.SqlBuilder :: Jakar.SqlBuilder
 // 10/25/2026
 
-using System.ComponentModel;
-
-
-
 namespace Jakar.SqlBuilder;
 
 

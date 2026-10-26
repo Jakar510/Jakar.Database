@@ -3,9 +3,8 @@
 
 namespace Jakar.SqlBuilder;
 
-
 /// <summary> The output of a built statement: the SQL text and its bound parameters. </summary>
-public readonly struct SqlResult
+public readonly partial struct SqlResult
 {
     public string          Sql        { get; }
     public SqlParameterSet Parameters { get; }
