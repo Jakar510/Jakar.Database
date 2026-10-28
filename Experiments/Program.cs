@@ -17,11 +17,13 @@ try
 
     // await TestDatabase.TestAsync();
 
-    SqlResult sql = Jakar.SqlBuilder.SqlBuilder.PostgreSQL.CreateTable<RoleRecord>().Build();
+    SqlResult sql = Jakar.SqlBuilder.SqlBuilder.PostgreSQL.Select<RoleRecord>(nameof(RoleRecord.NameOfRole)).From<RoleRecord>().Where<RoleRecord>(nameof(RoleRecord.NormalizedName)).In("test", "foo", "bar").Build();
 
     #pragma warning disable IL3050
     #pragma warning disable IL2026
-    Console.WriteLine(JsonConvert.SerializeObject(sql, Formatting.Indented));
+    Console.WriteLine(sql.Sql);
+    Console.WriteLine(sql.Dialect.ToString());
+    Console.WriteLine(JsonConvert.SerializeObject(sql.Parameters, Formatting.Indented));
     #pragma warning restore IL2026
     #pragma warning restore IL3050
 }
