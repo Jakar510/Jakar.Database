@@ -5,7 +5,7 @@ namespace Jakar.Database;
 
 
 [DefaultMember(nameof(Empty))]
-public readonly struct AutoRecordID<TSelf>( long id ) : IEquatable<AutoRecordID<TSelf>>, IComparable<AutoRecordID<TSelf>>, ISpanFormattable, ISpanParsable<AutoRecordID<TSelf>>, ISqlParameterValue, IRegisterDapperTypeHandlers
+public readonly struct AutoRecordID<TSelf>( long id ) : IEquatable<AutoRecordID<TSelf>>, IComparable<AutoRecordID<TSelf>>, ISpanFormattable, ISpanParsable<AutoRecordID<TSelf>>, ISqlParameterValue<long>, IRegisterDapperTypeHandlers
     where TSelf : TableRecord<TSelf>, ITableRecord<TSelf>
 {
     public static readonly AutoRecordID<TSelf> Empty = new(0);

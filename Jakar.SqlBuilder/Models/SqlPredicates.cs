@@ -1,6 +1,10 @@
 // Jakar.SqlBuilder :: Jakar.SqlBuilder
 // 10/25/2026
 
+using System.Runtime.CompilerServices;
+
+
+
 namespace Jakar.SqlBuilder;
 
 
@@ -273,13 +277,56 @@ public ref struct SqlComparison<TNext>
 
     // ---- sets and ranges ----
 
+    /// <summary> <c>IN (1, 2, 3)</c>, inline. Wins over <see cref="In{T}(ReadOnlySpan{T})"/> for integer literals, which would otherwise infer <c>T = int</c>. </summary>
+    [OverloadResolutionPriority(1)]
     public TNext In( params ReadOnlySpan<long> values )
     {
-        __w.ClearCompared();
+        __w.CheckComparedAll(values);
         SqlOps.In(ref __w, values);
         return Done();
     }
-    public TNext InParams( params object?[] values )
+    
+    /// <summary>
+    ///     <c>IN (1.5, 2, 3)</c>, inline (NaN and infinities are bound). Takes a mixed list such as <c>In(1, 2.5)</c>, where <see cref="In{T}(ReadOnlySpan{T})"/> can't infer one <c>T</c>.
+    ///     It has no <see cref="OverloadResolutionPriorityAttribute"/> on purpose: <c>ulong</c>, <c>float</c> and other exact types convert to <see cref="double"/> implicitly, and
+    ///     still go to <see cref="In{T}(ReadOnlySpan{T})"/> (an exact match) rather than losing precision here.
+    /// </summary>
+    public TNext In( params ReadOnlySpan<double> values )
+    {
+        __w.CheckComparedAll(values);
+        SqlOps.In(ref __w, values);
+        return Done();
+    }
+
+    /// <summary>
+    ///     <c>IN (...)</c> of typed values. Numbers, <see cref="Guid"/>s and dates can't carry SQL, so they're written inline in the dialect's literal syntax; a <see cref="char"/> (text),
+    ///     or a type with no SQL literal (<see cref="TimeSpan"/>, an enum, a record id, NaN), binds as a parameter. Under <see cref="SqlBuilderOptions.StrictTypes"/> every value is checked.
+    /// </summary>
+    public TNext In<T>( params ReadOnlySpan<T> values )
+        where T : ISpanFormattable
+    {
+        __w.CheckComparedAll(values);
+        SqlOps.In(ref __w, values);
+        return Done();
+    }
+
+    /// <summary> <c>IN ($1, $2, ...)</c>: strings are always bound as parameters, never written into the statement. </summary>
+    public TNext In( params ReadOnlySpan<string?> values )
+    {
+        __w.CheckComparedAll(values);
+        SqlOps.In(ref __w, values);
+        return Done();
+    }
+
+    /// <summary> <c>IN ($1, $2, ...)</c>: characters are text, so they're bound. Above the <c>long</c> overload, which a <see cref="char"/> would otherwise convert to (<c>'a'</c> → 97); it applies only to characters. </summary>
+    [OverloadResolutionPriority(2)]
+    public TNext In( params ReadOnlySpan<char> values )
+    {
+        __w.CheckComparedAll(values);
+        SqlOps.In(ref __w, values);
+        return Done();
+    }
+    public TNext InParams( params ReadOnlySpan<object?> values )
     {
         __w.ClearCompared();
         SqlOps.InParams(ref __w, values);
@@ -300,9 +347,49 @@ public ref struct SqlComparison<TNext>
         return Done();
     }
 
+    /// <inheritdoc cref="In(ReadOnlySpan{long})"/>
+    [OverloadResolutionPriority(1)]
     public TNext NotIn( params ReadOnlySpan<long> values )
     {
-        __w.ClearCompared();
+        __w.CheckComparedAll(values);
+        __w.Word("NOT");
+        SqlOps.In(ref __w, values);
+        return Done();
+    }
+
+    /// <inheritdoc cref="In(ReadOnlySpan{double})"/>
+    public TNext NotIn( params ReadOnlySpan<double> values )
+    {
+        __w.CheckComparedAll(values);
+        __w.Word("NOT");
+        SqlOps.In(ref __w, values);
+        return Done();
+    }
+
+    /// <inheritdoc cref="In{T}(ReadOnlySpan{T})"/>
+    public TNext NotIn<T>( params ReadOnlySpan<T> values )
+        where T : ISpanFormattable
+    {
+        __w.CheckComparedAll(values);
+        __w.Word("NOT");
+        SqlOps.In(ref __w, values);
+        return Done();
+    }
+
+    /// <inheritdoc cref="In(ReadOnlySpan{string})"/>
+    public TNext NotIn( params ReadOnlySpan<string?> values )
+    {
+        __w.CheckComparedAll(values);
+        __w.Word("NOT");
+        SqlOps.In(ref __w, values);
+        return Done();
+    }
+
+    /// <inheritdoc cref="In(ReadOnlySpan{char})"/>
+    [OverloadResolutionPriority(2)]
+    public TNext NotIn( params ReadOnlySpan<char> values )
+    {
+        __w.CheckComparedAll(values);
         __w.Word("NOT");
         SqlOps.In(ref __w, values);
         return Done();

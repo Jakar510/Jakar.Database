@@ -119,6 +119,7 @@ public sealed class TableMetaDataTests : Assert
                      That(ddl, Does.Contain("CREATE TABLE").And.Contain("roles"));
                      That(ddl, Does.Contain("PRIMARY KEY"));
                      That(ddl, Does.Contain("REFERENCES users (id)")); // RoleRecord.UserID references users
+                     That(ddl, Does.StartWith("CREATE TABLE roles (\n    id uuid ").And.EndWith("\n);"), "one column per line");
                  });
     }
 
@@ -136,12 +137,12 @@ public sealed class TableMetaDataTests : Assert
     }
 
     /// <summary> The migrations' DDL is Jakar.SqlBuilder's, so every dialect gets its own syntax. </summary>
-    [TestCase(DatabaseType.PostgreSQL,         "CREATE TABLE user_roles (",   "PRIMARY KEY (key_id, value_id));")]
-    [TestCase(DatabaseType.MicrosoftSqlServer, "CREATE TABLE [user_roles] (", "PRIMARY KEY ([key_id], [value_id]));")]
-    [TestCase(DatabaseType.SQLite,             "CREATE TABLE \"user_roles\" (", "PRIMARY KEY (\"key_id\", \"value_id\"));")]
-    [TestCase(DatabaseType.MySQL,              "CREATE TABLE `user_roles` (", "PRIMARY KEY (`key_id`, `value_id`));")]
-    [TestCase(DatabaseType.Oracle,             "CREATE TABLE \"user_roles\" (", "PRIMARY KEY (\"key_id\", \"value_id\"))")]
-    [TestCase(DatabaseType.Firebird,           "CREATE TABLE \"user_roles\" (", "PRIMARY KEY (\"key_id\", \"value_id\"));")]
+    [TestCase(DatabaseType.PostgreSQL,         "CREATE TABLE user_roles (\n",   "    PRIMARY KEY (key_id, value_id)\n);")]
+    [TestCase(DatabaseType.MicrosoftSqlServer, "CREATE TABLE [user_roles] (\n", "    PRIMARY KEY ([key_id], [value_id])\n);")]
+    [TestCase(DatabaseType.SQLite,             "CREATE TABLE \"user_roles\" (\n", "    PRIMARY KEY (\"key_id\", \"value_id\")\n);")]
+    [TestCase(DatabaseType.MySQL,              "CREATE TABLE `user_roles` (\n", "    PRIMARY KEY (`key_id`, `value_id`)\n);")]
+    [TestCase(DatabaseType.Oracle,             "CREATE TABLE \"user_roles\" (\n", "    PRIMARY KEY (\"key_id\", \"value_id\")\n)")]
+    [TestCase(DatabaseType.Firebird,           "CREATE TABLE \"user_roles\" (\n", "    PRIMARY KEY (\"key_id\", \"value_id\")\n);")]
     public void CreateTableSql_in_every_dialect( DatabaseType type, string start, string end )
     {
         string ddl = UserRoleRecord.MetaData.CreateTableSql(type);
@@ -187,7 +188,7 @@ public sealed class TableMetaDataTests : Assert
         => Multiple(() =>
                     {
                         That(MigrationRecord.SetLastModified(0, DatabaseType.PostgreSQL).UpSQL.SQL, Does.Contain("CREATE OR REPLACE FUNCTION set_last_modified()"));
-                        That(MigrationRecord.SetLastModified(0, DatabaseType.Oracle).UpSQL.SQL,     Is.EqualTo("SELECT 1 FROM DUAL"));
+                        That(MigrationRecord.SetLastModified(0, DatabaseType.Oracle).UpSQL.SQL,     Is.EqualTo("SELECT 1\nFROM DUAL"));
                         That(MigrationRecord.SetLastModified(0, DatabaseType.MySQL).UpSQL.SQL,      Is.EqualTo("SELECT 1;"));
                     });
 

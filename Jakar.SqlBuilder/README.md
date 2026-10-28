@@ -18,6 +18,8 @@ The terminals:
 - `BuildSql()` returns only the SQL.
 - `WriteTo(IBufferWriter<char>)` copies the SQL into your buffer without making a string and returns the parameters.
 
+The SQL is laid out for people to read by default: one clause per line, multi-item lists one item per line (see [Readable layout](#readable-layout)). The examples below show it on one line to save space; `SqlBuilderOptions.Compact` gives that form.
+
 `Build()` and `BuildSql()` can be called again on the same stage and return the same result. `WriteTo` on a stage that wasn't built is final: a later terminal on it throws. Stages are single-use: once you continue a stage (`from.Where(...)`), the earlier stage (`from`) throws if you use it again, because both share one pooled buffer.
 
 ## Dialects
@@ -110,7 +112,8 @@ Distinctness, ranges and sets:
 ```csharp
 .Where("email").IsDistinctFrom(SqlValue.Null)
 .Where("age").NotBetween(30, 50)
-.Where("id").In(1, 2, 3)           // also InParams, InValues, In(subquery), the NotIn variants, Any (PostgreSQL)
+.Where("id").In(1, 2, 3)           // numbers, Guids and dates inline; strings and chars bound: In("a", "b") → IN ($1, $2)
+                                   // also InParams, InValues, In(subquery), the NotIn variants, Any (PostgreSQL)
 ```
 
 Patterns and existence:
@@ -229,7 +232,7 @@ SqlBuilder.SqlServer
 // SELECT [u].[name], COUNT([o].[id]) AS [orders] FROM [users] [u] LEFT JOIN [orders] [o] ON [o].[user_id] = [u].[id] ...
 ```
 
-With `StrictTypes`, a value is checked against the column's CLR type, and `IS NULL` against its nullability (`TypeMismatch`).
+`StrictTypes` is on by default: in a typed comparison (`Where<T>`, `On<T>`, `Set<T>`, ...), each value is checked against the column's CLR type, and `IS NULL` against its nullability (`TypeMismatch`). So `Where<RoleRecord>(nameof(RoleRecord.NormalizedName)).In(1, 2, 3)` throws. A record-id column (`ISqlParameterValue<Guid>`) compares with a `Guid`. Untyped comparisons (`Where("name")`) aren't checked; set `StrictTypes = false` to turn the check off.
 
 ## Options
 
@@ -238,12 +241,38 @@ SqlBuilderOptions opts = new()
 {
     InitialBufferSize         = 1024,  // pooled char[] rent size
     AppendStatementTerminator = true,  // trailing ';' (never on Oracle; always on a SQL Server MERGE)
-    StrictTypes               = false, // check typed comparisons' values against the column type
+    StrictTypes               = true,  // check typed comparisons' values against the column type
     NamedPostgresParameters   = false, // PostgreSQL @p0 instead of $1 (Dapper, Npgsql named binding)
+    Layout                    = SqlLayout.Readable, // or Compact: one line
 };
 ```
 
 `AliasProjections` is always on; the property stays for configuration compatibility.
+
+### Readable layout
+
+By default (`Layout = SqlLayout.Readable`) each statement is laid out for people: every clause starts a line, a list with more than one item puts each item on its own indented line, `AND` / `OR` in conditions start indented lines, and column lists and subqueries open indented blocks. `SqlBuilderOptions.Compact` (or `Layout = SqlLayout.Compact`) writes one line instead.
+
+```csharp
+SqlBuilder.PostgreSQL.CreateTable<RoleRecord>().BuildSql();
+// CREATE TABLE roles (
+//     id uuid DEFAULT gen_random_uuid() NOT NULL PRIMARY KEY,
+//     user_id uuid NOT NULL REFERENCES users (id),
+//     ...
+//     additional_data json
+// );
+
+SqlBuilder.PostgreSQL.Select("id", "name").From("users").Where("active").EqualTo(true).And("age").GreaterThan(18).OrderBy("id").BuildSql();
+// SELECT
+//     id,
+//     name
+// FROM users
+// WHERE active = TRUE
+//     AND age > 18
+// ORDER BY id;
+```
+
+Only the whitespace between tokens changes: strings, quoted identifiers, comments and dollar-quoted bodies are copied as they are, and formatting is idempotent. The layout runs once when the statement is finished. It costs one extra pass over the text and allocates nothing beyond the result; `Compact` skips it. `SqlFormatter.Format(sql, dialect)` applies the same layout to SQL you already have.
 
 Bound parameters go to ADO.NET with `result.Parameters.AddTo(command)`, which sets Oracle's `BindByName`, or to Dapper with `ToDapper()`.
 

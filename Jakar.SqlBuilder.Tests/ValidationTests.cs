@@ -57,20 +57,20 @@ public sealed class ValidationTests
     [Test] public void Result_ImplicitStringConversion()
     {
         string sql = SqlBuilder.PostgreSQL.Select("*").From("t").Build();
-        Assert.That(sql, Is.EqualTo("SELECT * FROM t;"));
+        Assert.That(sql, Is.EqualTo("SELECT *\nFROM t;"));
     }
 
     [Test] public void Result_Deconstruct()
     {
         (string sql, SqlParameterSet parameters) = SqlBuilder.PostgreSQL.Select("*").From("t").Where("a").EqualTo(SqlValue.Param(1)).Build();
-        Assert.That(sql, Is.EqualTo("SELECT * FROM t WHERE a = $1;"));
+        Assert.That(sql, Is.EqualTo("SELECT *\nFROM t\nWHERE a = $1;"));
         Assert.That(parameters.Count, Is.EqualTo(1));
     }
 
     [Test] public void Options_NoTerminator()
     {
         SqlBuilderOptions opts = new() { AppendStatementTerminator = false };
-        Assert.That(SqlBuilder.PostgreSQLWith(opts).Select("*").From("t").Build().Sql, Is.EqualTo("SELECT * FROM t"));
+        Assert.That(SqlBuilder.PostgreSQLWith(opts).Select("*").From("t").Build().Sql, Is.EqualTo("SELECT *\nFROM t"));
     }
 
     [Test] public void Result_DialectRecorded()

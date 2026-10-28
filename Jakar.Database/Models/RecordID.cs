@@ -18,7 +18,7 @@ public readonly record struct RecordID<TKey, TValue>( RecordID<TKey> Key, Record
 
 
 [DefaultMember(nameof(Empty))]
-public readonly struct RecordID<TSelf>( Guid id ) : IRecordID, IEqualComparable<RecordID<TSelf>>, ISpanParsable<RecordID<TSelf>>, IRegisterDapperTypeHandlers
+public readonly struct RecordID<TSelf>( Guid id ) : IRecordID, IEqualComparable<RecordID<TSelf>>, ISpanParsable<RecordID<TSelf>>, ISqlParameterValue<Guid>, IRegisterDapperTypeHandlers
     where TSelf : class, IPairRecord<TSelf>
 {
     public static readonly RecordID<TSelf> Empty = new(Guid.Empty);

@@ -447,6 +447,8 @@ public readonly struct SqlResult
 
 `SqlResult` is a normal (non-ref) `readonly struct` because it is the *output* — the builder's ref-struct lifetime has ended and the SQL is now an ordinary string safe to return, store, and pass to an executor.
 
+> **As built — layout.** `SqlBuilderOptions.Layout` picks how the SQL is laid out. `Readable` (the default) lays the finished statement out for people, with one clause per line, multi-item lists one item per line, and indented column lists and subqueries; `Compact` writes one line. The SQL shown in this document is compact to save space. `SqlFormatter` does this in one pass over the finished text and changes only the whitespace between tokens (literals, quoted identifiers, comments and dollar-quoted bodies are copied as they are), so it can't change what the statement means. Formatting is idempotent. `LayoutTests` pins the layout and checks every pattern, record table and fuzzed chain in all six dialects, and the execution suite runs the (readable) patterns on each engine. The layout pass allocates nothing beyond the result string, so the allocation gate holds for both layouts.
+
 ### 8.3 Representative end-to-end surface
 
 ```csharp
@@ -540,7 +542,7 @@ A typed overload performs three steps, all allocation-free:
 2. **Translate.** Emit `ColumnMetaData.ColumnName`, not the property name — so a `[Column("user_name")]` rename or a casing convention flows through automatically, and a future property rename caught by `nameof` keeps the SQL correct.
 3. **Quote & qualify.** Pass the column name through the dialect's `QuoteIdentifier`, and prefix it with the source qualifier per §9.5.
 
-Optional **strict mode** (`SqlBuilderOptions.StrictTypes`) adds a fourth step on value comparisons: check the CLR value against `ColumnMetaData.PropertyType` (e.g. reject `.Where<User>(nameof(User.Age)).EqualTo("oops")` when `Age` is `int`) and reject `IS NULL` on a column whose metadata says `IsNullable == false`. Strict mode is off by default to keep the common path branch-free.
+Optional **strict mode** (`SqlBuilderOptions.StrictTypes`) adds a fourth step on value comparisons: check the CLR value against `ColumnMetaData.PropertyType` (e.g. reject `.Where<User>(nameof(User.Age)).EqualTo("oops")` when `Age` is `int`) and reject `IS NULL` on a column whose metadata says `IsNullable == false`. Strict mode is on by default (it only runs on typed comparisons, so untyped ones stay branch-free); `StrictTypes = false` turns it off. A column whose type is an `ISqlParameterValue<TValue>` (a record id) compares as its `TValue`.
 
 ### 9.5 Aliases and qualification (single-pass nuance)
 
@@ -597,7 +599,7 @@ The `Reason` enum gains `UnknownColumn` and `TypeMismatch` for the typed-overloa
 
 ### 11.1 Targets
 
-> **As built — measured.** These are gated by `AllocationTests` (all six dialects) and the BenchmarkDotNet suite `Jakar.SqlBuilder.Benchmarks` (`dotnet run -c Release --project Jakar.SqlBuilder.Benchmarks -- --filter *`). For a parameter-free join, filter and order query, `BuildSql()` allocates exactly the result string and `WriteTo` allocates **0 B**. With the Short job on the development machine, `SELECT *` takes ~0.1 µs. The representative 5–8 clause query takes ~0.8–0.95 µs, just under the "well under a microsecond" target. A 100-row inline insert takes ~7 µs and allocates only its ~3 KB string. To reach zero allocations, PostgreSQL identifier folding is cached and looked up by span, qualified names are written part by part from spans, parameter tokens are cached, and the StrictTypes hook boxes nothing unless it is on.
+> **As built — measured.** These are gated by `AllocationTests` (all six dialects) and the BenchmarkDotNet suite `Jakar.SqlBuilder.Benchmarks` (`dotnet run -c Release --project Jakar.SqlBuilder.Benchmarks -- --filter *`). For a parameter-free join, filter and order query, `BuildSql()` allocates exactly the result string and `WriteTo` allocates **0 B**. With the Short job on the development machine and `SqlLayout.Compact`, `SELECT *` takes ~0.1 µs. The representative 5–8 clause query takes ~0.8–0.95 µs, just under the "well under a microsecond" target. A 100-row inline insert takes ~7 µs and allocates only its ~3 KB string. The default `Readable` layout adds one pass of about 8 ns per character of SQL and no allocations: `SELECT *` ~0.3–0.4 µs, the 5–8 clause query ~2.9–3.1 µs, the 100-row insert ~22–25 µs. That stays far below a database round trip; `Compact` is there for hot paths that want the one-line form. To reach zero allocations, PostgreSQL identifier folding is cached and looked up by span, qualified names are written part by part from spans, parameter tokens are cached, and the StrictTypes hook boxes nothing unless it is on.
 
 The hot path (compose → `BuildSql`) must perform zero managed heap allocations except the single final `string`, and zero allocations at all on the `WriteTo(IBufferWriter<char>)` path for parameter-free queries. A typical 5–8 clause `SELECT` should build in well under a microsecond and stay within the initially rented 1 KiB buffer (no resize). Parameter capture for a query with N bound values allocates at most one `SqlParameter[]` (pooled) plus the `SqlParameterSet` wrapper.
 

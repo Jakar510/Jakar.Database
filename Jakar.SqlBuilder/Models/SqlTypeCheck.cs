@@ -13,7 +13,7 @@ internal static class SqlTypeCheck
 
         if ( value is ISqlParameterValue wrapped ) { return IsCompatible(columnType, wrapped.ParameterValue); }
 
-        Type column = Nullable.GetUnderlyingType(columnType) ?? columnType;
+        Type column = Storage(Nullable.GetUnderlyingType(columnType) ?? columnType);
         Type actual = value.GetType();
 
         if ( column.IsAssignableFrom(actual) ) { return true; }
@@ -22,6 +22,19 @@ internal static class SqlTypeCheck
         TypeKind right = Kind(actual);
         return left is not TypeKind.Other && left == right;
     }
+
+    private static readonly ConcurrentDictionary<Type, Type> __storage = new();
+
+    /// <summary> What a column of <paramref name="type"/> stores: the <c>TValue</c> of an <see cref="ISqlParameterValue{TValue}"/> (a record id column holds a <see cref="Guid"/>), else the type itself. Found once per type. </summary>
+    private static Type Storage( Type type ) => __storage.GetOrAdd(type, static type =>
+                                                                         {
+                                                                             foreach ( Type contract in type.GetInterfaces() )
+                                                                             {
+                                                                                 if ( contract.IsGenericType && contract.GetGenericTypeDefinition() == typeof(ISqlParameterValue<>) ) { return contract.GetGenericArguments()[0]; }
+                                                                             }
+
+                                                                             return type;
+                                                                         });
 
     private static TypeKind Kind( Type type )
     {

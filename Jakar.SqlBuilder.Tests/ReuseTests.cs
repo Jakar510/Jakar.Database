@@ -32,7 +32,7 @@ public sealed class ReuseTests
 
         Assert.Multiple(() =>
                         {
-                            Assert.That(first.Sql,                Is.EqualTo("SELECT [id] FROM [t] WHERE [a] = @p0;"));
+                            Assert.That(first.Sql,                Is.EqualTo("SELECT [id]\nFROM [t]\nWHERE [a] = @p0;"));
                             Assert.That(second.Sql,               Is.SameAs(first.Sql));
                             Assert.That(second.Parameters,        Is.SameAs(first.Parameters));
                             Assert.That(second.Parameters.Count, Is.EqualTo(1));
@@ -62,7 +62,7 @@ public sealed class ReuseTests
         SelectStage select = SqlBuilder.Oracle.Select().Column(static e => e.Number(1));
         string      first  = select.BuildSql();
 
-        Assert.That(select.BuildSql(), Is.EqualTo(first).And.EqualTo("SELECT 1 FROM DUAL"));
+        Assert.That(select.BuildSql(), Is.EqualTo(first).And.EqualTo("SELECT 1\nFROM DUAL"));
     }
 
     [Test] public void Terminal_After_WriteTo_Throws()
@@ -73,7 +73,7 @@ public sealed class ReuseTests
 
         Assert.Multiple(() =>
                         {
-                            Assert.That(destination.WrittenSpan.ToString(), Is.EqualTo("SELECT [id] FROM [t] WHERE [a] = @p0;"));
+                            Assert.That(destination.WrittenSpan.ToString(), Is.EqualTo("SELECT [id]\nFROM [t]\nWHERE [a] = @p0;"));
                             Assert.That(static () => Query().WriteToTwice(), Throws.InvalidOperationException);
                         });
     }
@@ -91,7 +91,7 @@ public sealed class ReuseTests
         Assert.Multiple(() =>
                         {
                             Assert.That(stale, Is.TypeOf<InvalidOperationException>());
-                            Assert.That(sql,   Is.EqualTo("SELECT [id] FROM [t] WHERE [a] = 1;"), "the stage that moved on is unharmed");
+                            Assert.That(sql,   Is.EqualTo("SELECT [id]\nFROM [t]\nWHERE [a] = 1;"), "the stage that moved on is unharmed");
                         });
     }
 
@@ -112,8 +112,8 @@ public sealed class ReuseTests
 
         Assert.Multiple(() =>
                         {
-                            Assert.That(replay, Is.EqualTo("SELECT [id] FROM [t];"), "the built stage replays its own result");
-                            Assert.That(other,  Is.EqualTo("SELECT [zzzzzz] FROM [other_table];"));
+                            Assert.That(replay, Is.EqualTo("SELECT [id]\nFROM [t];"), "the built stage replays its own result");
+                            Assert.That(other,  Is.EqualTo("SELECT [zzzzzz]\nFROM [other_table];"));
                         });
     }
 
@@ -124,7 +124,7 @@ public sealed class ReuseTests
                                  .Where(p => p.Column("a").EqualTo(SqlBuilder.PostgreSQL.Select("x").From("u").BuildSql().Length))
                                  .BuildSql();
 
-        Assert.That(outer, Is.EqualTo("SELECT id FROM t WHERE (a = 16);")); // "SELECT x FROM u;" is 16 characters
+        Assert.That(outer, Is.EqualTo("SELECT id\nFROM t\nWHERE (a = 16);")); // "SELECT x FROM u;" is 16 characters
     }
 
     [Test] public void Identical_Chains_Build_Identically()
@@ -134,7 +134,7 @@ public sealed class ReuseTests
             SqlResult result = SqlBuilder.PostgreSQL.Select("id").From("t").Where("a").EqualTo((object)i).OrderBy("id").Limit(5).Build();
             Assert.Multiple(() =>
                             {
-                                Assert.That(result.Sql,                     Is.EqualTo("SELECT id FROM t WHERE a = $1 ORDER BY id LIMIT 5;"));
+                                Assert.That(result.Sql,                     Is.EqualTo("SELECT id\nFROM t\nWHERE a = $1\nORDER BY id\nLIMIT 5;"));
                                 Assert.That(result.Parameters[0].Value,    Is.EqualTo(i));
                                 Assert.That(result.Parameters.Count,       Is.EqualTo(1));
                             });

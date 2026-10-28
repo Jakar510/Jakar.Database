@@ -27,19 +27,19 @@ public sealed class DialectMatrixTests
 
     // ---- identifiers ----
 
-    [TestCase(PG,   "SELECT name, first_name FROM users;")]
-    [TestCase(MS,   "SELECT [Name], [FirstName] FROM [Users];")]
-    [TestCase(LITE, "SELECT \"Name\", \"FirstName\" FROM \"Users\";")]
-    [TestCase(MY,   "SELECT `Name`, `FirstName` FROM `Users`;")]
-    [TestCase(ORA,  "SELECT \"Name\", \"FirstName\" FROM \"Users\"")]
-    [TestCase(FB,   "SELECT \"Name\", \"FirstName\" FROM \"Users\";")]
+    [TestCase(PG,   "SELECT\n    name,\n    first_name\nFROM users;")]
+    [TestCase(MS,   "SELECT\n    [Name],\n    [FirstName]\nFROM [Users];")]
+    [TestCase(LITE, "SELECT\n    \"Name\",\n    \"FirstName\"\nFROM \"Users\";")]
+    [TestCase(MY,   "SELECT\n    `Name`,\n    `FirstName`\nFROM `Users`;")]
+    [TestCase(ORA,  "SELECT\n    \"Name\",\n    \"FirstName\"\nFROM \"Users\"")]
+    [TestCase(FB,   "SELECT\n    \"Name\",\n    \"FirstName\"\nFROM \"Users\";")]
     public void Identifiers_Are_Quoted_Or_Folded( SqlDialectKind dialect, string expected ) => Assert.That(For(dialect).Select("Name", "FirstName").From("Users").Build().Sql, Is.EqualTo(expected));
 
-    [TestCase(MS,   "SELECT [a]]b] FROM [t];")]
-    [TestCase(LITE, "SELECT \"a\"\"b\" FROM \"t\";")]
-    [TestCase(MY,   "SELECT `a``b` FROM `t`;")]
-    [TestCase(ORA,  "SELECT \"a\"\"b\" FROM \"t\"")]
-    [TestCase(FB,   "SELECT \"a\"\"b\" FROM \"t\";")]
+    [TestCase(MS,   "SELECT [a]]b]\nFROM [t];")]
+    [TestCase(LITE, "SELECT \"a\"\"b\"\nFROM \"t\";")]
+    [TestCase(MY,   "SELECT `a``b`\nFROM `t`;")]
+    [TestCase(ORA,  "SELECT \"a\"\"b\"\nFROM \"t\"")]
+    [TestCase(FB,   "SELECT \"a\"\"b\"\nFROM \"t\";")]
     public void Quote_Characters_Are_Escaped( SqlDialectKind dialect, string expected )
     {
         string name = dialect switch
@@ -52,10 +52,10 @@ public sealed class DialectMatrixTests
         Assert.That(For(dialect).Select(name).From("t").Build().Sql, Is.EqualTo(expected));
     }
 
-    [TestCase(PG,   "SELECT u.name FROM users u;")]
-    [TestCase(MS,   "SELECT [u].[name] FROM [users] [u];")]
-    [TestCase(MY,   "SELECT `u`.`name` FROM `users` `u`;")]
-    [TestCase(ORA,  "SELECT \"u\".\"name\" FROM \"users\" \"u\"")]
+    [TestCase(PG,   "SELECT u.name\nFROM users u;")]
+    [TestCase(MS,   "SELECT [u].[name]\nFROM [users] [u];")]
+    [TestCase(MY,   "SELECT `u`.`name`\nFROM `users` `u`;")]
+    [TestCase(ORA,  "SELECT \"u\".\"name\"\nFROM \"users\" \"u\"")]
     public void Qualified_Columns_Quote_Each_Part( SqlDialectKind dialect, string expected ) => Assert.That(For(dialect).Select("u.name").From("users", "u").Build().Sql, Is.EqualTo(expected));
 
 
@@ -73,7 +73,7 @@ public sealed class DialectMatrixTests
 
         Assert.Multiple(() =>
                         {
-                            Assert.That(result.Sql,                 Does.Contain($"= {first} AND").And.EndWith($"= {second}" + Terminator(dialect)));
+                            Assert.That(result.Sql,                 Does.Contain($"= {first}\n    AND").And.EndWith($"= {second}" + Terminator(dialect)));
                             Assert.That(result.Parameters.Count,    Is.EqualTo(2));
                             Assert.That(result.Parameters[0].Name,  Is.EqualTo(first));
                             Assert.That(result.Parameters[1].Name,  Is.EqualTo(second));
@@ -93,7 +93,7 @@ public sealed class DialectMatrixTests
     public void Booleans( SqlDialectKind dialect, string yes, string no )
     {
         Assert.That(For(dialect).Select("*").From("t").Where("a").EqualTo(true).Or("b").EqualTo(false).Build().Sql,
-                    Does.EndWith($"= {yes} OR {Q(dialect, "b")} = {no}{Terminator(dialect)}"));
+                    Does.EndWith($"= {yes}\n    OR {Q(dialect, "b")} = {no}{Terminator(dialect)}"));
     }
 
     [TestCase(PG)] [TestCase(MS)] [TestCase(LITE)] [TestCase(MY)] [TestCase(ORA)] [TestCase(FB)]
@@ -102,28 +102,28 @@ public sealed class DialectMatrixTests
 
     // ---- paging ----
 
-    [TestCase(PG,   "ORDER BY id LIMIT 5;")]
-    [TestCase(MS,   "ORDER BY [id] OFFSET 0 ROWS FETCH NEXT 5 ROWS ONLY;")]
-    [TestCase(LITE, "ORDER BY \"id\" LIMIT 5;")]
-    [TestCase(MY,   "ORDER BY `id` LIMIT 5;")]
-    [TestCase(ORA,  "ORDER BY \"id\" FETCH NEXT 5 ROWS ONLY")]
-    [TestCase(FB,   "ORDER BY \"id\" FETCH NEXT 5 ROWS ONLY;")]
+    [TestCase(PG,   "ORDER BY id\nLIMIT 5;")]
+    [TestCase(MS,   "ORDER BY [id]\nOFFSET 0 ROWS\nFETCH NEXT 5 ROWS ONLY;")]
+    [TestCase(LITE, "ORDER BY \"id\"\nLIMIT 5;")]
+    [TestCase(MY,   "ORDER BY `id`\nLIMIT 5;")]
+    [TestCase(ORA,  "ORDER BY \"id\"\nFETCH NEXT 5 ROWS ONLY")]
+    [TestCase(FB,   "ORDER BY \"id\"\nFETCH NEXT 5 ROWS ONLY;")]
     public void Limit( SqlDialectKind dialect, string expectedTail ) => Assert.That(For(dialect).Select("*").From("t").OrderBy("id").Limit(5).Build().Sql, Does.EndWith(expectedTail));
 
-    [TestCase(PG,   "ORDER BY id OFFSET 2;")]
-    [TestCase(MS,   "ORDER BY [id] OFFSET 2 ROWS;")]
-    [TestCase(LITE, "ORDER BY \"id\" LIMIT -1 OFFSET 2;")]
-    [TestCase(MY,   "ORDER BY `id` LIMIT 18446744073709551615 OFFSET 2;")]
-    [TestCase(ORA,  "ORDER BY \"id\" OFFSET 2 ROWS")]
-    [TestCase(FB,   "ORDER BY \"id\" OFFSET 2 ROWS;")]
+    [TestCase(PG,   "ORDER BY id\nOFFSET 2;")]
+    [TestCase(MS,   "ORDER BY [id]\nOFFSET 2 ROWS;")]
+    [TestCase(LITE, "ORDER BY \"id\"\nLIMIT -1\nOFFSET 2;")]
+    [TestCase(MY,   "ORDER BY `id`\nLIMIT 18446744073709551615\nOFFSET 2;")]
+    [TestCase(ORA,  "ORDER BY \"id\"\nOFFSET 2 ROWS")]
+    [TestCase(FB,   "ORDER BY \"id\"\nOFFSET 2 ROWS;")]
     public void Offset_Alone( SqlDialectKind dialect, string expectedTail ) => Assert.That(For(dialect).Select("*").From("t").OrderBy("id").Offset(2).Build().Sql, Does.EndWith(expectedTail));
 
-    [TestCase(PG,   "LIMIT 5 OFFSET 2;")]
-    [TestCase(MS,   "OFFSET 2 ROWS FETCH NEXT 5 ROWS ONLY;")]
-    [TestCase(LITE, "LIMIT 5 OFFSET 2;")]
-    [TestCase(MY,   "LIMIT 5 OFFSET 2;")]
-    [TestCase(ORA,  "OFFSET 2 ROWS FETCH NEXT 5 ROWS ONLY")]
-    [TestCase(FB,   "OFFSET 2 ROWS FETCH NEXT 5 ROWS ONLY;")]
+    [TestCase(PG,   "LIMIT 5\nOFFSET 2;")]
+    [TestCase(MS,   "OFFSET 2 ROWS\nFETCH NEXT 5 ROWS ONLY;")]
+    [TestCase(LITE, "LIMIT 5\nOFFSET 2;")]
+    [TestCase(MY,   "LIMIT 5\nOFFSET 2;")]
+    [TestCase(ORA,  "OFFSET 2 ROWS\nFETCH NEXT 5 ROWS ONLY")]
+    [TestCase(FB,   "OFFSET 2 ROWS\nFETCH NEXT 5 ROWS ONLY;")]
     public void Limit_And_Offset_In_Either_Order( SqlDialectKind dialect, string expectedTail )
     {
         Assert.Multiple(() =>
@@ -133,12 +133,12 @@ public sealed class DialectMatrixTests
                         });
     }
 
-    [TestCase(PG,   "SELECT id FROM t LIMIT 3;")]
-    [TestCase(MS,   "SELECT TOP (3) [id] FROM [t];")]
-    [TestCase(LITE, "SELECT \"id\" FROM \"t\" LIMIT 3;")]
-    [TestCase(MY,   "SELECT `id` FROM `t` LIMIT 3;")]
-    [TestCase(ORA,  "SELECT \"id\" FROM \"t\" FETCH NEXT 3 ROWS ONLY")]
-    [TestCase(FB,   "SELECT \"id\" FROM \"t\" FETCH NEXT 3 ROWS ONLY;")]
+    [TestCase(PG,   "SELECT id\nFROM t\nLIMIT 3;")]
+    [TestCase(MS,   "SELECT TOP (3) [id]\nFROM [t];")]
+    [TestCase(LITE, "SELECT \"id\"\nFROM \"t\"\nLIMIT 3;")]
+    [TestCase(MY,   "SELECT `id`\nFROM `t`\nLIMIT 3;")]
+    [TestCase(ORA,  "SELECT \"id\"\nFROM \"t\"\nFETCH NEXT 3 ROWS ONLY")]
+    [TestCase(FB,   "SELECT \"id\"\nFROM \"t\"\nFETCH NEXT 3 ROWS ONLY;")]
     public void Top( SqlDialectKind dialect, string expected ) => Assert.That(For(dialect).Select().Top(3).Column("id").From("t").Build().Sql, Is.EqualTo(expected));
 
     [Test] public void SqlServer_Paging_Needs_OrderBy()
@@ -165,8 +165,8 @@ public sealed class DialectMatrixTests
     [TestCase(MS,   "SELECT 1;")]
     [TestCase(LITE, "SELECT 1;")]
     [TestCase(MY,   "SELECT 1;")]
-    [TestCase(ORA,  "SELECT 1 FROM DUAL")]
-    [TestCase(FB,   "SELECT 1 FROM RDB$DATABASE;")]
+    [TestCase(ORA,  "SELECT 1\nFROM DUAL")]
+    [TestCase(FB,   "SELECT 1\nFROM RDB$DATABASE;")]
     public void Sourceless_Select( SqlDialectKind dialect, string expected ) => Assert.That(For(dialect).Select().Column("1").Build().Sql.Replace("\"1\"", "1").Replace("[1]", "1").Replace("`1`", "1"), Is.EqualTo(expected));
 
     [TestCase(PG)] [TestCase(MS)] [TestCase(LITE)] [TestCase(MY)] [TestCase(ORA)] [TestCase(FB)]
@@ -190,9 +190,9 @@ public sealed class DialectMatrixTests
 
     // ---- RETURNING / OUTPUT ----
 
-    [TestCase(PG,   "INSERT INTO t (a) VALUES ($1) RETURNING id;")]
-    [TestCase(LITE, "INSERT INTO \"t\" (\"a\") VALUES (@p0) RETURNING \"id\";")]
-    [TestCase(FB,   "INSERT INTO \"t\" (\"a\") VALUES (@p0) RETURNING \"id\";")]
+    [TestCase(PG,   "INSERT INTO t (a)\nVALUES ($1)\nRETURNING id;")]
+    [TestCase(LITE, "INSERT INTO \"t\" (\"a\")\nVALUES (@p0)\nRETURNING \"id\";")]
+    [TestCase(FB,   "INSERT INTO \"t\" (\"a\")\nVALUES (@p0)\nRETURNING \"id\";")]
     public void Insert_Returning( SqlDialectKind dialect, string expected ) => Assert.That(For(dialect).Insert().Into("t", "a").ValuesParams(1).Returning("id").Build().Sql, Is.EqualTo(expected));
 
     [TestCase(MS)] [TestCase(MY)] [TestCase(ORA)]
@@ -211,15 +211,15 @@ public sealed class DialectMatrixTests
         Assert.Multiple(() =>
                         {
                             Assert.That(SqlBuilder.SqlServer.Insert().Into("t", "a").ValuesParams(1).Values(SqlValue.Param(2)).Output("id").Build().Sql,
-                                        Is.EqualTo("INSERT INTO [t] ([a]) OUTPUT INSERTED.[id] VALUES (@p0), (@p1);"));
+                                        Is.EqualTo("INSERT INTO [t] ([a])\nOUTPUT INSERTED.[id]\nVALUES\n    (@p0),\n    (@p1);"));
                             Assert.That(SqlBuilder.SqlServer.Update("t").Set("a", 1).Where("id").EqualTo(2).Output("id", "a").Build().Sql,
-                                        Is.EqualTo("UPDATE [t] SET [a] = 1 OUTPUT INSERTED.[id], INSERTED.[a] WHERE [id] = 2;"));
+                                        Is.EqualTo("UPDATE [t]\nSET [a] = 1\nOUTPUT\n    INSERTED.[id],\n    INSERTED.[a]\nWHERE [id] = 2;"));
                             Assert.That(SqlBuilder.SqlServer.Update("t").Set("a", 1).Output("id").Build().Sql,
-                                        Is.EqualTo("UPDATE [t] SET [a] = 1 OUTPUT INSERTED.[id];"));
+                                        Is.EqualTo("UPDATE [t]\nSET [a] = 1\nOUTPUT INSERTED.[id];"));
                             Assert.That(SqlBuilder.SqlServer.DeleteFrom("t").Where("id").EqualTo(2).And("a").IsNull().Output("id").Build().Sql,
-                                        Is.EqualTo("DELETE FROM [t] OUTPUT DELETED.[id] WHERE [id] = 2 AND [a] IS NULL;"));
+                                        Is.EqualTo("DELETE FROM [t]\nOUTPUT DELETED.[id]\nWHERE [id] = 2\n    AND [a] IS NULL;"));
                             Assert.That(SqlBuilder.SqlServer.DeleteFrom("t").Output("id").Build().Sql,
-                                        Is.EqualTo("DELETE FROM [t] OUTPUT DELETED.[id];"));
+                                        Is.EqualTo("DELETE FROM [t]\nOUTPUT DELETED.[id];"));
                         });
     }
 

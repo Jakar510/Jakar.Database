@@ -86,6 +86,39 @@ internal static class SqlOps
 
         writer.CloseParen();
     }
+    /// <summary> <c>IN (...)</c> of typed values: numbers, ids and dates inline, anything else bound (<see cref="SqlLiterals.WriteValue{T}"/>). </summary>
+    public static void In<T>( scoped ref SqlWriter writer, scoped ReadOnlySpan<T> values )
+        where T : ISpanFormattable
+    {
+        RequireValues(in writer, values.Length);
+        writer.Word("IN ");
+        writer.OpenCall();
+        for ( int i = 0; i < values.Length; i++ )
+        {
+            if ( i > 0 ) { writer.Comma(); }
+
+            SqlLiterals.WriteValue(ref writer, values[i]);
+        }
+
+        writer.CloseParen();
+    }
+
+    /// <summary> <c>IN (...)</c> of strings, each bound as a parameter: text is never written into the statement. </summary>
+    public static void In( scoped ref SqlWriter writer, scoped ReadOnlySpan<string?> values )
+    {
+        RequireValues(in writer, values.Length);
+        writer.Word("IN ");
+        writer.OpenCall();
+        for ( int i = 0; i < values.Length; i++ )
+        {
+            if ( i > 0 ) { writer.Comma(); }
+
+            writer.Parameter(values[i]);
+        }
+
+        writer.CloseParen();
+    }
+
     public static void InParams( scoped ref SqlWriter writer, scoped ReadOnlySpan<object?> values )
     {
         RequireValues(in writer, values.Length);

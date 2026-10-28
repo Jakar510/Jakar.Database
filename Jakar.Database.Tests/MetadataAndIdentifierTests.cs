@@ -114,7 +114,7 @@ public sealed class MetadataAndIdentifierTests
         Assert.Multiple(() =>
                         {
                             Assert.That(postgresCreate,  Is.EqualTo($"CREATE INDEX IF NOT EXISTS {column.IndexName} ON {AddressRecord.TableName} ({column.ColumnName});"));
-                            Assert.That(sqlServerCreate, Is.EqualTo($"IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = '{column.IndexName}' AND object_id = OBJECT_ID('{AddressRecord.TableName}')) CREATE INDEX [{column.IndexName}] ON [{AddressRecord.TableName}] ([{column.ColumnName}]);"));
+                            Assert.That(sqlServerCreate, Is.EqualTo($"IF NOT EXISTS (\n    SELECT 1\n    FROM sys.indexes\n    WHERE name = '{column.IndexName}'\n        AND object_id = OBJECT_ID('{AddressRecord.TableName}')\n)\nCREATE INDEX [{column.IndexName}] ON [{AddressRecord.TableName}] ([{column.ColumnName}]);"));
                             Assert.That(postgresDrop,    Is.EqualTo($"DROP INDEX IF EXISTS {column.IndexName};"));
                             Assert.That(sqlServerDrop,   Is.EqualTo($"DROP INDEX IF EXISTS [{column.IndexName}] ON [{AddressRecord.TableName}];"));
                             // MySQL and Firebird have no IF [NOT] EXISTS for indexes; MySQL drops an index ON its table.

@@ -75,27 +75,29 @@ public sealed class TableRecordOverloadTests
     }
 
     /// <summary> Drives the core read overloads (typed projection, full projection, typed WHERE param) for one record across both dialects. </summary>
-    private static void AssertReadOverloads<T>( string propertyName )
+    /// <param name="value"> A value of the column's type (StrictTypes checks it): text for most, a <see cref="Guid"/> for a record-id column. </param>
+    private static void AssertReadOverloads<T>( string propertyName, object? value = null )
         where T : ISqlTable<T>
     {
+        value ??= "x";
         Assert.Multiple(() =>
                         {
                             // single typed projection
-                            Assert.That(SqlBuilder.PostgreSQL.Select<T>(propertyName).From<T>().Build().Sql, Is.EqualTo($"SELECT {Col<T>(propertyName, PG)} FROM {Tbl<T>(PG)};"));
-                            Assert.That(SqlBuilder.SqlServer.Select<T>(propertyName).From<T>().Build().Sql,  Is.EqualTo($"SELECT {Col<T>(propertyName, MS)} FROM {Tbl<T>(MS)};"));
+                            Assert.That(SqlBuilder.PostgreSQL.Select<T>(propertyName).From<T>().Build().Sql, Is.EqualTo($"SELECT {Col<T>(propertyName, PG)}\nFROM {Tbl<T>(PG)};"));
+                            Assert.That(SqlBuilder.SqlServer.Select<T>(propertyName).From<T>().Build().Sql,  Is.EqualTo($"SELECT {Col<T>(propertyName, MS)}\nFROM {Tbl<T>(MS)};"));
 
                             // every mapped column is selectable and emitted in metadata order
                             Assert.That(SelectAllSql<T>(PG), Is.EqualTo(ExpectedSelectAll<T>(PG)));
                             Assert.That(SelectAllSql<T>(MS), Is.EqualTo(ExpectedSelectAll<T>(MS)));
 
                             // typed WHERE with a bound parameter
-                            SqlResult pg = SqlBuilder.PostgreSQL.Select("*").From<T>().Where<T>(propertyName).EqualTo((object?)"x").Build();
-                            Assert.That(pg.Sql,                 Is.EqualTo($"SELECT * FROM {Tbl<T>(PG)} WHERE {Col<T>(propertyName, PG)} = $1;"));
+                            SqlResult pg = SqlBuilder.PostgreSQL.Select("*").From<T>().Where<T>(propertyName).EqualTo(value).Build();
+                            Assert.That(pg.Sql,                 Is.EqualTo($"SELECT *\nFROM {Tbl<T>(PG)}\nWHERE {Col<T>(propertyName, PG)} = $1;"));
                             Assert.That(pg.Parameters.Count,    Is.EqualTo(1));
-                            Assert.That(pg.Parameters[0].Value, Is.EqualTo("x"));
+                            Assert.That(pg.Parameters[0].Value, Is.EqualTo(value));
 
-                            SqlResult ms = SqlBuilder.SqlServer.Select("*").From<T>().Where<T>(propertyName).EqualTo((object?)"x").Build();
-                            Assert.That(ms.Sql,              Is.EqualTo($"SELECT * FROM {Tbl<T>(MS)} WHERE {Col<T>(propertyName, MS)} = @p0;"));
+                            SqlResult ms = SqlBuilder.SqlServer.Select("*").From<T>().Where<T>(propertyName).EqualTo(value).Build();
+                            Assert.That(ms.Sql,              Is.EqualTo($"SELECT *\nFROM {Tbl<T>(MS)}\nWHERE {Col<T>(propertyName, MS)} = @p0;"));
                             Assert.That(ms.Parameters.Count, Is.EqualTo(1));
                         });
     }
@@ -114,16 +116,18 @@ public sealed class TableRecordOverloadTests
         where T : ISqlTable<T>
     {
         IReadOnlyList<ISqlColumn>           columns = T.SqlColumns;
-        Extensions.ValueStringBuilder builder = new("SELECT ");
+        Extensions.ValueStringBuilder builder = new("SELECT");
 
+        // Readable layout: one column per line when there's more than one.
         for ( int i = 0; i < columns.Count; i++ )
         {
-            if ( i > 0 ) { builder.Append(", "); }
+            if ( i > 0 ) { builder.Append(','); }
 
+            builder.Append(columns.Count > 1 ? "\n    " : " ");
             builder.Append(Ident(columns[i].GetColumnName(dialect), dialect));
         }
 
-        builder.Append(" FROM ");
+        builder.Append("\nFROM ");
         builder.Append(Tbl<T>(dialect));
         builder.Append(';');
         return builder.ToString();
@@ -175,8 +179,8 @@ public sealed class TableRecordOverloadTests
     [Test] public void FileRecord_read_overloads()         => AssertReadOverloads<FileRecord>(nameof(FileRecord.FileName));
     [Test] public void AddressRecord_read_overloads()      => AssertReadOverloads<AddressRecord>(nameof(AddressRecord.Line1));
     [Test] public void RecoveryCodeRecord_read_overloads() => AssertReadOverloads<RecoveryCodeRecord>(nameof(RecoveryCodeRecord.Code));
-    [Test] public void UserGroupRecord_read_overloads()    => AssertReadOverloads<UserGroupRecord>(nameof(UserGroupRecord.KeyID));
-    [Test] public void UserRoleRecord_read_overloads()     => AssertReadOverloads<UserRoleRecord>(nameof(UserRoleRecord.ValueID));
+    [Test] public void UserGroupRecord_read_overloads()    => AssertReadOverloads<UserGroupRecord>(nameof(UserGroupRecord.KeyID), Guid.NewGuid());
+    [Test] public void UserRoleRecord_read_overloads()     => AssertReadOverloads<UserRoleRecord>(nameof(UserRoleRecord.ValueID), Guid.NewGuid());
 
 #endregion
 
@@ -190,7 +194,7 @@ public sealed class TableRecordOverloadTests
 
         Assert.Multiple(() =>
                         {
-                            Assert.That(result.Sql,                 Is.EqualTo($"INSERT INTO {Tbl<UserRecord>(PG)} ({Col<UserRecord>(nameof(UserRecord.UserName), PG)}, {Col<UserRecord>(nameof(UserRecord.Email), PG)}) VALUES ($1, $2) RETURNING id;"));
+                            Assert.That(result.Sql,                 Is.EqualTo($"INSERT INTO {Tbl<UserRecord>(PG)} (\n    {Col<UserRecord>(nameof(UserRecord.UserName), PG)},\n    {Col<UserRecord>(nameof(UserRecord.Email), PG)}\n)\nVALUES (\n    $1,\n    $2\n)\nRETURNING id;"));
                             Assert.That(result.Parameters.Count,    Is.EqualTo(2));
                             Assert.That(result.Parameters[0].Value, Is.EqualTo("ada"));
                             Assert.That(result.Parameters[1].Value, Is.EqualTo("ada@x.io"));
@@ -201,7 +205,7 @@ public sealed class TableRecordOverloadTests
     {
         SqlResult result = SqlBuilder.SqlServer.Insert().Into<UserRecord>(nameof(UserRecord.UserName)).ValuesParams("ada").Output("id").Build();
 
-        Assert.That(result.Sql, Is.EqualTo($"INSERT INTO {Tbl<UserRecord>(MS)} ({Col<UserRecord>(nameof(UserRecord.UserName), MS)}) OUTPUT INSERTED.[id] VALUES (@p0);"));
+        Assert.That(result.Sql, Is.EqualTo($"INSERT INTO {Tbl<UserRecord>(MS)} ({Col<UserRecord>(nameof(UserRecord.UserName), MS)})\nOUTPUT INSERTED.[id]\nVALUES (@p0);"));
     }
 
     [Test] public void Mapping_Insert_uses_both_key_and_value_columns()
@@ -210,7 +214,7 @@ public sealed class TableRecordOverloadTests
 
         Assert.Multiple(() =>
                         {
-                            Assert.That(result.Sql,              Is.EqualTo($"INSERT INTO {Tbl<UserGroupRecord>(PG)} ({Col<UserGroupRecord>(nameof(UserGroupRecord.KeyID), PG)}, {Col<UserGroupRecord>(nameof(UserGroupRecord.ValueID), PG)}) VALUES ($1, $2);"));
+                            Assert.That(result.Sql,              Is.EqualTo($"INSERT INTO {Tbl<UserGroupRecord>(PG)} (\n    {Col<UserGroupRecord>(nameof(UserGroupRecord.KeyID), PG)},\n    {Col<UserGroupRecord>(nameof(UserGroupRecord.ValueID), PG)}\n)\nVALUES (\n    $1,\n    $2\n);"));
                             Assert.That(result.Parameters.Count, Is.EqualTo(2));
                         });
     }
@@ -222,7 +226,7 @@ public sealed class TableRecordOverloadTests
 
         Assert.Multiple(() =>
                         {
-                            Assert.That(result.Sql,                 Is.EqualTo($"UPDATE {Tbl<UserRecord>(PG)} SET {Col<UserRecord>(nameof(UserRecord.Email), PG)} = $1 WHERE {Col<UserRecord>(nameof(UserRecord.ID), PG)} = $2;"));
+                            Assert.That(result.Sql,                 Is.EqualTo($"UPDATE {Tbl<UserRecord>(PG)}\nSET {Col<UserRecord>(nameof(UserRecord.Email), PG)} = $1\nWHERE {Col<UserRecord>(nameof(UserRecord.ID), PG)} = $2;"));
                             Assert.That(result.Parameters.Count,    Is.EqualTo(2));
                             Assert.That(result.Parameters[0].Value, Is.EqualTo("ada@x.io"));
                             Assert.That(result.Parameters[1].Value, Is.EqualTo(id));
@@ -239,7 +243,7 @@ public sealed class TableRecordOverloadTests
 
         Assert.Multiple(() =>
                         {
-                            Assert.That(result.Sql,                 Is.EqualTo($"UPDATE {Tbl<RoleRecord>(MS)} SET {Col<RoleRecord>(nameof(RoleRecord.NameOfRole), MS)} = @p0, {Ident(normalizedColumn, MS)} = @p1;"));
+                            Assert.That(result.Sql,                 Is.EqualTo($"UPDATE {Tbl<RoleRecord>(MS)}\nSET\n    {Col<RoleRecord>(nameof(RoleRecord.NameOfRole), MS)} = @p0,\n    {Ident(normalizedColumn, MS)} = @p1;"));
                             Assert.That(result.Parameters.Count,    Is.EqualTo(2));
                             Assert.That(result.Parameters[0].Value, Is.EqualTo("admin"));
                             Assert.That(result.Parameters[1].Value, Is.EqualTo("ADMIN"));
@@ -250,8 +254,8 @@ public sealed class TableRecordOverloadTests
     {
         Assert.Multiple(() =>
                         {
-                            Assert.That(SqlBuilder.PostgreSQL.Delete<UserRecord>().Where<UserRecord>(nameof(UserRecord.IsActive)).EqualTo(false).Build().Sql, Is.EqualTo($"DELETE FROM {Tbl<UserRecord>(PG)} WHERE {Col<UserRecord>(nameof(UserRecord.IsActive), PG)} = FALSE;"));
-                            Assert.That(SqlBuilder.SqlServer.Delete<UserRecord>().Where<UserRecord>(nameof(UserRecord.IsActive)).EqualTo(true).Build().Sql,   Is.EqualTo($"DELETE FROM {Tbl<UserRecord>(MS)} WHERE {Col<UserRecord>(nameof(UserRecord.IsActive), MS)} = 1;"));
+                            Assert.That(SqlBuilder.PostgreSQL.Delete<UserRecord>().Where<UserRecord>(nameof(UserRecord.IsActive)).EqualTo(false).Build().Sql, Is.EqualTo($"DELETE FROM {Tbl<UserRecord>(PG)}\nWHERE {Col<UserRecord>(nameof(UserRecord.IsActive), PG)} = FALSE;"));
+                            Assert.That(SqlBuilder.SqlServer.Delete<UserRecord>().Where<UserRecord>(nameof(UserRecord.IsActive)).EqualTo(true).Build().Sql,   Is.EqualTo($"DELETE FROM {Tbl<UserRecord>(MS)}\nWHERE {Col<UserRecord>(nameof(UserRecord.IsActive), MS)} = 1;"));
                         });
     }
 
@@ -267,7 +271,7 @@ public sealed class TableRecordOverloadTests
 
         Assert.Multiple(() =>
                         {
-                            Assert.That(result.Sql,                 Is.EqualTo($"SELECT * FROM {Tbl<UserRecord>(PG)} WHERE {Col<UserRecord>(nameof(UserRecord.UserName), PG)} = $1 AND {Col<UserRecord>(nameof(UserRecord.Email), PG)} = $2;"));
+                            Assert.That(result.Sql,                 Is.EqualTo($"SELECT *\nFROM {Tbl<UserRecord>(PG)}\nWHERE {Col<UserRecord>(nameof(UserRecord.UserName), PG)} = $1\n    AND {Col<UserRecord>(nameof(UserRecord.Email), PG)} = $2;"));
                             Assert.That(result.Parameters.Count,    Is.EqualTo(2));
                             Assert.That(result.Parameters[0].Value, Is.EqualTo("ada"));
                             Assert.That(result.Parameters[1].Value, Is.EqualTo("ada@x.io"));
@@ -278,17 +282,17 @@ public sealed class TableRecordOverloadTests
     {
         Assert.Multiple(() =>
                         {
-                            Assert.That(SqlBuilder.PostgreSQL.Select("*").From<UserRecord>().Where<UserRecord>(nameof(UserRecord.BadLogins)).GreaterThan(3).Build().Sql, Is.EqualTo($"SELECT * FROM {Tbl<UserRecord>(PG)} WHERE {Col<UserRecord>(nameof(UserRecord.BadLogins), PG)} > 3;"));
-                            Assert.That(SqlBuilder.PostgreSQL.Select("*").From<UserRecord>().Where<UserRecord>(nameof(UserRecord.BadLogins)).NotEqualTo(0).Build().Sql,  Is.EqualTo($"SELECT * FROM {Tbl<UserRecord>(PG)} WHERE {Col<UserRecord>(nameof(UserRecord.BadLogins), PG)} <> 0;"));
-                            Assert.That(SqlBuilder.PostgreSQL.Select("*").From<UserRecord>().Where<UserRecord>(nameof(UserRecord.BadLogins)).Between(1, 5).Build().Sql,  Is.EqualTo($"SELECT * FROM {Tbl<UserRecord>(PG)} WHERE {Col<UserRecord>(nameof(UserRecord.BadLogins), PG)} BETWEEN 1 AND 5;"));
-                            Assert.That(SqlBuilder.PostgreSQL.Select("*").From<UserRecord>().Where<UserRecord>(nameof(UserRecord.BadLogins)).In(1, 2, 3).Build().Sql,    Is.EqualTo($"SELECT * FROM {Tbl<UserRecord>(PG)} WHERE {Col<UserRecord>(nameof(UserRecord.BadLogins), PG)} IN (1, 2, 3);"));
-                            Assert.That(SqlBuilder.PostgreSQL.Select("*").From<UserRecord>().Where<UserRecord>(nameof(UserRecord.Email)).IsNull().Build().Sql,           Is.EqualTo($"SELECT * FROM {Tbl<UserRecord>(PG)} WHERE {Col<UserRecord>(nameof(UserRecord.Email),     PG)} IS NULL;"));
-                            Assert.That(SqlBuilder.PostgreSQL.Select("*").From<UserRecord>().Where<UserRecord>(nameof(UserRecord.Email)).IsNotNull().Build().Sql,        Is.EqualTo($"SELECT * FROM {Tbl<UserRecord>(PG)} WHERE {Col<UserRecord>(nameof(UserRecord.Email),     PG)} IS NOT NULL;"));
-                            Assert.That(SqlBuilder.PostgreSQL.Select("*").From<UserRecord>().Where<UserRecord>(nameof(UserRecord.UserName)).Like("a%").Build().Sql,      Is.EqualTo($"SELECT * FROM {Tbl<UserRecord>(PG)} WHERE {Col<UserRecord>(nameof(UserRecord.UserName),  PG)} LIKE 'a%';"));
+                            Assert.That(SqlBuilder.PostgreSQL.Select("*").From<UserRecord>().Where<UserRecord>(nameof(UserRecord.BadLogins)).GreaterThan(3).Build().Sql, Is.EqualTo($"SELECT *\nFROM {Tbl<UserRecord>(PG)}\nWHERE {Col<UserRecord>(nameof(UserRecord.BadLogins), PG)} > 3;"));
+                            Assert.That(SqlBuilder.PostgreSQL.Select("*").From<UserRecord>().Where<UserRecord>(nameof(UserRecord.BadLogins)).NotEqualTo(0).Build().Sql,  Is.EqualTo($"SELECT *\nFROM {Tbl<UserRecord>(PG)}\nWHERE {Col<UserRecord>(nameof(UserRecord.BadLogins), PG)} <> 0;"));
+                            Assert.That(SqlBuilder.PostgreSQL.Select("*").From<UserRecord>().Where<UserRecord>(nameof(UserRecord.BadLogins)).Between(1, 5).Build().Sql,  Is.EqualTo($"SELECT *\nFROM {Tbl<UserRecord>(PG)}\nWHERE {Col<UserRecord>(nameof(UserRecord.BadLogins), PG)} BETWEEN 1 AND 5;"));
+                            Assert.That(SqlBuilder.PostgreSQL.Select("*").From<UserRecord>().Where<UserRecord>(nameof(UserRecord.BadLogins)).In(1, 2, 3).Build().Sql,    Is.EqualTo($"SELECT *\nFROM {Tbl<UserRecord>(PG)}\nWHERE {Col<UserRecord>(nameof(UserRecord.BadLogins), PG)} IN (1, 2, 3);"));
+                            Assert.That(SqlBuilder.PostgreSQL.Select("*").From<UserRecord>().Where<UserRecord>(nameof(UserRecord.Email)).IsNull().Build().Sql,           Is.EqualTo($"SELECT *\nFROM {Tbl<UserRecord>(PG)}\nWHERE {Col<UserRecord>(nameof(UserRecord.Email),     PG)} IS NULL;"));
+                            Assert.That(SqlBuilder.PostgreSQL.Select("*").From<UserRecord>().Where<UserRecord>(nameof(UserRecord.Email)).IsNotNull().Build().Sql,        Is.EqualTo($"SELECT *\nFROM {Tbl<UserRecord>(PG)}\nWHERE {Col<UserRecord>(nameof(UserRecord.Email),     PG)} IS NOT NULL;"));
+                            Assert.That(SqlBuilder.PostgreSQL.Select("*").From<UserRecord>().Where<UserRecord>(nameof(UserRecord.UserName)).Like("a%").Build().Sql,      Is.EqualTo($"SELECT *\nFROM {Tbl<UserRecord>(PG)}\nWHERE {Col<UserRecord>(nameof(UserRecord.UserName),  PG)} LIKE 'a%';"));
                         });
     }
 
-    [Test] public void Like_inline_string_escapes_embedded_single_quotes() => Assert.That(SqlBuilder.PostgreSQL.Select("*").From<UserRecord>().Where<UserRecord>(nameof(UserRecord.UserName)).Like("O'Brien%").Build().Sql, Is.EqualTo($"SELECT * FROM {Tbl<UserRecord>(PG)} WHERE {Col<UserRecord>(nameof(UserRecord.UserName), PG)} LIKE 'O''Brien%';"));
+    [Test] public void Like_inline_string_escapes_embedded_single_quotes() => Assert.That(SqlBuilder.PostgreSQL.Select("*").From<UserRecord>().Where<UserRecord>(nameof(UserRecord.UserName)).Like("O'Brien%").Build().Sql, Is.EqualTo($"SELECT *\nFROM {Tbl<UserRecord>(PG)}\nWHERE {Col<UserRecord>(nameof(UserRecord.UserName), PG)} LIKE 'O''Brien%';"));
 
 #endregion
 
@@ -296,20 +300,20 @@ public sealed class TableRecordOverloadTests
 
 #region GROUP BY / ORDER BY / aggregates / DISTINCT
 
-    [Test] public void SelectDistinct_typed_from() => Assert.That(SqlBuilder.PostgreSQL.SelectDistinct("*").From<UserRecord>().Build().Sql, Is.EqualTo($"SELECT DISTINCT * FROM {Tbl<UserRecord>(PG)};"));
+    [Test] public void SelectDistinct_typed_from() => Assert.That(SqlBuilder.PostgreSQL.SelectDistinct("*").From<UserRecord>().Build().Sql, Is.EqualTo($"SELECT DISTINCT *\nFROM {Tbl<UserRecord>(PG)};"));
 
     [Test] public void Typed_aggregate_groupby_orderby_sqlserver()
     {
         string sql = SqlBuilder.SqlServer.Select<UserRecord>(nameof(UserRecord.IsActive)).Count<UserRecord>(nameof(UserRecord.ID), "cnt").From<UserRecord>("u").GroupBy<UserRecord>(nameof(UserRecord.IsActive)).OrderByDesc<UserRecord>(nameof(UserRecord.IsActive)).Build().Sql;
 
-        Assert.That(sql, Is.EqualTo($"SELECT [u].{Col<UserRecord>(nameof(UserRecord.IsActive), MS)}, COUNT([u].{Col<UserRecord>(nameof(UserRecord.ID), MS)}) AS [cnt] FROM {Tbl<UserRecord>(MS)} [u] GROUP BY [u].{Col<UserRecord>(nameof(UserRecord.IsActive), MS)} ORDER BY [u].{Col<UserRecord>(nameof(UserRecord.IsActive), MS)} DESC;"));
+        Assert.That(sql, Is.EqualTo($"SELECT\n    [u].{Col<UserRecord>(nameof(UserRecord.IsActive), MS)},\n    COUNT([u].{Col<UserRecord>(nameof(UserRecord.ID), MS)}) AS [cnt]\nFROM {Tbl<UserRecord>(MS)} [u]\nGROUP BY [u].{Col<UserRecord>(nameof(UserRecord.IsActive), MS)}\nORDER BY [u].{Col<UserRecord>(nameof(UserRecord.IsActive), MS)} DESC;"));
     }
 
     [Test] public void Typed_groupby_having_count_postgres()
     {
         string sql = SqlBuilder.PostgreSQL.Select<RoleRecord>(nameof(RoleRecord.NameOfRole)).From<RoleRecord>().GroupBy<RoleRecord>(nameof(RoleRecord.NameOfRole)).Having().Count<RoleRecord>(nameof(RoleRecord.ID)).GreaterThan(1).Build().Sql;
 
-        Assert.That(sql, Is.EqualTo($"SELECT {Col<RoleRecord>(nameof(RoleRecord.NameOfRole), PG)} FROM {Tbl<RoleRecord>(PG)} GROUP BY {Col<RoleRecord>(nameof(RoleRecord.NameOfRole), PG)} HAVING COUNT({Col<RoleRecord>(nameof(RoleRecord.ID), PG)}) > 1;"));
+        Assert.That(sql, Is.EqualTo($"SELECT {Col<RoleRecord>(nameof(RoleRecord.NameOfRole), PG)}\nFROM {Tbl<RoleRecord>(PG)}\nGROUP BY {Col<RoleRecord>(nameof(RoleRecord.NameOfRole), PG)}\nHAVING COUNT({Col<RoleRecord>(nameof(RoleRecord.ID), PG)}) > 1;"));
     }
 
 #endregion
@@ -322,14 +326,14 @@ public sealed class TableRecordOverloadTests
     {
         string sql = SqlBuilder.PostgreSQL.Select("*").From<UserRoleRecord>("ur").InnerJoin<UserRecord>("u").On<UserRoleRecord>(nameof(UserRoleRecord.KeyID)).EqualToColumn<UserRecord>(nameof(UserRecord.ID)).InnerJoin<RoleRecord>("r").On<UserRoleRecord>(nameof(UserRoleRecord.ValueID)).EqualToColumn<RoleRecord>(nameof(RoleRecord.ID)).Build().Sql;
 
-        Assert.That(sql, Is.EqualTo($"SELECT * FROM {Tbl<UserRoleRecord>(PG)} ur INNER JOIN {Tbl<UserRecord>(PG)} u ON ur.{Col<UserRoleRecord>(nameof(UserRoleRecord.KeyID), PG)} = u.{Col<UserRecord>(nameof(UserRecord.ID), PG)} INNER JOIN {Tbl<RoleRecord>(PG)} r ON ur.{Col<UserRoleRecord>(nameof(UserRoleRecord.ValueID), PG)} = r.{Col<RoleRecord>(nameof(RoleRecord.ID), PG)};"));
+        Assert.That(sql, Is.EqualTo($"SELECT *\nFROM {Tbl<UserRoleRecord>(PG)} ur\nINNER JOIN {Tbl<UserRecord>(PG)} u ON ur.{Col<UserRoleRecord>(nameof(UserRoleRecord.KeyID), PG)} = u.{Col<UserRecord>(nameof(UserRecord.ID), PG)}\nINNER JOIN {Tbl<RoleRecord>(PG)} r ON ur.{Col<UserRoleRecord>(nameof(UserRoleRecord.ValueID), PG)} = r.{Col<RoleRecord>(nameof(RoleRecord.ID), PG)};"));
     }
 
     [Test] public void LeftJoin_owned_record_to_user_sqlserver()
     {
         string sql = SqlBuilder.SqlServer.Select("*").From<UserRecord>("u").LeftJoin<AddressRecord>("a").On<AddressRecord>(nameof(AddressRecord.UserID)).EqualToColumn<UserRecord>(nameof(UserRecord.ID)).Build().Sql;
 
-        Assert.That(sql, Is.EqualTo($"SELECT * FROM {Tbl<UserRecord>(MS)} [u] LEFT JOIN {Tbl<AddressRecord>(MS)} [a] ON [a].{Col<AddressRecord>(nameof(AddressRecord.UserID), MS)} = [u].{Col<UserRecord>(nameof(UserRecord.ID), MS)};"));
+        Assert.That(sql, Is.EqualTo($"SELECT *\nFROM {Tbl<UserRecord>(MS)} [u]\nLEFT JOIN {Tbl<AddressRecord>(MS)} [a] ON [a].{Col<AddressRecord>(nameof(AddressRecord.UserID), MS)} = [u].{Col<UserRecord>(nameof(UserRecord.ID), MS)};"));
     }
 
 #endregion
@@ -440,7 +444,7 @@ public sealed class TableRecordOverloadTests
     {
         SqlResult result = SqlBuilder.PostgreSQL.Delete<RecoveryCodeRecord>().Where<RecoveryCodeRecord>(nameof(RecoveryCodeRecord.UserID)).EqualTo((object?)Guid.NewGuid()).Returning("id").Build();
 
-        Assert.That(result.Sql, Is.EqualTo($"DELETE FROM {Tbl<RecoveryCodeRecord>(PG)} WHERE {Col<RecoveryCodeRecord>(nameof(RecoveryCodeRecord.UserID), PG)} = $1 RETURNING id;"));
+        Assert.That(result.Sql, Is.EqualTo($"DELETE FROM {Tbl<RecoveryCodeRecord>(PG)}\nWHERE {Col<RecoveryCodeRecord>(nameof(RecoveryCodeRecord.UserID), PG)} = $1\nRETURNING id;"));
     }
 
 #endregion

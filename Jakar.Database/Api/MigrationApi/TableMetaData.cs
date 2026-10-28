@@ -248,7 +248,7 @@ public class TableMetaData<TSelf> : ITableMetaData
 
 
     [Pure] public SqlCommand CreateTableSql() => SqlCommand.Create<TSelf>(CreateTableSql(Validate.ThrowIfNull(Database.Current).DatabaseType));
-    /// <summary> <c>CREATE TABLE</c> for <paramref name="type"/>, written by Jakar.SqlBuilder from this table's metadata (<c>SqlBuilder.CreateTable&lt;TSelf&gt;()</c>). </summary>
+    /// <summary> <c>CREATE TABLE</c> for <paramref name="type"/>, written by Jakar.SqlBuilder from this table's metadata (<c>SqlBuilder.CreateTable&lt;TSelf&gt;()</c>), one column per line (it's stored with the migration). </summary>
     [Pure] public string CreateTableSql( in DatabaseType type ) => Jakar.SqlBuilder.SqlBuilder.For(type.ToSqlDialectKind()).CreateTable<TSelf>().BuildSql();
 
     [Pure] public SqlCommand DropTableSql() => SqlCommand.Create<TSelf>(DropTableSql(Validate.ThrowIfNull(Database.Current).DatabaseType));

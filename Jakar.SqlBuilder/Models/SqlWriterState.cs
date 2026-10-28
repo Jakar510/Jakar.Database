@@ -49,6 +49,7 @@ internal sealed class SqlWriterState
     private int                __pendingCount;
     private ISqlColumn?        __comparedColumn;
     private bool               __namedParameters;
+    private SqlLayout          __layout;
     private char               __open;
     private char               __close;
 
@@ -96,6 +97,7 @@ internal sealed class SqlWriterState
         AppendTerminator = options.AppendStatementTerminator;
         StrictTypes      = options.StrictTypes;
         __namedParameters = options.NamedPostgresParameters;
+        __layout          = options.Layout;
         ( __open, __close ) = dialect.QuoteChars();
         __outputAt       = -1;
         __withAt         = -1;
@@ -762,6 +764,19 @@ internal sealed class SqlWriterState
         else { __comparedColumn = null; }
     }
 
+    /// <summary> <see cref="CheckCompared{T}"/> for every value of an <c>IN</c> list. </summary>
+    public void CheckComparedAll<T>( scoped ReadOnlySpan<T> values )
+    {
+        ISqlColumn? column = __comparedColumn;
+        __comparedColumn = null;
+        if ( !StrictTypes || column is null ) { return; }
+
+        foreach ( T value in values )
+        {
+            if ( !SqlTypeCheck.IsCompatible(column.ClrType, value) ) { throw Error(SqlBuildError.TypeMismatch, $"'{column.PropertyName}' is {column.ClrType.Name}; a {value?.GetType().Name ?? "null"} value can't be compared with it."); }
+        }
+    }
+
     public void ClearCompared() => __comparedColumn = null;
 
 
@@ -839,6 +854,16 @@ internal sealed class SqlWriterState
         Verify();
         // SQL Server requires MERGE to be terminated.
         if ( ( AppendTerminator || ( Has(ClauseFlags.Merge) && Dialect is SqlDialectKind.SqlServer ) ) && Dialect.SupportsStatementTerminator() ) { Append(';'); }
+
+        if ( __layout is SqlLayout.Readable ) { Relayout(); }
+    }
+
+    /// <summary> Rewrites the finished statement in <see cref="SqlLayout.Readable"/> form (whitespace only; see <see cref="SqlFormatter"/>). </summary>
+    private void Relayout()
+    {
+        ReadOnlySpan<char> formatted = SqlFormatter.Format(Text, Dialect); // the formatter's own scratch, so the buffer can be rewritten from it
+        __length = 0;
+        Append(formatted);
     }
 
     public SqlParameterSet BuildParameters() => __parameters.Build(Dialect, __namedParameters);

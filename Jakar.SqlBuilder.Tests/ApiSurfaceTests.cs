@@ -32,12 +32,12 @@ public sealed class ApiSurfaceTests
                             Assert.That(SqlBuilder.Oracle.Select("a").From("t").Build().Dialect,     Is.EqualTo(SqlDialectKind.Oracle));
                             Assert.That(SqlBuilder.Firebird.Select("a").From("t").Build().Dialect,   Is.EqualTo(SqlDialectKind.Firebird));
 
-                            Assert.That(SqlBuilder.PostgreSQLWith(options).Select("a").From("t").Build().Sql, Is.EqualTo("SELECT a FROM t"));
-                            Assert.That(SqlBuilder.SqlServerWith(options).Select("a").From("t").Build().Sql,  Is.EqualTo("SELECT [a] FROM [t]"));
-                            Assert.That(SqlBuilder.SqliteWith(options).Select("a").From("t").Build().Sql,     Is.EqualTo("SELECT \"a\" FROM \"t\""));
-                            Assert.That(SqlBuilder.MySqlWith(options).Select("a").From("t").Build().Sql,      Is.EqualTo("SELECT `a` FROM `t`"));
-                            Assert.That(SqlBuilder.OracleWith(options).Select("a").From("t").Build().Sql,     Is.EqualTo("SELECT \"a\" FROM \"t\""));
-                            Assert.That(SqlBuilder.FirebirdWith(options).Select("a").From("t").Build().Sql,   Is.EqualTo("SELECT \"a\" FROM \"t\""));
+                            Assert.That(SqlBuilder.PostgreSQLWith(options).Select("a").From("t").Build().Sql, Is.EqualTo("SELECT a\nFROM t"));
+                            Assert.That(SqlBuilder.SqlServerWith(options).Select("a").From("t").Build().Sql,  Is.EqualTo("SELECT [a]\nFROM [t]"));
+                            Assert.That(SqlBuilder.SqliteWith(options).Select("a").From("t").Build().Sql,     Is.EqualTo("SELECT \"a\"\nFROM \"t\""));
+                            Assert.That(SqlBuilder.MySqlWith(options).Select("a").From("t").Build().Sql,      Is.EqualTo("SELECT `a`\nFROM `t`"));
+                            Assert.That(SqlBuilder.OracleWith(options).Select("a").From("t").Build().Sql,     Is.EqualTo("SELECT \"a\"\nFROM \"t\""));
+                            Assert.That(SqlBuilder.FirebirdWith(options).Select("a").From("t").Build().Sql,   Is.EqualTo("SELECT \"a\"\nFROM \"t\""));
                         });
     }
 
@@ -49,9 +49,10 @@ public sealed class ApiSurfaceTests
                         {
                             Assert.That(options.InitialBufferSize,         Is.EqualTo(SqlBuilderOptions.DEFAULT_BUFFER_SIZE));
                             Assert.That(options.AppendStatementTerminator, Is.True);
-                            Assert.That(options.StrictTypes,               Is.False);
+                            Assert.That(options.StrictTypes,               Is.True);
+                            Assert.That(options.Layout,                    Is.EqualTo(SqlLayout.Readable));
                             Assert.That(options.AliasProjections,          Is.True);
-                            Assert.That(options with { StrictTypes = true }, Is.Not.EqualTo(options));
+                            Assert.That(options with { StrictTypes = false }, Is.Not.EqualTo(options));
                         });
     }
 
@@ -84,7 +85,7 @@ public sealed class ApiSurfaceTests
     [Test] public void Values_Render_Every_Kind()
     {
         Assert.That(SqlBuilder.PostgreSQL.Insert().Into("t").Values(SqlValue.Param(1), SqlValue.Param(null), SqlValue.Inline("x".AsSpan()), SqlValue.Of(7), SqlValue.Of(true), SqlValue.Null, SqlValue.Raw("now()".AsSpan()), default).Build().Sql,
-                    Is.EqualTo("INSERT INTO t VALUES ($1, NULL, 'x', 7, TRUE, NULL, now(), $2);"),
+                    Is.EqualTo("INSERT INTO t\nVALUES (\n    $1,\n    NULL,\n    'x',\n    7,\n    TRUE,\n    NULL,\n    now(),\n    $2\n);"),
                     "default(SqlValue) is a bound null");
     }
 
@@ -92,16 +93,16 @@ public sealed class ApiSurfaceTests
     {
         Assert.Multiple(() =>
                         {
-                            Assert.That(SqlBuilder.SqlServer.Insert().Into("t").ValuesParams(1).Build().Sql, Is.EqualTo("INSERT INTO [t] VALUES (@p0);"));
+                            Assert.That(SqlBuilder.SqlServer.Insert().Into("t").ValuesParams(1).Build().Sql, Is.EqualTo("INSERT INTO [t]\nVALUES (@p0);"));
                             // A typed insert with no names lists every mapped, non-identity column (spec §9.6).
-                            Assert.That(SqlBuilder.SqlServer.Insert<Order>().ValuesParams(1, "a").Build().Sql, Is.EqualTo("INSERT INTO [orders] ([user_id], [name]) VALUES (@p0, @p1);"));
+                            Assert.That(SqlBuilder.SqlServer.Insert<Order>().ValuesParams(1, "a").Build().Sql, Is.EqualTo("INSERT INTO [orders] (\n    [user_id],\n    [name]\n)\nVALUES (\n    @p0,\n    @p1\n);"));
                             Assert.That(() => SqlBuilder.SqlServer.Insert<Order>().ValuesParams(1).Build(), Throws.ArgumentException);
                         });
     }
 
     [Test] public void Empty_Alias_Is_No_Alias()
         => Assert.That(SqlBuilder.SqlServer.Select("*").From<User>("").InnerJoin<Order>("").On<Order>(nameof(Order.UserID)).EqualToColumn<User>(nameof(User.ID)).Build().Sql,
-                       Is.EqualTo("SELECT * FROM [users] INNER JOIN [orders] ON [orders].[user_id] = [users].[id];"));
+                       Is.EqualTo("SELECT *\nFROM [users]\nINNER JOIN [orders] ON [orders].[user_id] = [users].[id];"));
 
     [Test] public void Default_Postgres_Folder_Is_Snake_Lower()
     {
@@ -110,7 +111,7 @@ public sealed class ApiSurfaceTests
 
         try
         {
-            Assert.That(SqlBuilder.PostgreSQL.Select("FirstName").From("t").Build().Sql, Is.EqualTo("SELECT FirstName FROM t;"), "a host folder replaces the default");
+            Assert.That(SqlBuilder.PostgreSQL.Select("FirstName").From("t").Build().Sql, Is.EqualTo("SELECT FirstName\nFROM t;"), "a host folder replaces the default");
         }
         finally { SqlDialects.PostgresIdentifierFolder = pinned; }
 

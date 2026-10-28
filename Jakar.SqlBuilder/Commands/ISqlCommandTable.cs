@@ -45,3 +45,8 @@ public interface ISqlParameterValue
 {
     object? ParameterValue { get; }
 }
+
+
+
+/// <summary> An <see cref="ISqlParameterValue"/> that always binds as a <typeparamref name="TValue"/>: a column of this type compares like a <typeparamref name="TValue"/> column (<see cref="SqlBuilderOptions.StrictTypes"/>). </summary>
+public interface ISqlParameterValue<TValue> : ISqlParameterValue;
