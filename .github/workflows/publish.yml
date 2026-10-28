@@ -118,12 +118,37 @@ jobs:
           user: ${{ vars.NUGET_USER || secrets.NUGET_USER }}
 
       # In dependency order (artifacts/01, 02, ...); each push also sends the .snupkg next to the .nupkg.
+      # Every package is tried, and the step fails at the end if any didn't make it. A package that depends on one that failed is
+      # skipped, so nuget.org never gets a package whose dependency can't be restored.
       - name: Push
         shell: bash
         env:
           NUGET_API_KEY: ${{ steps.login.outputs.NUGET_API_KEY }}
         run: |
-          set -euo pipefail
+          set -uo pipefail
+          failed=()
           for package in $(find artifacts -name '*.nupkg' | sort); do
-            dotnet nuget push "$package" --api-key "$NUGET_API_KEY" --source https://api.nuget.org/v3/index.json --skip-duplicate
+            nuspec=$(unzip -p "$package" '*.nuspec')
+            id=$(grep -oPm1 '(?<=<id>)[^<]+' <<< "$nuspec")
+
+            blocked=""
+            for dependency in "${failed[@]}"; do
+              if grep -i '<dependency ' <<< "$nuspec" | grep -qiF "id=\"$dependency\""; then
+                blocked=$dependency
+                break
+              fi
+            done
+
+            if [ -n "$blocked" ]; then
+              echo "::error title=$id not pushed::$id depends on $blocked, which wasn't pushed."
+              failed+=("$id")
+            elif ! dotnet nuget push "$package" --api-key "$NUGET_API_KEY" --source https://api.nuget.org/v3/index.json --skip-duplicate; then
+              echo "::error title=$id push failed::nuget.org rejected $(basename "$package"); see the output above."
+              failed+=("$id")
+            fi
           done
+
+          if [ ${#failed[@]} -gt 0 ]; then
+            echo "Not published: ${failed[*]}"
+            exit 1
+          fi
