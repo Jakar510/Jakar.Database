@@ -85,7 +85,10 @@ jobs:
           index=0
           for csproj in "${packages[@]}"; do
             index=$((index + 1))
-            dotnet pack "$csproj" -c Release -o "artifacts/$(printf '%02d' "$index")"
+            # Build, then pack exactly that build. GeneratePackageOnBuild=true (Jakar.Database) makes a plain `dotnet pack` skip Build, so a clean checkout would
+            # pack a dll that was never compiled (NU5026); it's off for the build so Build doesn't make an extra package in bin/.
+            dotnet build "$csproj" -c Release -p:GeneratePackageOnBuild=false
+            dotnet pack "$csproj" -c Release --no-build -o "artifacts/$(printf '%02d' "$index")"
           done
 
           echo "Packed:"
