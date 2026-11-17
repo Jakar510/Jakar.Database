@@ -93,8 +93,6 @@
 		<PackageReference Include="Jakar.ErrorOr" />
 		<PackageReference Include="Jakar.Extensions" />
 		<PackageReference Include="Jakar.Logging" />
-		<!-- OpenTelemetryActivityEnricher (DbOptions.ActivityEnricher) and the AppInformation/DeviceInformation log properties -->
-		<PackageReference Include="Jakar.Logging.Serilog" />
 		<PackageReference Include="Jakar.Shapes" />
 		<PackageReference Include="Jakar.Users" />
 		<PackageReference Include="MailKit" />

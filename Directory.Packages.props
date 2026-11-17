@@ -26,11 +26,10 @@
     <PackageVersion Include="InterpolatedSql.Dapper" Version="2.5.1" />
     <PackageVersion Include="Jakar.Database" Version="9.0.0.3-beta" />
     <PackageVersion Include="Jakar.ErrorOr" Version="10.2.0" />
-    <PackageVersion Include="Jakar.Extensions" Version="10.12.2" />
-    <PackageVersion Include="Jakar.Logging" Version="10.2.0" />
-    <PackageVersion Include="Jakar.Logging.Serilog" Version="10.1.0" />
+    <PackageVersion Include="Jakar.Extensions" Version="10.13.0" />
+    <PackageVersion Include="Jakar.Logging" Version="10.3.0" />
     <PackageVersion Include="Jakar.Shapes" Version="10.2.0" />
-    <PackageVersion Include="Jakar.Users" Version="10.1.0" />
+    <PackageVersion Include="Jakar.Users" Version="10.2.0" />
     <PackageVersion Include="JetBrains.Annotations" Version="2025.2.2" />
     <PackageVersion Include="JetBrains.DotMemoryUnit" Version="3.2.20220510" />
     <PackageVersion Include="MailKit" Version="4.18.2" />
