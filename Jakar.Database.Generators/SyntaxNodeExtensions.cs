@@ -656,7 +656,7 @@ public sealed class TableRecordGenerator : IIncrementalGenerator
                 return;
 
             case ReadKind.AdditionalData:
-                AppendNullableRead(sb, column, $"(await exporter.ReadAsync<string>(token)).TryFromJson() as {column.ReadType}");
+                AppendNullableRead(sb, column, $"global::Jakar.Extensions.Json.TryFromJson(await exporter.ReadAsync<string>(token)) as {column.ReadType}");
                 return;
         }
     }
@@ -793,9 +793,9 @@ public sealed class TableRecordGenerator : IIncrementalGenerator
         {
             if ( needsBlankLine ) { sb.AppendLine(); }
 
-            sb.AppendLine("    public override CommandParameters ToDynamicParameters()");
+            sb.AppendLine("    public override global::Jakar.SqlBuilder.CommandParameters ToDynamicParameters()");
             sb.AppendLine("    {");
-            sb.AppendLine("        CommandParameters parameters = base.ToDynamicParameters();");
+            sb.AppendLine("        global::Jakar.SqlBuilder.CommandParameters parameters = base.ToDynamicParameters();");
 
             foreach ( string propertyName in candidate.DeclaredProperties ) { sb.Append("        parameters.Add(nameof(").Append(propertyName).Append("), ").Append(propertyName).AppendLine(");"); }
 
