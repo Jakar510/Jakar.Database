@@ -13,7 +13,6 @@
 		<PackageReference Include="Microsoft.CodeAnalysis.Common" VersionOverride="5.9.0" PrivateAssets="all" />
 		<!-- A source generator must not reference a newer Roslyn than the compiler that loads it (the .NET 10 SDK ships 5.9); the libraries use 5.12. -->
 		<PackageReference Include="Microsoft.CodeAnalysis.CSharp" VersionOverride="5.9.0" PrivateAssets="all" />
-		<PackageReference Include="ZLinq" />
 	</ItemGroup>
 
 	<ItemGroup>

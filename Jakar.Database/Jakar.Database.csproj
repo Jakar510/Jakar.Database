@@ -70,9 +70,12 @@
 	-->
 
 	<ItemGroup>
+		<!-- The TableRecord generator ships inside this package (analyzers/dotnet/cs), as Jakar.Json ships its generator: consumers' partial records need it. -->
 		<ProjectReference Include="..\Jakar.Database.Generators\Jakar.Database.Generators.csproj"
 						  OutputItemType="Analyzer"
-						  ReferenceOutputAssembly="false" />
+						  ReferenceOutputAssembly="false"
+						  PrivateAssets="all" />
+		<None Include="..\Jakar.Database.Generators\bin\$(Configuration)\netstandard2.0\Jakar.Database.Generators.dll" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false" />
 		<ProjectReference Include="..\Jakar.SqlBuilder\Jakar.SqlBuilder.csproj" />
 	</ItemGroup>
 
