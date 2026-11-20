@@ -5,6 +5,8 @@ using Jakar.Extensions;
 using Jakar.Json;
 using ZLinq;
 
+
+
 namespace Jakar.Database.Tests;
 
 
@@ -81,7 +83,14 @@ public sealed class GeneratedReaderTests : Assert
 
     [Test] public void Address_With_Nullable_Owner_Round_Trips()
     {
-        AddressRecord address = AddressRecord.Create("line 1", "line 2", "city", "state", "postal", "country", Guid.NewGuid(), __owner.ID);
+        AddressRecord address = AddressRecord.Create("line 1",
+                                                     "line 2",
+                                                     "city",
+                                                     "state",
+                                                     "postal",
+                                                     "country",
+                                                     Guid.NewGuid(),
+                                                     __owner.ID);
 
         Multiple(() =>
                  {
@@ -106,7 +115,7 @@ public sealed class GeneratedReaderTests : Assert
         where TSelf : TableRecord<TSelf>, ITableRecord<TSelf>
     {
         DataTable    table  = new();
-        List<object> values = [];
+        List<object?> values = [];
 
         foreach ( ColumnMetaData column in TSelf.MetaData.SortedColumns )
         {
@@ -116,19 +125,19 @@ public sealed class GeneratedReaderTests : Assert
             values.Add(ToStorage(typeof(TSelf).GetProperty(column.PropertyName, BindingFlags.Public | BindingFlags.Instance)!.GetValue(record)));
         }
 
-        table.Rows.Add(values.ToArray());
+        table.Rows.Add([.. values]);
         DataTableReader reader = table.CreateDataReader();
         reader.Read();
         return reader;
     }
 
-    private static object ToStorage( object? value ) => value switch
-                                                        {
-                                                            null                       => DBNull.Value,
-                                                            UserRights rights          => rights.Value,
-                                                            ISqlParameterValue wrapper => wrapper.ParameterValue,
-                                                            Enum member                => member.ToString(),
-                                                            JObjectNode json           => json.ToJson(),
-                                                            _                          => value
-                                                        };
+    private static object? ToStorage( object? value ) => value switch
+                                                         {
+                                                             null                       => DBNull.Value,
+                                                             UserRights rights          => rights.Value,
+                                                             ISqlParameterValue wrapper => wrapper.ParameterValue,
+                                                             Enum member                => member.ToString(),
+                                                             JObjectNode json           => json.ToJson(),
+                                                             _                          => value
+                                                         };
 }
