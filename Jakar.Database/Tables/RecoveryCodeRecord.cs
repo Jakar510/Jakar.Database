@@ -30,16 +30,6 @@ public sealed partial record RecoveryCodeRecord : OwnedTableRecord<RecoveryCodeR
         parameters.Add(nameof(Code), Code);
         return parameters;
     }
-    [Pure] public static RecoveryCodeRecord Create( DbDataReader reader )
-    {
-        string                       code         = reader.GetFieldValue<RecoveryCodeRecord, string>(nameof(Code));
-        DateTimeOffset               dateCreated  = reader.GetFieldValue<RecoveryCodeRecord, DateTimeOffset>(nameof(DateCreated));
-        DateTimeOffset?              lastModified = reader.GetFieldValue<RecoveryCodeRecord, DateTimeOffset?>(nameof(LastModified));
-        RecordID<UserRecord>         ownerUserID  = RecordID<UserRecord>.UserID(reader);
-        RecordID<RecoveryCodeRecord> id           = RecordID<RecoveryCodeRecord>.ID(reader);
-        RecoveryCodeRecord           record       = new(code, id, ownerUserID, dateCreated, lastModified);
-        return record.Validate();
-    }
 
 
     [Pure] public static Codes Create( UserRecord user, IEnumerable<string> recoveryCodes )

@@ -39,57 +39,12 @@ public sealed partial record ResxRowRecord : TableRecord<ResxRowRecord>, ITableR
         Key     = key;
         Neutral = neutral;
     }
-    [SetsRequiredMembers] public ResxRowRecord( DbDataReader reader ) : base(reader)
-    {
-        KeyID      = AutoRecordID<ResxRowRecord>.Create(reader, nameof(KeyID));
-        Key        = reader.GetFieldValue<ResxRowRecord, string>(nameof(Key));
-        Neutral    = reader.GetFieldValue<ResxRowRecord, string>(nameof(Neutral));
-        Arabic     = reader.GetFieldValue<ResxRowRecord, string>(nameof(Arabic));
-        Chinese    = reader.GetFieldValue<ResxRowRecord, string>(nameof(Chinese));
-        Czech      = reader.GetFieldValue<ResxRowRecord, string>(nameof(Czech));
-        Dutch      = reader.GetFieldValue<ResxRowRecord, string>(nameof(Dutch));
-        English    = reader.GetFieldValue<ResxRowRecord, string>(nameof(English));
-        French     = reader.GetFieldValue<ResxRowRecord, string>(nameof(French));
-        German     = reader.GetFieldValue<ResxRowRecord, string>(nameof(German));
-        Japanese   = reader.GetFieldValue<ResxRowRecord, string>(nameof(Japanese));
-        Korean     = reader.GetFieldValue<ResxRowRecord, string>(nameof(Korean));
-        Polish     = reader.GetFieldValue<ResxRowRecord, string>(nameof(Polish));
-        Portuguese = reader.GetFieldValue<ResxRowRecord, string>(nameof(Portuguese));
-        Spanish    = reader.GetFieldValue<ResxRowRecord, string>(nameof(Spanish));
-        Swedish    = reader.GetFieldValue<ResxRowRecord, string>(nameof(Swedish));
-        Thai       = reader.GetFieldValue<ResxRowRecord, string>(nameof(Thai));
-    }
 
 
-    [Pure] public static ResxRowRecord Create( DbDataReader reader ) => new ResxRowRecord(reader).Validate();
     [Pure] public static async IAsyncEnumerable<ResxRowRecord> CreateAsync( DbDataReader reader, [EnumeratorCancellation] CancellationToken token = default )
     {
         while ( await reader.ReadAsync(token) ) { yield return Create(reader); }
     }
-
-    public override CommandParameters ToDynamicParameters()
-    {
-        CommandParameters parameters = base.ToDynamicParameters();
-        parameters.Add(nameof(KeyID),      KeyID);
-        parameters.Add(nameof(Key),        Key);
-        parameters.Add(nameof(Neutral),    Neutral);
-        parameters.Add(nameof(English),    English);
-        parameters.Add(nameof(Spanish),    Spanish);
-        parameters.Add(nameof(French),     French);
-        parameters.Add(nameof(Swedish),    Swedish);
-        parameters.Add(nameof(German),     German);
-        parameters.Add(nameof(Chinese),    Chinese);
-        parameters.Add(nameof(Polish),     Polish);
-        parameters.Add(nameof(Thai),       Thai);
-        parameters.Add(nameof(Japanese),   Japanese);
-        parameters.Add(nameof(Czech),      Czech);
-        parameters.Add(nameof(Portuguese), Portuguese);
-        parameters.Add(nameof(Dutch),      Dutch);
-        parameters.Add(nameof(Korean),     Korean);
-        parameters.Add(nameof(Arabic),     Arabic);
-        return parameters;
-    }
-
 
     [Pure] public ResxString ToResxString() => new(this);
     [Pure] public ResxRowRecord With( IResxString resx ) => this with

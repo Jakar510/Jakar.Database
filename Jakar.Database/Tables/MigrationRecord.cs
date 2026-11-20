@@ -30,13 +30,6 @@ public sealed partial record MigrationRecord : TableRecord<MigrationRecord>, ITa
 
 
     public MigrationRecord() : base(DateTimeOffset.UtcNow) { }
-    [SetsRequiredMembers] public MigrationRecord( DbDataReader reader ) : base(reader)
-    {
-        Description = reader.GetFieldValue<MigrationRecord, string>(nameof(Description));
-        ReferenceID = reader.GetFieldValue<MigrationRecord, string?>(nameof(ReferenceID));
-        AppliedOn   = reader.GetFieldValue<MigrationRecord, DateTimeOffset?>(nameof(AppliedOn));
-        MigrationID = reader.GetFieldValue<MigrationRecord, long>(nameof(MigrationID));
-    }
 
     public static MigrationRecord SetLastModified( long migrationID ) => SetLastModified(migrationID, Database.Current?.DatabaseType ?? DatabaseType.PostgreSQL);
 
@@ -179,11 +172,6 @@ public sealed partial record MigrationRecord : TableRecord<MigrationRecord>, ITa
     }
 
 
-    public static MigrationRecord Create( DbDataReader reader )
-    {
-        MigrationRecord record = new(reader);
-        return record.Validate();
-    }
 
     public override CommandParameters ToDynamicParameters()
     {

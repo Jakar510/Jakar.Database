@@ -32,13 +32,6 @@ public sealed partial record UserLoginProviderRecord : OwnedTableRecord<UserLogi
         this.ProviderKey         = ProviderKey;
         this.Value               = Value;
     }
-    internal UserLoginProviderRecord( DbDataReader reader ) : base(reader)
-    {
-        LoginProvider       = reader.GetFieldValue<UserLoginProviderRecord, string>(nameof(LoginProvider));
-        ProviderDisplayName = reader.GetFieldValue<UserLoginProviderRecord, string>(nameof(ProviderDisplayName));
-        ProviderKey         = reader.GetFieldValue<UserLoginProviderRecord, string>(nameof(ProviderKey));
-        Value               = reader.GetFieldValue<UserLoginProviderRecord, string>(nameof(Value));
-    }
 
 
     public override ValueTask Import( DataRow row, CancellationToken token )

@@ -39,18 +39,6 @@ public sealed partial record FileRecord : PairRecord<FileRecord>, IPairRecord<Fi
         Payload         = data.Payload;
         FullPath        = file?.FullPath;
     }
-    internal FileRecord( DbDataReader reader ) : base(reader)
-    {
-        FileName        = reader.GetFieldValue<FileRecord, string?>(nameof(FileName));
-        FileDescription = reader.GetFieldValue<FileRecord, string?>(nameof(FileDescription));
-        FileType        = reader.GetFieldValue<FileRecord, string?>(nameof(FileType));
-        FileSize        = reader.GetFieldValue<FileRecord, long>(nameof(FileSize));
-        Hash            = reader.GetFieldValue<FileRecord, string>(nameof(Hash));
-        MimeType        = reader.GetEnumValue<FileRecord, MimeType>(nameof(MimeType), Extensions.MimeType.NotSet);
-        Payload         = reader.GetFieldValue<FileRecord, string>(nameof(Payload));
-        FullPath        = reader.GetFieldValue<FileRecord, string?>(nameof(FullPath));
-    }
-    [Pure] public static FileRecord Create( DbDataReader                  reader )                       => new FileRecord(reader).Validate();
     public static        FileRecord Create( IFileData<Guid, FileMetaData> data, LocalFile? file = null ) => new(data, file);
     public static FileRecord Create<TFileMetaData>( IFileData<Guid, TFileMetaData> data, LocalFile? file = null )
         where TFileMetaData : class, IFileMetaData<TFileMetaData> => new(data, data.MetaData, file);

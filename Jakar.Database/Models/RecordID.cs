@@ -35,7 +35,11 @@ public readonly struct RecordID<TSelf>( Guid id ) : IRecordID, IEqualComparable<
     [Pure] public static RecordID<TSelf>  ID( DbDataReader                 reader )                      => Create(reader, nameof(IUniqueID.ID));
     [Pure] public static RecordID<TSelf>  UserID( DbDataReader             reader )                      => Create(reader, nameof(IUserRecordID.UserID));
     // Resolve the ordinal from the reader's own result set by column name, not from TSelf.MetaData: for a foreign-key field (e.g. UserID) TSelf is the referenced table (UserRecord), whose column index does not match the row being read (e.g. a recovery_codes row).
-    [Pure] public static RecordID<TSelf>? TryCreate( DbDataReader          reader, string propertyName ) => TryCreate(reader.GetFieldValue<Guid?>(reader.GetOrdinal(propertyName.SqlName())));
+    [Pure] public static RecordID<TSelf>? TryCreate( DbDataReader          reader, string propertyName ) => TryCreate(reader, reader.GetOrdinal(propertyName.SqlName()));
+    // Checks for NULL first: not every provider returns null from GetFieldValue<Guid?> (DataTableReader and SqlDataReader throw).
+    [Pure] private static RecordID<TSelf>? TryCreate( DbDataReader         reader, int ordinal ) => reader.IsDBNull(ordinal)
+                                                                                                         ? null
+                                                                                                         : TryCreate(reader.GetFieldValue<Guid>(ordinal));
     [Pure] public static RecordID<TSelf>  Create( DbDataReader             reader, string propertyName ) => Create(reader.GetFieldValue<Guid>(reader.GetOrdinal(propertyName.SqlName())));
     [Pure] public static RecordID<TSelf>  Create( Guid                     id ) => new(id);
     [Pure] public static RecordID<TSelf> Create( Guid? id ) => id.HasValue

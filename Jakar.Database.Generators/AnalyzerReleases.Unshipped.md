@@ -7,3 +7,4 @@ Rule ID | Category | Severity | Notes
 --------|----------|----------|-------
 JDB001 | Jakar.Database.Generators | Error | ITableRecord&lt;TSelf&gt; implementations must be sealed or abstract
 JDB002 | Jakar.Database.Generators | Warning | StringCompare is only valid on string properties
+JDB003 | Jakar.Database.Generators | Warning | The DbDataReader constructor can't be generated

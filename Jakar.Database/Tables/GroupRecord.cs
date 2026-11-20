@@ -31,18 +31,6 @@ public sealed partial record GroupRecord : OwnedTableRecord<GroupRecord>, IOwned
     }
 
 
-    [Pure] public static GroupRecord Create( DbDataReader reader )
-    {
-        string                normalizedName = reader.GetFieldValue<GroupRecord, string>(nameof(NormalizedName));
-        string                nameOfGroup    = reader.GetFieldValue<GroupRecord, string>(nameof(NameOfGroup));
-        UserRights            rights         = reader.GetFieldValue<GroupRecord, string>(nameof(Rights));
-        DateTimeOffset        dateCreated    = reader.GetFieldValue<GroupRecord, DateTimeOffset>(nameof(DateCreated));
-        DateTimeOffset?       lastModified   = reader.GetFieldValue<GroupRecord, DateTimeOffset?>(nameof(LastModified));
-        RecordID<UserRecord>  ownerUserID    = RecordID<UserRecord>.UserID(reader);
-        RecordID<GroupRecord> id             = RecordID<GroupRecord>.ID(reader);
-        GroupRecord           record         = new(nameOfGroup, normalizedName, rights, id, ownerUserID, dateCreated, lastModified);
-        return record.Validate();
-    }
     [Pure] public static GroupRecord Create<TEnum>( string name, [HandlesResourceDisposal] Permissions<TEnum> rights, string? normalizedName = null, RecordID<UserRecord> userID = default )
         where TEnum : unmanaged, Enum => new(name, normalizedName, rights.ToStringAndDispose(), RecordID<GroupRecord>.New(), userID, DateTimeOffset.UtcNow);
 

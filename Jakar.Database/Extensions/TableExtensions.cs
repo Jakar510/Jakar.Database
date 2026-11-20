@@ -150,6 +150,16 @@ public static class TableExtensions
                        ? defaultValue
                        : EnumSqlHandler<TValue>.TryParse(self.GetFieldValue<string>(ordinal), defaultValue);
         }
+        public TValue? GetEnumValueOrNull<TRecord, TValue>( string propertyName )
+            where TRecord : TableRecord<TRecord>, ITableRecord<TRecord>
+            where TValue : unmanaged, Enum
+        {
+            int ordinal = TRecord.MetaData[propertyName].Index;
+
+            return self.IsDBNull(ordinal)
+                       ? null
+                       : EnumSqlHandler<TValue>.TryParse(self.GetFieldValue<string>(ordinal), default);
+        }
 
 
         public TValue? GetData<TValue>( string propertyName )

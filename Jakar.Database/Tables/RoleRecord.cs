@@ -32,13 +32,6 @@ public sealed partial record RoleRecord : OwnedTableRecord<RoleRecord>, IOwnedTa
         this.NormalizedName   = NormalizedName;
         this.ConcurrencyStamp = ConcurrencyStamp;
     }
-    internal RoleRecord( DbDataReader reader ) : base(reader)
-    {
-        Rights           = reader.GetFieldValue<RoleRecord, string>(nameof(Rights));
-        NameOfRole       = reader.GetFieldValue<RoleRecord, string>(nameof(NameOfRole));
-        NormalizedName   = reader.GetFieldValue<RoleRecord, string>(nameof(NormalizedName));
-        ConcurrencyStamp = reader.GetFieldValue<RoleRecord, string>(nameof(ConcurrencyStamp));
-    }
 
 
     public RoleModel ToRoleModel() => new(this);

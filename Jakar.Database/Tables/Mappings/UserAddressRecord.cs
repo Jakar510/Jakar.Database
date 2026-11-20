@@ -22,7 +22,6 @@ public sealed partial record UserAddressRecord : Mapping<UserAddressRecord, User
 
     public UserAddressRecord( UserRecord           key, AddressRecord           value ) : base(key, value) { }
     public UserAddressRecord( RecordID<UserRecord> key, RecordID<AddressRecord> value ) : base(key, value) { }
-    internal UserAddressRecord( DbDataReader       reader ) : base(reader) { }
     [JsonCreator] private UserAddressRecord( DateTimeOffset dateCreated, RecordID<UserRecord> keyID, RecordID<AddressRecord> valueID ) : base(keyID, valueID, dateCreated) { } // the generated reader constructor takes (keyID, valueID, dateCreated)
 
 

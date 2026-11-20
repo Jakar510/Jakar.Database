@@ -20,7 +20,6 @@ public sealed partial record UserRecoveryCodeRecord : Mapping<UserRecoveryCodeRe
 
 
     public UserRecoveryCodeRecord( RecordID<UserRecord> key, RecordID<RecoveryCodeRecord> value ) : base(key, value) { }
-    internal UserRecoveryCodeRecord( DbDataReader       reader ) : base(reader) { }
     [JsonCreator] private UserRecoveryCodeRecord( DateTimeOffset dateCreated, RecordID<UserRecord> keyID, RecordID<RecoveryCodeRecord> valueID ) : base(keyID, valueID, dateCreated) { } // the generated reader constructor takes (keyID, valueID, dateCreated)
 
 

@@ -23,6 +23,14 @@ public sealed class TableRecordGenerator : IIncrementalGenerator
                                                                                     DiagnosticSeverity.Warning,
                                                                                     true);
 
+    // Reported when a record has neither a DbDataReader constructor nor a Create(DbDataReader), and the generator can't write the constructor for it.
+    private static readonly DiagnosticDescriptor CANNOT_GENERATE_READER_CTOR = new("JDB003",
+                                                                                   "The DbDataReader constructor can't be generated",
+                                                                                   "Can't generate the DbDataReader constructor for '{0}': {1}. Write the constructor or Create(DbDataReader) by hand.",
+                                                                                   "Jakar.Database.Generators",
+                                                                                   DiagnosticSeverity.Warning,
+                                                                                   true);
+
 
     public void Initialize( IncrementalGeneratorInitializationContext context )
     {
@@ -45,6 +53,8 @@ public sealed class TableRecordGenerator : IIncrementalGenerator
                                          {
                                              GenerationCandidate candidate = values[i];
                                              if ( !candidate.ShouldGenerate || !set.Add(candidate) ) { continue; }
+
+                                             if ( candidate.ReaderCtorDiagnostic is not null ) { spc.ReportDiagnostic(candidate.ReaderCtorDiagnostic); }
 
                                              spc.AddSource($"{candidate.HintName}.g.cs", SourceText.From(Render(candidate), Encoding.UTF8));
                                          }
@@ -78,7 +88,17 @@ public sealed class TableRecordGenerator : IIncrementalGenerator
 
         ImmutableArray<EqualityProperty> equalityProperties = GetEqualityProperties(symbol);
 
-        bool        generateCreate              = hasReaderCtor                 && !hasCreate;
+        // With no reader constructor and no Create(DbDataReader) to read rows, the constructor is generated: base(reader) reads the inherited columns, and each declared settable column is read here.
+        ImmutableArray<ReaderAssignment>? readerAssignments    = null;
+        Diagnostic?                       readerCtorDiagnostic = null;
+
+        if ( !hasReaderCtor && !hasCreate )
+        {
+            readerAssignments = GetReaderAssignments(symbol, hasPrimaryConstructor, out string? problem);
+            if ( problem is not null ) { readerCtorDiagnostic = Diagnostic.Create(CANNOT_GENERATE_READER_CTOR, syntax.Identifier.GetLocation(), symbol.Name, problem); }
+        }
+
+        bool        generateCreate              = ( hasReaderCtor || readerAssignments is not null ) && !hasCreate;
         bool        generateToDynamicParameters = declaredProperties.Length > 0 && !hasToDynamicParameters;
         ExportPlan? exportPlan                  = hasExport || hasPrimaryConstructor ? null : GetExportPlan(symbol);
         bool        generateBatchImport         = !hasBatchImport;
@@ -97,6 +117,8 @@ public sealed class TableRecordGenerator : IIncrementalGenerator
                                        importProperties,
                                        equalityProperties,
                                        columnOrder,
+                                       readerAssignments,
+                                       readerCtorDiagnostic,
                                        generateCreate,
                                        generateToDynamicParameters,
                                        exportPlan,
@@ -413,6 +435,130 @@ public sealed class TableRecordGenerator : IIncrementalGenerator
         }
 
         return false;
+    }
+
+
+    // ----- DbDataReader constructor ---------------------------------------------------------------------------------------------------------------------------------------------------
+    // base(reader) reads the inherited columns (overrides such as UserID / KeyID included); the generated body reads each settable column this type declares, the same way a
+    // hand-written constructor would. Returns null with a reason when the base has no usable reader constructor or a column type has no reader mapping.
+
+    private static ImmutableArray<ReaderAssignment>? GetReaderAssignments( INamedTypeSymbol symbol, bool hasPrimaryConstructor, out string? problem )
+    {
+        if ( hasPrimaryConstructor )
+        {
+            problem = "a record with a primary constructor must chain other constructors to it";
+            return null;
+        }
+
+        if ( symbol.BaseType is null || !symbol.BaseType.InstanceConstructors.Any(ctor => ctor.Parameters.Length == 1 && IsDbDataReader(ctor.Parameters[0].Type) && IsAccessibleFrom(ctor, symbol)) )
+        {
+            problem = $"its base type '{symbol.BaseType?.Name}' has no accessible DbDataReader constructor";
+            return null;
+        }
+
+        string                 self    = symbol.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+        List<ReaderAssignment> results = [];
+
+        foreach ( IPropertySymbol property in symbol.GetMembers().OfType<IPropertySymbol>().Where(static property => property is { IsStatic: false, IsOverride: false, IsIndexer: false, DeclaredAccessibility: Accessibility.Public, GetMethod: not null, SetMethod: not null }).Where(static property => !HasAttribute(property, "DbIgnoreAttribute")).OrderBy(GetPropertyOrder) )
+        {
+            string? expression = GetReaderExpression(self, property);
+
+            if ( expression is null )
+            {
+                problem = $"no reader mapping for '{property.Name}' of type '{property.Type.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat)}'";
+                return null;
+            }
+
+            results.Add(new ReaderAssignment(property.Name, expression));
+        }
+
+        problem = null;
+        return [..results];
+    }
+
+    private static string? GetReaderExpression( string self, IPropertySymbol property )
+    {
+        string      name     = $"nameof({property.Name})";
+        ITypeSymbol type     = property.Type;
+        bool        nullable = false;
+
+        if ( type is INamedTypeSymbol { OriginalDefinition.SpecialType: SpecialType.System_Nullable_T } wrapper )
+        {
+            nullable = true;
+            type     = wrapper.TypeArguments[0];
+        }
+
+        string underlying = type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+
+        if ( type is INamedTypeSymbol jsonType && IsJsonType(jsonType) )
+        {
+            return property.Name == "AdditionalData"
+                       ? $"reader.GetAdditionalData<{self}>()"
+                       : null;
+        }
+
+        if ( type is INamedTypeSymbol { Name: "RecordID" or "AutoRecordID", TypeArguments.Length: 1 } id && id.ContainingNamespace.ToDisplayString() == "Jakar.Database" )
+        {
+            return nullable
+                       ? $"{underlying}.TryCreate(reader, {name})"
+                       : $"{underlying}.Create(reader, {name})";
+        }
+
+        // UserRights is stored as its string and converts from it implicitly.
+        if ( IsUserRights(type) )
+        {
+            return nullable
+                       ? null
+                       : $"reader.GetFieldValue<{self}, string>({name})";
+        }
+
+        if ( type.TypeKind == TypeKind.Enum )
+        {
+            return nullable
+                       ? $"reader.GetEnumValueOrNull<{self}, {underlying}>({name})"
+                       : $"reader.GetEnumValue<{self}, {underlying}>({name}, {GetEnumFallback(type, underlying)})";
+        }
+
+        if ( type.SpecialType is SpecialType.System_String or SpecialType.System_Byte || IsDirectlyReadable(type) || type is IArrayTypeSymbol { ElementType.SpecialType: SpecialType.System_Byte } ) { return $"reader.GetFieldValue<{self}, {property.Type.ToDisplayString(FULLY_QUALIFIED_NULLABLE)}>({name})"; }
+
+        return null;
+    }
+
+    // The value used when an enum column is NULL or holds a name the enum doesn't define: its NotSet / Unspecified / None member when it has one, else default.
+    private static string GetEnumFallback( ITypeSymbol type, string display )
+    {
+        foreach ( string member in (string[])["NotSet", "Unspecified", "None"] )
+        {
+            if ( type.GetMembers(member).OfType<IFieldSymbol>().Any() ) { return $"{display}.{member}"; }
+        }
+
+        return "default";
+    }
+
+    private static bool IsAccessibleFrom( IMethodSymbol ctor, INamedTypeSymbol derived ) =>
+        ctor.DeclaredAccessibility switch
+        {
+            Accessibility.Public or Accessibility.Protected or Accessibility.ProtectedOrInternal => true,
+            Accessibility.Internal or Accessibility.ProtectedAndInternal                         => SymbolEqualityComparer.Default.Equals(ctor.ContainingAssembly, derived.ContainingAssembly),
+            _                                                                                    => false
+        };
+
+    private static void RenderReaderCtor( StringBuilder sb, ImmutableArray<ReaderAssignment> assignments, string typeName )
+    {
+        sb.AppendLine("    [global::System.Diagnostics.CodeAnalysis.SetsRequiredMembers]");
+
+        if ( assignments.IsDefaultOrEmpty )
+        {
+            sb.Append("    internal ").Append(typeName).AppendLine("( DbDataReader reader ) : base(reader) { }");
+            return;
+        }
+
+        sb.Append("    internal ").Append(typeName).AppendLine("( DbDataReader reader ) : base(reader)");
+        sb.AppendLine("    {");
+
+        foreach ( ReaderAssignment assignment in assignments ) { sb.Append("        ").Append(assignment.Name).Append(" = ").Append(assignment.Expression).AppendLine(";"); }
+
+        sb.AppendLine("    }");
     }
 
 
@@ -752,6 +898,7 @@ public sealed class TableRecordGenerator : IIncrementalGenerator
         sb.AppendLine("using System.Data.Common;");
         sb.AppendLine("using System.Threading;");
         sb.AppendLine("using System.Threading.Tasks;");
+        sb.AppendLine("using Jakar.Database;"); // the DbDataReader extensions the reader constructor calls
         sb.AppendLine("using Npgsql;");
         sb.AppendLine("using NpgsqlTypes;");
         sb.AppendLine();
@@ -783,8 +930,16 @@ public sealed class TableRecordGenerator : IIncrementalGenerator
 
         bool needsBlankLine = false;
 
+        if ( candidate.ReaderAssignments is not null )
+        {
+            RenderReaderCtor(sb, candidate.ReaderAssignments.Value, candidate.TypeName);
+            needsBlankLine = true;
+        }
+
         if ( candidate.GenerateCreate )
         {
+            if ( needsBlankLine ) { sb.AppendLine(); }
+
             sb.Append("    public static ").Append(candidate.TypeName).Append(" Create( DbDataReader reader ) => new ").Append(candidate.TypeName).AppendLine("(reader).Validate();");
             needsBlankLine = true;
         }
@@ -1057,6 +1212,8 @@ public sealed class TableRecordGenerator : IIncrementalGenerator
         public ImmutableArray<ImportProperty>   ImportProperties            { get; }
         public ImmutableArray<EqualityProperty> EqualityProperties          { get; }
         public ImmutableArray<string>           ColumnOrder                 { get; }
+        public ImmutableArray<ReaderAssignment>? ReaderAssignments          { get; } // null: no reader constructor is generated
+        public Diagnostic?                      ReaderCtorDiagnostic        { get; }
         public bool                             GenerateCreate              { get; }
         public bool                             GenerateToDynamicParameters { get; }
         public ExportPlan?                      ExportPlan                  { get; }
@@ -1075,6 +1232,8 @@ public sealed class TableRecordGenerator : IIncrementalGenerator
                                     ImmutableArray<ImportProperty>   importProperties,
                                     ImmutableArray<EqualityProperty> equalityProperties,
                                     ImmutableArray<string>           columnOrder,
+                                    ImmutableArray<ReaderAssignment>? readerAssignments,
+                                    Diagnostic?                      readerCtorDiagnostic,
                                     bool                             generateCreate,
                                     bool                             generateToDynamicParameters,
                                     ExportPlan?                      exportPlan,
@@ -1090,6 +1249,8 @@ public sealed class TableRecordGenerator : IIncrementalGenerator
             ImportProperties            = importProperties;
             EqualityProperties          = equalityProperties;
             ColumnOrder                 = columnOrder;
+            ReaderAssignments           = readerAssignments;
+            ReaderCtorDiagnostic        = readerCtorDiagnostic;
             GenerateCreate              = generateCreate;
             GenerateToDynamicParameters = generateToDynamicParameters;
             ExportPlan                  = exportPlan;
@@ -1119,6 +1280,14 @@ public sealed class TableRecordGenerator : IIncrementalGenerator
         public string WriteExpression         { get; } = writeExpression;
         public bool   IsNullableValueType     { get; } = isNullableValueType;
         public string NullableValueExpression { get; } = nullableValueExpression;
+    }
+
+
+
+    private readonly struct ReaderAssignment( string name, string expression )
+    {
+        public string Name       { get; } = name;
+        public string Expression { get; } = expression;
     }
 
 

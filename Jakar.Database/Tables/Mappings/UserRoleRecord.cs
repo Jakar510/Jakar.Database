@@ -20,7 +20,6 @@ public sealed partial record UserRoleRecord : Mapping<UserRoleRecord, UserRecord
 
 
     public UserRoleRecord( RecordID<UserRecord>  key, RecordID<RoleRecord> value ) : base(key, value) { }
-    internal UserRoleRecord( DbDataReader        reader ) : base(reader) { }
     [JsonCreator] private UserRoleRecord( DateTimeOffset dateCreated, RecordID<UserRecord> keyID, RecordID<RoleRecord> valueID ) : base(keyID, valueID, dateCreated) { } // the generated reader constructor takes (keyID, valueID, dateCreated)
 
 

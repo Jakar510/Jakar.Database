@@ -31,47 +31,6 @@ public sealed partial record UserRecord : PairRecord<UserRecord>, IPairRecord<Us
     [JsonCreator] public UserRecord( in RecordID<UserRecord> ID ) : this(in ID, null, DateTimeOffset.UtcNow) { }
     public UserRecord( in RecordID<UserRecord> ID, UserRecord?             user,   in DateTimeOffset DateCreated, in DateTimeOffset? LastModified = null ) : this(in ID, user?.ID ?? RecordID<UserRecord>.Empty, in DateCreated, in LastModified) { }
     public UserRecord( in RecordID<UserRecord> ID, in RecordID<UserRecord> userID, in DateTimeOffset DateCreated, in DateTimeOffset? LastModified = null ) : base(in ID, in DateCreated, null, in LastModified) => EscalateTo = userID;
-    internal UserRecord( DbDataReader reader ) : base(reader)
-    {
-        UserName               = reader.GetFieldValue<UserRecord, string>(nameof(UserName));
-        FirstName              = reader.GetFieldValue<UserRecord, string?>(nameof(FirstName));
-        LastName               = reader.GetFieldValue<UserRecord, string?>(nameof(LastName));
-        FullName               = reader.GetFieldValue<UserRecord, string?>(nameof(FullName));
-        Rights                 = reader.GetFieldValue<UserRecord, string>(nameof(Rights));
-        Gender                 = reader.GetFieldValue<UserRecord, string?>(nameof(Gender));
-        Company                = reader.GetFieldValue<UserRecord, string?>(nameof(Company));
-        Description            = reader.GetFieldValue<UserRecord, string?>(nameof(Description));
-        Department             = reader.GetFieldValue<UserRecord, string?>(nameof(Department));
-        Title                  = reader.GetFieldValue<UserRecord, string?>(nameof(Title));
-        Website                = reader.GetFieldValue<UserRecord, string?>(nameof(Website));
-        PreferredLanguage      = reader.GetEnumValue<UserRecord, SupportedLanguage>(nameof(PreferredLanguage), SupportedLanguage.Unspecified);
-        Email                  = reader.GetFieldValue<UserRecord, string?>(nameof(Email));
-        PhoneNumber            = reader.GetFieldValue<UserRecord, string?>(nameof(PhoneNumber));
-        Ext                    = reader.GetFieldValue<UserRecord, string?>(nameof(Ext));
-        SubscriptionID         = reader.GetFieldValue<UserRecord, Guid?>(nameof(SubscriptionID));
-        SubscriptionExpires    = reader.GetFieldValue<UserRecord, DateTimeOffset?>(nameof(SubscriptionExpires));
-        EscalateTo             = RecordID<UserRecord>.TryCreate(reader, nameof(EscalateTo));
-        AdditionalData         = reader.GetAdditionalData<UserRecord>();
-        ImageID                = RecordID<FileRecord>.TryCreate(reader, nameof(ImageID));
-        LastBadAttempt         = reader.GetFieldValue<UserRecord, DateTimeOffset?>(nameof(LastBadAttempt));
-        LastLogin              = reader.GetFieldValue<UserRecord, DateTimeOffset?>(nameof(LastLogin));
-        BadLogins              = reader.GetFieldValue<UserRecord, int>(nameof(BadLogins));
-        LockDate               = reader.GetFieldValue<UserRecord, DateTimeOffset?>(nameof(LockDate));
-        LockoutEnd             = reader.GetFieldValue<UserRecord, DateTimeOffset?>(nameof(LockoutEnd));
-        PasswordHash           = reader.GetFieldValue<UserRecord, string?>(nameof(PasswordHash));
-        AuthenticatorKey       = reader.GetFieldValue<UserRecord, string?>(nameof(AuthenticatorKey));
-        RefreshTokenHash       = reader.GetFieldValue<UserRecord, string?>(nameof(RefreshTokenHash));
-        RefreshTokenExpiryTime = reader.GetFieldValue<UserRecord, DateTimeOffset?>(nameof(RefreshTokenExpiryTime));
-        SessionID              = reader.GetFieldValue<UserRecord, Guid?>(nameof(SessionID));
-        SecurityStamp          = reader.GetFieldValue<UserRecord, string?>(nameof(SecurityStamp));
-        ConcurrencyStamp       = reader.GetFieldValue<UserRecord, string?>(nameof(ConcurrencyStamp));
-        IsEmailConfirmed       = reader.GetFieldValue<UserRecord, bool>(nameof(IsEmailConfirmed));
-        IsPhoneNumberConfirmed = reader.GetFieldValue<UserRecord, bool>(nameof(IsPhoneNumberConfirmed));
-        IsTwoFactorEnabled     = reader.GetFieldValue<UserRecord, bool>(nameof(IsTwoFactorEnabled));
-        IsLocked               = reader.GetFieldValue<UserRecord, bool>(nameof(IsLocked));
-        IsActive               = reader.GetFieldValue<UserRecord, bool>(nameof(IsActive));
-        IsDisabled             = reader.GetFieldValue<UserRecord, bool>(nameof(IsDisabled));
-    }
 
 
     public UserRecord( IUserData<Guid> value ) : base(RecordID<UserRecord>.Create(value.ID), DateTimeOffset.UtcNow, value.AdditionalData) => With(value);

@@ -18,7 +18,11 @@ public readonly struct AutoRecordID<TSelf>( long id ) : IEquatable<AutoRecordID<
     [Pure] public static AutoRecordID<TSelf>  Parse( params ReadOnlySpan<char> value )                       => Create(long.Parse(value));
     [Pure] public static AutoRecordID<TSelf>  ID( DbDataReader                 reader )                      => Create(reader, TSelf.MetaData.PrimaryKeyPropertyName);
     [Pure] public static AutoRecordID<TSelf>? UserID( DbDataReader             reader )                      => TryCreate(reader, nameof(IUserRecordID.UserID));
-    [Pure] public static AutoRecordID<TSelf>? TryCreate( DbDataReader          reader, string propertyName ) => TryCreate(reader.GetFieldValue<long?>(TSelf.MetaData[propertyName].Index));
+    [Pure] public static AutoRecordID<TSelf>? TryCreate( DbDataReader          reader, string propertyName ) => TryCreate(reader, TSelf.MetaData[propertyName].Index);
+    // Checks for NULL first: not every provider returns null from GetFieldValue<long?> (DataTableReader and SqlDataReader throw).
+    [Pure] private static AutoRecordID<TSelf>? TryCreate( DbDataReader         reader, int ordinal ) => reader.IsDBNull(ordinal)
+                                                                                                            ? null
+                                                                                                            : TryCreate(reader.GetFieldValue<long>(ordinal));
     [Pure] public static AutoRecordID<TSelf>  Create( DbDataReader             reader, string propertyName ) => Create(reader.GetFieldValue<long>(TSelf.MetaData[propertyName].Index));
     [Pure] public static AutoRecordID<TSelf>  Create( IUniqueID<long>          value ) => Create(value.ID);
     [Pure] public static AutoRecordID<TSelf>  Create( long                     id )    => new(id);

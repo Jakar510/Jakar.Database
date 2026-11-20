@@ -47,19 +47,6 @@ public sealed partial record AddressRecord : PairRecord<AddressRecord>, IAddress
         Address         = address.Address;
         IsPrimary       = IsPrimary;
     }
-    internal AddressRecord( DbDataReader reader ) : base(reader)
-    {
-        UserID          = RecordID<UserRecord>.TryCreate(reader, nameof(UserID));
-        Line1           = reader.GetFieldValue<AddressRecord, string>(nameof(Line1));
-        Line2           = reader.GetFieldValue<AddressRecord, string>(nameof(Line2));
-        City            = reader.GetFieldValue<AddressRecord, string>(nameof(City));
-        StateOrProvince = reader.GetFieldValue<AddressRecord, string>(nameof(StateOrProvince));
-        Country         = reader.GetFieldValue<AddressRecord, string>(nameof(Country));
-        PostalCode      = reader.GetFieldValue<AddressRecord, string>(nameof(PostalCode));
-        Address         = reader.GetFieldValue<AddressRecord, string>(nameof(Address));
-        AdditionalData  = reader.GetAdditionalData<AddressRecord>();
-        IsPrimary       = reader.GetFieldValue<AddressRecord, bool>(nameof(IsPrimary));
-    }
 
 
     public static AddressRecord Parse( string s, IFormatProvider? provider ) => Create(Regexes.Address.Match(s));
